@@ -1,10 +1,73 @@
-# Your harness
+# Harness
 
-This file is yours, and it arrives empty on purpose. The rules you hold the
-agent to are part of what gets marked, so they should be rules you decided on.
+Rules for any agent working in this repo. `CLAUDE.md` is a symlink to this
+file, so Claude Code and every other agent read the same rules.
 
-Nothing about the template is recorded here. What the repo ships is explained
-where it lives --- `fly.toml`, the `Dockerfile`, the CI workflow and
-`spec/README.md` each say what they fix --- and the course website publishes the
-[final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/).
-What the agent needs to carry from any of it is your call.
+`docs/design.md` is the settled specification. This file holds the rules. Read
+both, along with the
+[final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/),
+before planning or building anything.
+
+## Where things live
+
+- **Settled decisions go in `docs/design.md`.** Once something is decided (what
+  the app is, its scope, its stack, its data model), it is written there with
+  the reason. A decision that lives only in a conversation hasn't been made. To
+  change a settled decision, edit `docs/design.md` in the same commit as the
+  work that follows from it.
+- **Working state goes in `docs/notes/`, one file per topic.** That covers what
+  is in progress, what has been checked and what hasn't, and what is blocked
+  and why. A check recorded only in a conversation looks exactly like a check
+  nobody did.
+- **Every interaction and its outcome goes in `docs/prompts-result.md`.** See
+  below.
+
+## The prompt log
+
+`docs/prompts-result.md` records every prompt the user sends and what came of
+it. It is source material for `PROCESS.md`, which the user writes in their own
+words; it is not a draft of `PROCESS.md`.
+
+- **Append an entry at the end of every turn that did work**, before the final
+  commit of that turn, so the entry ships with the commits it describes.
+- **Prompts are verbatim**, quoted as typed. A clarifying question and its
+  answer are logged too, because the answer changes what gets built.
+- **Timestamps come from the session transcript**, in Canberra time (AEST
+  UTC+10, or AEDT UTC+11 from the first Sunday in October). Don't guess them.
+- **Results are curated**: the decisions, what was built or rejected, and why.
+  Leave out tool output.
+- **Every commit hash comes from `git log`**, linked as
+  `[`<sha>`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/<sha>)`.
+  Never write one from memory.
+- **Omitted:** prompts that are only "continue" or only a bare slash command
+  with no answer of its own. Any work they resumed is filed under the prompt
+  that asked for it.
+- Each session's first entry names the session id and the tool (Claude Code,
+  Codex, ...).
+
+## No time limit
+
+Nothing in this repo is on the clock, so never trade a step for speed. The
+slow work (reading the brief properly, writing the test before the code,
+checking the deployed app rather than assuming) is what an agent watching the
+clock cuts first. Don't stub a feature to finish later, drop a check, shrink
+the scope, or stop to ask whether a long job is worth finishing. The one reason
+to stop short is a real blocker: name it, and write down where the work stands
+in `docs/notes/`.
+
+## Memory and agent communication
+
+Prefer files to context. A conversation gets compacted, ends, or happens in a
+cloud session this clone never sees, and the repo is the only memory every
+session shares. Anything the next session or another agent needs is written to
+a file here, then committed and pushed with the work it describes.
+
+- Agents talk through files. Give a subagent or parallel session its brief as a
+  file and have it write its result to one; the message only says which file
+  to read. A finding that lives only in a message is gone with the session that
+  sent it.
+- Keep project state out of machine-local memory under `~/.claude`: it never
+  reaches a cloud session, and `PROCESS.md` can't cite it.
+- The repo goes public when it ships, notes and prompt log included. Write
+  nothing in them that can't be public: no keys, no secrets, no personal data
+  about third parties.
