@@ -42,3 +42,21 @@ top of A2's log), "No time limit", and "Memory and agent communication".
 Created `docs/design.md` with the harness decisions recorded as settled and
 nothing yet settled about the app, `docs/notes/` with a README, and this log.
 [`8aa93ec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8aa93ec)
+
+---
+
+*Sent 2026-10-05 21:52:45 AEDT*
+
+> also use ADR as described in https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/#what-you-submit
+
+**Result.** The brief makes ADRs optional: record the context, the options,
+the choice and its cost; they don't count toward `PROCESS.md`'s word count,
+which can link to them. It doesn't fix where they live, how they're named or
+which template to use, so those were decided here. ADRs go in `docs/adr/`,
+named `NNNN-slug.md`, from a template following Nygard (2011) with an added
+Options section the brief asks for. ADR 0001 records the practice itself and
+why `docs/design.md` alone wasn't enough: it describes the current state and
+loses rejected options when edited. `AGENTS.md` gained the rules: which
+decisions need an ADR, writing it in the same commit as the decision,
+superseding instead of rewriting, and `Proposed` status until the user decides.
+[`bc3393e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bc3393e)
