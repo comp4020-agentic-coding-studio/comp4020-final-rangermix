@@ -1,7 +1,8 @@
 # Settled design
 
 Every decision fixed so far, each with its reason. `AGENTS.md` holds the rules;
-this holds the specification. Working state belongs in `docs/notes/`, not here.
+this holds the specification: what is true now. The reasoning and rejected
+options behind the big decisions live in `docs/adr/`. Working state belongs in `docs/notes/`, not here.
 
 Nothing about the app itself is settled yet.
 
@@ -15,3 +16,5 @@ Nothing about the app itself is settled yet.
   `docs/notes/`, and every prompt with its outcome in `docs/prompts-result.md`.
   The prompt log carries over from A2, where it was the source material for
   `PROCESS.md`.
+- **Significant decisions get an ADR** in `docs/adr/`, and this file links to
+  each one. ([ADR 0001](adr/0001-record-architecture-decisions.md))

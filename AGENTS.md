@@ -15,12 +15,32 @@ before planning or building anything.
   the reason. A decision that lives only in a conversation hasn't been made. To
   change a settled decision, edit `docs/design.md` in the same commit as the
   work that follows from it.
+- **Significant decisions also get an ADR in `docs/adr/`** (see below), and
+  their `docs/design.md` entry links to it.
 - **Working state goes in `docs/notes/`, one file per topic.** That covers what
   is in progress, what has been checked and what hasn't, and what is blocked
   and why. A check recorded only in a conversation looks exactly like a check
   nobody did.
 - **Every interaction and its outcome goes in `docs/prompts-result.md`.** See
   below.
+
+## Architecture decision records
+
+[ADR 0001](docs/adr/0001-record-architecture-decisions.md) explains why these
+exist. A decision is significant enough for one if it's costly to reverse or a
+marker would ask "why this and not that": the stack, the hosting, the data
+store, auth, the app's shape and scope, and the agent workflow itself.
+
+- **Copy `docs/adr/template.md`** to the next number, `NNNN-slug.md`. Fill in
+  context, options (at least two, with real costs), decision and consequences.
+- **Write the ADR in the same commit as the decision's first change**, and add
+  or update the `docs/design.md` entry that links to it.
+- **Never rewrite an accepted ADR's substance.** To change a decision, write a
+  new ADR that supersedes it and set the old one's status to
+  `Superseded by [NNNN](NNNN-slug.md)`. Fixing typos and adding commit links is
+  fine.
+- **When the user hasn't decided, the status is `Proposed`.** Present the
+  options and don't build on it until they accept.
 
 ## The prompt log
 
