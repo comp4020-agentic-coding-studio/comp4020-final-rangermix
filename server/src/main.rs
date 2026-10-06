@@ -6,6 +6,7 @@ mod http;
 mod protocol;
 mod readme;
 mod room;
+mod store;
 mod time;
 mod tuning;
 
