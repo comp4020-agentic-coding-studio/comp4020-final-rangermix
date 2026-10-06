@@ -88,6 +88,12 @@ approved.
     fading)
     - *Default numbers, to tune:* a bubble shows for 3 seconds plus 60 ms per
       character, capped at 10 seconds.
+12. **The cats react to talk: to the room's noise and to their names.** How
+    busy the room's chatter is becomes a mood the cats feel by character: a
+    chatty café sends shy cats into hiding and draws social ones in, and a
+    quiet one coaxes the shy ones out. A cat's name in a bubble makes it look
+    up, and come over if it trusts the speaker. The server matches cat names
+    in bubbles and reads nothing else. (Q6)
 
 ## Proposed, awaiting the user
 
@@ -127,28 +133,43 @@ approved.
    browser for the visit), public with a saved history, or private when
    addressed to someone. Answer: public and fleeting, with the fade delay
    adjusted to the message's length.
-6. **Do the cats react to talk?** Asked 2026-10-07; options were to noise and
-   names, to names only, to noise only, or not at all. *Awaiting an answer.*
+6. **Do the cats react to talk?** Options were to noise and names, to names
+   only, to noise only, or not at all. Answer: to noise and names. In the same
+   reply the user asked for several questions per message from here on.
 
-## Questions still to ask, roughly in order
+Questions 7 to 11 were asked together on 2026-10-07. *Awaiting answers.*
 
-- Moving and controls: click-to-walk, keys, or both; the keyboard pointer; touch
-  on a 390×844 phone.
-- The cat character system: traits, needs, reactions to events, effects on the
-  room and other cats; activity with and without people; the first three cats'
-  looks and characters.
-- Trust: how a cat comes to know you, what trust unlocks, whether it fades.
-- Food and treats: who can feed, and what limits it.
-- Furniture: the catalogue, who may change it, what limits it, cats sitting on
-  it, and two people moving the same thing at once.
-- What people can do with each other besides talk.
-- Time: is there day and night, and on whose clock? What traces does the night
-  leave?
-- What persists and what expires: furniture, cat memory, bubbles, presence.
-- Art: who draws the pixel art, and whether looks are modular too (one base cat
-  with coats and patterns) to match the modular characters.
-- Accounts in detail: the sign-up path, one account in two tabs, no password
-  recovery without email.
-- Safety for public text: length, rate, muting.
+7. **What can a person do with a cat?** Pet, call, feed and play, each of
+   which a cat can refuse; that plus picking up and carrying; just pet and
+   feed; or more verbs (brush, photograph, give a toy).
+8. **How does trust work?** Per person and per cat, growing with welcome
+   interactions, dipping when you push, never fading with absence, and
+   visible to everyone (greeting at the door, coming when called, napping on a
+   lap); the same but fading when you stay away; or shared by the whole café.
+9. **The first three cats.** The user describes them, or the proposal: Mochi
+   (round, white and grey, sociable and greedy, naps more when the café is
+   empty), Sumi (black, shy, explores the empty café at night and leaves the
+   traces, slow to trust), Kaki (orange tabby, curious and playful, first to
+   inspect new furniture).
+10. **Food and treats.** The café fills the bowls on a schedule and each
+    visitor has a few treats a day to put down or hand over; anyone fills the
+    bowls any time; or only visitors feed, so an empty café means hungry cats.
+11. **Café rules.** Enforce a few in the mechanics (a sleeping cat can't be
+    disturbed nor its furniture moved, no carrying, chasing a cat that left
+    costs trust), as rules in `CLAUDE.md` and checks in `spec/`; or no hard
+    rules, with cats reacting badly instead.
+
+## Questions still to ask, in batches
+
+- **The room and the people:** the furniture catalogue, who may change it, what
+  limits it, and two people moving the same thing at once; what people can do
+  with each other besides talk; moving and controls (click-to-walk, keys, the
+  keyboard pointer, touch on a 390×844 phone).
+- **The world, the look, the accounts:** day and night and on whose clock, and
+  what traces the night leaves; what persists and what expires; who draws the
+  pixel art, and whether looks are modular too (one base cat with coats and
+  patterns); the sign-up path, one account in two tabs, no password recovery
+  without email; safety for public text (length, rate, muting).
 - Then the approaches (stack, rendering, simulation, storage) and the design
-  sections.
+  sections, including the cat character system: traits, needs, reactions to
+  events, effects on the room and other cats, and cats defined as data.
