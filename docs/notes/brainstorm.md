@@ -26,7 +26,8 @@ prompt log keeps the exchange verbatim.
 ## Decided in conversation so far
 
 These are the user's answers. They move to `docs/design.md` once the design is
-approved.
+approved. Defaults marked "to tune" were proposed and stood when the user was
+asked; the numbers can change without reopening the decision.
 
 1. **The heart is company around the cats.** Strangers end up talking because
    of what the cats do; the café should get better with more people in it. The
@@ -48,7 +49,8 @@ approved.
    memory is no worry then). To be weighed against alternatives in the
    approaches step and recorded as an ADR.
 5. **Keyboard-only use goes through a keyboard-controlled pointer**, so
-   everything a mouse can do, the keyboard can.
+   everything a mouse can do, the keyboard can. The pointer snaps to tiles,
+   and Tab jumps between things you can act on (accepted with Q14).
 6. **Accounts are a minimal username-and-password system**, not an identity
    the browser remembers.
 7. **No deadline pressure.** The C8 cutoff doesn't shape the design.
@@ -71,13 +73,10 @@ approved.
     someone at the window wasn't chosen. (Q4)
     - *Default numbers, to tune:* a dropped connection keeps its seat for 30
       seconds; "gone quiet" means the tab hidden for 2 minutes or no input for
-      10; the nudge waits 60 seconds for an answer. No change requested when
-      asked (Q5 reply).
+      10; the nudge waits 60 seconds for an answer.
     - *The line:* first come, first served. The window shows as many waiting
       avatars as fit along it, and a count ("+12 waiting") for the rest. When
-      a seat frees, the first in line walks in through the door. Proposed as a
-      default instead of a question; no change requested when asked (Q5
-      reply).
+      a seat frees, the first in line walks in through the door.
 11. **Speech bubbles are public and fleeting.** Everyone inside and at the
     window sees every bubble, and nothing said is stored on the server.
     Clicking someone's avatar addresses your words to them (their name shows
@@ -96,18 +95,25 @@ approved.
     in bubbles and reads nothing else. (Q6)
 13. **People can pet, call, feed, play with, and pick up and carry a cat.** A
     cat that doesn't like what's happening scratches and jumps off. (Q7)
+    - *Carrying:* how long a cat puts up with being held depends on its
+      character and its trust in the holder, so nobody can keep a cat from the
+      room for long. A held cat always jumps down at the door.
 14. **Trust is per person and per cat, and it never fades.** It grows with
     welcome interactions and dips when someone pushes (petting a cat that's
     leaving, calling it over and over). Being away never costs trust. It shows
     to everyone: a trusting cat greets you at the door, comes when called,
     sits by you, and eventually naps on your lap. (Q8)
-15. **The first three cats are Mochi, Buraku and Tora.** (Q9, the proposal
-    with two renames)
+15. **The first three cats are Mochi, Burakku and Tora.** (Q9, the proposal
+    with two renames.) The black cat was first renamed "Buraku"; told that the
+    spelling reads in Japanese as 部落, a word tied to discrimination against
+    the burakumin, the user renamed her again. They typed "burakkul;", read as
+    Burakku (ブラック, "black") with a stray "l" beside the semicolon; to
+    confirm.
     - **Mochi:** round, white and grey; sociable and greedy; goes where the
       people and food are; naps more when the café is empty.
-    - **Buraku:** black and shy; hides when the room is busy and explores when
-      it's empty, so she leaves the night's traces; slow to trust, devoted
-      once won.
+    - **Burakku:** black and shy; hides when the room is busy and explores
+      when it's empty, so she leaves the night's traces; slow to trust,
+      devoted once won.
     - **Tora:** an orange tabby; curious and playful; first to inspect new
       furniture, chases toys, knocks things over; tolerates petting, loves
       play.
@@ -119,31 +125,44 @@ approved.
     a cat reacts to unwelcome handling differs by cat, and a really angry cat
     bans that person from that action for a while, such as no picking up for
     two days. (Q11, with the user's addition)
+    - *How anger works:* each cat's anger toward a person rises with unwelcome
+      actions (waking it, holding it too long, chasing it, pushing an action it
+      dislikes) and cools with time. Mildly annoyed, it walks off or hisses.
+      Angry, it scratches and jumps off, and trust dips. Furious, it refuses
+      that action from that person for a while, with the length set by its
+      character (Tora forgets in hours; Burakku holds a grudge for two days).
+      Bans are per cat, per person and per action, and they persist across
+      visits.
+18. **Anyone inside can rearrange the café**, from a free catalogue, within
+    gentle limits: each person can make one change every minute or so, the
+    door and walkways always stay clear, and the floor only holds so much. A
+    cat on a piece that gets moved jumps off, annoyed. (Q12)
+    - *Two people grabbing the same piece:* the first grab wins. The piece
+      lifts into that person's hands, everyone sees it being carried, and if
+      they disconnect it drops back where it was. A C9 candidate, alongside
+      the quiet-seat rule.
+    - *Default number, to tune:* one change per person per minute. How much
+      the floor holds is set with the room's size in the design.
+19. **People can emote, sit together and give.** A handful of emotes (wave,
+    laugh, heart, yawn) over your avatar; sharing a sofa; handing someone one
+    of your treats; passing them the cat you're holding, if the cat agrees.
+    (Q13)
+20. **Point, then act.** Click or tap a spot to walk there; click a cat, a
+    person or a piece of furniture for a small menu of what you can do. On the
+    keyboard, arrow keys move the tile-snapped pointer, Tab jumps between
+    things, and Enter acts. One model for mouse, touch and keys, so the
+    keyboard and the phone get the whole café. (Q14)
 
 ## Proposed, awaiting the user
 
-- **How a cat's anger works (decision 17), by default.** Each cat's anger
-  toward a person rises with unwelcome actions (waking it, holding it too
-  long, chasing it, pushing an action it dislikes) and cools with time. Mildly
-  annoyed, it walks off or hisses. Angry, it scratches and jumps off, and trust
-  dips. Furious, it refuses that action from that person for a while, with the
-  length set by its character (Tora forgets in hours; Buraku holds a grudge for
-  two days). Bans are per cat, per person and per action, and they persist
-  across visits.
-- **Carrying (decision 13), by default.** How long a cat puts up with being
-  held depends on its character and its trust in the holder, so nobody can
-  keep a cat from the room for long. A held cat always jumps down at the door.
-- **Two people grabbing the same piece of furniture, by default.** The first
-  grab wins: the piece lifts into that person's hands, everyone sees it being
-  carried, and if they disconnect it drops back where it was. A C9 candidate,
-  alongside the quiet-seat rule.
-- **The name "Buraku" (decision 15).** Romanised that way, it reads in
-  Japanese as 部落, a word tied to discrimination against the burakumin.
-  "Burakku" (ブラック, "black") or "Kuro" (黒, the usual black-cat name) avoid
-  that. Flagged to the user; Buraku stands unless they change it.
-- **A refinement of decision 5.** The pointer snaps to tiles, and Tab jumps
-  between things you can act on (cats, people, furniture), so no one nudges a
-  cursor pixel by pixel. To settle with the controls question.
+- **What persists and what expires, by default.** Persists across restarts and
+  redeploys: accounts and looks; each cat's trust in each person; bans until
+  they expire; the furniture layout; each cat's state (where it is, what it's
+  doing, how hungry and tired it is); treats used today; and whatever the
+  quiet hours leave behind (Q16). Expires: speech bubbles (never stored),
+  emotes, a cat's anger (it cools, and isn't stored), and who is inside or in
+  line (rebuilt as people reconnect after a restart). Asked alongside
+  questions 15 to 19.
 
 ## Assumptions not contested
 
@@ -201,27 +220,44 @@ Questions 7 to 11 were asked together on 2026-10-07 and answered in one reply.
     strong negative feedback: each cat reacts its own way, and a really angry
     cat bans that person from that action for a while.
 
-Questions 12 to 14 were asked together on 2026-10-07. *Awaiting answers.*
+Questions 12 to 14 were asked together on 2026-10-07 and answered in one
+reply, which also renamed Buraku to Burakku (decision 15).
 
-12. **Who can rearrange the café?** Anyone inside, from a free catalogue, with
-    gentle limits (a change per person every minute or so, door and walkways
-    kept clear, a fixed amount of floor, cats jumping off a piece that's moved,
-    annoyed); anyone a cat trusts; or each person only their own pieces.
-13. **What can people do with each other besides talk?** Emotes and sitting
-    together; that plus giving (a treat, or passing the cat you're holding, if
-    the cat agrees); or talk only.
-14. **How do people move and act?** Point, then act: click or tap to walk, click
-    a thing for a menu of actions, and on the keyboard a tile-snapped pointer
-    with Tab between things and Enter to act; walking with keys while the
-    pointer only acts; or seats instead of free walking.
+12. **Who can rearrange the café?** Options were anyone inside within gentle
+    limits, anyone a cat trusts, or each person only their own pieces. Answer:
+    anyone inside within gentle limits.
+13. **What can people do with each other besides talk?** Options were emotes and
+    sitting together; that plus giving treats and passing a cat; or talk only.
+    Answer: emotes and sitting together, plus giving.
+14. **How do people move and act?** Options were point-then-act across mouse,
+    touch and keyboard; walking with keys while the pointer only acts; or seats
+    instead of free walking. Answer: point, then act.
 
-## Questions still to ask, in batches
+Questions 15 to 19 were asked together on 2026-10-07. *Awaiting answers.*
 
-- **The world, the look, the accounts:** day and night and on whose clock, and
-  what traces the night leaves; what persists and what expires; who draws the
-  pixel art, and whether looks are modular too (one base cat with coats and
-  patterns); the sign-up path, one account in two tabs, no password recovery
-  without email; safety for public text (length, rate, muting).
+15. **Day and night.** The café keeps Canberra time, with light and cat
+    rhythms to match; each visitor sees their own local time; or it's always a
+    cozy afternoon.
+16. **What the quiet hours leave behind.** Physical traces only (scattered toys,
+    a toppled plant, a cat asleep somewhere new); those plus a chalkboard by
+    the door where the café notes what the cats got up to, wiped each morning;
+    or nothing, because the staff tidy up.
+17. **Who draws the pixel art?** In every option the cats share one base sprite
+    with swappable coats, patterns and eye colours. Claude draws it as code
+    (palette-indexed pixel grids); the user draws the base sprites and the
+    code recolours them; or a free (CC0) pack for the room, furniture and
+    avatars, with the cats drawn to match.
+18. **Accounts in detail.** Minimal: username and password, pick a look, no
+    recovery, and a second tab takes over from the first; or that plus a
+    one-time recovery code shown at sign-up.
+19. **Safety for public text.** Light limits (about 100 characters a bubble, a
+    few bubbles per ten seconds, a personal mute, and an admin ban from the
+    server); those plus a short whole-word blocklist of slurs; or those plus
+    in-app reporting.
+
+## Still to come
+
+- Whatever questions 15 to 19 raise.
 - Then the approaches (stack, rendering, simulation, storage) and the design
   sections, including the cat character system: traits, needs, reactions to
   events, effects on the room and other cats, and cats defined as data.
