@@ -361,3 +361,31 @@ Design 5 is accounts and safety:
 - A privacy rule: bubble text is never written to the database or the logs,
   so the C10 logs record that someone spoke, not what they said.
 [`c9ebf01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c9ebf01)
+
+---
+
+*Sent 2026-10-07 03:31:20 AEDT*
+
+> D4 D5 approved; use light mockups
+
+**Result.** Designs 4 and 5 were approved, and with them the fix to the
+chalkboard: a rolling 24 hours, with traces staying until someone tidies them.
+The user took up the brainstorming visual companion for the client, asking for
+light mockups, so it was started from the worktree and showed one screen of
+wireframes:
+- two phone layouts at 390×844 to choose between (the whole room on top at 2×
+  with controls below, or the room filling the screen at 3× and panning);
+- a desktop layout at 1920×1080 (the room at 5× between a readable chalkboard
+  and a panel of who's here and what was said);
+- a 12×10 floor plan with the line's faces at the street window, a door
+  walkway that's never blocked, and a window seat for cats to watch the line.
+
+The non-visual parts went to the terminal: whole-number scaling that refits on
+resize, sprites as palette grids, bubbles and menus as HTML over the canvas
+(any language renders, and the keyboard can focus menus), a screen-reader live
+region, and keyboard bindings.
+
+The companion's working directory holds a session key, so `.superpowers/` was
+added to `.gitignore`. The screen itself was copied to `docs/notes/mockups/`
+to keep it in the record.
+[`59067a3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/59067a3)
