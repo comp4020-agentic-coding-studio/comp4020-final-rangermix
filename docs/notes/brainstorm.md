@@ -58,6 +58,11 @@ approved.
    the café has to be good with one to three people in it, regulars need to
    be recognisable, and the showcase crowd is the stress test, not the
    audience. (Q2: "A & C")
+9. **At most six people inside, for now; everyone else waits at the window.**
+   The cap is for the cats, as in a real café, and six is a starting number,
+   not a fixed one. People waiting appear as avatars at the front window. They
+   see the same view as the people inside, but the only thing they can do is
+   talk. (Q3)
 
 ## Proposed, awaiting the user
 
@@ -81,13 +86,22 @@ approved.
    class at the showcase, a small group of regulars, or cozy-game players.
    Answer: people who miss having a cat, and a small group of regulars.
    Fast-forward on wake was accepted in the same reply.
-3. **How many people inside at once, and what happens when it's full?** Asked
-   2026-10-07; options were a cap of about twelve with a window to watch from,
-   no cap with cats reacting to the crowd, several cafés with their own cats,
-   or one café with several capped rooms. *Awaiting an answer.*
+3. **How many people inside at once, and what happens when it's full?** Options
+   were a cap of about twelve with a window to watch from, no cap with cats
+   reacting to the crowd, several cafés with their own cats, or one café with
+   several capped rooms. Answer: the cap with a window, at six for now; people
+   waiting show as avatars at the window, see the same view, and can only
+   talk.
+4. **When the café is full and someone is waiting, what happens to a seat held
+   by someone who has gone quiet?** Asked 2026-10-07; options were stepping
+   out after a nudge only when someone is waiting, timed visits while there's
+   a line, never moving anyone, or giving up your seat to someone at the
+   window. *Awaiting an answer.*
 
 ## Questions still to ask, roughly in order
 
+- The line: how many avatars fit at the window, how a long line shows, and
+  who comes in next.
 - Talking: does clicking an avatar address that person, or is every bubble
   public? Do bubbles vanish, or is there a log? Do cats react to a noisy room?
 - Moving and controls: click-to-walk, keys, or both; the keyboard pointer; touch
