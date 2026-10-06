@@ -13,7 +13,10 @@ pub fn now_ms() -> u64 {
 }
 
 fn canberra(ms: u64) -> DateTime<Tz> {
-    Utc.timestamp_millis_opt(ms as i64).single().unwrap_or_default().with_timezone(&Sydney)
+    Utc.timestamp_millis_opt(ms as i64)
+        .single()
+        .unwrap_or_default()
+        .with_timezone(&Sydney)
 }
 
 /// The Canberra calendar day of an instant, as `YYYY-MM-DD`.

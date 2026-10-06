@@ -31,10 +31,19 @@ pub struct Out {
 
 #[derive(Debug, Clone)]
 pub enum Input {
-    Join { id: u32, name: String, look: Look },
+    Join {
+        id: u32,
+        name: String,
+        look: Look,
+    },
     /// The connection dropped; the seat is kept for the grace period.
-    Drop { id: u32 },
-    Msg { id: u32, msg: ClientMsg },
+    Drop {
+        id: u32,
+    },
+    Msg {
+        id: u32,
+        msg: ClientMsg,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -165,7 +174,12 @@ impl World {
         let cats: Vec<(String, String)> = self
             .cats
             .iter()
-            .map(|c| (c.def.id.clone(), serde_json::to_string(&c.saved(now)).expect("a cat's state serialises")))
+            .map(|c| {
+                (
+                    c.def.id.clone(),
+                    serde_json::to_string(&c.saved(now)).expect("a cat's state serialises"),
+                )
+            })
             .collect();
         store.fire(move |conn| {
             for (id, json) in &cats {
@@ -177,7 +191,13 @@ impl World {
 }
 
 fn error(out: &mut Vec<Out>, id: u32, code: ErrorCode, detail: &str) {
-    out.push(Out { to: To::One(id), msg: ServerMsg::Error { code, detail: detail.to_string() } });
+    out.push(Out {
+        to: To::One(id),
+        msg: ServerMsg::Error {
+            code,
+            detail: detail.to_string(),
+        },
+    });
 }
 
 /// The tile a walk has most recently reached at `now`.

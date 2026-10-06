@@ -37,8 +37,14 @@ pub fn verify_secret(secret: &str, hash: &str) -> bool {
 /// Sixteen characters in four groups, like `K7QF-2M9D-XR4T-8HWC`: about 80 bits.
 pub fn new_recovery_code() -> String {
     let mut rng = rand::rng();
-    let chars: Vec<char> = (0..16).map(|_| CODE_ALPHABET[rng.random_range(0..CODE_ALPHABET.len())] as char).collect();
-    chars.chunks(4).map(|group| group.iter().collect::<String>()).collect::<Vec<_>>().join("-")
+    let chars: Vec<char> = (0..16)
+        .map(|_| CODE_ALPHABET[rng.random_range(0..CODE_ALPHABET.len())] as char)
+        .collect();
+    chars
+        .chunks(4)
+        .map(|group| group.iter().collect::<String>())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 /// What someone types, folded back to the code: case, dashes and spaces
@@ -71,7 +77,10 @@ pub fn session_cookie(token: &str, max_age_secs: u64) -> String {
 }
 
 pub fn cookie_value<'a>(cookie_header: &'a str, name: &str) -> Option<&'a str> {
-    cookie_header.split(';').map(str::trim).find_map(|kv| kv.strip_prefix(name)?.strip_prefix('='))
+    cookie_header
+        .split(';')
+        .map(str::trim)
+        .find_map(|kv| kv.strip_prefix(name)?.strip_prefix('='))
 }
 
 #[cfg(test)]

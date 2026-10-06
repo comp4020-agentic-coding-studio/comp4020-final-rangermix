@@ -35,9 +35,18 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: Config, readme: String, store: Store, tuning: Tuning, world: tokio::sync::mpsc::Sender<crate::ws::Command>) -> AppState {
+    pub fn new(
+        config: Config,
+        readme: String,
+        store: Store,
+        tuning: Tuning,
+        world: tokio::sync::mpsc::Sender<crate::ws::Command>,
+    ) -> AppState {
         let per_min = |n: f64| Keyed::new(n, n / 60.0);
-        let auth_limits = AuthLimits { by_name: per_min(tuning.auth_per_name_per_min), by_ip: per_min(tuning.auth_per_ip_per_min) };
+        let auth_limits = AuthLimits {
+            by_name: per_min(tuning.auth_per_name_per_min),
+            by_ip: per_min(tuning.auth_per_ip_per_min),
+        };
         AppState {
             config: Arc::new(config),
             readme: readme.into(),
@@ -145,7 +154,13 @@ mod tests {
         let store = crate::store::Store::open(&dir.join("cafe.db")).unwrap();
         let tuning = crate::content::repo_content().tuning;
         let (world, _) = tokio::sync::mpsc::channel(1);
-        router(AppState::new(config, crate::readme::render_page("# Hello\n\n## Second"), store, tuning, world))
+        router(AppState::new(
+            config,
+            crate::readme::render_page("# Hello\n\n## Second"),
+            store,
+            tuning,
+            world,
+        ))
     }
 
     async fn get(app: Router, path: &str) -> (StatusCode, String) {

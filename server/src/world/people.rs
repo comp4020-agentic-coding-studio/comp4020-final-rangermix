@@ -38,20 +38,49 @@ impl World {
             // Back within the grace period, or a second tab: the same seat.
             p.away_since = None;
         } else {
-            let place = if self.inside() < self.tuning.cap { Place::Inside } else { Place::Window };
+            let place = if self.inside() < self.tuning.cap {
+                Place::Inside
+            } else {
+                Place::Window
+            };
             let walk = (place == Place::Inside).then(|| self.entering_walk(now));
             let door = self.room.door;
-            self.people.push(Person { id, name: name.clone(), look, place, at: door, walk, joined: now, away_since: None, pending: None });
+            self.people.push(Person {
+                id,
+                name: name.clone(),
+                look,
+                place,
+                at: door,
+                walk,
+                joined: now,
+                away_since: None,
+                pending: None,
+            });
             tracing::info!(target: "action", uid = id, who = %name, what = "arrive", place = ?place);
             let person = person_view(self.person(id).expect("just added"), now);
-            out.push(Out { to: To::All, msg: ServerMsg::PersonJoined { person } });
+            out.push(Out {
+                to: To::All,
+                msg: ServerMsg::PersonJoined { person },
+            });
             if place == Place::Inside {
                 self.arrivals.push(id);
             }
         }
         let snapshot = self.snapshot_for(id, now);
-        let welcome = ServerMsg::Welcome { you: id, build: self.build.clone(), now, cap: self.tuning.cap as u32, snapshot };
-        out.insert(0, Out { to: To::One(id), msg: welcome });
+        let welcome = ServerMsg::Welcome {
+            you: id,
+            build: self.build.clone(),
+            now,
+            cap: self.tuning.cap as u32,
+            snapshot,
+        };
+        out.insert(
+            0,
+            Out {
+                to: To::One(id),
+                msg: welcome,
+            },
+        );
     }
 
     pub(super) fn drop_connection(&mut self, now: u64, id: u32) {
@@ -61,10 +90,15 @@ impl World {
     }
 
     pub(super) fn remove(&mut self, now: u64, id: u32, why: &str, out: &mut Vec<Out>) {
-        let Some(i) = self.people.iter().position(|p| p.id == id) else { return };
+        let Some(i) = self.people.iter().position(|p| p.id == id) else {
+            return;
+        };
         let gone = self.people.remove(i);
         tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", why);
-        out.push(Out { to: To::All, msg: ServerMsg::PersonLeft { id } });
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::PersonLeft { id },
+        });
         self.promote(now, out);
     }
 
@@ -89,7 +123,15 @@ impl World {
             p.walk = Some(walk.clone());
             let id = p.id;
             tracing::info!(target: "action", uid = id, who = %p.name, what = "come_in");
-            out.push(Out { to: To::All, msg: ServerMsg::PersonPlaced { id, place: Place::Inside, at: door, walk: Some(walk) } });
+            out.push(Out {
+                to: To::All,
+                msg: ServerMsg::PersonPlaced {
+                    id,
+                    place: Place::Inside,
+                    at: door,
+                    walk: Some(walk),
+                },
+            });
             self.arrivals.push(id);
         }
     }
@@ -99,7 +141,11 @@ impl World {
             .room
             .path(self.room.door, self.room.entry, Walker::Person)
             .unwrap_or_else(|| vec![self.room.door, self.room.entry]);
-        Walk { path, start: now, speed: self.tuning.person_speed }
+        Walk {
+            path,
+            start: now,
+            speed: self.tuning.person_speed,
+        }
     }
 
     /// True if `id` is inside; someone at the window is told they can only talk.
@@ -130,18 +176,27 @@ impl World {
     /// Walks to `target` and does `then` on arrival. False if there's no way there.
     pub(super) fn approach(&mut self, now: u64, id: u32, target: Tile, then: Pending, out: &mut Vec<Out>) -> bool {
         let Some(from) = self.person_tile(id, now) else { return false };
-        let Some(path) = self.room.path(from, target, Walker::Person) else { return false };
+        let Some(path) = self.room.path(from, target, Walker::Person) else {
+            return false;
+        };
         self.start_walk(now, id, from, path, Some(then), out);
         true
     }
 
     fn start_walk(&mut self, now: u64, id: u32, from: Tile, path: Vec<Tile>, then: Option<Pending>, out: &mut Vec<Out>) {
-        let walk = Walk { path, start: now, speed: self.tuning.person_speed };
+        let walk = Walk {
+            path,
+            start: now,
+            speed: self.tuning.person_speed,
+        };
         let p = self.person_mut(id).expect("callers check the person is here");
         p.at = from;
         p.walk = Some(walk.clone());
         p.pending = then;
-        out.push(Out { to: To::All, msg: ServerMsg::PersonMoved { id, walk } });
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::PersonMoved { id, walk },
+        });
     }
 
     pub(super) fn say(&mut self, now: u64, id: u32, text: String, to: Option<u32>, out: &mut Vec<Out>) {
@@ -153,7 +208,12 @@ impl World {
             return error(out, id, ErrorCode::Empty, "Say something first.");
         }
         if chars > self.tuning.bubble_max_chars {
-            return error(out, id, ErrorCode::TooLong, &format!("A bubble holds {} characters.", self.tuning.bubble_max_chars));
+            return error(
+                out,
+                id,
+                ErrorCode::TooLong,
+                &format!("A bubble holds {} characters.", self.tuning.bubble_max_chars),
+            );
         }
         if to.is_some_and(|t| self.person(t).is_none()) {
             return error(out, id, ErrorCode::UnknownPerson, "They've left.");
@@ -162,8 +222,19 @@ impl World {
         tracing::info!(target: "action", uid = id, who = %name, what = "say", len = chars, to = ?to);
         let ttl_ms = self.tuning.bubble_ttl_ms(chars);
         self.noise.push_back(now);
-        self.heard.push(Heard { by: id, text: text.clone() });
-        out.push(Out { to: To::All, msg: ServerMsg::Said { from: id, text, to, ttl_ms } });
+        self.heard.push(Heard {
+            by: id,
+            text: text.clone(),
+        });
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::Said {
+                from: id,
+                text,
+                to,
+                ttl_ms,
+            },
+        });
     }
 
     /// Ends finished walks, returning what people asked to do when they got
@@ -207,7 +278,14 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn join(w: &mut World, id: u32, now: u64) -> Vec<Out> {
-        w.handle(now, Input::Join { id, name: format!("p{id}"), look: Look { avatar: 0, colour: 0 } })
+        w.handle(
+            now,
+            Input::Join {
+                id,
+                name: format!("p{id}"),
+                look: Look { avatar: 0, colour: 0 },
+            },
+        )
     }
 
     fn send(w: &mut World, id: u32, now: u64, msg: ClientMsg) -> Vec<Out> {
@@ -232,7 +310,12 @@ pub(crate) mod tests {
         let mut w = world();
         let outs = join(&mut w, 1, 1_000);
         match &outs[0] {
-            Out { to: To::One(1), msg: ServerMsg::Welcome { you: 1, cap: 6, snapshot, .. } } => {
+            Out {
+                to: To::One(1),
+                msg: ServerMsg::Welcome {
+                    you: 1, cap: 6, snapshot, ..
+                },
+            } => {
                 assert_eq!(snapshot.people.len(), 1)
             }
             other => panic!("expected a welcome first, got {other:?}"),
@@ -259,8 +342,19 @@ pub(crate) mod tests {
         assert_eq!(place_of(&w, 7), Some(Place::Window));
         let outs = send(&mut w, 7, 10, ClientMsg::WalkTo { tile: Tile { x: 5, y: 5 } });
         assert_eq!(errors(&outs), vec![(To::One(7), ErrorCode::NotFromWindow)]);
-        let outs = send(&mut w, 7, 10, ClientMsg::Say { text: "can I come in?".into(), to: None });
-        assert!(outs.iter().any(|o| o.to == To::All && matches!(o.msg, ServerMsg::Said { from: 7, .. })));
+        let outs = send(
+            &mut w,
+            7,
+            10,
+            ClientMsg::Say {
+                text: "can I come in?".into(),
+                to: None,
+            },
+        );
+        assert!(
+            outs.iter()
+                .any(|o| o.to == To::All && matches!(o.msg, ServerMsg::Said { from: 7, .. }))
+        );
     }
 
     #[test]
@@ -271,7 +365,14 @@ pub(crate) mod tests {
         }
         let outs = send(&mut w, 3, 100, ClientMsg::Leave {});
         assert!(outs.iter().any(|o| matches!(o.msg, ServerMsg::PersonLeft { id: 3 })));
-        assert!(outs.iter().any(|o| matches!(o.msg, ServerMsg::PersonPlaced { id: 7, place: Place::Inside, .. })));
+        assert!(outs.iter().any(|o| matches!(
+            o.msg,
+            ServerMsg::PersonPlaced {
+                id: 7,
+                place: Place::Inside,
+                ..
+            }
+        )));
         assert_eq!(place_of(&w, 8), Some(Place::Window));
     }
 
@@ -280,10 +381,26 @@ pub(crate) mod tests {
         let mut w = world();
         join(&mut w, 1, 0);
         join(&mut w, 2, 0);
-        let outs = send(&mut w, 1, 10, ClientMsg::Say { text: "  hello  ".into(), to: Some(2) });
+        let outs = send(
+            &mut w,
+            1,
+            10,
+            ClientMsg::Say {
+                text: "  hello  ".into(),
+                to: Some(2),
+            },
+        );
         assert_eq!(
             outs,
-            vec![Out { to: To::All, msg: ServerMsg::Said { from: 1, text: "hello".into(), to: Some(2), ttl_ms: 3300 } }]
+            vec![Out {
+                to: To::All,
+                msg: ServerMsg::Said {
+                    from: 1,
+                    text: "hello".into(),
+                    to: Some(2),
+                    ttl_ms: 3300
+                }
+            }]
         );
     }
 
@@ -292,17 +409,45 @@ pub(crate) mod tests {
         let mut w = world();
         join(&mut w, 1, 0);
         let say = |text: String, to| ClientMsg::Say { text, to };
-        assert_eq!(errors(&send(&mut w, 1, 1, say("   ".into(), None))), vec![(To::One(1), ErrorCode::Empty)]);
-        assert_eq!(errors(&send(&mut w, 1, 1, say("x".repeat(101), None))), vec![(To::One(1), ErrorCode::TooLong)]);
-        assert_eq!(errors(&send(&mut w, 1, 1, say("hi".into(), Some(99)))), vec![(To::One(1), ErrorCode::UnknownPerson)]);
+        assert_eq!(
+            errors(&send(&mut w, 1, 1, say("   ".into(), None))),
+            vec![(To::One(1), ErrorCode::Empty)]
+        );
+        assert_eq!(
+            errors(&send(&mut w, 1, 1, say("x".repeat(101), None))),
+            vec![(To::One(1), ErrorCode::TooLong)]
+        );
+        assert_eq!(
+            errors(&send(&mut w, 1, 1, say("hi".into(), Some(99)))),
+            vec![(To::One(1), ErrorCode::UnknownPerson)]
+        );
     }
 
     #[test]
     fn emoji_count_as_one_character_each() {
         let mut w = world();
         join(&mut w, 1, 0);
-        assert!(errors(&send(&mut w, 1, 1, ClientMsg::Say { text: "😺".repeat(100), to: None })).is_empty());
-        let outs = send(&mut w, 1, 1, ClientMsg::Say { text: "😺".repeat(101), to: None });
+        assert!(
+            errors(&send(
+                &mut w,
+                1,
+                1,
+                ClientMsg::Say {
+                    text: "😺".repeat(100),
+                    to: None
+                }
+            ))
+            .is_empty()
+        );
+        let outs = send(
+            &mut w,
+            1,
+            1,
+            ClientMsg::Say {
+                text: "😺".repeat(101),
+                to: None,
+            },
+        );
         assert_eq!(errors(&outs), vec![(To::One(1), ErrorCode::TooLong)]);
     }
 
@@ -311,7 +456,15 @@ pub(crate) mod tests {
         let mut w = world();
         join(&mut w, 1, 0);
         let log = capture_logs(|| {
-            send(&mut w, 1, 1, ClientMsg::Say { text: "the secret phrase".into(), to: None });
+            send(
+                &mut w,
+                1,
+                1,
+                ClientMsg::Say {
+                    text: "the secret phrase".into(),
+                    to: None,
+                },
+            );
         });
         assert!(log.contains(r#""what":"say""#), "{log}");
         assert!(!log.contains("secret phrase"), "{log}");
@@ -349,7 +502,16 @@ pub(crate) mod tests {
         join(&mut w, 1, 0);
         w.handle(1_000, Input::Drop { id: 1 });
         let outs = join(&mut w, 1, 5_000);
-        assert!(matches!(outs.as_slice(), [Out { msg: ServerMsg::Welcome { .. }, .. }]), "only a welcome: {outs:?}");
+        assert!(
+            matches!(
+                outs.as_slice(),
+                [Out {
+                    msg: ServerMsg::Welcome { .. },
+                    ..
+                }]
+            ),
+            "only a welcome: {outs:?}"
+        );
         assert!(!w.tick(40_000).iter().any(|o| matches!(o.msg, ServerMsg::PersonLeft { .. })));
     }
 
@@ -377,7 +539,11 @@ pub(crate) mod tests {
         }
         let sink = Sink(Arc::new(Mutex::new(Vec::new())));
         let writer = sink.clone();
-        let subscriber = tracing_subscriber::fmt().json().flatten_event(true).with_writer(move || writer.clone()).finish();
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .flatten_event(true)
+            .with_writer(move || writer.clone())
+            .finish();
         tracing::subscriber::with_default(subscriber, f);
         let bytes = sink.0.lock().unwrap().clone();
         String::from_utf8(bytes).unwrap()

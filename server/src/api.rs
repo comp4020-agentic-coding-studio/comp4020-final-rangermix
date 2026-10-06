@@ -2,7 +2,7 @@
 //! Answers are JSON (`ApiMe` or `ApiError`); a session is an HttpOnly cookie.
 use crate::auth;
 use crate::http::{AppState, client_ip, origin_ok};
-use crate::protocol::{ApiError, ApiErrorCode, ApiMe, Look, LogInRequest, RecoverRequest, SignUpRequest};
+use crate::protocol::{ApiError, ApiErrorCode, ApiMe, LogInRequest, Look, RecoverRequest, SignUpRequest};
 use crate::store::{self, UserRow};
 use crate::time::now_ms;
 use axum::Json;
@@ -18,14 +18,25 @@ pub struct Failure(StatusCode, ApiErrorCode, &'static str);
 
 impl IntoResponse for Failure {
     fn into_response(self) -> Response {
-        (self.0, Json(ApiError { error: self.1, detail: self.2.to_string() })).into_response()
+        (
+            self.0,
+            Json(ApiError {
+                error: self.1,
+                detail: self.2.to_string(),
+            }),
+        )
+            .into_response()
     }
 }
 
 type Answer = Result<Response, Failure>;
 
 fn server_error() -> Failure {
-    Failure(StatusCode::INTERNAL_SERVER_ERROR, ApiErrorCode::Server, "Something went wrong in the café. Try again.")
+    Failure(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        ApiErrorCode::Server,
+        "Something went wrong in the café. Try again.",
+    )
 }
 
 fn server<E: std::fmt::Display>(e: E) -> Failure {
@@ -38,13 +49,25 @@ fn bad_input(detail: &'static str) -> Failure {
 }
 
 fn me_of(user: &UserRow) -> ApiMe {
-    ApiMe { id: user.id as u32, name: user.name.clone(), look: Look { avatar: user.avatar, colour: user.colour }, recovery_code: None }
+    ApiMe {
+        id: user.id as u32,
+        name: user.name.clone(),
+        look: Look {
+            avatar: user.avatar,
+            colour: user.colour,
+        },
+        recovery_code: None,
+    }
 }
 
 /// Origin check, then the per-address and per-name buckets.
 fn guard(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str) -> Result<(), Failure> {
     if !origin_ok(headers) {
-        return Err(Failure(StatusCode::FORBIDDEN, ApiErrorCode::Forbidden, "Requests must come from the café's own pages."));
+        return Err(Failure(
+            StatusCode::FORBIDDEN,
+            ApiErrorCode::Forbidden,
+            "Requests must come from the café's own pages.",
+        ));
     }
     let now = now_ms();
     let mut limits = app.auth_limits.lock().expect("the limits lock isn't poisoned");
@@ -53,18 +76,26 @@ fn guard(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str) -> R
     if by_ip && by_name {
         Ok(())
     } else {
-        Err(Failure(StatusCode::TOO_MANY_REQUESTS, ApiErrorCode::RateLimited, "Too many tries. Wait a minute and try again."))
+        Err(Failure(
+            StatusCode::TOO_MANY_REQUESTS,
+            ApiErrorCode::RateLimited,
+            "Too many tries. Wait a minute and try again.",
+        ))
     }
 }
 
 async fn hash(app: &AppState, secret: String) -> Result<String, Failure> {
     let _permit = app.hashing.acquire().await.map_err(server)?;
-    tokio::task::spawn_blocking(move || auth::hash_secret(&secret)).await.map_err(server)
+    tokio::task::spawn_blocking(move || auth::hash_secret(&secret))
+        .await
+        .map_err(server)
 }
 
 async fn verify(app: &AppState, secret: String, hash: String) -> Result<bool, Failure> {
     let _permit = app.hashing.acquire().await.map_err(server)?;
-    tokio::task::spawn_blocking(move || auth::verify_secret(&secret, &hash)).await.map_err(server)
+    tokio::task::spawn_blocking(move || auth::verify_secret(&secret, &hash))
+        .await
+        .map_err(server)
 }
 
 async fn start_session(app: &AppState, user_id: i64, me: ApiMe) -> Answer {
@@ -72,7 +103,10 @@ async fn start_session(app: &AppState, user_id: i64, me: ApiMe) -> Answer {
     let token_hash = auth::token_hash(&token);
     let max_age = app.tuning.session_days * 86_400;
     let expires = now_ms() + max_age * 1000;
-    app.store.call(move |c| store::insert_session(c, &token_hash, user_id, expires)).await.map_err(server)?;
+    app.store
+        .call(move |c| store::insert_session(c, &token_hash, user_id, expires))
+        .await
+        .map_err(server)?;
     let cookie = HeaderValue::from_str(&auth::session_cookie(&token, max_age)).map_err(server)?;
     Ok(([(header::SET_COOKIE, cookie)], Json(me)).into_response())
 }
@@ -90,7 +124,9 @@ pub async fn current_user(app: &AppState, headers: &HeaderMap) -> Result<Option<
     let extend_to = now + app.tuning.session_days * 86_400_000;
     app.store
         .call(move |c| {
-            let Some(user_id) = store::session_user(c, &token_hash, now)? else { return Ok(None) };
+            let Some(user_id) = store::session_user(c, &token_hash, now)? else {
+                return Ok(None);
+            };
             store::extend_session(c, &token_hash, extend_to)?;
             store::user_by_id(c, user_id)
         })
@@ -125,7 +161,17 @@ pub async fn signup(
         .map_err(server)?
         .ok_or(Failure(StatusCode::CONFLICT, ApiErrorCode::NameTaken, "That name is taken."))?;
     tracing::info!(target: "action", uid = id, who = %req.name, what = "signup");
-    start_session(&app, id, ApiMe { id: id as u32, name: req.name, look: req.look, recovery_code: Some(code) }).await
+    start_session(
+        &app,
+        id,
+        ApiMe {
+            id: id as u32,
+            name: req.name,
+            look: req.look,
+            recovery_code: Some(code),
+        },
+    )
+    .await
 }
 
 pub async fn login(
@@ -137,7 +183,11 @@ pub async fn login(
     guard(&app, &headers, peer, &req.name)?;
     let name = req.name.clone();
     let user = app.store.call(move |c| store::user_by_name(c, &name)).await.map_err(server)?;
-    let refused = Failure(StatusCode::UNAUTHORIZED, ApiErrorCode::BadLogin, "That name and password don't match.");
+    let refused = Failure(
+        StatusCode::UNAUTHORIZED,
+        ApiErrorCode::BadLogin,
+        "That name and password don't match.",
+    );
     let Some(user) = user else {
         // Spend the time a real check takes, so a missing name isn't quicker to find.
         let _ = hash(&app, req.password).await;
@@ -154,11 +204,18 @@ pub async fn login(
 
 pub async fn logout(State(app): State<AppState>, headers: HeaderMap) -> Answer {
     if !origin_ok(&headers) {
-        return Err(Failure(StatusCode::FORBIDDEN, ApiErrorCode::Forbidden, "Requests must come from the café's own pages."));
+        return Err(Failure(
+            StatusCode::FORBIDDEN,
+            ApiErrorCode::Forbidden,
+            "Requests must come from the café's own pages.",
+        ));
     }
     if let Some(token) = session_token(&headers) {
         let token_hash = auth::token_hash(&token);
-        app.store.call(move |c| store::delete_session(c, &token_hash)).await.map_err(server)?;
+        app.store
+            .call(move |c| store::delete_session(c, &token_hash))
+            .await
+            .map_err(server)?;
     }
     let clear = HeaderValue::from_str(&auth::session_cookie("", 0)).map_err(server)?;
     Ok((StatusCode::NO_CONTENT, [(header::SET_COOKIE, clear)]).into_response())
@@ -183,7 +240,11 @@ pub async fn recover(
     }
     let name = req.name.clone();
     let user = app.store.call(move |c| store::user_by_name(c, &name)).await.map_err(server)?;
-    let refused = Failure(StatusCode::UNAUTHORIZED, ApiErrorCode::BadRecovery, "That name and recovery code don't match.");
+    let refused = Failure(
+        StatusCode::UNAUTHORIZED,
+        ApiErrorCode::BadRecovery,
+        "That name and recovery code don't match.",
+    );
     let Some(user) = user else {
         let _ = hash(&app, req.code).await;
         return Err(refused);

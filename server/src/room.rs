@@ -24,7 +24,9 @@ pub struct FurnitureKind {
     pub nap: bool,
     #[serde(default)]
     pub hide: bool,
+    // Read once cats perch at the window (phase 3).
     #[serde(default)]
+    #[allow(dead_code)]
     pub perch: bool,
 }
 
@@ -101,7 +103,11 @@ impl Room {
         let mut ground = Vec::with_capacity(file.width as usize * file.height as usize);
         let mut door = None;
         for (y, row) in file.tiles.iter().enumerate() {
-            anyhow::ensure!(row.chars().count() == file.width as usize, "room.toml: row {y} isn't {} tiles wide", file.width);
+            anyhow::ensure!(
+                row.chars().count() == file.width as usize,
+                "room.toml: row {y} isn't {} tiles wide",
+                file.width
+            );
             for (x, c) in row.chars().enumerate() {
                 let g = match c {
                     '.' => Ground::Floor,
@@ -141,7 +147,13 @@ impl Room {
                 .get(&p.kind)
                 .ok_or_else(|| anyhow::anyhow!("room.toml: unknown furniture kind {:?}", p.kind))?
                 .clone();
-            let piece = Piece { id: i as u32 + 1, kind: p.kind.clone(), x: p.x, y: p.y, spec };
+            let piece = Piece {
+                id: i as u32 + 1,
+                kind: p.kind.clone(),
+                x: p.x,
+                y: p.y,
+                spec,
+            };
             for t in piece.tiles() {
                 anyhow::ensure!(
                     room.in_bounds(t) && room.ground(t) == Ground::Floor,
@@ -150,8 +162,20 @@ impl Room {
                     p.x,
                     p.y
                 );
-                anyhow::ensure!(room.piece_at(t).is_none(), "room.toml: the {} at ({}, {}) overlaps another piece", p.kind, p.x, p.y);
-                anyhow::ensure!(!room.walkway.contains(&t), "room.toml: the {} at ({}, {}) blocks the door's walkway", p.kind, p.x, p.y);
+                anyhow::ensure!(
+                    room.piece_at(t).is_none(),
+                    "room.toml: the {} at ({}, {}) overlaps another piece",
+                    p.kind,
+                    p.x,
+                    p.y
+                );
+                anyhow::ensure!(
+                    !room.walkway.contains(&t),
+                    "room.toml: the {} at ({}, {}) blocks the door's walkway",
+                    p.kind,
+                    p.x,
+                    p.y
+                );
             }
             room.pieces.push(piece);
         }
@@ -269,7 +293,14 @@ impl Room {
             furniture: self
                 .pieces
                 .iter()
-                .map(|p| FurnitureView { id: p.id, kind: p.kind.clone(), x: p.x, y: p.y, w: p.spec.w, h: p.spec.h })
+                .map(|p| FurnitureView {
+                    id: p.id,
+                    kind: p.kind.clone(),
+                    x: p.x,
+                    y: p.y,
+                    w: p.spec.w,
+                    h: p.spec.h,
+                })
                 .collect(),
         }
     }
@@ -334,7 +365,12 @@ mod tests {
     fn every_tile_a_person_can_stand_on_is_reachable_from_the_entry() {
         let r = room();
         for tile in r.floor(Walker::Person) {
-            assert!(r.path(r.entry, tile, Walker::Person).is_some(), "({}, {}) is cut off", tile.x, tile.y);
+            assert!(
+                r.path(r.entry, tile, Walker::Person).is_some(),
+                "({}, {}) is cut off",
+                tile.x,
+                tile.y
+            );
         }
     }
 
@@ -349,7 +385,12 @@ mod tests {
     fn every_nap_and_hide_spot_has_somewhere_beside_it_to_stand() {
         let r = room();
         for spot in r.spots(|k| k.nap || k.hide) {
-            assert!(!r.around(spot, Walker::Person).is_empty(), "nobody can reach a cat at ({}, {})", spot.x, spot.y);
+            assert!(
+                !r.around(spot, Walker::Person).is_empty(),
+                "nobody can reach a cat at ({}, {})",
+                spot.x,
+                spot.y
+            );
         }
     }
 
@@ -358,7 +399,11 @@ mod tests {
         let r = room();
         let near_sofa = r.around(t(1, 5), Walker::Person);
         assert!(!near_sofa.is_empty());
-        assert!(near_sofa.iter().all(|&n| r.walkable(n, Walker::Person) && chebyshev(n, t(1, 5)) == 1));
+        assert!(
+            near_sofa
+                .iter()
+                .all(|&n| r.walkable(n, Walker::Person) && chebyshev(n, t(1, 5)) == 1)
+        );
     }
 
     #[test]
@@ -369,11 +414,22 @@ mod tests {
             tiles: vec!["WDW".into(), "...".into(), "...".into()],
             entry: t(1, 1),
             walkway: vec![t(1, 1), t(1, 2)],
-            furniture: vec![PieceFile { kind: "box".into(), x: 1, y: 2 }],
+            furniture: vec![PieceFile {
+                kind: "box".into(),
+                x: 1,
+                y: 2,
+            }],
         };
         let kinds = HashMap::from([(
             "box".to_string(),
-            FurnitureKind { w: 1, h: 1, blocks: true, nap: false, hide: false, perch: false },
+            FurnitureKind {
+                w: 1,
+                h: 1,
+                blocks: true,
+                nap: false,
+                hide: false,
+                perch: false,
+            },
         )]);
         let err = Room::build(&file, &kinds).unwrap_err().to_string();
         assert!(err.contains("walkway"), "{err}");

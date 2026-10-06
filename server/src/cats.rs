@@ -56,7 +56,13 @@ pub struct Weights {
 
 impl Default for Weights {
     fn default() -> Weights {
-        Weights { idle: 1.0, wander: 1.0, nap: 1.0, approach: 1.0, hide: 1.0 }
+        Weights {
+            idle: 1.0,
+            wander: 1.0,
+            nap: 1.0,
+            approach: 1.0,
+            hide: 1.0,
+        }
     }
 }
 
@@ -76,11 +82,19 @@ impl CatDef {
         ] {
             anyhow::ensure!((0.0..=1.0).contains(&v), "{}: {name} must be between 0 and 1", self.id);
         }
-        anyhow::ensure!(t.alone_activity > 0.0 && t.alone_activity <= 3.0, "{}: alone_activity must be above 0 and at most 3", self.id);
+        anyhow::ensure!(
+            t.alone_activity > 0.0 && t.alone_activity <= 3.0,
+            "{}: alone_activity must be above 0 and at most 3",
+            self.id
+        );
         anyhow::ensure!(t.grudge_hours > 0.0, "{}: grudge_hours must be positive", self.id);
         anyhow::ensure!(!self.rhythm.awake.is_empty(), "{}: needs at least one awake range", self.id);
         for r in &self.rhythm.awake {
-            anyhow::ensure!(parse_range(r).is_some(), "{}: can't read the awake range {r:?}; use HH:MM-HH:MM", self.id);
+            anyhow::ensure!(
+                parse_range(r).is_some(),
+                "{}: can't read the awake range {r:?}; use HH:MM-HH:MM",
+                self.id
+            );
         }
         Ok(())
     }
@@ -88,7 +102,11 @@ impl CatDef {
     /// Whether `minute` (minutes since Canberra midnight) is in an awake range.
     pub fn awake_at(&self, minute: u32) -> bool {
         self.rhythm.awake.iter().filter_map(|r| parse_range(r)).any(|(from, to)| {
-            if from <= to { minute >= from && minute < to } else { minute >= from || minute < to }
+            if from <= to {
+                minute >= from && minute < to
+            } else {
+                minute >= from || minute < to
+            }
         })
     }
 
@@ -154,7 +172,10 @@ pub fn options(def: &CatDef, s: &Situation) -> Vec<(Choice, f32)> {
         (Choice::Nap, w.nap * (1.5 * s.tiredness + if awake { 0.0 } else { 0.6 }) / lively),
     ];
     for &(id, trust) in s.people {
-        out.push((Choice::Approach(id), w.approach * t.sociability * (0.4 + 0.6 * s.company) * (0.5 + trust / 100.0)));
+        out.push((
+            Choice::Approach(id),
+            w.approach * t.sociability * (0.4 + 0.6 * s.company) * (0.5 + trust / 100.0),
+        ));
     }
     let threshold = def.hide_threshold();
     if s.noise >= threshold {
@@ -227,7 +248,13 @@ mod tests {
     }
 
     fn situation(people: &[(u32, f32)]) -> Situation<'_> {
-        Situation { minute: 10 * 60, people, noise: 0.0, tiredness: 0.2, company: 0.5 }
+        Situation {
+            minute: 10 * 60,
+            people,
+            noise: 0.0,
+            tiredness: 0.2,
+            company: 0.5,
+        }
     }
 
     #[test]
@@ -301,7 +328,13 @@ mod tests {
     #[test]
     fn pick_chooses_only_among_the_best_three() {
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(1);
-        let o = vec![(Choice::Idle, 1.0), (Choice::Wander, 0.9), (Choice::Nap, 0.8), (Choice::Hide, 0.01), (Choice::Approach(1), 0.02)];
+        let o = vec![
+            (Choice::Idle, 1.0),
+            (Choice::Wander, 0.9),
+            (Choice::Nap, 0.8),
+            (Choice::Hide, 0.01),
+            (Choice::Approach(1), 0.02),
+        ];
         for _ in 0..500 {
             let c = pick(o.clone(), &mut rng);
             assert!(matches!(c, Choice::Idle | Choice::Wander | Choice::Nap), "{c:?}");

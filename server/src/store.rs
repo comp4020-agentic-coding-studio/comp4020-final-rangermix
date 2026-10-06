@@ -15,8 +15,7 @@ pub struct Store {
 }
 
 /// Numbered migrations; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: &[&str] = &[
-    "CREATE TABLE users (
+const MIGRATIONS: &[&str] = &["CREATE TABLE users (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         name_key TEXT NOT NULL UNIQUE,
@@ -47,8 +46,7 @@ const MIGRATIONS: &[&str] = &[
     CREATE TABLE world (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
-    );",
-];
+    );"];
 
 impl Store {
     /// Opens (or creates) the database, runs any new migrations, and starts
@@ -176,12 +174,17 @@ pub fn insert_user(
 }
 
 pub fn user_by_name(conn: &Connection, name: &str) -> rusqlite::Result<Option<UserRow>> {
-    conn.query_row(&format!("SELECT {USER_COLUMNS} FROM users WHERE name_key = ?1"), params![name.to_lowercase()], user_from)
-        .optional()
+    conn.query_row(
+        &format!("SELECT {USER_COLUMNS} FROM users WHERE name_key = ?1"),
+        params![name.to_lowercase()],
+        user_from,
+    )
+    .optional()
 }
 
 pub fn user_by_id(conn: &Connection, id: i64) -> rusqlite::Result<Option<UserRow>> {
-    conn.query_row(&format!("SELECT {USER_COLUMNS} FROM users WHERE id = ?1"), params![id], user_from).optional()
+    conn.query_row(&format!("SELECT {USER_COLUMNS} FROM users WHERE id = ?1"), params![id], user_from)
+        .optional()
 }
 
 pub fn set_secrets(conn: &Connection, id: i64, password_hash: &str, recovery_hash: &str) -> rusqlite::Result<()> {
@@ -210,7 +213,10 @@ pub fn session_user(conn: &Connection, token_hash: &str, now: u64) -> rusqlite::
 }
 
 pub fn extend_session(conn: &Connection, token_hash: &str, expires_at: u64) -> rusqlite::Result<()> {
-    conn.execute("UPDATE sessions SET expires_at = ?2 WHERE token_hash = ?1", params![token_hash, expires_at as i64])?;
+    conn.execute(
+        "UPDATE sessions SET expires_at = ?2 WHERE token_hash = ?1",
+        params![token_hash, expires_at as i64],
+    )?;
     Ok(())
 }
 
@@ -227,7 +233,13 @@ pub fn delete_sessions_for(conn: &Connection, user_id: i64) -> rusqlite::Result<
 pub fn all_trust(conn: &Connection) -> rusqlite::Result<Vec<TrustRow>> {
     let mut stmt = conn.prepare("SELECT cat_id, user_id, value, day, gained_today FROM trust ORDER BY cat_id, user_id")?;
     let rows = stmt.query_map([], |r| {
-        Ok(TrustRow { cat_id: r.get(0)?, user_id: r.get(1)?, value: r.get(2)?, day: r.get(3)?, gained_today: r.get(4)? })
+        Ok(TrustRow {
+            cat_id: r.get(0)?,
+            user_id: r.get(1)?,
+            value: r.get(2)?,
+            day: r.get(3)?,
+            gained_today: r.get(4)?,
+        })
     })?;
     rows.collect()
 }
@@ -256,8 +268,11 @@ pub fn put_cat_state(conn: &Connection, cat_id: &str, state: &str, now: u64) -> 
     Ok(())
 }
 
+// Read by the fast-forward on wake (phase 4).
+#[allow(dead_code)]
 pub fn get_world(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
-    conn.query_row("SELECT value FROM world WHERE key = ?1", params![key], |r| r.get(0)).optional()
+    conn.query_row("SELECT value FROM world WHERE key = ?1", params![key], |r| r.get(0))
+        .optional()
 }
 
 pub fn put_world(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
@@ -319,7 +334,13 @@ mod tests {
     fn trust_rows_are_replaced_not_duplicated() {
         let (_d, c) = db();
         let id = insert_user(&c, "sam", "p", "r", 0, 0, 1).unwrap().unwrap();
-        let mut row = TrustRow { cat_id: "mochi".into(), user_id: id, value: 2.0, day: "2026-10-07".into(), gained_today: 2.0 };
+        let mut row = TrustRow {
+            cat_id: "mochi".into(),
+            user_id: id,
+            value: 2.0,
+            day: "2026-10-07".into(),
+            gained_today: 2.0,
+        };
         put_trust(&c, &row).unwrap();
         row.value = 3.5;
         put_trust(&c, &row).unwrap();

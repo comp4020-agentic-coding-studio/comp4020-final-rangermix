@@ -135,7 +135,9 @@ mod tests {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/palettes.json");
         let palettes: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
         for cat in repo_content().cats {
-            let coat = palettes["coats"][&cat.coat].as_array().unwrap_or_else(|| panic!("no palette for {}'s coat {}", cat.id, cat.coat));
+            let coat = palettes["coats"][&cat.coat]
+                .as_array()
+                .unwrap_or_else(|| panic!("no palette for {}'s coat {}", cat.id, cat.coat));
             assert!(coat.len() >= 6, "{}", cat.coat);
         }
     }

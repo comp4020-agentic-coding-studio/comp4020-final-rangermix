@@ -19,11 +19,26 @@ use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 
 pub enum Command {
-    Join { id: u32, name: String, look: Look, conn: u64, tx: mpsc::Sender<Arc<str>> },
-    Leave { id: u32, conn: u64 },
-    Msg { id: u32, conn: u64, msg: ClientMsg },
+    Join {
+        id: u32,
+        name: String,
+        look: Look,
+        conn: u64,
+        tx: mpsc::Sender<Arc<str>>,
+    },
+    Leave {
+        id: u32,
+        conn: u64,
+    },
+    Msg {
+        id: u32,
+        conn: u64,
+        msg: ClientMsg,
+    },
     /// Save the world and stop: Fly is stopping the machine.
-    Shutdown { done: oneshot::Sender<()> },
+    Shutdown {
+        done: oneshot::Sender<()>,
+    },
 }
 
 /// Each person's current connection: its id, and where to send its messages.
@@ -138,8 +153,22 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
     let (tx, mut rx) = mpsc::channel::<Arc<str>>(app.tuning.outbound_queue);
     let conn = app.conn_ids.fetch_add(1, Ordering::Relaxed);
     let id = user.id as u32;
-    let look = Look { avatar: user.avatar, colour: user.colour };
-    if app.world.send(Command::Join { id, name: user.name.clone(), look, conn, tx }).await.is_err() {
+    let look = Look {
+        avatar: user.avatar,
+        colour: user.colour,
+    };
+    if app
+        .world
+        .send(Command::Join {
+            id,
+            name: user.name.clone(),
+            look,
+            conn,
+            tx,
+        })
+        .await
+        .is_err()
+    {
         return;
     }
     let t = &app.tuning;
@@ -196,7 +225,10 @@ mod tests {
     use super::*;
 
     fn out(to: To, n: u32) -> Out {
-        Out { to, msg: ServerMsg::PersonLeft { id: n } }
+        Out {
+            to,
+            msg: ServerMsg::PersonLeft { id: n },
+        }
     }
 
     #[test]

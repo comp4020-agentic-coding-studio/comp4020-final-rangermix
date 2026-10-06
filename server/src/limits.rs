@@ -12,7 +12,12 @@ pub struct Bucket {
 
 impl Bucket {
     pub fn new(burst: f64, refill_per_sec: f64, now: u64) -> Bucket {
-        Bucket { tokens: burst, burst, refill_per_sec, last: now }
+        Bucket {
+            tokens: burst,
+            burst,
+            refill_per_sec,
+            last: now,
+        }
     }
 
     pub fn take(&mut self, now: u64) -> bool {
@@ -37,7 +42,11 @@ pub struct Keyed {
 
 impl Keyed {
     pub fn new(burst: f64, refill_per_sec: f64) -> Keyed {
-        Keyed { burst, refill_per_sec, buckets: HashMap::new() }
+        Keyed {
+            burst,
+            refill_per_sec,
+            buckets: HashMap::new(),
+        }
     }
 
     pub fn take(&mut self, key: &str, now: u64) -> bool {
@@ -46,7 +55,10 @@ impl Keyed {
             self.buckets.retain(|_, b| now.saturating_sub(b.last) < 600_000);
         }
         let (burst, refill) = (self.burst, self.refill_per_sec);
-        self.buckets.entry(key.to_string()).or_insert_with(|| Bucket::new(burst, refill, now)).take(now)
+        self.buckets
+            .entry(key.to_string())
+            .or_insert_with(|| Bucket::new(burst, refill, now))
+            .take(now)
     }
 }
 

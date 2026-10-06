@@ -58,12 +58,19 @@ impl Cat {
     }
 
     pub fn saved(&self, now: u64) -> Saved {
-        Saved { at: self.tile(now), tiredness: self.tiredness, company: self.company }
+        Saved {
+            at: self.tile(now),
+            tiredness: self.tiredness,
+            company: self.company,
+        }
     }
 }
 
 fn words(text: &str) -> Vec<String> {
-    text.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_lowercase).collect()
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_lowercase)
+        .collect()
 }
 
 fn contains_words(said: &[String], name: &[String]) -> bool {
@@ -80,7 +87,17 @@ impl World {
             None => (self.random_floor(), 0.2, 0.5),
         };
         let until = now + self.rng.random_range(3_000..8_000u64);
-        Cat { def, at, walk: None, pose: Pose::Idle, until, plan: Plan::Idle, tiredness, company, refused: Vec::new() }
+        Cat {
+            def,
+            at,
+            walk: None,
+            pose: Pose::Idle,
+            until,
+            plan: Plan::Idle,
+            tiredness,
+            company,
+            refused: Vec::new(),
+        }
     }
 
     /// Somewhere a cat can be, off the walkway, that someone could reach to pet it.
@@ -118,7 +135,11 @@ impl World {
                 cat.tiredness = (cat.tiredness + hours * (1.2 - cat.def.traits.energy)).min(1.0);
             }
             let near = people.iter().any(|&t| chebyshev(t, cat.tile(now)) <= 2);
-            cat.company = if near { (cat.company - hours * 6.0).max(0.0) } else { (cat.company + hours * 2.0).min(1.0) };
+            cat.company = if near {
+                (cat.company - hours * 6.0).max(0.0)
+            } else {
+                (cat.company + hours * 2.0).min(1.0)
+            };
         }
         for id in std::mem::take(&mut self.arrivals) {
             self.greet(now, minute, id, out);
@@ -188,7 +209,12 @@ impl World {
     /// A tile next to a person that no other cat is on.
     fn beside(&mut self, i: usize, person: u32, now: u64) -> Option<Tile> {
         let at = self.person_tile(person, now)?;
-        let tiles: Vec<Tile> = self.room.around(at, Walker::Cat).into_iter().filter(|&t| !self.cat_on(t, i, now)).collect();
+        let tiles: Vec<Tile> = self
+            .room
+            .around(at, Walker::Cat)
+            .into_iter()
+            .filter(|&t| !self.cat_on(t, i, now))
+            .collect();
         (!tiles.is_empty()).then(|| tiles[self.rng.random_range(0..tiles.len())])
     }
 
@@ -203,7 +229,13 @@ impl World {
                 cat.at = from;
                 cat.walk = Some(walk.clone());
                 cat.pose = Pose::Walk;
-                out.push(Out { to: To::All, msg: ServerMsg::CatMoved { cat: cat.def.id.clone(), walk } });
+                out.push(Out {
+                    to: To::All,
+                    msg: ServerMsg::CatMoved {
+                        cat: cat.def.id.clone(),
+                        walk,
+                    },
+                });
             }
             _ => {
                 let cat = &mut self.cats[i];
@@ -238,9 +270,18 @@ impl World {
         cat.until = now + secs * 1000;
         cat.plan = Plan::Idle;
         let (id, at) = (cat.def.id.clone(), cat.at);
-        out.push(Out { to: To::All, msg: ServerMsg::CatPosed { cat: id.clone(), pose, at } });
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::CatPosed { cat: id.clone(), pose, at },
+        });
         if let Plan::Greet(to) = plan {
-            out.push(Out { to: To::All, msg: ServerMsg::CatReacted { cat: id, reaction: Reaction::Greet { to } } });
+            out.push(Out {
+                to: To::All,
+                msg: ServerMsg::CatReacted {
+                    cat: id,
+                    reaction: Reaction::Greet { to },
+                },
+            });
         }
     }
 
@@ -273,7 +314,13 @@ impl World {
             let id = self.cats[i].def.id.clone();
             let resting = self.cats[i].resting();
             if contains_words(&said, &words(&self.cats[i].def.name)) {
-                out.push(Out { to: To::All, msg: ServerMsg::CatReacted { cat: id.clone(), reaction: Reaction::LookUp { at: heard.by } } });
+                out.push(Out {
+                    to: To::All,
+                    msg: ServerMsg::CatReacted {
+                        cat: id.clone(),
+                        reaction: Reaction::LookUp { at: heard.by },
+                    },
+                });
                 if !resting
                     && speaker_inside
                     && self.trust.value(&id, heard.by) >= familiar
@@ -304,7 +351,11 @@ impl World {
         if !walking && chebyshev(here, cat_at) <= 1 {
             return self.touch(now, id, i, out);
         }
-        let spot = self.room.around(cat_at, Walker::Person).into_iter().min_by_key(|&t| manhattan(t, here));
+        let spot = self
+            .room
+            .around(cat_at, Walker::Person)
+            .into_iter()
+            .min_by_key(|&t| manhattan(t, here));
         let walked = spot.is_some_and(|spot| self.approach(now, id, spot, Pending::Pet(cat.to_string()), out));
         if !walked {
             error(out, id, ErrorCode::BadTile, "You can't get next to that cat from here.");
@@ -314,7 +365,9 @@ impl World {
     /// Someone's walk ended with something to do.
     pub(super) fn arrived_with(&mut self, now: u64, id: u32, then: Pending, out: &mut Vec<Out>) {
         let Pending::Pet(cat) = then;
-        let Some(i) = self.cats.iter().position(|c| c.def.id == cat) else { return };
+        let Some(i) = self.cats.iter().position(|c| c.def.id == cat) else {
+            return;
+        };
         let close = self.person_tile(id, now).is_some_and(|h| chebyshev(h, self.cats[i].tile(now)) <= 1);
         if close {
             self.touch(now, id, i, out);
@@ -345,7 +398,10 @@ impl World {
             tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %cat_id, outcome = "sniff");
             return;
         }
-        let pushing = self.cats[i].refused.iter().any(|&(by, at)| by == id && now.saturating_sub(at) < PUSHING_MS);
+        let pushing = self.cats[i]
+            .refused
+            .iter()
+            .any(|&(by, at)| by == id && now.saturating_sub(at) < PUSHING_MS);
         let outcome = if pushing {
             Outcome::Refuse
         } else {
@@ -389,18 +445,31 @@ impl World {
     }
 
     fn react(&mut self, i: usize, reaction: Reaction, out: &mut Vec<Out>) {
-        out.push(Out { to: To::All, msg: ServerMsg::CatReacted { cat: self.cats[i].def.id.clone(), reaction } });
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::CatReacted {
+                cat: self.cats[i].def.id.clone(),
+                reaction,
+            },
+        });
     }
 
     /// Applies a change in trust, stores it, and tells only the person concerned.
     fn change_trust(&mut self, i: usize, id: u32, delta: f32, today: &str, out: &mut Vec<Out>) {
         let cat_id = self.cats[i].def.id.clone();
-        let Some(rec) = self.trust.apply(&cat_id, self.cats[i].def.traits.trust_rate, id, delta, today) else { return };
+        let Some(rec) = self.trust.apply(&cat_id, self.cats[i].def.traits.trust_rate, id, delta, today) else {
+            return;
+        };
         if let Some(store) = &self.store {
             let row = TrustBook::row(&cat_id, id, &rec);
             store.fire(move |c| crate::store::put_trust(c, &row));
         }
-        out.push(Out { to: To::One(id), msg: ServerMsg::YourTrust { trust: self.trust.view(&cat_id, id) } });
+        out.push(Out {
+            to: To::One(id),
+            msg: ServerMsg::YourTrust {
+                trust: self.trust.view(&cat_id, id),
+            },
+        });
     }
 
     /// A refusing cat walks off, a few tiles from whoever it refused.
@@ -458,7 +527,10 @@ mod tests {
     }
 
     fn pet(id: u32, cat: &str) -> Input {
-        Input::Msg { id, msg: ClientMsg::Pet { cat: cat.into() } }
+        Input::Msg {
+            id,
+            msg: ClientMsg::Pet { cat: cat.into() },
+        }
     }
 
     fn reactions(outs: &[Out]) -> Vec<Reaction> {
@@ -501,7 +573,12 @@ mod tests {
     fn cats_move_on_their_own() {
         let mut w = seeded(2);
         let moved: usize = (1..=6_000u64)
-            .map(|step| w.tick(step * 100).iter().filter(|o| matches!(o.msg, ServerMsg::CatMoved { .. })).count())
+            .map(|step| {
+                w.tick(step * 100)
+                    .iter()
+                    .filter(|o| matches!(o.msg, ServerMsg::CatMoved { .. }))
+                    .count()
+            })
             .sum();
         assert!(moved > 0, "nobody moved in ten minutes");
     }
@@ -580,13 +657,22 @@ mod tests {
         for seed in [1, 2, 3, 5, 8] {
             let mut w = seeded(seed);
             for c in &w.cats {
-                assert!(!w.room.around(c.at, Walker::Person).is_empty(), "seed {seed}: {} starts out of reach", c.def.id);
+                assert!(
+                    !w.room.around(c.at, Walker::Person).is_empty(),
+                    "seed {seed}: {} starts out of reach",
+                    c.def.id
+                );
             }
             for step in 1..=6_000u64 {
                 for o in w.tick(step * 100) {
                     if let ServerMsg::CatMoved { cat, walk } = &o.msg {
                         let end = *walk.path.last().unwrap();
-                        assert!(!w.room.around(end, Walker::Person).is_empty(), "seed {seed}: {cat} went to ({}, {})", end.x, end.y);
+                        assert!(
+                            !w.room.around(end, Walker::Person).is_empty(),
+                            "seed {seed}: {cat} went to ({}, {})",
+                            end.x,
+                            end.y
+                        );
                     }
                 }
             }
@@ -618,7 +704,16 @@ mod tests {
         for day in ["1970-01-01", "1970-01-02", "1970-01-03"] {
             w.trust.apply("mochi", 1.0, 1, 10.0, day);
         }
-        w.handle(100, Input::Msg { id: 1, msg: ClientMsg::Say { text: "Mochi, come here!".into(), to: None } });
+        w.handle(
+            100,
+            Input::Msg {
+                id: 1,
+                msg: ClientMsg::Say {
+                    text: "Mochi, come here!".into(),
+                    to: None,
+                },
+            },
+        );
         let outs = w.tick(200);
         assert!(reactions(&outs).contains(&Reaction::LookUp { at: 1 }));
         let walk = walk_of(&outs, "mochi").expect("mochi comes over");
@@ -631,7 +726,16 @@ mod tests {
         join(&mut w, 1, 0);
         stand(&mut w, 1, T(6, 2));
         hold(&mut w, "mochi", T(1, 8));
-        w.handle(100, Input::Msg { id: 1, msg: ClientMsg::Say { text: "mochi?".into(), to: None } });
+        w.handle(
+            100,
+            Input::Msg {
+                id: 1,
+                msg: ClientMsg::Say {
+                    text: "mochi?".into(),
+                    to: None,
+                },
+            },
+        );
         let outs = w.tick(200);
         assert!(reactions(&outs).contains(&Reaction::LookUp { at: 1 }));
         assert!(walk_of(&outs, "mochi").is_none());
@@ -641,8 +745,17 @@ mod tests {
     fn calling_a_cat_is_saying_its_name() {
         let mut w = world();
         join(&mut w, 1, 0);
-        let outs = w.handle(10, Input::Msg { id: 1, msg: ClientMsg::Call { cat: "tora".into() } });
-        assert!(outs.iter().any(|o| matches!(&o.msg, ServerMsg::Said { from: 1, text, .. } if text == "Tora")));
+        let outs = w.handle(
+            10,
+            Input::Msg {
+                id: 1,
+                msg: ClientMsg::Call { cat: "tora".into() },
+            },
+        );
+        assert!(
+            outs.iter()
+                .any(|o| matches!(&o.msg, ServerMsg::Said { from: 1, text, .. } if text == "Tora"))
+        );
     }
 
     #[test]
@@ -653,7 +766,16 @@ mod tests {
         hold(&mut w, "burakku", T(6, 7));
         for n in 0..5u64 {
             let id = 1 + (n as u32 % 2);
-            w.handle(100 + n, Input::Msg { id, msg: ClientMsg::Say { text: format!("chatter {n}"), to: None } });
+            w.handle(
+                100 + n,
+                Input::Msg {
+                    id,
+                    msg: ClientMsg::Say {
+                        text: format!("chatter {n}"),
+                        to: None,
+                    },
+                },
+            );
         }
         let outs = w.tick(200);
         let walk = walk_of(&outs, "burakku").expect("burakku moves");
@@ -699,7 +821,9 @@ mod tests {
         let mut w = world();
         w.trust.apply("tora", 0.6, 1, 0.6, "1970-01-01");
         let outs = join(&mut w, 1, 0);
-        let ServerMsg::Welcome { snapshot, .. } = &outs[0].msg else { panic!("welcome first") };
+        let ServerMsg::Welcome { snapshot, .. } = &outs[0].msg else {
+            panic!("welcome first")
+        };
         assert_eq!(snapshot.cats.len(), 3);
         assert_eq!(snapshot.your_trust.iter().find(|t| t.cat == "tora").unwrap().value, 0.6);
     }
@@ -709,8 +833,14 @@ mod tests {
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
         let saved = vec![
-            ("mochi".to_string(), r#"{"at":{"x":1,"y":5},"tiredness":0.7,"company":0.1}"#.to_string()),
-            ("tora".to_string(), r#"{"at":{"x":0,"y":0},"tiredness":0.1,"company":0.1}"#.to_string()),
+            (
+                "mochi".to_string(),
+                r#"{"at":{"x":1,"y":5},"tiredness":0.7,"company":0.1}"#.to_string(),
+            ),
+            (
+                "tora".to_string(),
+                r#"{"at":{"x":0,"y":0},"tiredness":0.1,"company":0.1}"#.to_string(),
+            ),
         ];
         let w = World::new(content, trust, saved, 11, None, "test".into(), 0);
         let mochi = &w.cats[cat_index(&w, "mochi")];

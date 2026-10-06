@@ -22,12 +22,23 @@ pub struct TrustBook {
 
 impl TrustBook {
     pub fn new(levels: [f32; 3], daily_cap: f32) -> TrustBook {
-        TrustBook { records: HashMap::new(), levels, daily_cap }
+        TrustBook {
+            records: HashMap::new(),
+            levels,
+            daily_cap,
+        }
     }
 
     pub fn load(&mut self, rows: Vec<TrustRow>) {
         for r in rows {
-            self.records.insert((r.cat_id, r.user_id as u32), TrustRecord { value: r.value, day: r.day, gained_today: r.gained_today });
+            self.records.insert(
+                (r.cat_id, r.user_id as u32),
+                TrustRecord {
+                    value: r.value,
+                    day: r.day,
+                    gained_today: r.gained_today,
+                },
+            );
         }
     }
 
@@ -47,10 +58,11 @@ impl TrustBook {
             return None;
         }
         let cap = self.daily_cap * trust_rate;
-        let rec = self
-            .records
-            .entry((cat.to_string(), person))
-            .or_insert_with(|| TrustRecord { value: 0.0, day: today.to_string(), gained_today: 0.0 });
+        let rec = self.records.entry((cat.to_string(), person)).or_insert_with(|| TrustRecord {
+            value: 0.0,
+            day: today.to_string(),
+            gained_today: 0.0,
+        });
         if rec.day != today {
             rec.day = today.to_string();
             rec.gained_today = 0.0;
@@ -84,11 +96,21 @@ impl TrustBook {
 
     pub fn view(&self, cat: &str, person: u32) -> TrustView {
         let value = self.value(cat, person);
-        TrustView { cat: cat.to_string(), value: (value * 10.0).round() / 10.0, level: self.level(value) }
+        TrustView {
+            cat: cat.to_string(),
+            value: (value * 10.0).round() / 10.0,
+            level: self.level(value),
+        }
     }
 
     pub fn row(cat: &str, person: u32, rec: &TrustRecord) -> TrustRow {
-        TrustRow { cat_id: cat.to_string(), user_id: person as i64, value: rec.value, day: rec.day.clone(), gained_today: rec.gained_today }
+        TrustRow {
+            cat_id: cat.to_string(),
+            user_id: person as i64,
+            value: rec.value,
+            day: rec.day.clone(),
+            gained_today: rec.gained_today,
+        }
     }
 }
 
@@ -109,7 +131,10 @@ mod tests {
             b.apply("mochi", 1.0, 1, 2.0, "2026-10-07");
             gains.push(b.value("mochi", 1) - before);
         }
-        assert!(gains.windows(2).all(|w| w[1] <= w[0]), "each gain is no bigger than the last: {gains:?}");
+        assert!(
+            gains.windows(2).all(|w| w[1] <= w[0]),
+            "each gain is no bigger than the last: {gains:?}"
+        );
         assert!(b.value("mochi", 1) <= 10.0 + 1e-4);
         assert!(b.value("mochi", 1) > 5.0);
     }

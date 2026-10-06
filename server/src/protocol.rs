@@ -168,18 +168,56 @@ pub enum ClientMsg {
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 #[ts(export)]
 pub enum ServerMsg {
-    Welcome { you: u32, build: String, now: u64, cap: u32, snapshot: Snapshot },
+    Welcome {
+        you: u32,
+        build: String,
+        now: u64,
+        cap: u32,
+        snapshot: Snapshot,
+    },
     Replaced {},
-    PersonJoined { person: PersonView },
-    PersonLeft { id: u32 },
-    PersonPlaced { id: u32, place: Place, at: Tile, walk: Option<Walk> },
-    PersonMoved { id: u32, walk: Walk },
-    CatMoved { cat: String, walk: Walk },
-    CatPosed { cat: String, pose: Pose, at: Tile },
-    CatReacted { cat: String, reaction: Reaction },
-    Said { from: u32, text: String, to: Option<u32>, ttl_ms: u32 },
-    YourTrust { trust: TrustView },
-    Error { code: ErrorCode, detail: String },
+    PersonJoined {
+        person: PersonView,
+    },
+    PersonLeft {
+        id: u32,
+    },
+    PersonPlaced {
+        id: u32,
+        place: Place,
+        at: Tile,
+        walk: Option<Walk>,
+    },
+    PersonMoved {
+        id: u32,
+        walk: Walk,
+    },
+    CatMoved {
+        cat: String,
+        walk: Walk,
+    },
+    CatPosed {
+        cat: String,
+        pose: Pose,
+        at: Tile,
+    },
+    CatReacted {
+        cat: String,
+        reaction: Reaction,
+    },
+    Said {
+        from: u32,
+        text: String,
+        to: Option<u32>,
+        ttl_ms: u32,
+    },
+    YourTrust {
+        trust: TrustView,
+    },
+    Error {
+        code: ErrorCode,
+        detail: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -249,21 +287,42 @@ mod tests {
         let walk: ClientMsg = serde_json::from_str(r#"{"type":"walkTo","tile":{"x":3,"y":4}}"#).unwrap();
         assert_eq!(walk, ClientMsg::WalkTo { tile: Tile { x: 3, y: 4 } });
         let say: ClientMsg = serde_json::from_str(r#"{"type":"say","text":"hi","to":null}"#).unwrap();
-        assert_eq!(say, ClientMsg::Say { text: "hi".into(), to: None });
+        assert_eq!(
+            say,
+            ClientMsg::Say {
+                text: "hi".into(),
+                to: None
+            }
+        );
         let leave: ClientMsg = serde_json::from_str(r#"{"type":"leave"}"#).unwrap();
         assert_eq!(leave, ClientMsg::Leave {});
     }
 
     #[test]
     fn server_messages_use_camel_case_names() {
-        let said = ServerMsg::Said { from: 1, text: "hi".into(), to: None, ttl_ms: 3120 };
-        assert_eq!(serde_json::to_string(&said).unwrap(), r#"{"type":"said","from":1,"text":"hi","to":null,"ttlMs":3120}"#);
-        let posed = ServerMsg::CatPosed { cat: "mochi".into(), pose: Pose::Nap, at: Tile { x: 1, y: 5 } };
+        let said = ServerMsg::Said {
+            from: 1,
+            text: "hi".into(),
+            to: None,
+            ttl_ms: 3120,
+        };
+        assert_eq!(
+            serde_json::to_string(&said).unwrap(),
+            r#"{"type":"said","from":1,"text":"hi","to":null,"ttlMs":3120}"#
+        );
+        let posed = ServerMsg::CatPosed {
+            cat: "mochi".into(),
+            pose: Pose::Nap,
+            at: Tile { x: 1, y: 5 },
+        };
         assert_eq!(
             serde_json::to_string(&posed).unwrap(),
             r#"{"type":"catPosed","cat":"mochi","pose":"nap","at":{"x":1,"y":5}}"#
         );
-        let reacted = ServerMsg::CatReacted { cat: "tora".into(), reaction: Reaction::Purr { by: 2 } };
+        let reacted = ServerMsg::CatReacted {
+            cat: "tora".into(),
+            reaction: Reaction::Purr { by: 2 },
+        };
         assert_eq!(
             serde_json::to_string(&reacted).unwrap(),
             r#"{"type":"catReacted","cat":"tora","reaction":{"kind":"purr","by":2}}"#
@@ -273,19 +332,38 @@ mod tests {
     #[test]
     fn the_snapshot_and_me_use_camel_case_fields() {
         let snapshot = Snapshot {
-            room: RoomView { width: 1, height: 1, tiles: vec![".".into()], door: Tile { x: 0, y: 0 }, furniture: vec![] },
+            room: RoomView {
+                width: 1,
+                height: 1,
+                tiles: vec![".".into()],
+                door: Tile { x: 0, y: 0 },
+                furniture: vec![],
+            },
             people: vec![],
             cats: vec![],
             your_trust: vec![],
         };
         assert!(serde_json::to_string(&snapshot).unwrap().contains(r#""yourTrust":[]"#));
-        let me = ApiMe { id: 1, name: "sam".into(), look: Look { avatar: 0, colour: 1 }, recovery_code: Some("X".into()) };
+        let me = ApiMe {
+            id: 1,
+            name: "sam".into(),
+            look: Look { avatar: 0, colour: 1 },
+            recovery_code: Some("X".into()),
+        };
         assert!(serde_json::to_string(&me).unwrap().contains(r#""recoveryCode":"X""#));
     }
 
     #[test]
     fn me_leaves_out_a_recovery_code_it_does_not_have() {
-        let me = ApiMe { id: 1, name: "sam".into(), look: Look { avatar: 0, colour: 1 }, recovery_code: None };
-        assert_eq!(serde_json::to_string(&me).unwrap(), r#"{"id":1,"name":"sam","look":{"avatar":0,"colour":1}}"#);
+        let me = ApiMe {
+            id: 1,
+            name: "sam".into(),
+            look: Look { avatar: 0, colour: 1 },
+            recovery_code: None,
+        };
+        assert_eq!(
+            serde_json::to_string(&me).unwrap(),
+            r#"{"id":1,"name":"sam","look":{"avatar":0,"colour":1}}"#
+        );
     }
 }
