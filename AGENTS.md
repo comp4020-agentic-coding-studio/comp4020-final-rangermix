@@ -24,6 +24,33 @@ before planning or building anything.
 - **Every interaction and its outcome goes in `docs/prompts-result.md`.** See
   below.
 
+## What the app must keep
+
+The café's own rules, from `docs/design.md`. Each one is held by a check in
+`spec/` or `cargo test` once that check exists, and by review until then. A
+change that breaks one is wrong, whatever else it fixes.
+
+- **Never store or log what anyone says.** Bubble text lives in memory and on
+  screens only: not in the database, not in a snapshot, not in a log line. A
+  log records that someone spoke, how long the bubble was and who it was
+  addressed to. ([ADR 0010](docs/adr/0010-keep-speech-public-and-fleeting.md))
+- **Never store email addresses or IP addresses.** Per-IP rate limits count
+  in memory only and are never written down or logged.
+- **The server decides every outcome.** Clients send intents; nothing a client
+  claims about the world is trusted.
+- **The cap is enforced on the server.** At most the set number of people are
+  inside, and someone at the window can only talk.
+- **The door's walkway is never blocked.** A placement that would block it is
+  refused.
+- **Trust never fades with absence.** Only what a person does to a cat changes
+  that cat's trust in them.
+- **Every action works by keyboard, touch and mouse**, at 390×844 and at
+  1920×1080, and survives a resize mid-use.
+- **Cats change through `content/`, not code.** A new cat is a data file; code
+  adds kinds of behaviour, never an individual cat.
+- **Generated TypeScript is never edited by hand.** `client/src/protocol/` is
+  regenerated from the Rust types.
+
 ## Architecture decision records
 
 [ADR 0001](docs/adr/0001-record-architecture-decisions.md) explains why these
