@@ -644,3 +644,28 @@ added to [`docs/notes/crit-8-mvp.md`](notes/crit-8-mvp.md) (items 16 to 24).
   per-address sign-up limit, which is the limit doing its job.
 [`8907493`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8907493)
 [`8292b36`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8292b36)
+
+*Sent 2026-10-07 10:06:08 AEDT, a bare `/comp4020:ship`, which loads the ship skill; its steps are the work and are filed here.*
+
+**Result.** The skill's first steps found the repo right (private, in the
+course org) and the crit 8 cutoff at Wed 13:30. Preflight found two blockers:
+`README.md`, `PROCESS.md` and `reflections/crit-8.md` were uncommitted in the
+main checkout, which was 26 commits behind, and the Fly app had never been
+deployed. The checkout was fast-forwarded to
+[`ed466d4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ed466d4)
+and that commit was deployed by hand; the live site serves its page and both
+assets, and the three read-only live checks pass. The secret scan flagged four
+places as "credential assignment"; each was a dummy test password or a
+function name, and the one real token is in the ignored `mise.local.toml`.
+Nothing was made public: the flip waits for a yes.
+
+*Sent mid-turn, 2026-10-07 10:09:28 AEDT*
+
+> adjust @PROCESS.md to reflect current progress and selective MVP.
+
+**Result.** `PROCESS.md`'s "Where it stands" now says a small version is live
+and links what it leaves out; "Next" became "From design to a small live
+version": the five phases, the bare-minimum request and its recorded cuts, the
+reload loop caught by watching it, and the cushion. Your own sections stay,
+trimmed in a few places to keep it near 1,100 words. The evidence check passes
+with all 14 cited commits resolving.
