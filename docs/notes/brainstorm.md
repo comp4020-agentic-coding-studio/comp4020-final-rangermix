@@ -385,7 +385,7 @@ README (version 12, MSRV 1.88) on 2026-10-07.
 - Calling is speaking: the "call" action puts the cat's name in a bubble, so
   the cats treat calling and saying a name the same way.
 
-### Design 3: the cat character system (presented 2026-10-07, *awaiting approval*)
+### Design 3: the cat character system (approved 2026-10-07)
 
 - A cat is a data file (`content/cats/mochi.toml`): name, look (base sprite,
   coat palette, pattern, eyes), traits, daily rhythm, behaviour weights and
@@ -440,10 +440,77 @@ README (version 12, MSRV 1.88) on 2026-10-07.
     or not; first to new furniture; won over by play, bored by petting, quick to
     swat; grudges last hours.
 
+### Design 4: persistence and fast-forward (presented 2026-10-07, *awaiting approval*)
+
+- One SQLite file on the volume (`/data/cafe.db`, WAL mode), owned by one
+  writer thread so the world task never waits on the disk. Tables: users,
+  sessions, trust, bans, furniture, treats, mutes, chalkboard and traces, the
+  cats' state, and a small key-value table for the world clock and the random
+  generator's state. Schema changes are numbered migrations compiled into the
+  binary and run at startup.
+- What people change (accounts, trust, bans, furniture, treats, chalkboard
+  lines) is written within a fraction of a second, batched into transactions.
+  The cats' state, the world clock and the random state are saved every 5
+  seconds and on Fly's stop signal. A crash loses at most a few seconds of cat
+  wandering, never a trust gain or a moved sofa.
+- Fly's stop, including an idle auto-stop, sends SIGINT and waits a
+  best-effort 5 seconds before forcing the process down (checked in Fly's
+  configuration reference, 2026-10-07), so the final save must be quick and
+  the 5-second periodic save is the real safety net.
+- Waking: load everything; the gap is now minus the saved world clock; run the
+  same step function in one-second steps until caught up (8 hours is about
+  29,000 steps, milliseconds in Rust); then open the doors. Gaps over a week
+  replay only the last week, since by then the cats' needs have settled. The
+  café's own schedule runs during catch-up: bowls refill, treats reset at
+  midnight Canberra time, old chalkboard lines drop off.
+- Redeploys are short sleeps: the old machine saves on the stop signal, the
+  new one loads and fast-forwards a few seconds, clients reconnect, and a tab
+  on the old build reloads.
+- When things go wrong: a bad message gets an error, never a crash; a panic
+  exits the process and Fly restarts it from the last save; if the database
+  can't open at startup, the server fails loudly instead of serving an empty
+  café. Fly's daily volume snapshots, kept 5 days by default, are the backup
+  (checked in Fly's volume docs, 2026-10-07).
+- **A correction to decision 22's defaults, proposed.** A chalkboard wiped at
+  7:00 would erase the night before the morning's first visitor reads it, and
+  staff tidying at opening would do the same to the traces. Proposal: the
+  board keeps a rolling 24 hours, and traces stay until someone tidies them
+  (standing the plant back up is just moving furniture), which makes tidying
+  a small thing regulars do for each other.
+
+### Design 5: accounts and safety (presented 2026-10-07, *awaiting approval*)
+
+- Sign-up: a username (3 to 20 letters, digits, `_` or `-`, unique ignoring
+  case, and shown to everyone, which the form says), a password (8 to 128
+  characters, no composition rules), and a look from a few preset avatars and
+  colours. The recovery code (16 characters, like `K7QF-2M9D-XR4T-8HWC`) is
+  shown once, with a copy button; then you walk in.
+- Recovery: username, recovery code and a new password reset the password,
+  issue a fresh code and sign out other sessions.
+- Passwords and recovery codes are hashed with argon2id, with at most two
+  hashes running at once so a burst of log-ins can't exhaust 256 MB. Sessions
+  are random tokens in an HttpOnly, Secure, SameSite=Lax cookie, stored
+  hashed, lasting 30 days from last use.
+- Log-in, recovery and sign-up are rate-limited per name and per IP address.
+  `/api/*` and the WebSocket check the Origin header, so another site can't
+  act with your cookie.
+- Two tabs on one account: the newest takes over; the older says so and
+  closes.
+- Public text: bubbles up to 100 characters; design 2's rate limits; a
+  whole-word slur blocklist in `content/blocklist.txt` (a blocked bubble
+  isn't shown, and the sender is told why); mute is stored with the account,
+  so the server stops sending you that person's bubbles on any device.
+- Admin ban: a subcommand of the same binary, run over `fly ssh console`. The
+  account can't log in and its open sessions close.
+- A privacy rule for the harness: no email, no IP addresses stored, and bubble
+  text is never written anywhere, neither the database nor the logs. The C10
+  logs record that someone spoke, not what they said, which keeps decision
+  11's "nothing said is stored" true.
+
 ## Still to come
 
-- Approval of design 3.
-- The rest of the design: persistence and fast-forward; accounts and safety;
-  the client (rendering, sprites as data, pointer input, layouts at 390×844
-  and 1920×1080); logging and testing, including which README promises
+- Approval of designs 4 and 5, and of the chalkboard and traces correction.
+- The rest of the design: the client (rendering, sprites as data, pointer
+  input, layouts at 390×844 and 1920×1080), shown as mockups if the user wants
+  the visual companion; logging and testing, including which README promises
   `spec/` enforces.
