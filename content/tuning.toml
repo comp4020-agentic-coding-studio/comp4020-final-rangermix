@@ -1,0 +1,27 @@
+# Every tunable number (docs/design.md, "Numbers to tune"). Changing one
+# doesn't reopen its decision, but the design's table changes with it.
+
+cap = 6                       # people inside
+grace_secs = 30               # seat kept after a dropped connection
+
+bubble_max_chars = 100
+bubble_base_ms = 3000         # a bubble shows for base + per-char, at most max
+bubble_per_char_ms = 60
+bubble_max_ms = 10000
+bubble_burst = 5.0            # bubbles: a burst, then one every refill_secs
+bubble_refill_secs = 2.0
+action_burst = 10.0           # everything else: 10 a second
+action_per_sec = 10.0
+
+trust_levels = [20.0, 50.0, 80.0]   # comes when called; greets you at the door; naps on your lap
+trust_daily_cap = 10.0              # per cat, per person, per Canberra day, times the cat's trust rate
+
+person_speed = 3.0            # tiles per second
+cat_speed = 2.0
+
+save_every_secs = 5           # the cats' state is saved this often, and on stop
+outbound_queue = 256          # unsent messages before a slow connection is dropped
+session_days = 30
+
+auth_per_name_per_min = 5.0   # sign-up, log-in and recovery attempts
+auth_per_ip_per_min = 60.0    # generous: a whole venue can share one address

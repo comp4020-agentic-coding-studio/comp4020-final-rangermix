@@ -1,0 +1,65 @@
+# What each kind of furniture is. w and h are in tiles. People can't walk
+# through a piece that blocks; cats walk and jump over everything. nap, hide
+# and perch mark where cats like to do those things.
+
+[kinds.cat_tower]
+w = 2
+h = 2
+blocks = true
+nap = true
+hide = true
+
+[kinds.window_seat]
+w = 2
+h = 1
+blocks = true
+nap = true
+perch = true
+
+[kinds.sofa]
+w = 3
+h = 1
+blocks = true
+nap = true
+
+[kinds.rug]
+w = 4
+h = 3
+
+[kinds.table]
+w = 2
+h = 1
+blocks = true
+
+[kinds.chair]
+w = 1
+h = 1
+blocks = true
+
+[kinds.cat_bed]
+w = 1
+h = 1
+blocks = true
+nap = true
+
+[kinds.box]
+w = 1
+h = 1
+blocks = true
+nap = true
+hide = true
+
+[kinds.plant]
+w = 1
+h = 1
+blocks = true
+
+[kinds.bowls]
+w = 2
+h = 1
+blocks = true
+
+[kinds.toys]
+w = 1
+h = 1
+blocks = true

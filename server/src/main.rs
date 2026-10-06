@@ -1,10 +1,13 @@
 //! The cat café server: one binary that serves the client, the README, the
 //! accounts API and the WebSocket, and owns the café's world.
 mod config;
+mod content;
 mod http;
 mod protocol;
 mod readme;
+mod room;
 mod time;
+mod tuning;
 
 use std::net::SocketAddr;
 

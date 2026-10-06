@@ -1,0 +1,83 @@
+# The café floor, seen from inside with the street wall at the top.
+# W wall, G window, D door, C chalkboard, . floor
+width = 12
+height = 10
+tiles = [
+  "WWGGGGWDCWWW",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+]
+entry = { x = 7, y = 1 }                                    # the floor just inside the door
+walkway = [{ x = 7, y = 1 }, { x = 7, y = 2 }, { x = 7, y = 3 }]   # never blocked (AGENTS.md)
+
+[[furniture]]
+kind = "cat_tower"
+x = 0
+y = 1
+
+[[furniture]]
+kind = "window_seat"
+x = 2
+y = 1
+
+[[furniture]]
+kind = "plant"
+x = 11
+y = 1
+
+[[furniture]]
+kind = "table"
+x = 9
+y = 3
+
+[[furniture]]
+kind = "chair"
+x = 9
+y = 4
+
+[[furniture]]
+kind = "chair"
+x = 10
+y = 4
+
+[[furniture]]
+kind = "rug"
+x = 4
+y = 4
+
+[[furniture]]
+kind = "sofa"
+x = 0
+y = 5
+
+[[furniture]]
+kind = "cat_bed"
+x = 0
+y = 7
+
+[[furniture]]
+kind = "toys"
+x = 7
+y = 8
+
+[[furniture]]
+kind = "box"
+x = 1
+y = 9
+
+[[furniture]]
+kind = "plant"
+x = 6
+y = 9
+
+[[furniture]]
+kind = "bowls"
+x = 10
+y = 9

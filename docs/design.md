@@ -383,7 +383,7 @@ renamed.
 | Simulation | 10 steps a second live; 1-second steps in fast-forward, at most 7 days |
 | Cat state saved | every 5 seconds, and on stop |
 | Session | 30 days from last use |
-| Sign-up, log-in and recovery attempts | 5 a minute per name and per IP address |
+| Sign-up, log-in and recovery attempts | 5 a minute per name; 60 a minute per IP address, since a whole venue can share one |
 | Password hashing | argon2id, 19 MiB, 2 iterations, at most 2 at once |
 | Avatar looks | 4 avatars in 6 colours |
 
