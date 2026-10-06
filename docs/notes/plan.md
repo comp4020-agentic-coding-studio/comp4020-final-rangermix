@@ -1,0 +1,22 @@
+# Implementation roadmap
+
+The settled design is [`docs/design.md`](../design.md); this is the order it gets
+built in. Each phase leaves something usable, is lined up with a crit, gets its
+own plan file when it starts (so later phases are planned with what earlier
+ones taught), and ends with a whole-phase review. How the work is run is
+[ADR 0012](../adr/0012-plan-in-phases-and-build-each-phase-natively.md).
+
+| Phase | Crit | Delivers | Plan | Status |
+|---|---|---|---|---|
+| 1. It's alive | C8, week 9 | Accounts with recovery codes; the room, with six inside and a line at the window; walking by mouse, touch and keyboard; public, fleeting bubbles; Mochi, Burakku and Tora with a first set of behaviours (wander, nap, come over, hide from noise, look up at their name, greet a friend at the door); pet and call; trust that grows, persists and shows; `/readme/`; deployed. | [plan-phase-1.md](plan-phase-1.md) | in progress |
+| 2. All at once | C9, week 10 | The quiet-seat rule (nudge, walk-out); rearranging furniture (catalogue, grab and place, first grab wins, the walkway rule, the floor limit, cats jumping off); sitting on furniture; emotes; phone layout B and the switch; browser checks for the keyboard pass, both marking sizes and a resize mid-use. | written when phase 1 is done | not started |
+| 3. Fly by instruments | C10, week 11 | Complete action logging and the narrating log tail; treats and bowls; giving treats and passing cats; picking up and carrying; the full character system (hunger, play, comfort, toys, perching at the window, knocking things over, investigating new furniture, cats noticing each other); anger and bans with grudges. | written when phase 2 is done | not started |
+| 4. Never stops | before the deadline | Fast-forward on wake with the saved random state; traces that stay until tidied; the chalkboard and its readable panel; mute; the slur blocklist; the admin ban; persistence hardening. | written when phase 3 is done | not started |
+| 5. The showcase | the deadline, 9 Nov | An art pass, an accessibility pass, a load check at forty connections, and whatever the crits and reviews turned up. | written when phase 4 is done | not started |
+
+## What the user writes
+
+The brief asks for `README.md`, `PROCESS.md` and the crit reflections to be the
+user's own words, so no phase writes them. Each phase can gather material for
+them in `docs/notes/` (sources found, what was enforced and what was judged)
+and says when a crit needs one.

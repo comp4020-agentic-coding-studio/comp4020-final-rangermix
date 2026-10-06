@@ -5,7 +5,9 @@ this holds the specification: what is true now. The reasoning and rejected
 options behind the big decisions live in `docs/adr/`. Working state belongs in `docs/notes/`, not here.
 
 The app's design was settled in one conversation on 2026-10-07, recorded in
-[notes/brainstorm.md](notes/brainstorm.md). Numbers marked *tunable* are
+[notes/brainstorm.md](notes/brainstorm.md), and the user approved it as written
+the same day. The order it's built in is [notes/plan.md](notes/plan.md).
+Numbers marked *tunable* are
 starting values: changing one doesn't reopen its decision. They are collected
 under [Numbers to tune](#numbers-to-tune).
 
@@ -397,3 +399,8 @@ renamed.
   `PROCESS.md`.
 - **Significant decisions get an ADR** in `docs/adr/`, and this file links to
   each one. ([ADR 0001](adr/0001-record-architecture-decisions.md))
+- **Built in phases.** A roadmap in `docs/notes/plan.md` splits the spec into
+  phases lined up with the crits; each phase gets a detailed plan when it
+  starts, is built natively in one session with tests written before code, and
+  ends with a fresh reviewer whose brief and findings are files.
+  ([ADR 0012](adr/0012-plan-in-phases-and-build-each-phase-natively.md))
