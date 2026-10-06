@@ -29,10 +29,13 @@ pub struct AppState {
     /// machine has 256 MB.
     pub hashing: Arc<Semaphore>,
     pub auth_limits: Arc<Mutex<AuthLimits>>,
+    /// The world task's inbox.
+    pub world: tokio::sync::mpsc::Sender<crate::ws::Command>,
+    pub conn_ids: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl AppState {
-    pub fn new(config: Config, readme: String, store: Store, tuning: Tuning) -> AppState {
+    pub fn new(config: Config, readme: String, store: Store, tuning: Tuning, world: tokio::sync::mpsc::Sender<crate::ws::Command>) -> AppState {
         let per_min = |n: f64| Keyed::new(n, n / 60.0);
         let auth_limits = AuthLimits { by_name: per_min(tuning.auth_per_name_per_min), by_ip: per_min(tuning.auth_per_ip_per_min) };
         AppState {
@@ -42,6 +45,8 @@ impl AppState {
             tuning: Arc::new(tuning),
             hashing: Arc::new(Semaphore::new(2)),
             auth_limits: Arc::new(Mutex::new(auth_limits)),
+            world,
+            conn_ids: Arc::new(std::sync::atomic::AtomicU64::new(1)),
         }
     }
 }
@@ -58,6 +63,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/logout", post(crate::api::logout))
         .route("/api/me", get(crate::api::me))
         .route("/api/recover", post(crate::api::recover))
+        .route("/ws", get(crate::ws::upgrade))
         .fallback_service(assets)
         .with_state(state)
 }
@@ -138,7 +144,8 @@ mod tests {
         });
         let store = crate::store::Store::open(&dir.join("cafe.db")).unwrap();
         let tuning = crate::content::repo_content().tuning;
-        router(AppState::new(config, crate::readme::render_page("# Hello\n\n## Second"), store, tuning))
+        let (world, _) = tokio::sync::mpsc::channel(1);
+        router(AppState::new(config, crate::readme::render_page("# Hello\n\n## Second"), store, tuning, world))
     }
 
     async fn get(app: Router, path: &str) -> (StatusCode, String) {
