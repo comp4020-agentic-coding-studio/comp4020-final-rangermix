@@ -14,6 +14,7 @@ mod store;
 mod time;
 mod trust;
 mod tuning;
+mod world;
 
 use std::net::SocketAddr;
 

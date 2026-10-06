@@ -58,6 +58,9 @@ under [Numbers to tune](#numbers-to-tune).
   ([ADR 0007](adr/0007-use-password-accounts-with-a-recovery-code.md))
 - **Arriving:** your avatar walks in through the door if there's a seat, or
   joins the line at the window.
+- **Leaving:** a Leave button walks you out at once and frees your seat for the
+  next in line; closing the tab or losing the connection keeps the seat for the
+  grace period.
 - **Talking is public and fleeting.** Everyone inside and at the window sees
   every bubble, and nothing said is stored or logged. Clicking someone's avatar
   addresses your words to them (their name shows on your bubble); Enter with
