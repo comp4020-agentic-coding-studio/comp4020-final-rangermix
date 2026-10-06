@@ -101,6 +101,11 @@ function reactionTarget(r: Reaction): number {
   }
 }
 
+/** A piece's kind as words: "cat_bed" is "cat bed". */
+export function pieceName(kind: string): string {
+  return kind.replaceAll("_", " ");
+}
+
 /** Applies one message (other than the welcome), returning what the page should say or show. */
 export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): Effect[] {
   const now = serverNow(state, localNow);
@@ -158,6 +163,14 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     case "yourTrust":
       state.trust.set(msg.trust.cat, msg.trust);
       return [];
+    case "furnitureMoved": {
+      const piece = state.room.furniture.find((f) => f.id === msg.id);
+      if (!piece) return [];
+      piece.x = msg.at.x;
+      piece.y = msg.at.y;
+      if (msg.by === state.you) return [];
+      return [{ kind: "announce", text: `${name(msg.by)} moved the ${pieceName(piece.kind)}.` }];
+    }
     case "error":
       return [{ kind: "error", code: msg.code, detail: msg.detail }];
   }

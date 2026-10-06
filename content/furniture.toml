@@ -63,3 +63,11 @@ blocks = true
 w = 1
 h = 1
 blocks = true
+
+# A floor cushion: people can walk over it, cats nap on it, and anyone inside
+# can move it (for now the only piece that moves).
+[kinds.cushion]
+w = 1
+h = 1
+nap = true
+movable = true

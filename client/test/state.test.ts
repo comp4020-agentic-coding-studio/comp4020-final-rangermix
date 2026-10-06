@@ -74,6 +74,17 @@ describe("the client's copy of the café", () => {
     expect(needsReload("a", "dev")).toBe(false);
   });
 
+  it("moves furniture where the server says, and says who moved it", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [{ id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true }];
+    const s = fromWelcome(w, 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null });
+    expect(apply(s, { type: "furnitureMoved", id: 14, at: { x: 3, y: 8 }, by: 2 })).toEqual([{ kind: "announce", text: "sam moved the cushion." }]);
+    expect(s.room.furniture[0]).toMatchObject({ x: 3, y: 8 });
+    expect(apply(s, { type: "furnitureMoved", id: 14, at: { x: 4, y: 8 }, by: 1 })).toEqual([]);
+    expect(s.room.furniture[0]).toMatchObject({ x: 4, y: 8 });
+  });
+
   it("reloads at most once for the same server build, so a mismatch can't loop", () => {
     expect(needsReload("a", "b", null)).toBe(true);
     expect(needsReload("a", "b", "a")).toBe(false);

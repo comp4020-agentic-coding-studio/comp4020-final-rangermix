@@ -169,10 +169,11 @@ renamed.
   with a walkway that's never blocked; and the chalkboard beside it. A floor
   plan is in [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
 - **Starting furniture:** a window seat, where cats go to look at the line; a
-  cat tower; a sofa; a rug; a table and two chairs; a cat bed; a box; toys; and
-  plants. Everything moves except the walls, window, door, chalkboard and
-  bowls. The catalogue offers these kinds plus a scratching post, cushions and
-  a lamp.
+  cat tower; a sofa; a rug; a table and two chairs; a cat bed; a box; a floor
+  cushion; toys; and plants. Everything moves except the walls, window, door,
+  chalkboard and bowls. The catalogue offers these kinds plus a scratching
+  post and a lamp. (For now only the cushion moves; see
+  [notes/crit-8-mvp.md](notes/crit-8-mvp.md).)
 - **Traces stay until someone tidies them.** Standing a toppled plant back up
   is just moving furniture, so tidying is a small thing regulars do for each
   other.

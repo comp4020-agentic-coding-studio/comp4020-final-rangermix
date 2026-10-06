@@ -243,3 +243,21 @@ aa999999999999999999999999999999999999999999999999999999999999aa
 aa999999999999999999999999999999999999999999999999999999999999aa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+== cushion
+................
+................
+................
+................
+...0000000000...
+..0aaaaaaaaaa0..
+.0aa99999999aa0.
+.0a9099999909a0.
+.0a9999999999a0.
+.0a9999009999a0.
+.0a9999009999a0.
+.0a9999999999a0.
+.0a9099999909a0.
+.0a9999999999a0.
+..000000000000..
+................

@@ -14,6 +14,8 @@ pub struct Tuning {
     pub bubble_max_ms: u32,
     pub bubble_burst: f64,
     pub bubble_refill_secs: f64,
+    pub furniture_burst: f64,
+    pub furniture_refill_secs: f64,
     pub action_burst: f64,
     pub action_per_sec: f64,
     pub trust_levels: [f32; 3],

@@ -16,7 +16,7 @@ export interface Pointer {
 
 const GROUND: Record<string, TileName> = { ".": "floor", W: "wall", G: "window", D: "door", C: "board" };
 /** Pieces that lie flat, drawn before anything that stands. */
-const FLAT = new Set(["rug"]);
+const FLAT = new Set(["rug", "cushion"]);
 const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
   lookUp: "question",
   sniff: "sniff",

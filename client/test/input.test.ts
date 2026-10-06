@@ -39,4 +39,18 @@ describe("pointing at things", () => {
     const order = cycleOrder(state(), { x: 5, y: 5 }, 0).map((t) => t.id);
     expect(order).toEqual(["mochi", 2, "tora"]);
   });
+
+  it("finds a piece that moves, after any cat on it, and steps to it too", () => {
+    const s = state();
+    s.room.furniture = [
+      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true },
+      { id: 3, kind: "sofa", x: 0, y: 5, w: 3, h: 1, movable: false },
+    ];
+    expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([
+      { kind: "cat", id: "mochi", tile: { x: 6, y: 5 } },
+      { kind: "piece", id: 14, tile: { x: 6, y: 5 } },
+    ]);
+    expect(targetsAt(s, { x: 1, y: 5 }, 0)).toEqual([]);
+    expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual(["mochi", 14, 2, "tora"]);
+  });
 });

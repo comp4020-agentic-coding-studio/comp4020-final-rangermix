@@ -175,6 +175,7 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
     let now = now_ms();
     let mut speech = Bucket::new(t.bubble_burst, 1.0 / t.bubble_refill_secs, now);
     let mut actions = Bucket::new(t.action_burst, t.action_per_sec, now);
+    let mut furniture = Bucket::new(t.furniture_burst, 1.0 / t.furniture_refill_secs, now);
     // Fly's proxy drops connections that go quiet; a ping keeps a calm café open.
     let mut ping = tokio::time::interval(Duration::from_secs(25));
     loop {
@@ -194,6 +195,7 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
                     let now = now_ms();
                     let allowed = match msg {
                         ClientMsg::Say { .. } | ClientMsg::Call { .. } => speech.take(now),
+                        ClientMsg::MoveFurniture { .. } => furniture.take(now),
                         _ => actions.take(now),
                     };
                     if !allowed {

@@ -81,3 +81,8 @@ y = 9
 kind = "bowls"
 x = 10
 y = 9
+
+[[furniture]]
+kind = "cushion"
+x = 9
+y = 7

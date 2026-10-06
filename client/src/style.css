@@ -76,6 +76,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .right { grid-area: right; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0.5rem; }
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }
 #room { display: block; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); touch-action: manipulation; }
+#room.placing { cursor: crosshair; }
 .overlay { position: absolute; inset: 0; pointer-events: none; }
 .overlay > * { pointer-events: auto; }
 .talk { grid-area: talk; display: flex; gap: 0.5rem; align-items: center; }

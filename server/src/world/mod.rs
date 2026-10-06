@@ -3,6 +3,7 @@
 //! connection layer to route; nothing here touches a socket, and durable
 //! changes go to the store as writes it doesn't wait for.
 mod cat_life;
+mod furniture;
 mod people;
 
 use crate::cats::Saved;
@@ -137,6 +138,7 @@ impl World {
                 ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
                 ClientMsg::Pet { cat } => self.pet(now, id, &cat, &mut out),
                 ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
+                ClientMsg::MoveFurniture { id: piece, to } => self.move_furniture(id, piece, to, &mut out),
                 ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
             },
         }

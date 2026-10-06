@@ -113,6 +113,7 @@ pub struct FurnitureView {
     pub y: u8,
     pub w: u8,
     pub h: u8,
+    pub movable: bool,
 }
 
 /// The floor plan: `tiles` holds one string per row (W wall, G window, D door,
@@ -149,6 +150,7 @@ pub enum ErrorCode {
     UnknownPerson,
     BadTile,
     MovedAway,
+    CantPlace,
 }
 
 /// What a client asks for. The server decides what happens (AGENTS.md).
@@ -156,10 +158,24 @@ pub enum ErrorCode {
 #[serde(tag = "type", rename_all = "camelCase")]
 #[ts(export)]
 pub enum ClientMsg {
-    WalkTo { tile: Tile },
-    Say { text: String, to: Option<u32> },
-    Pet { cat: String },
-    Call { cat: String },
+    WalkTo {
+        tile: Tile,
+    },
+    Say {
+        text: String,
+        to: Option<u32>,
+    },
+    Pet {
+        cat: String,
+    },
+    Call {
+        cat: String,
+    },
+    /// Put a movable piece of furniture with its top-left at `to`.
+    MoveFurniture {
+        id: u32,
+        to: Tile,
+    },
     Leave {},
 }
 
@@ -213,6 +229,12 @@ pub enum ServerMsg {
     },
     YourTrust {
         trust: TrustView,
+    },
+    /// A piece of furniture now has its top-left at `at`; `by` moved it.
+    FurnitureMoved {
+        id: u32,
+        at: Tile,
+        by: u32,
     },
     Error {
         code: ErrorCode,

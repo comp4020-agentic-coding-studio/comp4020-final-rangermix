@@ -2,12 +2,12 @@ import { announce } from "./announce";
 import type { Cafe } from "./cafe";
 import { positionAt } from "./motion";
 import type { Stage } from "./stage";
-import { type CafeState, serverNow } from "./state";
+import { type CafeState, pieceName, serverNow } from "./state";
 
 // Point, then act (design.md, "People"): one model for mouse, touch and keys.
 
 type Tile = { x: number; y: number };
-export type Target = { kind: "cat"; id: string; tile: Tile } | { kind: "person"; id: number; tile: Tile };
+export type Target = { kind: "cat"; id: string; tile: Tile } | { kind: "person"; id: number; tile: Tile } | { kind: "piece"; id: number; tile: Tile };
 
 function rounded(state: CafeState, walk: Parameters<typeof positionAt>[0], at: Tile, localNow: number): Tile {
   const p = positionAt(walk, at, serverNow(state, localNow));
@@ -24,19 +24,33 @@ function everyone(state: CafeState, localNow: number): Target[] {
   return out;
 }
 
-/** What's on a tile: cats first, since they're the point. */
+/** The furniture that can be moved, by its top-left tile. */
+function movable(state: CafeState): { target: Target; covers: (t: Tile) => boolean }[] {
+  return state.room.furniture
+    .filter((f) => f.movable)
+    .map((f) => ({
+      target: { kind: "piece" as const, id: f.id, tile: { x: f.x, y: f.y } },
+      covers: (t: Tile) => t.x >= f.x && t.x < f.x + f.w && t.y >= f.y && t.y < f.y + f.h,
+    }));
+}
+
+/** What's on a tile: cats first, since they're the point, then people, then furniture. */
 export function targetsAt(state: CafeState, tile: Tile, localNow: number): Target[] {
-  return everyone(state, localNow).filter((t) => t.tile.x === tile.x && t.tile.y === tile.y);
+  const living = everyone(state, localNow).filter((t) => t.tile.x === tile.x && t.tile.y === tile.y);
+  return [...living, ...movable(state).filter((m) => m.covers(tile)).map((m) => m.target)];
 }
 
 /** What Tab steps through: nearest first. */
 export function cycleOrder(state: CafeState, from: Tile, localNow: number): Target[] {
   const distance = (t: Target) => Math.abs(t.tile.x - from.x) + Math.abs(t.tile.y - from.y);
-  return everyone(state, localNow).sort((a, b) => distance(a) - distance(b));
+  return [...everyone(state, localNow), ...movable(state).map((m) => m.target)].sort((a, b) => distance(a) - distance(b));
 }
 
 function nameOf(state: CafeState, t: Target): string {
-  return t.kind === "cat" ? (state.cats.get(t.id)?.name ?? "a cat") : (state.people.get(t.id)?.name ?? "someone");
+  if (t.kind === "cat") return state.cats.get(t.id)?.name ?? "a cat";
+  if (t.kind === "person") return state.people.get(t.id)?.name ?? "someone";
+  const kind = state.room.furniture.find((f) => f.id === t.id)?.kind;
+  return kind ? `the ${pieceName(kind)}` : "a piece of furniture";
 }
 
 export interface InputHooks {

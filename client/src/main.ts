@@ -8,6 +8,7 @@ import { type Target, attachInput } from "./input";
 import { closeMenu, openMenu } from "./menu";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
 import type { ApiMe } from "./protocol/ApiMe";
+import { pieceName } from "./state";
 import { Stage } from "./stage";
 import { Talk } from "./talk";
 
@@ -51,7 +52,20 @@ function enter(me: ApiMe): void {
     const { left, top } = stage.tileToCss(tile.x + 1, tile.y);
     return { left: left + 4, top };
   };
+  let placing: number | null = null;
+  const stopPlacing = () => {
+    placing = null;
+    canvas.classList.remove("placing");
+  };
+  /** Puts the piece being placed down at `tile`, if one is; the server decides whether it fits. */
+  const place = (tile: { x: number; y: number }): boolean => {
+    if (placing === null) return false;
+    cafe.send({ type: "moveFurniture", id: placing, to: tile });
+    stopPlacing();
+    return true;
+  };
   const act = (target: Target, at: { x: number; y: number }) => {
+    if (place(at)) return;
     const state = cafe.state;
     if (!state) return;
     if (target.kind === "cat") {
@@ -62,6 +76,26 @@ function enter(me: ApiMe): void {
       openMenu(overlay, anchor(at), cat.name, note, [
         { label: `Pet ${cat.name}`, run: () => cafe.send({ type: "pet", cat: cat.id }) },
         { label: `Call ${cat.name}`, run: () => cafe.send({ type: "call", cat: cat.id }) },
+      ], canvas);
+    } else if (target.kind === "piece") {
+      const piece = state.room.furniture.find((f) => f.id === target.id);
+      if (!piece) return;
+      const what = pieceName(piece.kind);
+      openMenu(overlay, anchor(at), what[0].toUpperCase() + what.slice(1), null, [
+        {
+          label: `Move the ${what}`,
+          run: () => {
+            // The next spot chosen, by click, tap or Enter, is where it goes.
+            placing = piece.id;
+            canvas.classList.add("placing");
+            // Arrows move on from the piece, not from where you stand.
+            stage.pointer.tile = { x: piece.x, y: piece.y };
+            stage.pointer.visible = true;
+            const hint = `Choose where the ${what} goes. Escape to keep it where it is.`;
+            toast(overlay, hint);
+            announce(hint);
+          },
+        },
       ], canvas);
     } else {
       const person = state.people.get(target.id);
@@ -81,10 +115,14 @@ function enter(me: ApiMe): void {
     act,
     walk: (tile) => {
       closeMenu();
+      if (place(tile)) return;
       cafe.send({ type: "walkTo", tile });
     },
     talk: () => talk.focus(),
-    close: () => closeMenu(),
+    close: () => {
+      closeMenu();
+      stopPlacing();
+    },
   });
   const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();

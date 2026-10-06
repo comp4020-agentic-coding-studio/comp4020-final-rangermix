@@ -268,8 +268,6 @@ pub fn put_cat_state(conn: &Connection, cat_id: &str, state: &str, now: u64) -> 
     Ok(())
 }
 
-// Read by the fast-forward on wake (phase 4).
-#[allow(dead_code)]
 pub fn get_world(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
     conn.query_row("SELECT value FROM world WHERE key = ?1", params![key], |r| r.get(0))
         .optional()

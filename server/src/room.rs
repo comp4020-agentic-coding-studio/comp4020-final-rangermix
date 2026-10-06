@@ -2,7 +2,7 @@
 //! stand where, and shortest paths. People can't walk through furniture that
 //! blocks; cats walk and jump over all of it; nobody walks through a wall.
 use crate::protocol::{FurnitureView, RoomView, Tile};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +28,9 @@ pub struct FurnitureKind {
     #[serde(default)]
     #[allow(dead_code)]
     pub perch: bool,
+    /// People can pick it up and put it somewhere else.
+    #[serde(default)]
+    pub movable: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,6 +51,15 @@ pub struct RoomFile {
 
 #[derive(Debug, Deserialize)]
 pub struct PieceFile {
+    pub kind: String,
+    pub x: u8,
+    pub y: u8,
+}
+
+/// Where a movable piece stands, as saved between runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Placed {
+    pub id: u32,
     pub kind: String,
     pub x: u8,
     pub y: u8,
@@ -147,6 +159,13 @@ impl Room {
                 .get(&p.kind)
                 .ok_or_else(|| anyhow::anyhow!("room.toml: unknown furniture kind {:?}", p.kind))?
                 .clone();
+            // Moving a piece that blocks needs checks this cut doesn't have yet:
+            // that it cuts nobody off, and that nobody is standing there.
+            anyhow::ensure!(
+                !(spec.movable && spec.blocks),
+                "furniture.toml: {} is movable and blocks; for now only pieces people can walk over move",
+                p.kind
+            );
             let piece = Piece {
                 id: i as u32 + 1,
                 kind: p.kind.clone(),
@@ -180,6 +199,59 @@ impl Room {
             room.pieces.push(piece);
         }
         Ok(room)
+    }
+
+    /// Moves a movable piece so its top-left is at `to`, or says why not. The
+    /// floor only: never over another piece, and never on the door's walkway
+    /// (AGENTS.md).
+    pub fn place(&mut self, id: u32, to: Tile) -> Result<(), &'static str> {
+        let i = self.pieces.iter().position(|p| p.id == id).ok_or("That isn't here any more.")?;
+        let spec = &self.pieces[i].spec;
+        if !spec.movable {
+            return Err("That doesn't move.");
+        }
+        if to.x as u16 + spec.w as u16 > self.width as u16 || to.y as u16 + spec.h as u16 > self.height as u16 {
+            return Err("That's not on the floor.");
+        }
+        let mut moved = self.pieces[i].clone();
+        (moved.x, moved.y) = (to.x, to.y);
+        for t in moved.tiles() {
+            if self.ground(t) != Ground::Floor {
+                return Err("That's not on the floor.");
+            }
+            if self.walkway.contains(&t) {
+                return Err("The way in from the door stays clear.");
+            }
+            if self.pieces.iter().any(|p| p.id != id && p.covers(t)) {
+                return Err("Something's already there.");
+            }
+        }
+        self.pieces[i] = moved;
+        Ok(())
+    }
+
+    /// Where each movable piece stands, for saving.
+    pub fn arrangement(&self) -> Vec<Placed> {
+        self.pieces
+            .iter()
+            .filter(|p| p.spec.movable)
+            .map(|p| Placed {
+                id: p.id,
+                kind: p.kind.clone(),
+                x: p.x,
+                y: p.y,
+            })
+            .collect()
+    }
+
+    /// Puts back a saved arrangement, skipping any piece that no longer
+    /// matches the content or no longer fits where it was.
+    pub fn restore(&mut self, saved: &[Placed]) {
+        for s in saved {
+            if self.pieces.iter().any(|p| p.id == s.id && p.kind == s.kind) {
+                let _ = self.place(s.id, Tile { x: s.x, y: s.y });
+            }
+        }
     }
 
     pub fn in_bounds(&self, t: Tile) -> bool {
@@ -300,6 +372,7 @@ impl Room {
                     y: p.y,
                     w: p.spec.w,
                     h: p.spec.h,
+                    movable: p.spec.movable,
                 })
                 .collect(),
         }
@@ -429,10 +502,105 @@ mod tests {
                 nap: false,
                 hide: false,
                 perch: false,
+                movable: false,
             },
         )]);
         let err = Room::build(&file, &kinds).unwrap_err().to_string();
         assert!(err.contains("walkway"), "{err}");
+    }
+
+    fn cushion(r: &Room) -> u32 {
+        r.pieces.iter().find(|p| p.kind == "cushion").expect("the room has a cushion").id
+    }
+
+    fn sofa(r: &Room) -> u32 {
+        r.pieces.iter().find(|p| p.kind == "sofa").unwrap().id
+    }
+
+    #[test]
+    fn the_cushion_moves_to_free_floor() {
+        let mut r = room();
+        let id = cushion(&r);
+        assert_eq!(r.place(id, t(3, 8)), Ok(()));
+        let p = r.pieces.iter().find(|p| p.id == id).unwrap();
+        assert_eq!((p.x, p.y), (3, 8));
+        assert!(r.view().furniture.iter().any(|f| f.id == id && f.movable && (f.x, f.y) == (3, 8)));
+    }
+
+    #[test]
+    fn nothing_is_ever_put_on_the_doors_walkway() {
+        let mut r = room();
+        let id = cushion(&r);
+        for w in r.walkway.clone() {
+            assert!(r.place(id, w).is_err(), "({}, {}) is the walkway", w.x, w.y);
+        }
+    }
+
+    #[test]
+    fn pieces_stay_on_the_floor_and_never_overlap() {
+        let mut r = room();
+        let id = cushion(&r);
+        assert!(r.place(id, t(3, 0)).is_err(), "the window");
+        assert!(r.place(id, t(12, 5)).is_err(), "past the edge");
+        assert!(r.place(id, t(255, 255)).is_err(), "far past the edge");
+        assert!(r.place(id, t(1, 5)).is_err(), "the sofa");
+        assert!(r.place(id, t(5, 5)).is_err(), "the rug");
+    }
+
+    #[test]
+    fn only_movable_pieces_move() {
+        let mut r = room();
+        let id = sofa(&r);
+        assert!(r.place(id, t(3, 8)).is_err());
+        assert!(r.place(999, t(3, 8)).is_err());
+        assert!(!r.view().furniture.iter().any(|f| f.id == id && f.movable));
+    }
+
+    #[test]
+    fn a_saved_arrangement_comes_back_and_a_stale_one_is_ignored() {
+        let mut r = room();
+        let id = cushion(&r);
+        r.place(id, t(3, 8)).unwrap();
+        let saved = r.arrangement();
+        let mut fresh = room();
+        fresh.restore(&saved);
+        assert_eq!(fresh.arrangement(), saved);
+        let mut stale = saved.clone();
+        stale[0].x = 7;
+        stale[0].y = 2; // the walkway: content changed since it was saved
+        let mut again = room();
+        again.restore(&stale);
+        assert_eq!(again.arrangement(), room().arrangement());
+    }
+
+    #[test]
+    fn a_movable_piece_that_blocks_is_refused_for_now() {
+        let file = RoomFile {
+            width: 3,
+            height: 3,
+            tiles: vec!["WDW".into(), "...".into(), "...".into()],
+            entry: t(1, 1),
+            walkway: vec![t(1, 1)],
+            furniture: vec![PieceFile {
+                kind: "crate".into(),
+                x: 0,
+                y: 2,
+            }],
+        };
+        let kinds = HashMap::from([(
+            "crate".to_string(),
+            FurnitureKind {
+                w: 1,
+                h: 1,
+                blocks: true,
+                nap: false,
+                hide: false,
+                perch: false,
+                movable: true,
+            },
+        )]);
+        let err = Room::build(&file, &kinds).unwrap_err().to_string();
+        assert!(err.contains("movable"), "{err}");
     }
 
     #[test]
