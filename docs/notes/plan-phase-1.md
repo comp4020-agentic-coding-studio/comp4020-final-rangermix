@@ -9240,3 +9240,18 @@ Where carrying out this plan departed from it, task by task, and why.
   second sign-up with a non-default look (avatar 2, colour 3), sampled pixel
   by pixel from the first frame, drew the right colours every time, and so
   did a reload. Watched for in Task 14's checks.
+- **Between Tasks 13 and 14: a reload loop.** A server started before the
+  client was rebuilt announced the old build id, and every welcome reloaded
+  the page again, flashing "Reconnecting" without end (the user saw it). A
+  tab now reloads at most once for a given server build, noting it in
+  `sessionStorage`, and doesn't reload at all without storage.
+- **Task 14.** Built as written. Checked by hand in a browser: a click on the
+  floor walks there; a click on Tora opens a menu with "Pet Tora" and "Call
+  Tora", focus on the first; Enter pets her, the server logs a sniff and her
+  trust goes from 0 to 0.6; a message shows as a bubble over your head and in
+  "Said this visit", Japanese renders and `<b>` stays text. By keyboard: an
+  arrow shows the pointer, Tab lands on Tora, Enter opens the menu, arrows
+  move through it, Escape closes it with focus back on the room, a second
+  Escape puts the pointer away and Tab moves on to the talk box. Not done:
+  the two-window check and the phone-size sheet (see
+  `docs/notes/crit-8-mvp.md`).

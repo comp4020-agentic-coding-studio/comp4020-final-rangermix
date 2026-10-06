@@ -1,9 +1,15 @@
 import "./style.css";
+import { announce } from "./announce";
 import * as api from "./api";
 import { showAuth } from "./auth";
+import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
+import { type Target, attachInput } from "./input";
+import { closeMenu, openMenu } from "./menu";
+import { renderHere, renderSaid, renderYourCats } from "./panels";
 import type { ApiMe } from "./protocol/ApiMe";
 import { Stage } from "./stage";
+import { Talk } from "./talk";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -13,29 +19,99 @@ async function start(): Promise<void> {
   else showAuth(enter);
 }
 
+/** A short note over the room, for refusals ("Mochi moved away"). */
+function toast(overlay: HTMLElement, text: string): void {
+  const note = document.createElement("div");
+  note.className = "toast";
+  note.textContent = text;
+  overlay.append(note);
+  window.setTimeout(() => note.remove(), 2500);
+}
+
 function enter(me: ApiMe): void {
   $("left-cafe").hidden = true;
   $("cafe").hidden = false;
+  const canvas = $<HTMLCanvasElement>("room");
+  const overlay = $("overlay");
   const cafe = new Cafe(me, {
     onSignedOut: () => {
-      stage.stop();
+      stop();
       $("cafe").hidden = true;
       showAuth(enter);
     },
+    onError: (e) => toast(overlay, e.detail),
   });
-  const stage = new Stage(cafe, $<HTMLCanvasElement>("room"), $("stage"));
-  cafe.onChange(() => {
+  const stage = new Stage(cafe, canvas, $("stage"));
+  const bubbles = new Bubbles(overlay, stage);
+  const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"));
+  stage.frameHooks.push(() => {
+    if (cafe.state) bubbles.update(cafe.state);
+  });
+  const anchor = (tile: { x: number; y: number }) => {
+    const { left, top } = stage.tileToCss(tile.x + 1, tile.y);
+    return { left: left + 4, top };
+  };
+  const act = (target: Target, at: { x: number; y: number }) => {
+    const state = cafe.state;
+    if (!state) return;
+    if (target.kind === "cat") {
+      const cat = state.cats.get(target.id);
+      if (!cat) return;
+      const trust = state.trust.get(cat.id);
+      const note = trust ? `${cat.name}'s trust in you: ${trust.value} of 100` : null;
+      openMenu(overlay, anchor(at), cat.name, note, [
+        { label: `Pet ${cat.name}`, run: () => cafe.send({ type: "pet", cat: cat.id }) },
+        { label: `Call ${cat.name}`, run: () => cafe.send({ type: "call", cat: cat.id }) },
+      ], canvas);
+    } else {
+      const person = state.people.get(target.id);
+      if (!person) return;
+      openMenu(overlay, anchor(at), person.name, null, [
+        {
+          label: `Talk to ${person.name}`,
+          run: () => {
+            talk.address({ id: person.id, name: person.name });
+            talk.focus();
+          },
+        },
+      ], canvas);
+    }
+  };
+  const detach = attachInput(stage, cafe, {
+    act,
+    walk: (tile) => {
+      closeMenu();
+      cafe.send({ type: "walkTo", tile });
+    },
+    talk: () => talk.focus(),
+    close: () => closeMenu(),
+  });
+  const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
+    const s = cafe.state;
+    if (!s) return;
+    renderHere($("here"), s);
+    renderSaid($("said"), s);
+    renderYourCats($("your-cats"), s);
   });
+  function stop(): void {
+    detach();
+    unsubscribe();
+    stage.stop();
+    closeMenu();
+  }
   $("leave").onclick = () => {
     cafe.leave();
-    stage.stop();
+    stop();
     $("cafe").hidden = true;
     $("left-cafe").hidden = false;
+    $<HTMLButtonElement>("come-back").focus();
     $("come-back").onclick = () => enter(me);
   };
   cafe.start();
   stage.start();
+  canvas.focus();
+  announce("You're walking into the café.");
 }
 
 void start();
