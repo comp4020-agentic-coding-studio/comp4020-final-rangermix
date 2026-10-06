@@ -94,9 +94,53 @@ approved.
     quiet one coaxes the shy ones out. A cat's name in a bubble makes it look
     up, and come over if it trusts the speaker. The server matches cat names
     in bubbles and reads nothing else. (Q6)
+13. **People can pet, call, feed, play with, and pick up and carry a cat.** A
+    cat that doesn't like what's happening scratches and jumps off. (Q7)
+14. **Trust is per person and per cat, and it never fades.** It grows with
+    welcome interactions and dips when someone pushes (petting a cat that's
+    leaving, calling it over and over). Being away never costs trust. It shows
+    to everyone: a trusting cat greets you at the door, comes when called,
+    sits by you, and eventually naps on your lap. (Q8)
+15. **The first three cats are Mochi, Buraku and Tora.** (Q9, the proposal
+    with two renames)
+    - **Mochi:** round, white and grey; sociable and greedy; goes where the
+      people and food are; naps more when the café is empty.
+    - **Buraku:** black and shy; hides when the room is busy and explores when
+      it's empty, so she leaves the night's traces; slow to trust, devoted
+      once won.
+    - **Tora:** an orange tabby; curious and playful; first to inspect new
+      furniture, chases toys, knocks things over; tolerates petting, loves
+      play.
+16. **The café fills the bowls on a schedule, and each visitor has a few treats
+    a day** to put down or offer by hand. No cat goes hungry because nobody
+    came, and each cat rushes, waits or ignores a treat by character. (Q10)
+    - *Default number, to tune:* three treats per visitor per day.
+17. **No hard café rules: the cats enforce their own boundaries, firmly.** How
+    a cat reacts to unwelcome handling differs by cat, and a really angry cat
+    bans that person from that action for a while, such as no picking up for
+    two days. (Q11, with the user's addition)
 
 ## Proposed, awaiting the user
 
+- **How a cat's anger works (decision 17), by default.** Each cat's anger
+  toward a person rises with unwelcome actions (waking it, holding it too
+  long, chasing it, pushing an action it dislikes) and cools with time. Mildly
+  annoyed, it walks off or hisses. Angry, it scratches and jumps off, and trust
+  dips. Furious, it refuses that action from that person for a while, with the
+  length set by its character (Tora forgets in hours; Buraku holds a grudge for
+  two days). Bans are per cat, per person and per action, and they persist
+  across visits.
+- **Carrying (decision 13), by default.** How long a cat puts up with being
+  held depends on its character and its trust in the holder, so nobody can
+  keep a cat from the room for long. A held cat always jumps down at the door.
+- **Two people grabbing the same piece of furniture, by default.** The first
+  grab wins: the piece lifts into that person's hands, everyone sees it being
+  carried, and if they disconnect it drops back where it was. A C9 candidate,
+  alongside the quiet-seat rule.
+- **The name "Buraku" (decision 15).** Romanised that way, it reads in
+  Japanese as 部落, a word tied to discrimination against the burakumin.
+  "Burakku" (ブラック, "black") or "Kuro" (黒, the usual black-cat name) avoid
+  that. Flagged to the user; Buraku stands unless they change it.
 - **A refinement of decision 5.** The pointer snaps to tiles, and Tab jumps
   between things you can act on (cats, people, furniture), so no one nudges a
   cursor pixel by pixel. To settle with the controls question.
@@ -137,34 +181,42 @@ approved.
    only, to noise only, or not at all. Answer: to noise and names. In the same
    reply the user asked for several questions per message from here on.
 
-Questions 7 to 11 were asked together on 2026-10-07. *Awaiting answers.*
+Questions 7 to 11 were asked together on 2026-10-07 and answered in one reply.
 
-7. **What can a person do with a cat?** Pet, call, feed and play, each of
-   which a cat can refuse; that plus picking up and carrying; just pet and
-   feed; or more verbs (brush, photograph, give a toy).
-8. **How does trust work?** Per person and per cat, growing with welcome
-   interactions, dipping when you push, never fading with absence, and
-   visible to everyone (greeting at the door, coming when called, napping on a
-   lap); the same but fading when you stay away; or shared by the whole café.
-9. **The first three cats.** The user describes them, or the proposal: Mochi
-   (round, white and grey, sociable and greedy, naps more when the café is
-   empty), Sumi (black, shy, explores the empty café at night and leaves the
-   traces, slow to trust), Kaki (orange tabby, curious and playful, first to
-   inspect new furniture).
-10. **Food and treats.** The café fills the bowls on a schedule and each
-    visitor has a few treats a day to put down or hand over; anyone fills the
-    bowls any time; or only visitors feed, so an empty café means hungry cats.
-11. **Café rules.** Enforce a few in the mechanics (a sleeping cat can't be
-    disturbed nor its furniture moved, no carrying, chasing a cat that left
-    costs trust), as rules in `CLAUDE.md` and checks in `spec/`; or no hard
-    rules, with cats reacting badly instead.
+7. **What can a person do with a cat?** Options were pet, call, feed and play,
+   each of which a cat can refuse; that plus picking up and carrying; just pet
+   and feed; or more verbs. Answer: the four plus picking up and carrying; a
+   cat that doesn't like it scratches and jumps off.
+8. **How does trust work?** Options were per person and per cat, never fading
+   and visible to everyone; the same but fading with absence; or shared by the
+   whole café. Answer: per person and per cat, never fading.
+9. **The first three cats.** Options were the user describing them, or the
+   proposal of Mochi, Sumi and Kaki. Answer: the proposal, with Sumi renamed
+   Buraku and Kaki renamed Tora.
+10. **Food and treats.** Options were scheduled bowls plus a few treats per
+    visitor per day; anyone filling bowls any time; or visitors as the only
+    feeders. Answer: scheduled bowls plus a few treats a day.
+11. **Café rules.** Options were enforcing a few house rules in the mechanics,
+    or no hard rules with cats reacting badly. Answer: no hard rules, with
+    strong negative feedback: each cat reacts its own way, and a really angry
+    cat bans that person from that action for a while.
+
+Questions 12 to 14 were asked together on 2026-10-07. *Awaiting answers.*
+
+12. **Who can rearrange the café?** Anyone inside, from a free catalogue, with
+    gentle limits (a change per person every minute or so, door and walkways
+    kept clear, a fixed amount of floor, cats jumping off a piece that's moved,
+    annoyed); anyone a cat trusts; or each person only their own pieces.
+13. **What can people do with each other besides talk?** Emotes and sitting
+    together; that plus giving (a treat, or passing the cat you're holding, if
+    the cat agrees); or talk only.
+14. **How do people move and act?** Point, then act: click or tap to walk, click
+    a thing for a menu of actions, and on the keyboard a tile-snapped pointer
+    with Tab between things and Enter to act; walking with keys while the
+    pointer only acts; or seats instead of free walking.
 
 ## Questions still to ask, in batches
 
-- **The room and the people:** the furniture catalogue, who may change it, what
-  limits it, and two people moving the same thing at once; what people can do
-  with each other besides talk; moving and controls (click-to-walk, keys, the
-  keyboard pointer, touch on a 390×844 phone).
 - **The world, the look, the accounts:** day and night and on whose clock, and
   what traces the night leaves; what persists and what expires; who draws the
   pixel art, and whether looks are modular too (one base cat with coats and
