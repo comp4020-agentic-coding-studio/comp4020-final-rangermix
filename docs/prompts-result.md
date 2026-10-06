@@ -120,3 +120,18 @@ auto-stop off would go against a setting the course chose and still miss
 deploys. Proposed snapping the keyboard pointer to tiles, with Tab to jump
 between things. The next question asks who the café is for.
 [`a175cc7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a175cc7)
+
+---
+
+*Sent 2026-10-07 01:57:03 AEDT*
+
+> Q2: A & C. fast-forward-on-wake is acceptable
+
+**Result.** The café is for people who miss having a cat and for a small group
+of regulars who make it their café. So it has to be good with one to three
+people in it, regulars need to be recognisable, and the showcase crowd is the
+stress test rather than the audience. Fast-forward on wake moved from proposed
+to decided in `docs/notes/brainstorm.md`, to become an ADR in the approaches
+step. The next question asks how many people fit inside at once and what
+happens when the café is full.
+[`0b4d17a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0b4d17a)
