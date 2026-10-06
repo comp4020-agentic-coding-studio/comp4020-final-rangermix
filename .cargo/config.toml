@@ -1,0 +1,5 @@
+# ts-rs writes the protocol's TypeScript here when `cargo test` runs. 64-bit
+# integers become `number`, since JSON numbers aren't `bigint`.
+[env]
+TS_RS_EXPORT_DIR = { value = "client/src/protocol", relative = true }
+TS_RS_LARGE_INT = "number"
