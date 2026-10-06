@@ -245,3 +245,28 @@ the quiet hours leave behind, who draws the pixel art, accounts in detail, and
 safety for public text. A default for what persists and what expires went with
 them.
 [`864a7c7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/864a7c7)
+
+---
+
+*Sent 2026-10-07 02:50:55 AEDT*
+
+> Q15 A Q16 B Q17 A Q18 B Q19 B
+
+**Result.** That ended the clarifying questions.
+- The café keeps Canberra time, with light and cat rhythms to match.
+- The quiet hours leave traces in the room, and a chalkboard by the door
+  notes what the cats got up to, wiped each morning.
+- Claude draws the pixel art as code: palette-indexed sprites on a 16-pixel
+  grid, with modular cat looks.
+- Accounts get a one-time recovery code at sign-up, so a forgotten password
+  doesn't cost a regular their cats' trust.
+- Public text gets light limits plus a short whole-word slur blocklist.
+
+The persistence default and the name Burakku stood. Three approaches went to
+the user, all with SQLite on `/data` and one WebSocket per visitor: a Rust
+server with a TypeScript canvas client (recommended: the user's lean where it
+pays, and the browser's own text input and accessibility where markers test
+them), TypeScript everywhere, or Rust compiled to WebAssembly. The costs were
+stated: Rust means two languages and slow builds, twice per push once CI
+deploys. The design comes next, a few sections at a time.
+[`1794606`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1794606)
