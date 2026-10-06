@@ -202,3 +202,25 @@ out together: what a person can do with a cat, how trust works, the first
 three cats (with a proposed Mochi, Sumi and Kaki), food and treats, and
 whether café rules are enforced.
 [`2bb56de`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2bb56de)
+
+---
+
+*Sent 2026-10-07 02:34:59 AEDT*
+
+> 7B, cat can scratch and jump off if they don't like it. 8A 9B sumi -> buraku, kaki -> tora 10A 11B with strong negative feedback - cat can react differently, and if they are really angry they will ban you from making that move for a certain time period like no picking up for 2 days.
+
+**Result.** People can pet, call, feed, play with, and pick up and carry a cat,
+and a cat that objects scratches and jumps off. Trust is per person and per
+cat and never fades with absence. The first three cats are the proposed ones,
+renamed: Mochi, Buraku and Tora. The café keeps the bowls full, and each
+visitor has a few treats a day. The user turned down enforced house rules in
+favour of the cats enforcing their own boundaries: each reacts its own way,
+and a really angry cat bans that person from that action for a while. Defaults
+were proposed for that anger (annoyed, angry, furious, with grudge length set
+by character), for how long a cat tolerates being carried, and for two people
+grabbing the same furniture (first grab wins). Flagged that "Buraku" reads in
+Japanese as a word tied to discrimination against the burakumin, with
+alternatives; the name stands unless the user changes it. Questions 12 to 14
+went out: who can rearrange the café, what people can do with each other, and
+how people move and act.
+[`910873c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/910873c)
