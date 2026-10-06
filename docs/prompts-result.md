@@ -458,3 +458,51 @@ The visual companion was stopped. The spec now waits for the user's review
 before any implementation plan.
 [`02b176a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/02b176a)
 [`0e4e982`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0e4e982)
+
+---
+
+*Sent 2026-10-07 04:23:23 AEDT*
+
+> approved. finish spec and the implementation plan, then separate a first phase deliverable for crit 8, then finish that phase. /goal
+
+**Result, the plan.** The spec was approved as written. `/goal` isn't a
+command here, so it was read as marking the request as the goal to carry
+through without stopping. That instruction also settled what the planning
+skill would otherwise have asked: the execution method was chosen by the
+agent and recorded in ADR 0012.
+- **Roadmap.** `docs/notes/plan.md` splits the spec into five phases, lined up
+  with crits 8, 9 and 10, the deadline and the showcase.
+- **ADR 0012, the workflow.** A detailed plan per phase when it starts; each
+  phase built natively, test first; then a fresh reviewer briefed through
+  files.
+- **Phase 1, "It's alive".** The crit 8 deliverable, planned in 18 tasks in
+  `docs/notes/plan-phase-1.md`, each with files, interfaces, tests first and
+  code. It covers accounts with recovery codes, the room with six inside and a
+  line at the window, walking by mouse, touch and keyboard, fleeting bubbles,
+  the three cats with a first set of behaviours, pets and calls, trust that
+  persists, `/readme/`, the image and the deploy.
+- **What phase 1 leaves out.** It names what it defers to later phases, and
+  the five inputs most likely to bite a real visitor, each pinned by a test.
+
+Before writing code into the plan, every crate API it relies on was compiled
+in a throwaway spike. That caught rand 0.10's moved traits, argon2 0.6's new
+hashing call, and ts-rs turning 64-bit integers into `bigint`. A script also
+checked all 28 sprites drawn into the plan for size and stray pixels.
+
+Planning turned up three changes to the spec, each going into `design.md` in
+the same commit as its code:
+- the per-IP limit on log-in attempts rises from 5 to 60 a minute, since a
+  whole showcase room shares one address;
+- a cat sniffs your hand the first time it meets you awake, so a first visit
+  always leaves a trace;
+- a Leave button frees your seat at once.
+
+The welcome message gained the café's capacity, for the "4/6 inside" status
+line.
+
+Partway through, the user pushed their first `README.md`; the plan was rebased
+onto it. One mismatch was noted for the user: the README promises soothing
+music, which the design doesn't have.
+[`2719d7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2719d7a)
+[`28310c8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/28310c8)
+[`82cfe9a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/82cfe9a)
