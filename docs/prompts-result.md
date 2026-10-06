@@ -609,3 +609,38 @@ review.
 
 **Result.** It confirmed that three unexplained walks in the server log
 during the browser check were the user's own clicks, not a fault.
+
+*Sent 2026-10-07 09:54:00 AEDT*
+
+> add one furniture you can move around
+
+**Result.** Built as the first, cut-down piece of the design's rearranging
+(phase 2), in the same spirit as the crit 8 cut, with every simplification
+added to [`docs/notes/crit-8-mvp.md`](notes/crit-8-mvp.md) (items 16 to 24).
+- **What moves.** A new floor cushion, from the design's catalogue: people
+  walk over it, cats nap on it. It is the only movable piece. A piece that
+  blocks can't be marked movable yet, because moving one safely needs a
+  cut-off check and a "someone's standing there" check; the content loader
+  refuses it.
+- **How.** Click, tap or Tab to the cushion, pick "Move the cushion", then
+  pick a spot. The server refuses anything off the floor, over another piece
+  or on the door's walkway, tells everyone who moved it, and saves the
+  arrangement so it survives a restart. Moves are limited to 3 at once, then
+  1 every 20 seconds, the design's numbers.
+- **Tests first.** Rust tests for the placement rules and the restore;
+  client tests for the state and for pointing at the cushion; and
+  `spec/furniture.test.ts`, which holds `AGENTS.md`'s walkway rule, the
+  real-time move and the limit. Each was seen failing first.
+- **Checked by hand.** Mouse, keyboard and phone size. The keyboard check
+  found a fault: after the menu, the pointer jumped back to your own tile,
+  so arrows moved from there instead of from the cushion. Placing now starts
+  with the pointer on the piece. A restart brought the cushion back where it
+  was last put. One apparent persistence fault turned out to be a spec run
+  moving it after the hand-made move.
+- **A test-helper race.** One spec run timed out waiting for a welcome. The
+  helper attached its listener only after the socket opened, so a welcome
+  arriving right behind the upgrade could be lost; it now listens first.
+  Later full runs passed 19 of 19. Runs fired back to back also hit the
+  per-address sign-up limit, which is the limit doing its job.
+[`8907493`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8907493)
+[`8292b36`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8292b36)

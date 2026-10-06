@@ -89,6 +89,50 @@ that a check already holds, but several are only held by review until done.
 15. **`placeholder/`, the starter's page, is still in the repo**, unused
     since the new `Dockerfile`.
 
+## Added after the cut: one cushion that moves
+
+The user asked for "one furniture you can move around" (2026-10-07). It is
+the first piece of design.md's rearranging (phase 2 in
+[plan.md](plan.md)), cut down the same way. What's built: a floor cushion
+(people walk over it, cats nap on it); choose it by click, tap or Tab and
+Enter, pick "Move the cushion", then pick a spot. The server refuses
+anything off the floor, over another piece, or on the door's walkway. It
+tells everyone who moved it, saves the arrangement so it survives a restart,
+and allows 3 moves at once, then 1 every 20 seconds.
+`spec/furniture.test.ts` checks the real-time move, the walkway and the
+limit; Rust tests check the placement rules and the restore.
+
+What it simplifies, against design.md:
+
+16. **Only the cushion moves.** The design says everything but the walls,
+    window, door, chalkboard and bowls moves. A piece that blocks can't be
+    marked movable yet (the content check refuses it), because moving one
+    needs two more checks: that it cuts nobody off from the door, and that
+    nobody is standing where it lands.
+17. **No catalogue.** Nothing can be added or removed, so the floor limit (30
+    movable pieces) isn't needed yet.
+18. **No carrying.** The cushion goes straight to the chosen spot, from
+    anywhere in the room. Nobody walks over to pick it up, nobody sees it
+    carried, there's no "first grab wins", and nothing drops back on a
+    disconnect.
+19. **Cats don't notice.** A cat napping on the cushion when it moves stays
+    where it was, asleep on the bare floor, instead of jumping off annoyed;
+    no cat comes to investigate where it went.
+20. **Nothing overlaps.** The cushion can't go on the rug, though a cushion
+    on a rug would be natural.
+21. **A cat on the cushion hides it from a click.** Clicking that tile opens
+    the cat's menu (cats come first); Tab still reaches the cushion.
+22. **No preview while placing.** The pointer box starts on the cushion and
+    the cursor turns to a crosshair, with a short note; there's no ghost of
+    the cushion under the pointer.
+23. **Saved by piece number.** The arrangement is saved as JSON in the
+    `world` table under each piece's number and kind. If `room.toml` changes
+    the order of its pieces, a saved position whose kind no longer matches
+    is dropped, and the piece starts where `room.toml` puts it.
+24. **Phone checked with a mouse, not a touch.** At 390×844 the menu came up
+    as a sheet and the move went through, but under a mouse in a narrow
+    window, not a touch-emulating device.
+
 ## Blocked
 
 **The deploy (Task 16).** `flyctl auth whoami` says there's no access token,
