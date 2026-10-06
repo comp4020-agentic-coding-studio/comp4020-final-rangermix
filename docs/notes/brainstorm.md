@@ -5,6 +5,12 @@ Working state for the design conversation that started on 2026-10-07 (session
 moves to `docs/design.md`, with an ADR for each significant decision. The
 prompt log keeps the exchange verbatim.
 
+**Status (2026-10-07): complete.** All seven design sections were approved and
+the settled design is now [`docs/design.md`](../design.md), with ADRs 0002 to
+0011 and the rules in `AGENTS.md`. This file stays as the record of how each
+decision was reached. Next: the user reviews the written spec, then the
+implementation plan.
+
 ## The idea as given
 
 - A 2D pixel-art online cat place, inspired by Neko Atsume and real cat cafés.
@@ -559,7 +565,7 @@ In the terminal, proposed with the screen:
 - Logged out, `/` shows the sign-up and log-in card over a still picture of
   the café; `/readme/` is plain server-rendered HTML.
 
-### Design 7: logging and testing (presented 2026-10-07, *awaiting approval*)
+### Design 7: logging and testing (approved 2026-10-07)
 
 Logging, for C10:
 
@@ -615,10 +621,32 @@ door walkway is never blocked; the cap is enforced on the server; every action
 works by keyboard, touch and mouse at both marking sizes; generated TypeScript
 is never edited by hand; cats change through `content/`, not code.
 
+## The written spec
+
+Written on 2026-10-07 after design 7 was approved: `docs/design.md`, ADRs 0002
+to 0011, and a "What the app must keep" section in `AGENTS.md`.
+
+What the self-review checked and changed before the commit:
+
+- No placeholders; every link from `docs/design.md`, `AGENTS.md` and the ADRs
+  resolves; every in-page anchor matches a heading; every ADR has the
+  template's six parts.
+- A contradiction: "never store IP addresses" against per-IP rate limits. The
+  spec now says those counts live in memory only and are never written down
+  or logged.
+- Numbers the design left open were pinned as tunable starting values: bowl
+  refill times, the hours of day and night, reconnect backoff, the
+  falling-behind threshold, log-in attempt limits, trust levels and the daily
+  trust cap, grudge lengths, the floor's furniture limit, avatar looks, and
+  the recovery code's alphabet.
+- Mochi's rhythm row said "up at night", against design 3's "naps after lunch
+  and at night"; it now reads awake mornings and evenings, napping after lunch
+  and overnight.
+- Scope: one spec is enough for one app, but the implementation plan should
+  come in phases that each leave something usable.
+
 ## Still to come
 
-- Approval of design 7.
-- Then the spec: `docs/design.md` and the ADRs (app shape and scope; the stack;
-  the real-time model; the store; fast-forward on wake; accounts; the
-  quiet-seat rule as C9's multi-user decision), plus the rules in `AGENTS.md`,
-  for review.
+- The user's review of the written spec.
+- Then the implementation plan (the writing-plans skill), and with it the
+  agent-workflow ADR that `AGENTS.md` asks for.
