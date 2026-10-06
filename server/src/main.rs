@@ -2,6 +2,7 @@
 //! accounts API and the WebSocket, and owns the café's world.
 mod api;
 mod auth;
+mod cats;
 mod config;
 mod content;
 mod http;

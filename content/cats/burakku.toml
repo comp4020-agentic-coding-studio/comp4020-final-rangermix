@@ -1,0 +1,26 @@
+# Burakku (ブラック, "black"): shy. Hides when the room is noisy, explores when
+# it's empty, and is awake at night, so she leaves the night's traces. Slow
+# to trust, devoted once she does.
+id = "burakku"
+name = "Burakku"
+coat = "black"
+
+[traits]
+sociability = 0.3
+boldness = 0.15
+curiosity = 0.6
+playfulness = 0.4
+appetite = 0.5
+energy = 0.5
+affection = 0.7        # devoted once she trusts you
+alone_activity = 1.6   # over 1: livelier when nobody's there
+trust_rate = 0.3       # slow to warm up
+temper = 0.5
+grudge_hours = 48.0
+
+[rhythm]
+awake = ["21:00-05:00"]
+
+[weights]
+hide = 1.5
+wander = 1.2

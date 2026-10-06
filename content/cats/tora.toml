@@ -1,0 +1,26 @@
+# Tora: an orange tabby, curious and playful. First to new furniture, chases
+# toys, knocks things over; tolerates petting, loves play. Zoomies at dawn
+# and dusk, like real cats.
+id = "tora"
+name = "Tora"
+coat = "orange_tabby"
+
+[traits]
+sociability = 0.6
+boldness = 0.8
+curiosity = 0.95
+playfulness = 0.95
+appetite = 0.6
+energy = 0.9
+affection = 0.4
+alone_activity = 1.0
+trust_rate = 0.6
+temper = 0.6
+grudge_hours = 4.0
+
+[rhythm]
+awake = ["04:30-10:00", "16:00-21:30"]
+zoomies = true
+
+[weights]
+wander = 1.3
