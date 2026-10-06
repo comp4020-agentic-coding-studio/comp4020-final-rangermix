@@ -168,3 +168,19 @@ a first-come-first-served default was proposed, to confirm with the design
 sections. The next question asks what a speech bubble reaches and how long it
 lasts.
 [`5ea4a61`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5ea4a61)
+
+---
+
+*Sent 2026-10-07 02:18:32 AEDT*
+
+> A. adjust fade delay with message length
+
+**Result.** Speech bubbles are public and fleeting: everyone inside and at the
+window sees them, nothing said is stored on the server, and clicking an avatar
+addresses your words to that person. A list of recent bubbles is kept only in
+the browser for the current visit, for anyone who missed one. Following the
+user's addition, a bubble stays up longer for a longer message, with a default
+of 3 seconds plus 60 ms per character, capped at 10 seconds. The seat and line
+defaults stood, since no change was asked for. The next question asks whether
+the cats react to talk.
+[`8f3e82f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8f3e82f)
