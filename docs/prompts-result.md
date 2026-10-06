@@ -150,3 +150,21 @@ hours, so the next question asks what happens to a quiet seat while someone is
 waiting. Added the shape of the line (how many fit at the window, who comes in
 next) to the question queue.
 [`1f7cb5c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1f7cb5c)
+
+---
+
+*Sent 2026-10-07 02:12:56 AEDT*
+
+> A
+
+**Result.** A seat held by someone who has gone quiet frees up only while
+someone is waiting: they get a "still there?" nudge, and with no answer their
+avatar walks out and the first person in line walks in. Giving up your seat to
+someone at the window wasn't chosen. No numbers came with the answer, so
+defaults are noted for tuning: 30 seconds of grace for a dropped connection,
+"gone quiet" meaning a tab hidden for 2 minutes or no input for 10, and 60
+seconds to answer the nudge. Rather than spend a question on the line itself,
+a first-come-first-served default was proposed, to confirm with the design
+sections. The next question asks what a speech bubble reaches and how long it
+lasts.
+[`5ea4a61`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5ea4a61)
