@@ -9224,3 +9224,19 @@ Where carrying out this plan departed from it, task by task, and why.
   tiles someone can reach. Four Rust tests pin both. The spec's cats test now
   pets a napping cat first, then a sitting or idle one, since a cat on the
   move may be gone before you get there.
+- **Pre-flight scan.** The subagent run through
+  `docs/notes/briefs/phase-1-preflight.md` was cut off when the session's
+  budget ran out, and wrote no result. It wasn't re-run: Tasks 1 to 12 had
+  already built and passed by then, and each later task is checked against
+  the code as it now stands.
+- **Task 13.** Built as written. Looked at in a browser against a local
+  server: at 1920×1080 the room is drawn at 5× (960×800 CSS pixels), at
+  390×844 at 2× with no sideways scroll, and resizing back refits it to 5×;
+  the cats move and nap on their own (Burakku with a "zzz"); your avatar
+  walks in from the door with the marker over it; a second visitor arrives
+  ("2/6 inside") and walks across the room. One oddity that did not come
+  back: the first screenshot after the first sign-up drew the new avatar in
+  a different look from the one the server holds (avatar 0, colour 0). A
+  second sign-up with a non-default look (avatar 2, colour 3), sampled pixel
+  by pixel from the first frame, drew the right colours every time, and so
+  did a reload. Watched for in Task 14's checks.

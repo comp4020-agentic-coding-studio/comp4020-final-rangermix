@@ -3,6 +3,7 @@ import * as api from "./api";
 import { showAuth } from "./auth";
 import { Cafe } from "./cafe";
 import type { ApiMe } from "./protocol/ApiMe";
+import { Stage } from "./stage";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -17,20 +18,24 @@ function enter(me: ApiMe): void {
   $("cafe").hidden = false;
   const cafe = new Cafe(me, {
     onSignedOut: () => {
+      stage.stop();
       $("cafe").hidden = true;
       showAuth(enter);
     },
   });
+  const stage = new Stage(cafe, $<HTMLCanvasElement>("room"), $("stage"));
   cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
   });
   $("leave").onclick = () => {
     cafe.leave();
+    stage.stop();
     $("cafe").hidden = true;
     $("left-cafe").hidden = false;
     $("come-back").onclick = () => enter(me);
   };
   cafe.start();
+  stage.start();
 }
 
 void start();
