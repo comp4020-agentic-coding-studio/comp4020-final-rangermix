@@ -11,6 +11,7 @@ mod readme;
 mod room;
 mod store;
 mod time;
+mod trust;
 mod tuning;
 
 use std::net::SocketAddr;
