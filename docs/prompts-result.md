@@ -184,3 +184,21 @@ of 3 seconds plus 60 ms per character, capped at 10 seconds. The seat and line
 defaults stood, since no change was asked for. The next question asks whether
 the cats react to talk.
 [`8f3e82f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8f3e82f)
+
+---
+
+*Sent 2026-10-07 02:24:54 AEDT*
+
+> A. ask more question at a time is possible
+
+**Result.** The cats react to talk in two ways. The room's chatter is a mood
+they feel by character: shy cats hide in a busy café and come out in a quiet
+one, and social cats are drawn in. A cat's name in a bubble makes it look up,
+and come over if it trusts the speaker. The server matches cat names and reads
+nothing else in a bubble. The brainstorming method changed at the user's
+request: questions now come several at a time. That preference is noted in
+`docs/notes/brainstorm.md` and in machine-local memory. Questions 7 to 11 went
+out together: what a person can do with a cat, how trust works, the first
+three cats (with a proposed Mochi, Sumi and Kaki), food and treats, and
+whether café rules are enforced.
+[`2bb56de`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2bb56de)
