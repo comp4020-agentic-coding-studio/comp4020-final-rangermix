@@ -1,0 +1,31 @@
+[package]
+name = "cafe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+argon2 = "0.6"
+axum = { version = "0.8", features = ["ws"] }
+base64 = "0.23"
+chrono = "0.4"
+chrono-tz = "0.10"
+futures-util = "0.3"
+pulldown-cmark = "0.13"
+rand = "0.10"
+rand_chacha = "0.10"
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+tokio = { version = "1", features = ["full"] }
+toml = "1"
+tower-http = { version = "0.7", features = ["fs"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+ts-rs = "12"
+
+[dev-dependencies]
+http-body-util = "0.1"
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }

@@ -25,3 +25,7 @@ mise.local.toml
 # the brainstorming companion's working directory: its server state holds a
 # session key. Mockups worth keeping are copied to docs/notes/mockups/
 .superpowers/
+
+# Rust build output, and the database a local run writes
+target/
+.data/
