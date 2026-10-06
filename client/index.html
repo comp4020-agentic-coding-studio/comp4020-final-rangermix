@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The cat café</title>
+    <meta name="description" content="An online cat café: three cats, six seats, and whoever else is here right now." />
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main id="auth" class="auth" hidden>
+      <div class="card">
+        <h1>The cat café</h1>
+        <p class="lede">Three cats, six seats, and whoever else is here right now.</p>
+        <p><a href="/readme/">What is this place?</a></p>
+        <div class="tabs" role="tablist" aria-label="Get in">
+          <button type="button" role="tab" id="tab-signup" aria-selected="true" aria-controls="signup">New here</button>
+          <button type="button" role="tab" id="tab-login" aria-selected="false" aria-controls="login">I've been before</button>
+        </div>
+        <form id="signup" role="tabpanel" aria-labelledby="tab-signup">
+          <label>Name <span class="hint">(everyone in the café sees it)</span>
+            <input name="name" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_\-]{3,20}" />
+          </label>
+          <label>Password <span class="hint">(8 or more characters)</span>
+            <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128" />
+          </label>
+          <fieldset class="looks">
+            <legend>Your look</legend>
+            <div id="look-picker" class="look-picker"></div>
+          </fieldset>
+          <button type="submit">Walk in</button>
+        </form>
+        <form id="login" role="tabpanel" aria-labelledby="tab-login" hidden>
+          <label>Name <input name="name" autocomplete="username" required /></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+          <button type="submit">Walk in</button>
+          <button type="button" class="link" id="show-recover">I've forgotten my password</button>
+        </form>
+        <form id="recover" hidden>
+          <p>Use the recovery code you saved when you signed up.</p>
+          <label>Name <input name="name" autocomplete="username" required /></label>
+          <label>Recovery code <input name="code" autocomplete="one-time-code" required /></label>
+          <label>New password <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128" /></label>
+          <button type="submit">Reset it and walk in</button>
+          <button type="button" class="link" id="hide-recover">Back</button>
+        </form>
+        <section id="code" hidden>
+          <h2>Your recovery code</h2>
+          <p>Keep it somewhere safe. It's the only way back in if you forget your password, and it won't be shown again.</p>
+          <p class="recovery-code"><code id="code-text"></code> <button type="button" id="copy-code">Copy</button></p>
+          <button type="button" id="code-done" class="primary">I've saved it, let me in</button>
+        </section>
+        <p id="auth-error" class="error" role="alert"></p>
+      </div>
+    </main>
+
+    <div id="cafe" class="cafe" hidden>
+      <header class="status">
+        <span id="status-text">Opening the café…</span>
+        <button type="button" id="leave">Leave</button>
+      </header>
+      <aside id="your-cats" class="panel left" aria-label="Your cats"></aside>
+      <div id="stage" class="stage">
+        <canvas
+          id="room"
+          width="192"
+          height="160"
+          tabindex="0"
+          aria-label="The café. Arrow keys move a pointer, Tab steps through the cats and people, Enter acts, Escape puts the pointer away."
+        ></canvas>
+        <div id="overlay" class="overlay"></div>
+      </div>
+      <aside class="panel right">
+        <section id="here" aria-label="Who's here"></section>
+        <section aria-labelledby="said-heading">
+          <h2 id="said-heading">Said this visit</h2>
+          <ol id="said" class="said"></ol>
+        </section>
+      </aside>
+      <form id="talk" class="talk">
+        <button type="button" id="talk-to" class="talk-to" hidden></button>
+        <input id="talk-input" maxlength="100" autocomplete="off" placeholder="Say something…" aria-label="Say something" />
+        <button type="submit">Say</button>
+      </form>
+    </div>
+
+    <section id="left-cafe" class="left-cafe" hidden>
+      <p>You've left the café. The cats will remember you.</p>
+      <button type="button" id="come-back" class="primary">Come back in</button>
+    </section>
+
+    <div id="announcer" class="sr-only" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

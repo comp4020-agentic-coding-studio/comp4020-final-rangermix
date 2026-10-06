@@ -29,3 +29,6 @@ mise.local.toml
 # Rust build output, and the database a local run writes
 target/
 .data/
+
+# snapshots and console logs from browser checks driven by Playwright
+.playwright-mcp/
