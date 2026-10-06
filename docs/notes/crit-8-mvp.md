@@ -13,12 +13,12 @@ read on 2026-10-07:
 
 | Requirement | Who | State |
 |---|---|---|
-| Deployed at its `*.fly.dev` URL by the cutoff | agent, with the user's Fly token | **Blocked**: no Fly token on this machine (see "Blocked" below) |
+| Deployed at its `*.fly.dev` URL by the cutoff | agent, with the user's Fly token | Done: live since 2026-10-07 (see "Deployed and shipped") |
 | A visitor can do the core thing, and their trace is still there when they come back | agent | Done locally: sign up, walk, pet, talk; trust survives a restart of the built image |
 | `README.md` saying what success means, with sources, published at `/readme/` | user's words; the server publishes it | `/readme/` serves it; the words are the user's |
 | `PROCESS.md` with the technology choices (ADRs can be linked) | user's words | the user's |
 | `reflections/crit-8.md` | user's words | the user's |
-| Repo public at the cutoff; `/ship` tags | user (`/ship`) | private as of 2026-10-07 09:50 AEDT |
+| Repo public at the cutoff; `/ship` tags | user (`/ship`) | Public since about 10:16 AEDT on 2026-10-07; tag `crit-8` on `659952a` |
 | Commit history showing incremental work | both | yes |
 
 ## Done for the MVP
@@ -133,20 +133,13 @@ What it simplifies, against design.md:
     as a sheet and the move went through, but under a mouse in a narrow
     window, not a touch-emulating device.
 
-## Blocked
+## Deployed and shipped
 
-**The deploy (Task 16).** `flyctl auth whoami` says there's no access token,
-and there's no `mise.local.toml` holding `FLY_API_TOKEN`. By the plan, the
-user adds the course's token (agents don't enter it), in `mise.local.toml` at
-the repo root:
-
-```toml
-[env]
-FLY_API_TOKEN = "..."
-```
-
-Then: `mise exec flyctl@0.4.106 -- flyctl deploy --remote-only --ha=false -a comp4020-final-rangermix`.
-That `flyctl` isn't pinned for this directory, hence `mise exec`.
-
-As of 2026-10-07 09:50 AEDT, `https://comp4020-final-rangermix.fly.dev/`
-accepts a connection but sends nothing back within 20 seconds.
+The deploy was blocked on the Fly token until the user added it. On
+2026-10-07 commit `ed466d4` was deployed by hand; then the user ran `/ship`,
+the repo went public, and CI (checks, the Rust job, deploy) deployed
+`659952a`, which is tagged `crit-8`. Checked live: the page and its assets
+load, and `spec/invariants.test.ts` and `spec/login-page.test.ts` pass
+against `https://comp4020-final-rangermix.fly.dev`. Not done live: anything
+that signs up, so the core interaction there has only been tried locally and
+in CI's run against the image.

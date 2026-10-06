@@ -669,3 +669,19 @@ version": the five phases, the bare-minimum request and its recorded cuts, the
 reload loop caught by watching it, and the cushion. Your own sections stay,
 trimmed in a few places to keep it near 1,100 words. The evidence check passes
 with all 14 cited commits resolving.
+
+*Sent 2026-10-07 10:15:24 AEDT*
+
+> yes flip
+
+**Result.** Because the reflection was still uncommitted and the flip can't be
+undone, the agent asked once more, naming what becomes public, with three
+choices. *Answered 10:15:47 AEDT: "Commit both, then flip (Recommended)".*
+`README.md` and `reflections/crit-8.md` were committed by name and pushed. The
+secret scan was re-run and found the same four harmless test-fixture lines,
+each read before going on. The repo was then made public, and the dispatched
+CI run passed the Rust job, the checks (the whole spec against the built
+image, the evidence check, both secret scans) and the deploy. Fly release v2
+came from that run; the page and its assets load, and the read-only live
+checks pass. The deployed commit is tagged `crit-8`.
+[`659952a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/659952a)
