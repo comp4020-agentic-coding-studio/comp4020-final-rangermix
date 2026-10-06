@@ -324,3 +324,40 @@ The first three cats were restated in these terms. Mochi naps after lunch,
 Burakku is nocturnal, and Tora has dawn and dusk zoomies, after real cats'
 crepuscular habits.
 [`f4f2b63`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f4f2b63)
+
+---
+
+*Sent 2026-10-07 03:21:29 AEDT*
+
+> approve
+
+**Result.** Design 3 was approved, and designs 4 and 5 went out together.
+
+Design 4 is persistence and fast-forward:
+- One SQLite file on the volume, written by a single writer thread.
+- People's changes are written within a fraction of a second; the cats, the
+  world clock and the random state are saved every 5 seconds and on Fly's stop
+  signal.
+- On waking, the server fast-forwards in one-second steps, capped at a week.
+- Redeploys behave as short sleeps, and failures are loud rather than
+  silently empty.
+
+Two Fly facts were checked in its docs before being relied on. Fly takes daily
+volume snapshots, kept 5 days, which serve as the backup. A stop sends SIGINT
+with only a best-effort 5 seconds before force, which makes the periodic save
+the real safety net.
+
+Working through it exposed a flaw in an earlier default: wiping the chalkboard
+at 7:00, and staff tidying at opening, would erase the night before the morning
+visitor saw it. The proposed fix: a rolling 24-hour board, and traces that stay
+until someone tidies them.
+
+Design 5 is accounts and safety:
+- Sign-up with a one-time recovery code.
+- argon2id with at most two hashes at once on the 256 MB machine.
+- Hashed session tokens in a SameSite cookie, Origin checks, and rate-limited
+  log-in.
+- Mute stored with the account, and an admin ban run over `fly ssh console`.
+- A privacy rule: bubble text is never written to the database or the logs,
+  so the C10 logs record that someone spoke, not what they said.
+[`c9ebf01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c9ebf01)
