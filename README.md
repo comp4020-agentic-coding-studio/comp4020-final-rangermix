@@ -4,7 +4,7 @@
      /readme/, where visitors and markers read it. The final project brief says
      what it covers. Replace everything in it, this comment included. -->
 
-Welcome to the online cat cafe!
+Welcome to the online cat cafe! I mainly got inspiration from two game: Neko Atsume and Bongo Cat. One is for the cat cafe theme and one for the people connection part.
 
 Let's define good from two side:
 
@@ -23,5 +23,6 @@ Let's define good from two side:
         + cats have memories
         + cats have characters
         + cats can grow trust and affection on you
-    - 
+    - Cats
+        + everyone (should) loves cat
 
