@@ -1,8 +1,11 @@
 //! The cat café server: one binary that serves the client, the README, the
 //! accounts API and the WebSocket, and owns the café's world.
+mod api;
+mod auth;
 mod config;
 mod content;
 mod http;
+mod limits;
 mod protocol;
 mod readme;
 mod room;
@@ -16,9 +19,12 @@ use std::net::SocketAddr;
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().json().flatten_event(true).init();
     let config = config::Config::from_env();
+    std::fs::create_dir_all(&config.data_dir)?;
+    let store = store::Store::open(&config.data_dir.join("cafe.db"))?;
+    let content = content::load(&config.content_dir)?;
     let readme = readme::render_page(&std::fs::read_to_string(&config.readme_path).unwrap_or_default());
     let port = config.port;
-    let state = http::AppState::new(config, readme);
+    let state = http::AppState::new(config, readme, store, content.tuning);
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!(target: "sys", port, "listening");
     axum::serve(listener, http::router(state).into_make_service_with_connect_info::<SocketAddr>())
