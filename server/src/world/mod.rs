@@ -1,15 +1,18 @@
-//! The café's one world (ADR 0004): people, the line at the window, walks and
-//! bubbles (Task 9 adds the cats). `handle` and `tick` return messages for
-//! the connection layer to route; nothing here touches a socket, and durable
+//! The café's one world (ADR 0004): people, the line at the window, walks,
+//! bubbles and the cats. `handle` and `tick` return messages for the
+//! connection layer to route; nothing here touches a socket, and durable
 //! changes go to the store as writes it doesn't wait for.
+mod cat_life;
 mod people;
 
+use crate::cats::Saved;
 use crate::content::Content;
 use crate::protocol::{ClientMsg, ErrorCode, Look, Place, ServerMsg, Snapshot, Tile, Walk};
 use crate::room::Room;
 use crate::store::Store;
 use crate::trust::TrustBook;
 use crate::tuning::Tuning;
+use cat_life::Cat;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use std::collections::VecDeque;
@@ -64,6 +67,7 @@ pub struct World {
     room: Room,
     tuning: Tuning,
     people: Vec<Person>,
+    cats: Vec<Cat>,
     trust: TrustBook,
     /// When each bubble of the last minute was said: the room's noise.
     noise: VecDeque<u64>,
@@ -81,16 +85,18 @@ impl World {
     pub fn new(
         content: Content,
         trust: TrustBook,
-        _saved_cats: Vec<(String, String)>,
+        saved_cats: Vec<(String, String)>,
         seed: u64,
         store: Option<Store>,
         build: String,
         now: u64,
     ) -> World {
-        World {
-            room: content.room,
-            tuning: content.tuning,
+        let Content { tuning, room, cats } = content;
+        let mut world = World {
+            room,
+            tuning,
             people: Vec::new(),
+            cats: Vec::new(),
             trust,
             noise: VecDeque::new(),
             heard: Vec::new(),
@@ -100,7 +106,16 @@ impl World {
             build,
             last_tick: now,
             last_save: now,
+        };
+        for def in cats {
+            let saved = saved_cats
+                .iter()
+                .find(|(id, _)| *id == def.id)
+                .and_then(|(_, json)| serde_json::from_str::<Saved>(json).ok());
+            let cat = world.place_cat(def, saved, now);
+            world.cats.push(cat);
         }
+        world
     }
 
     pub fn handle(&mut self, now: u64, input: Input) -> Vec<Out> {
@@ -111,10 +126,9 @@ impl World {
             Input::Msg { id, msg } => match msg {
                 ClientMsg::WalkTo { tile } => self.walk_to(now, id, tile, &mut out),
                 ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
+                ClientMsg::Pet { cat } => self.pet(now, id, &cat, &mut out),
+                ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
                 ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
-                ClientMsg::Pet { .. } | ClientMsg::Call { .. } => {
-                    error(&mut out, id, ErrorCode::UnknownCat, "There's no cat by that name here.")
-                }
             },
         }
         out
@@ -122,32 +136,43 @@ impl World {
 
     pub fn tick(&mut self, now: u64) -> Vec<Out> {
         let mut out = Vec::new();
+        let dt = now.saturating_sub(self.last_tick);
         self.last_tick = now;
         self.noise.retain(|&t| now.saturating_sub(t) < 60_000);
-        let _arrived = self.people_tick(now, &mut out);
-        self.heard.clear();
-        self.arrivals.clear();
+        for (id, then) in self.people_tick(now, &mut out) {
+            self.arrived_with(now, id, then, &mut out);
+        }
+        self.cats_tick(now, dt, &mut out);
         if now.saturating_sub(self.last_save) >= self.tuning.save_every_secs * 1000 {
             self.save(now);
         }
         out
     }
 
-    pub fn snapshot_for(&self, _id: u32, now: u64) -> Snapshot {
+    pub fn snapshot_for(&self, id: u32, now: u64) -> Snapshot {
         Snapshot {
             room: self.room.view(),
             people: self.people.iter().map(|p| people::person_view(p, now)).collect(),
-            cats: Vec::new(),
-            your_trust: Vec::new(),
+            cats: self.cats.iter().map(|c| c.view(now)).collect(),
+            your_trust: self.cats.iter().map(|c| self.trust.view(&c.def.id, id)).collect(),
         }
     }
 
-    /// Saves what the world keeps across restarts (Task 9 adds the cats).
+    /// Saves each cat's place and needs, and the world clock, through the store.
     pub fn save(&mut self, now: u64) {
         self.last_save = now;
-        if let Some(store) = &self.store {
-            store.fire(move |c| crate::store::put_world(c, "saved_at", &now.to_string()));
-        }
+        let Some(store) = &self.store else { return };
+        let cats: Vec<(String, String)> = self
+            .cats
+            .iter()
+            .map(|c| (c.def.id.clone(), serde_json::to_string(&c.saved(now)).expect("a cat's state serialises")))
+            .collect();
+        store.fire(move |conn| {
+            for (id, json) in &cats {
+                crate::store::put_cat_state(conn, id, json, now)?;
+            }
+            crate::store::put_world(conn, "saved_at", &now.to_string())
+        });
     }
 }
 
