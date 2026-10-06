@@ -224,3 +224,24 @@ alternatives; the name stands unless the user changes it. Questions 12 to 14
 went out: who can rearrange the café, what people can do with each other, and
 how people move and act.
 [`910873c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/910873c)
+
+---
+
+*Sent 2026-10-07 02:45:06 AEDT*
+
+> burakkul; Q12 A, Q13 B, Q14 A
+
+**Result.** The black cat was renamed again. "burakkul;" was read as Burakku
+(ブラック, "black"), assuming a stray "l" beside the semicolon, and the user was
+asked to confirm. Anyone inside can rearrange the café from a free catalogue,
+within gentle limits: one change per person every minute or so, the door and
+walkways kept clear, a limited amount of floor. People can emote, sit
+together, hand each other treats and pass a cat. Everything works by pointing
+and then acting, the same way on mouse, touch and keyboard, which settled the
+tile-snapped pointer with Tab. The anger, carrying and furniture-grab defaults
+stood, so `docs/notes/brainstorm.md` was reorganised with each default under
+its decision. The last batch went out, questions 15 to 19: day and night, what
+the quiet hours leave behind, who draws the pixel art, accounts in detail, and
+safety for public text. A default for what persists and what expires went with
+them.
+[`864a7c7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/864a7c7)
