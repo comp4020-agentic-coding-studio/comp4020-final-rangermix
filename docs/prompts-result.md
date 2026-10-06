@@ -135,3 +135,18 @@ to decided in `docs/notes/brainstorm.md`, to become an ADR in the approaches
 step. The next question asks how many people fit inside at once and what
 happens when the café is full.
 [`0b4d17a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0b4d17a)
+
+---
+
+*Sent 2026-10-07 02:07:10 AEDT*
+
+> A. cap at 6 for now. for people waiting show their avatar at window. they watch from the same view as user inside, but can't interact other than talking.
+
+**Result.** Recorded the cap: at most six people inside for now, for the cats'
+sake as in a real café, with everyone else waiting as an avatar at the front
+window. People at the window see the same view as those inside and can talk,
+but do nothing else. With only six seats, a forgotten tab could hold one for
+hours, so the next question asks what happens to a quiet seat while someone is
+waiting. Added the shape of the line (how many fit at the window, who comes in
+next) to the question queue.
+[`1f7cb5c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1f7cb5c)
