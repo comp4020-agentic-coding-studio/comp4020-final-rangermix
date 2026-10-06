@@ -189,6 +189,9 @@ asked; the numbers can change without reopening the decision.
     stored), emotes, a cat's anger (it cools, and isn't stored), and who is
     inside or in line (rebuilt as people reconnect after a restart). Proposed
     as a default with questions 15 to 19; no change requested.
+27. **Approach 1: a Rust server with a TypeScript canvas client.** The user
+    proposed Rust knowing its benefits ("i'm well aware of the pros and that's
+    why i proposed it"). To become the stack ADR with the spec.
 
 ## Assumptions not contested
 
@@ -280,7 +283,7 @@ reply, which ended the clarifying questions.
 ## Approaches, presented 2026-10-07
 
 All three keep SQLite on the `/data` volume and one WebSocket per visitor.
-*Awaiting the user's choice.*
+The user chose 1 (decision 27).
 
 1. **Rust server, TypeScript canvas client (recommended).** Rust (tokio and
    axum) serves the pages, `/readme/` rendered from `README.md`, accounts and
@@ -303,13 +306,83 @@ All three keep SQLite on the `/data` volume and one WebSocket per visitor.
    what markers test (keyboard focus, text input on a phone, screen readers);
    bigger downloads; slower iteration.
 
+## Design sections presented
+
+### Sharing types between Rust and TypeScript
+
+Asked how Rust can generate TypeScript, given protobuf and gRPC as the familiar
+route. Answer: the same mechanism serde uses. A derive macro is a compile-time
+plugin that reads a struct or enum and generates code; ts-rs's
+`#[derive(TS)]` generates the TypeScript declaration from the field names and
+types, honouring serde's attributes (`tag`, `rename_all`, ...), so the
+TypeScript describes exactly the JSON serde emits. `#[ts(export)]` adds a
+generated test, so `cargo test` writes the `.ts` files (into
+`TS_RS_EXPORT_DIR`). Unlike protobuf this is code-first: the Rust types are the
+schema and the wire stays JSON, readable in DevTools and in logs. Protobuf's
+field-number versioning isn't needed when both ends deploy together; a build id
+checked on connect makes a stale tab reload. Two guards: 64-bit integers
+default to `bigint` in the TypeScript while `JSON.parse` yields numbers, so
+`TS_RS_LARGE_INT = "number"`; and a check regenerates the bindings and fails if
+they differ from what's committed. Alternatives doing the same job: typeshare
+(a CLI that parses the Rust source) and specta. Checked against the ts-rs
+README (version 12, MSRV 1.88) on 2026-10-07.
+
+### Design 1: architecture and data flow (presented 2026-10-07, *awaiting approval*)
+
+- One Rust binary (tokio and axum) on the one machine. `/` serves the client;
+  `/readme/` serves `README.md` rendered to HTML at startup, so its headings
+  are in the server-sent HTML; `/api/*` handles sign-up, log-in and recovery
+  with an HttpOnly session cookie; `/ws` is the WebSocket.
+- The world task owns the whole café in memory (room, furniture, cats, who is
+  inside and in line, trust, bans, the chalkboard). Connections send it
+  commands over a channel; it handles them one at a time and steps the
+  simulation ten times a second. One owner means no locks and one order of
+  events that everyone sees, so "first grab wins" comes free.
+- The store is SQLite on `/data`. A writer batches durable changes (accounts,
+  trust, bans, furniture) into transactions; the cats' state is snapshotted
+  every few seconds and on Fly's stop signal.
+- The client is TypeScript built by Vite: a canvas for the room, HTML over it
+  for the text box, action menus and a screen-reader announcer, and a
+  WebSocket that reconnects on its own.
+- Cats, furniture and sprites live in `content/` as TOML and sprite files,
+  loaded at startup, so a new cat is a new file rather than new code.
+- Repo layout: `server/`, `client/`, `content/`, and the existing `spec/`. The
+  Dockerfile becomes three stages: build the client, build the server, copy
+  both into a slim image.
+- Data flow examples: a click becomes `walkTo`, the world plans a path, and
+  `moved {who, path, startAt, speed}` goes to everyone; Mochi deciding to nap
+  becomes `catActed` events; "Mochi!" in a bubble passes the length, rate and
+  blocklist checks, goes out as `said` (never stored), counts as noise, and
+  makes Mochi look up.
+
+### Design 2: real-time behaviour (presented 2026-10-07, *awaiting approval*)
+
+- Snapshot, then events: on connect, a build-id check (a stale tab reloads),
+  then a snapshot of the whole café stamped with the server's clock, then
+  events in order.
+- Walks are paths, not positions: each walk is sent once (path, start time,
+  speed) and animated locally, which means few messages, smooth motion on a
+  slow connection, and newcomers placing everyone mid-stride.
+- The server decides: clients send intents, and the world checks them and
+  broadcasts outcomes, which the sender renders like everyone else.
+- Falling behind heals by snapshot: reconnects retry with backoff, the seat
+  waits 30 seconds, and a connection too slow to keep up is dropped and
+  reconnects to a fresh snapshot, so nothing is replayed.
+- Public by default: everything in the room goes to everyone inside and at the
+  window. Only treats left, your own trust with each cat, ban notices and the
+  "still there?" nudge are yours alone; others see trust only through what the
+  cats do.
+- The window gets the same stream but can only send speech.
+- Each connection's bubbles (3 per 10 s), furniture changes (1 a minute) and
+  actions per second are limited before anything reaches the world task.
+- Calling is speaking: the "call" action puts the cat's name in a bubble, so
+  the cats treat calling and saying a name the same way.
+
 ## Still to come
 
-- The user's choice of approach.
-- The design, presented a few sections at a time: architecture and data flow;
-  the cat character system (traits, needs, reactions to events, effects on the
-  room and other cats, cats defined as data); real-time behaviour (movement,
-  reconnects, slow connections, the line); persistence and fast-forward;
-  accounts and safety; the client (rendering, sprites as data, pointer input,
-  layouts at 390×844 and 1920×1080); logging and testing, including which
-  README promises `spec/` enforces.
+- Approval of designs 1 and 2.
+- The rest of the design: the cat character system (traits, needs, reactions
+  to events, effects on the room and other cats, cats defined as data);
+  persistence and fast-forward; accounts and safety; the client (rendering,
+  sprites as data, pointer input, layouts at 390×844 and 1920×1080); logging
+  and testing, including which README promises `spec/` enforces.
