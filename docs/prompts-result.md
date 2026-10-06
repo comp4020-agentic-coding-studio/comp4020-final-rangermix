@@ -506,3 +506,106 @@ music, which the design doesn't have.
 [`2719d7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2719d7a)
 [`28310c8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/28310c8)
 [`82cfe9a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/82cfe9a)
+
+**Result, the build (Tasks 1 to 12, logged in the next session).** The
+session ran out of budget during Task 13, before it could log this, so it is
+filed here, under the prompt that asked for it. Twelve tasks were built test
+first: the server and `/readme/`, the protocol in Rust with its generated
+TypeScript, content from `content/`, the SQLite store, accounts with recovery
+codes, the trust book, the three cats as data, the world (arriving, the window
+line, walking, talking, the cats' lives), the WebSocket, the client's sprites
+and its way in. Each task's departures from the plan are in its "Execution
+log". Two rulings changed `design.md`:
+- a cat sniffs a newcomer's hand even when napping, because a café left
+  empty had all three asleep and a first visit left no trace;
+- cats only nap, hide or wander where someone can stand next to them, since
+  one corner of the cat tower was out of reach.
+
+At that point 125 Rust tests, 11 client tests and 16 spec tests passed.
+[`b6d6949`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b6d6949)
+[`f475814`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f475814)
+[`09bdee4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09bdee4)
+[`029dbda`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/029dbda)
+[`113b30f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/113b30f)
+[`34e5fdd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/34e5fdd)
+[`dbd8a58`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dbd8a58)
+[`b8da323`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b8da323)
+[`f0d5fb1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f0d5fb1)
+[`eec8cb4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/eec8cb4)
+[`7db40cf`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7db40cf)
+[`fdf9c0f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/fdf9c0f)
+[`fb86b1c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/fb86b1c)
+
+---
+
+## 3. Building phase 1 for crit 8
+
+*Session `308a67b6`, Claude Code (Opus 5.5).*
+
+*Sent 2026-10-07 09:31:50 AEDT*
+
+> carry over the context from 2ae45b1d-f600-4c98-8122-bf9b88f7c0ab and continue the goal
+
+**Result.** The earlier session was found from its transcript and progress
+ledger. It had stopped mid-Task 13 when its budget ran out, with Task 13's
+code written and passing but not yet looked at or committed. The files were
+compared line by line with the plan and matched. In a browser the café drew
+crisp at 5× on a 1920×1080 desktop and at 2× on a 390×844 phone with no
+sideways scroll, and refitted after a resize. The cats moved on their own,
+and a scripted second visitor walked in. One frame after the first sign-up
+drew the avatar in the wrong look; it couldn't be reproduced, and it was
+noted rather than chased. Task 14 (acting in the café) was then written from
+the plan and passed its tests.
+[`ce55fef`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ce55fef)
+
+*Sent mid-turn, 2026-10-07 09:39:27 AEDT*
+
+> it's flashing reconnecting fast and nonstop
+
+**Result.** The cause was a reload loop, not a dropped connection. The local
+server read the client's build id once at startup; the client had been
+rebuilt since, so every welcome told the page it was out of date, and it
+reloaded, reconnected and reloaded again. The agent explained this and
+proposed two fixes: reload at most once per build (recommended), or read the
+build id per connection. The user then interrupted the turn.
+
+*Sent 2026-10-07 09:41:56 AEDT*
+
+> read crit 8 spec, build bare minimum MVP for it. you can over simplify things first - we can adjust later. record all things you simplified so we have something to work on later.
+
+**Result.** The C8 page asks for: deployed by the cutoff; a visitor can do the
+core thing and find their trace when they come back; the README, `PROCESS.md`
+and a reflection in the user's words; and the repo public via `/ship`. The
+rest of phase 1 was cut to what that needs, and every cut was written into
+[`docs/notes/crit-8-mvp.md`](notes/crit-8-mvp.md): fifteen items, from the
+missing two-window and phone checks to the skipped README material and phase
+review.
+- **The reload loop.** Fixed the recommended way, test first. A tab reloads at
+  most once per server build; it carries on (simplified: silently) if the
+  mismatch remains, and never reloads without `sessionStorage`. Seen in the
+  browser: one reload, then steady.
+- **Task 14.** Checked by hand with the mouse: walking, the cat menu,
+  petting (Tora sniffed, trust 0 → 0.6), and bubbles. Japanese renders and
+  markup stays text. Checked with the keyboard alone: the pointer, Tab
+  through cats, Enter for the menu, Escape out, and Tab on to the talk box.
+- **Task 15, trimmed.** The three-stage image and a Rust CI job the deploy
+  waits for. Getting rustfmt and clippy clean took a formatting commit at
+  width 140 (the code's own width, about half the churn of the default) and
+  `#[allow(dead_code)]` on two items kept for phases 3 and 4. Against the
+  built image, `pnpm check` passed and no spoken words reached the logs. A
+  script showed trust and the session surviving a container restart. The
+  plan's by-hand passes at both sizes were cut (listed in the notes).
+- **Deploy: blocked.** There's no Fly token on this machine, and by the plan
+  agents don't enter it. The repo is still private, so CI won't deploy
+  either. The live URL accepts a connection but doesn't answer.
+[`5b20999`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5b20999)
+[`383506a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/383506a)
+[`e5249fd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e5249fd)
+[`978a923`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/978a923)
+
+*Sent mid-turn, 2026-10-07 09:44:58 AEDT*
+
+> yes I clicked
+
+**Result.** It confirmed that three unexplained walks in the server log
+during the browser check were the user's own clicks, not a fault.
