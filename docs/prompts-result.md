@@ -389,3 +389,29 @@ The companion's working directory holds a session key, so `.superpowers/` was
 added to `.gitignore`. The screen itself was copied to `docs/notes/mockups/`
 to keep it in the record.
 [`59067a3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/59067a3)
+
+---
+
+*Sent 2026-10-07 03:47:16 AEDT*
+
+> phone both A and B with one button to switch. others approved. add link to readme at login page
+
+**Result.** The phone gets both layouts with one button to switch between
+them. A is the default, since the user's clicks in the companion were on A,
+and the choice is remembered per device. The desktop layout, the floor plan
+and the client's technical points were approved. As the user asked, the
+logged-out card links to `/readme/`. With no more visual questions ahead, the
+companion screen was cleared.
+
+The last section, design 7, went out:
+- Logging: one JSON line per user action (who, what, when, outcome) for C10,
+  with bubble text, credentials and IP addresses never logged, and a formatter
+  script over `flyctl logs` as the live view.
+- Testing: seeded `cargo test` for the cats' rules, fast-forward and
+  persistence; a drift check on the generated types; black-box `spec/` checks
+  for the promises; Playwright for the keyboard pass at both marking sizes;
+  a Rust CI job the deploy waits on.
+- A first split of the README's promises into enforced (and by which layer)
+  and judged (and how assessed).
+- The `CLAUDE.md` rules that follow from the design.
+[`a4ce6c2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4ce6c2)
