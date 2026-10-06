@@ -89,3 +89,34 @@ question asks what a visitor should walk away with after ten minutes. Also
 flagged that C8's cutoff falls on Wednesday 7 October for every crit group
 but one.
 [`7e7fbb7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7e7fbb7)
+
+---
+
+*Sent 2026-10-07 01:30:09 AEDT*
+
+> "The machine shuts down when nobody is connected. The cats stop with it, so we need to decide what the café looks like after a quiet night." The server won't stop simulating the game, including cats' movement, actions, etc. what might change is that some cats can have character that make them more active when no humans around, and some will be less active. The game will not stop at 3 cats so we need a modular system of cat characters and their effects.
+>
+> "The server is small: 256 MB of memory and one storage volume." that should be fine if we choose to use a compiled language like rust.
+>
+> "a keyboard-only pass" an easy solution is to have a pointer controlled by keyboard so it works without a mouse.
+>
+> "Identity is light: you pick a name and a look, and the browser remembers you." use a simple user system with password, keep it minimum as we don't need much for the project.
+>
+> "I'd put A at the heart. B gives you the lasting trace (the cats remember you), and C is how the room changes." exactly what i thought.
+>
+> don't worry about deadline
+
+**Result.** Recorded the answers in `docs/notes/brainstorm.md` as decisions in
+progress. Company around the cats is the heart, with trust as the lasting
+trace and furnishing as how the room changes. The world never stops, and some
+characters are more active when nobody is around. The roster grows past three,
+so characters are modular. Accounts are a minimal username and password, and
+keyboard use goes through a keyboard-driven pointer. Rust is the lean for the
+server, to be weighed against alternatives in an ADR. Raised one conflict: the
+course's `fly.toml` stops the machine when nobody is connected and every deploy
+restarts it, so a world that never stops needs the server to fast-forward the
+simulation through the gap when it wakes, as Neko Atsume does. Turning
+auto-stop off would go against a setting the course chose and still miss
+deploys. Proposed snapping the keyboard pointer to tiles, with Tab to jump
+between things. The next question asks who the café is for.
+[`a175cc7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a175cc7)
