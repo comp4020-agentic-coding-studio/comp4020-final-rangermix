@@ -64,12 +64,14 @@ export class Visitor {
 
   static async connect(cookie: string): Promise<Visitor> {
     const ws = new WebSocket(new URL("/ws", baseUrl.replace(/^http/, "ws")), { headers: { cookie } });
+    // Listening before the socket opens: a welcome that arrives right behind
+    // the upgrade could otherwise be emitted before anyone is listening.
+    const visitor = new Visitor(ws);
     await new Promise<void>((resolve, reject) => {
       ws.once("open", () => resolve());
       ws.once("error", reject);
       ws.once("unexpected-response", (_req, res) => reject(new Error(`upgrade refused: ${res.statusCode}`)));
     });
-    const visitor = new Visitor(ws);
     await visitor.next((m) => m.type === "welcome");
     return visitor;
   }
