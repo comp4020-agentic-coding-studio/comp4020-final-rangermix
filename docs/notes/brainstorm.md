@@ -511,7 +511,14 @@ README (version 12, MSRV 1.88) on 2026-10-07.
   logs record that someone spoke, not what they said, which keeps decision
   11's "nothing said is stored" true.
 
-### Design 6: the client (presented 2026-10-07, *awaiting choices*)
+### Design 6: the client (approved 2026-10-07)
+
+Decided: the phone gets **both** layouts, A and B, with one button to switch
+between them; A is the default (the user's clicks in the companion were on A),
+and the choice is remembered in the browser as a per-device preference. The
+desktop layout, the floor plan and the terminal points below were approved
+as shown. The user added one thing: the logged-out sign-up and log-in card
+links to `/readme/`.
 
 The user asked for "light mockups", so the brainstorming visual companion was
 started and showed wireframes in a browser tab. The screen is kept at
@@ -552,8 +559,66 @@ In the terminal, proposed with the screen:
 - Logged out, `/` shows the sign-up and log-in card over a still picture of
   the café; `/readme/` is plain server-rendered HTML.
 
+### Design 7: logging and testing (presented 2026-10-07, *awaiting approval*)
+
+Logging, for C10:
+
+- One JSON line per user action on stdout (Rust `tracing`), which Fly
+  collects: who, what, when, and the outcome, so the logs can tell the story
+  ("Sam picked up Burakku, scratched, banned from picking up for 2 days").
+- Also logged: arrivals, departures, the line and walk-outs; cats' behaviour
+  changes (not every step); each wake-up's fast-forward summary; errors.
+- Never logged: bubble text (a `said` line has who, length and who it was
+  addressed to), passwords, recovery codes, session tokens, IP addresses.
+- Live view: `flyctl logs` through a small formatter script that turns the
+  JSON into readable lines. No stats page unless the C10 demo needs one.
+
+Testing:
+
+- Rust rules (`cargo test`), seeded so every run is the same: each cat's
+  character (Burakku hides when it's noisy, Mochi reaches treats first, Tora
+  inspects new furniture); handling outcomes and ban lengths; trust that
+  tapers but never fades; fast-forward (an empty night leaves Burakku's traces
+  and chalkboard lines, and the same seed gives the same night); the store
+  (state survives a stop and a start); pathfinding and placement (the door
+  walkway can't be blocked); rate limits; the whole-word blocklist; accounts
+  and recovery; bubble text never reaching a log line.
+- A drift check regenerates the TypeScript types and fails if they differ
+  from what's committed.
+- `spec/`, black-box against the running image in CI as now: real-time (two
+  clients, one acts, the other sees it within a second); the cap (a seventh
+  person lands at the window and can only talk, and the first in line walks in
+  when a seat frees); bubbles never replayed on reconnect; the 100-character
+  cap, burst limits and blocklist; first grab wins; sign-up shows a recovery
+  code once and recovery works; the log-in card links to `/readme/`.
+- Browser checks (Playwright, in `spec/`): a keyboard-only pass at 390×844 and
+  1920×1080 with a resize mid-use, and the phone layout switch: what markers
+  try by hand.
+- CI: a Rust job (format, lint, `cargo test`, drift check) beside the existing
+  check job, and the deploy waits for both.
+
+README promises, enforced and judged (the brief asks the README to say which):
+
+- Enforced by `spec/`: six inside and the line at the window, real-time, bubbles
+  that vanish, text limits, accounts and recovery, the keyboard path at both
+  sizes.
+- Enforced by `cargo test`: the cats' characters, trust that never fades,
+  grudges, the night's traces, persistence, bubble text never logged.
+- Judged: whether strangers talk because of the cats, whether the cats feel
+  like characters, whether regulars feel remembered. Assessed by watching the
+  C9 pod session, reading the C10 logs for people meeting through cats, and
+  the showcase.
+
+Rules for `CLAUDE.md` that follow from the design: never store or log bubble
+text; never store email or IP addresses; the server decides every outcome; the
+door walkway is never blocked; the cap is enforced on the server; every action
+works by keyboard, touch and mouse at both marking sizes; generated TypeScript
+is never edited by hand; cats change through `content/`, not code.
+
 ## Still to come
 
-- The user's choices on design 6.
-- Logging and testing, including which README promises `spec/` enforces.
-- Then the spec: `docs/design.md` and the ADRs, for review.
+- Approval of design 7.
+- Then the spec: `docs/design.md` and the ADRs (app shape and scope; the stack;
+  the real-time model; the store; fast-forward on wake; accounts; the
+  quiet-seat rule as C9's multi-user decision), plus the rules in `AGENTS.md`,
+  for review.
