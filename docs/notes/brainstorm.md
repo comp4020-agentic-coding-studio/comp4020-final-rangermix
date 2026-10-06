@@ -71,14 +71,26 @@ approved.
     someone at the window wasn't chosen. (Q4)
     - *Default numbers, to tune:* a dropped connection keeps its seat for 30
       seconds; "gone quiet" means the tab hidden for 2 minutes or no input for
-      10; the nudge waits 60 seconds for an answer.
+      10; the nudge waits 60 seconds for an answer. No change requested when
+      asked (Q5 reply).
+    - *The line:* first come, first served. The window shows as many waiting
+      avatars as fit along it, and a count ("+12 waiting") for the rest. When
+      a seat frees, the first in line walks in through the door. Proposed as a
+      default instead of a question; no change requested when asked (Q5
+      reply).
+11. **Speech bubbles are public and fleeting.** Everyone inside and at the
+    window sees every bubble, and nothing said is stored on the server.
+    Clicking someone's avatar addresses your words to them (their name shows
+    on your bubble); Enter with nothing selected talks to the room. The
+    browser keeps a short list of recent bubbles for the current visit only,
+    for anyone who reads slowly or missed one. A bubble stays up longer the
+    longer the message is. (Q5, with the user's addition of length-based
+    fading)
+    - *Default numbers, to tune:* a bubble shows for 3 seconds plus 60 ms per
+      character, capped at 10 seconds.
 
 ## Proposed, awaiting the user
 
-- **The line, by default.** First come, first served. The window shows as many
-  waiting avatars as fit along it, and a count ("+12 waiting") for the rest.
-  When a seat frees, the first in line walks in through the door. To confirm
-  with the design sections.
 - **A refinement of decision 5.** The pointer snaps to tiles, and Tab jumps
   between things you can act on (cats, people, furniture), so no one nudges a
   cursor pixel by pixel. To settle with the controls question.
@@ -110,14 +122,16 @@ approved.
    only when someone is waiting, timed visits while there's a line, never
    moving anyone, or giving up your seat to someone at the window. Answer:
    stepping out after a nudge, only when someone is waiting.
-5. **What does a speech bubble reach, and how long does it last?** Asked
-   2026-10-07; options were public and fleeting (with a list of recent bubbles
-   kept only in the browser for the visit), public with a saved history, or
-   private when addressed to someone. *Awaiting an answer.*
+5. **What does a speech bubble reach, and how long does it last?** Options
+   were public and fleeting (with a list of recent bubbles kept only in the
+   browser for the visit), public with a saved history, or private when
+   addressed to someone. Answer: public and fleeting, with the fade delay
+   adjusted to the message's length.
+6. **Do the cats react to talk?** Asked 2026-10-07; options were to noise and
+   names, to names only, to noise only, or not at all. *Awaiting an answer.*
 
 ## Questions still to ask, roughly in order
 
-- Do cats react to talk: a noisy room, or their name in a bubble?
 - Moving and controls: click-to-walk, keys, or both; the keyboard pointer; touch
   on a 390×844 phone.
 - The cat character system: traits, needs, reactions to events, effects on the
