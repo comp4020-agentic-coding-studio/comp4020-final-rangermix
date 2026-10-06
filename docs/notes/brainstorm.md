@@ -63,9 +63,22 @@ approved.
    not a fixed one. People waiting appear as avatars at the front window. They
    see the same view as the people inside, but the only thing they can do is
    talk. (Q3)
+10. **A quiet seat frees up only when someone is waiting.** If a visitor's tab
+    is hidden, or they haven't touched anything for a while, and someone is at
+    the window, they get a "still there?" nudge; with no answer, their avatar
+    walks out the door and the first person in line walks in. With nobody
+    waiting, anyone can stay as long as they like. Giving up your seat to
+    someone at the window wasn't chosen. (Q4)
+    - *Default numbers, to tune:* a dropped connection keeps its seat for 30
+      seconds; "gone quiet" means the tab hidden for 2 minutes or no input for
+      10; the nudge waits 60 seconds for an answer.
 
 ## Proposed, awaiting the user
 
+- **The line, by default.** First come, first served. The window shows as many
+  waiting avatars as fit along it, and a count ("+12 waiting") for the rest.
+  When a seat frees, the first in line walks in through the door. To confirm
+  with the design sections.
 - **A refinement of decision 5.** The pointer snaps to tiles, and Tab jumps
   between things you can act on (cats, people, furniture), so no one nudges a
   cursor pixel by pixel. To settle with the controls question.
@@ -93,17 +106,18 @@ approved.
    waiting show as avatars at the window, see the same view, and can only
    talk.
 4. **When the café is full and someone is waiting, what happens to a seat held
-   by someone who has gone quiet?** Asked 2026-10-07; options were stepping
-   out after a nudge only when someone is waiting, timed visits while there's
-   a line, never moving anyone, or giving up your seat to someone at the
-   window. *Awaiting an answer.*
+   by someone who has gone quiet?** Options were stepping out after a nudge
+   only when someone is waiting, timed visits while there's a line, never
+   moving anyone, or giving up your seat to someone at the window. Answer:
+   stepping out after a nudge, only when someone is waiting.
+5. **What does a speech bubble reach, and how long does it last?** Asked
+   2026-10-07; options were public and fleeting (with a list of recent bubbles
+   kept only in the browser for the visit), public with a saved history, or
+   private when addressed to someone. *Awaiting an answer.*
 
 ## Questions still to ask, roughly in order
 
-- The line: how many avatars fit at the window, how a long line shows, and
-  who comes in next.
-- Talking: does clicking an avatar address that person, or is every bubble
-  public? Do bubbles vanish, or is there a log? Do cats react to a noisy room?
+- Do cats react to talk: a noisy room, or their name in a bubble?
 - Moving and controls: click-to-walk, keys, or both; the keyboard pointer; touch
   on a 390×844 phone.
 - The cat character system: traits, needs, reactions to events, effects on the
