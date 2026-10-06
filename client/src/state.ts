@@ -72,9 +72,13 @@ export function fromWelcome(msg: Welcome, localNow = Date.now()): CafeState {
   };
 }
 
-/** The client and server come from one build; a tab left open across a deploy reloads. */
-export function needsReload(serverBuild: string, clientBuild: string): boolean {
-  return serverBuild !== clientBuild && serverBuild !== "dev" && clientBuild !== "dev";
+/**
+ * The client and server come from one build; a tab left open across a deploy reloads.
+ * Only once per server build (`reloadedFor`): if the reload still brings back a
+ * different client, reloading again would loop forever, so the tab carries on.
+ */
+export function needsReload(serverBuild: string, clientBuild: string, reloadedFor: string | null = null): boolean {
+  return serverBuild !== clientBuild && serverBuild !== "dev" && clientBuild !== "dev" && reloadedFor !== serverBuild;
 }
 
 const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {

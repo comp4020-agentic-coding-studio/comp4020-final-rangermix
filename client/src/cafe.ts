@@ -6,6 +6,28 @@ import type { ClientMsg } from "./protocol/ClientMsg";
 import type { ServerMsg } from "./protocol/ServerMsg";
 import { type CafeState, type Effect, apply, fromWelcome, needsReload } from "./state";
 
+// Which server build this tab last reloaded for. Storage can be missing or
+// refuse (a private window); then the tab simply doesn't reload.
+const RELOADED_FOR = "cafe.reloadedFor";
+
+function reloadedFor(): string | null {
+  try {
+    return sessionStorage.getItem(RELOADED_FOR);
+  } catch {
+    return null;
+  }
+}
+
+/** Notes the reload; false when it can't, since a second reload then looks like a first. */
+function rememberReload(build: string): boolean {
+  try {
+    sessionStorage.setItem(RELOADED_FOR, build);
+    return sessionStorage.getItem(RELOADED_FOR) === build;
+  } catch {
+    return false;
+  }
+}
+
 export interface CafeHooks {
   onSignedOut(): void;
   onError?(effect: Extract<Effect, { kind: "error" }>): void;
@@ -63,7 +85,7 @@ export class Cafe {
 
   private receive(msg: ServerMsg): void {
     if (msg.type === "welcome") {
-      if (needsReload(msg.build, __BUILD_ID__)) {
+      if (needsReload(msg.build, __BUILD_ID__, reloadedFor()) && rememberReload(msg.build)) {
         location.reload();
         return;
       }

@@ -73,4 +73,10 @@ describe("the client's copy of the café", () => {
     expect(needsReload("dev", "b")).toBe(false);
     expect(needsReload("a", "dev")).toBe(false);
   });
+
+  it("reloads at most once for the same server build, so a mismatch can't loop", () => {
+    expect(needsReload("a", "b", null)).toBe(true);
+    expect(needsReload("a", "b", "a")).toBe(false);
+    expect(needsReload("c", "b", "a")).toBe(true);
+  });
 });
