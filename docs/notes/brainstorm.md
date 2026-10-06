@@ -107,8 +107,8 @@ asked; the numbers can change without reopening the decision.
     with two renames.) The black cat was first renamed "Buraku"; told that the
     spelling reads in Japanese as 部落, a word tied to discrimination against
     the burakumin, the user renamed her again. They typed "burakkul;", read as
-    Burakku (ブラック, "black") with a stray "l" beside the semicolon; to
-    confirm.
+    Burakku (ブラック, "black") with a stray "l" beside the semicolon; asked to
+    confirm, they didn't correct it, so Burakku stands.
     - **Mochi:** round, white and grey; sociable and greedy; goes where the
       people and food are; naps more when the café is empty.
     - **Burakku:** black and shy; hides when the room is busy and explores
@@ -152,17 +152,43 @@ asked; the numbers can change without reopening the decision.
     keyboard, arrow keys move the tile-snapped pointer, Tab jumps between
     things, and Enter acts. One model for mouse, touch and keys, so the
     keyboard and the phone get the whole café. (Q14)
-
-## Proposed, awaiting the user
-
-- **What persists and what expires, by default.** Persists across restarts and
-  redeploys: accounts and looks; each cat's trust in each person; bans until
-  they expire; the furniture layout; each cat's state (where it is, what it's
-  doing, how hungry and tired it is); treats used today; and whatever the
-  quiet hours leave behind (Q16). Expires: speech bubbles (never stored),
-  emotes, a cat's anger (it cools, and isn't stored), and who is inside or in
-  line (rebuilt as people reconnect after a restart). Asked alongside
-  questions 15 to 19.
+21. **The café keeps Canberra time.** Morning light, afternoon sun, lamps in
+    the evening, dim at night, and the cats keep daily rhythms to match (Mochi
+    naps after lunch, Burakku prowls at night). Everyone shares the one clock,
+    because it's one café in one place. (Q15)
+22. **The quiet hours leave traces, and a chalkboard by the door tells the
+    story.** The room shows what happened (scattered toys, a toppled plant, an
+    empty treat dish, a cat asleep somewhere new), and the chalkboard notes
+    what the cats got up to, day and night ("3:12am, Burakku knocked over the
+    fern"; "Mochi slept on Sam's lap for 20 minutes"). It records cats'
+    doings, not what people said, and is wiped each morning. (Q16)
+    - *Defaults, to tune:* wiped at 7:00 Canberra time, when the café
+      "opens"; shows the latest eight entries.
+23. **Claude draws the pixel art as code.** Sprites are small grids of palette
+    numbers on a 16-pixel grid, so recolouring is trivial. The cats share one
+    base sprite with swappable coats, patterns and eye colours, so a new cat
+    is data, like its character. Because sprites are data, any of it can be
+    redrawn later by hand or from a pack without touching the code. (Q17)
+24. **Accounts: username and password, a look, and a one-time recovery code.**
+    Sign up, pick a look, walk in. No email; instead the sign-up shows a
+    recovery code once, which can reset the password, so a forgotten password
+    doesn't cost a regular their cats' trust. Opening the same account in a
+    second tab moves you there, and the first tab says so. (Q18)
+25. **Light limits on public text, plus a slur blocklist.** About 100
+    characters a bubble; a few bubbles per ten seconds per person; a personal
+    mute that hides someone's bubbles on your own screen; an admin ban run
+    from the server, with no admin screen; and a short blocklist of slurs,
+    matched as whole words. (Q19)
+    - *Default numbers, to tune:* 100 characters; three bubbles per ten
+      seconds.
+26. **What persists and what expires.** Persists across restarts and
+    redeploys: accounts and looks; each cat's trust in each person; bans until
+    they expire; the furniture layout; each cat's state (where it is, what it's
+    doing, how hungry and tired it is); treats used today; the night's traces
+    and the chalkboard until they're cleared. Expires: speech bubbles (never
+    stored), emotes, a cat's anger (it cools, and isn't stored), and who is
+    inside or in line (rebuilt as people reconnect after a restart). Proposed
+    as a default with questions 15 to 19; no change requested.
 
 ## Assumptions not contested
 
@@ -233,31 +259,57 @@ reply, which also renamed Buraku to Burakku (decision 15).
     touch and keyboard; walking with keys while the pointer only acts; or seats
     instead of free walking. Answer: point, then act.
 
-Questions 15 to 19 were asked together on 2026-10-07. *Awaiting answers.*
+Questions 15 to 19 were asked together on 2026-10-07 and answered in one
+reply, which ended the clarifying questions.
 
-15. **Day and night.** The café keeps Canberra time, with light and cat
-    rhythms to match; each visitor sees their own local time; or it's always a
-    cozy afternoon.
-16. **What the quiet hours leave behind.** Physical traces only (scattered toys,
-    a toppled plant, a cat asleep somewhere new); those plus a chalkboard by
-    the door where the café notes what the cats got up to, wiped each morning;
-    or nothing, because the staff tidy up.
-17. **Who draws the pixel art?** In every option the cats share one base sprite
-    with swappable coats, patterns and eye colours. Claude draws it as code
-    (palette-indexed pixel grids); the user draws the base sprites and the
-    code recolours them; or a free (CC0) pack for the room, furniture and
-    avatars, with the cats drawn to match.
-18. **Accounts in detail.** Minimal: username and password, pick a look, no
-    recovery, and a second tab takes over from the first; or that plus a
-    one-time recovery code shown at sign-up.
-19. **Safety for public text.** Light limits (about 100 characters a bubble, a
-    few bubbles per ten seconds, a personal mute, and an admin ban from the
-    server); those plus a short whole-word blocklist of slurs; or those plus
-    in-app reporting.
+15. **Day and night.** Options were Canberra time with light and cat rhythms to
+    match, each visitor's own local time, or always a cozy afternoon. Answer:
+    Canberra time.
+16. **What the quiet hours leave behind.** Options were physical traces only;
+    those plus a chalkboard by the door, wiped each morning; or nothing.
+    Answer: traces plus the chalkboard.
+17. **Who draws the pixel art?** Options were Claude drawing it as code, the
+    user drawing base sprites for the code to recolour, or a free (CC0) pack
+    with the cats drawn to match. Answer: Claude, as code.
+18. **Accounts in detail.** Options were minimal with no recovery, or that plus
+    a one-time recovery code shown at sign-up. Answer: with the recovery code.
+19. **Safety for public text.** Options were light limits; those plus a short
+    whole-word blocklist of slurs; or those plus in-app reporting. Answer: the
+    limits plus the blocklist.
+
+## Approaches, presented 2026-10-07
+
+All three keep SQLite on the `/data` volume and one WebSocket per visitor.
+*Awaiting the user's choice.*
+
+1. **Rust server, TypeScript canvas client (recommended).** Rust (tokio and
+   axum) serves the pages, `/readme/` rendered from `README.md`, accounts and
+   the WebSocket, with one simulation task owning the world. The client is
+   TypeScript drawing on a plain Canvas 2D, with the browser's own HTML for the
+   text box, menus and a screen-reader announcer. Message types are defined
+   once in Rust and TypeScript types are generated from them. Gains: the
+   user's lean; tiny memory use; a fast, deterministic simulation for
+   fast-forwarding hours on wake; a strict compiler that catches a class of
+   agent mistakes before tests run. Costs: two languages; slow Rust builds,
+   twice per push to `main` (CI's test image and Fly's deploy).
+2. **TypeScript everywhere (Node server, same client).** Gains: one language,
+   shared types with no generation step, fast builds, and a harness already in
+   TypeScript; Node fits in 256 MB at this scale. Costs: gives up the Rust
+   lean; looser guarantees; fast-forward is slower, though fine at these
+   numbers.
+3. **Rust everywhere (Rust compiled to WebAssembly in the browser, e.g.
+   macroquad or Bevy).** Gains: one language, and the client can reuse
+   simulation code. Costs: a canvas-only engine fights the browser on exactly
+   what markers test (keyboard focus, text input on a phone, screen readers);
+   bigger downloads; slower iteration.
 
 ## Still to come
 
-- Whatever questions 15 to 19 raise.
-- Then the approaches (stack, rendering, simulation, storage) and the design
-  sections, including the cat character system: traits, needs, reactions to
-  events, effects on the room and other cats, and cats defined as data.
+- The user's choice of approach.
+- The design, presented a few sections at a time: architecture and data flow;
+  the cat character system (traits, needs, reactions to events, effects on the
+  room and other cats, cats defined as data); real-time behaviour (movement,
+  reconnects, slow connections, the line); persistence and fast-forward;
+  accounts and safety; the client (rendering, sprites as data, pointer input,
+  layouts at 390×844 and 1920×1080); logging and testing, including which
+  README promises `spec/` enforces.
