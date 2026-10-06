@@ -21,3 +21,7 @@ mise.local.toml
 # harness is CLAUDE.md (and any AGENTS.md), not this directory.
 .claude/
 .vscode/settings.json
+
+# the brainstorming companion's working directory: its server state holds a
+# session key. Mockups worth keeping are copied to docs/notes/mockups/
+.superpowers/

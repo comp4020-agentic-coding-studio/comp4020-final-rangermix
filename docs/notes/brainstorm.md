@@ -163,9 +163,13 @@ asked; the numbers can change without reopening the decision.
     empty treat dish, a cat asleep somewhere new), and the chalkboard notes
     what the cats got up to, day and night ("3:12am, Burakku knocked over the
     fern"; "Mochi slept on Sam's lap for 20 minutes"). It records cats'
-    doings, not what people said, and is wiped each morning. (Q16)
-    - *Defaults, to tune:* wiped at 7:00 Canberra time, when the café
-      "opens"; shows the latest eight entries.
+    doings, not what people said. (Q16)
+    - *Corrected with design 4:* the first default (wipe the board at 7:00,
+      staff tidy at opening) would have erased the night before the morning's
+      first visitor saw it. Instead the board keeps a rolling 24 hours, and
+      traces stay until someone tidies them (standing the plant back up is
+      just moving furniture).
+    - *Default, to tune:* the board shows the latest eight entries.
 23. **Claude draws the pixel art as code.** Sprites are small grids of palette
     numbers on a 16-pixel grid, so recolouring is trivial. The cats share one
     base sprite with swappable coats, patterns and eye colours, so a new cat
@@ -440,7 +444,7 @@ README (version 12, MSRV 1.88) on 2026-10-07.
     or not; first to new furniture; won over by play, bored by petting, quick to
     swat; grudges last hours.
 
-### Design 4: persistence and fast-forward (presented 2026-10-07, *awaiting approval*)
+### Design 4: persistence and fast-forward (approved 2026-10-07)
 
 - One SQLite file on the volume (`/data/cafe.db`, WAL mode), owned by one
   writer thread so the world task never waits on the disk. Tables: users,
@@ -471,14 +475,14 @@ README (version 12, MSRV 1.88) on 2026-10-07.
   can't open at startup, the server fails loudly instead of serving an empty
   café. Fly's daily volume snapshots, kept 5 days by default, are the backup
   (checked in Fly's volume docs, 2026-10-07).
-- **A correction to decision 22's defaults, proposed.** A chalkboard wiped at
-  7:00 would erase the night before the morning's first visitor reads it, and
-  staff tidying at opening would do the same to the traces. Proposal: the
-  board keeps a rolling 24 hours, and traces stay until someone tidies them
-  (standing the plant back up is just moving furniture), which makes tidying
-  a small thing regulars do for each other.
+- **A correction to decision 22's defaults, approved with this design.** A
+  chalkboard wiped at 7:00 would erase the night before the morning's first
+  visitor reads it, and staff tidying at opening would do the same to the
+  traces. Instead the board keeps a rolling 24 hours, and traces stay until
+  someone tidies them (standing the plant back up is just moving furniture),
+  which makes tidying a small thing regulars do for each other.
 
-### Design 5: accounts and safety (presented 2026-10-07, *awaiting approval*)
+### Design 5: accounts and safety (approved 2026-10-07)
 
 - Sign-up: a username (3 to 20 letters, digits, `_` or `-`, unique ignoring
   case, and shown to everyone, which the form says), a password (8 to 128
@@ -507,10 +511,49 @@ README (version 12, MSRV 1.88) on 2026-10-07.
   logs record that someone spoke, not what they said, which keeps decision
   11's "nothing said is stored" true.
 
+### Design 6: the client (presented 2026-10-07, *awaiting choices*)
+
+The user asked for "light mockups", so the brainstorming visual companion was
+started and showed wireframes in a browser tab. The screen is kept at
+[mockups/client-layouts.html](mockups/client-layouts.html) (an HTML fragment
+that takes its colours from the companion's frame, so it looks plainer on its
+own).
+
+On the screen, to choose or approve:
+
+- **Phone, 390×844.** A: the whole room on top at 2×, with what was said this
+  visit, treats and emotes, and the talk box below, and a bottom sheet of
+  actions. B: the room fills the screen at 3× and pans with you, with
+  floating controls and a ring of actions around what you tapped.
+- **Desktop, 1920×1080.** The room in the middle at the largest whole-number
+  scale that fits (5×), the readable chalkboard on the left, who's here, who's
+  at the window and what was said on the right, the talk box under the room,
+  and a small menu beside whatever you click.
+- **The room, 12×10 tiles**, seen from inside with the street wall at the top:
+  the window where the line's faces peek in, the door with a walkway that's
+  never blocked, the chalkboard beside the door, a window seat for cats to
+  watch the line, a cat tower, sofa, rug, table and chairs, cat bed, box,
+  toys, plants, and fixed bowls.
+
+In the terminal, proposed with the screen:
+
+- The canvas draws at the largest whole-number scale that fits, so pixels stay
+  crisp and a resize mid-use just refits; things are drawn back to front by
+  row; day and night is a tint by the Canberra hour.
+- Sprites are grids of palette numbers in `content/sprites/`, recoloured per
+  coat and cached as images at startup.
+- Bubbles, menus, the talk box and the announcer are HTML over the canvas:
+  bubbles render any language crisply (a pixel font lacks CJK and emoji),
+  menus are real buttons the keyboard can focus, and a screen-reader live
+  region narrates what happens ("Mochi walked over to you").
+- Keyboard: arrows move the tile pointer, Tab and Shift+Tab cycle through
+  nearby things, Enter acts or opens the menu, Esc closes it, and Enter with
+  nothing selected goes to the talk box. Reduced-motion settings are honoured.
+- Logged out, `/` shows the sign-up and log-in card over a still picture of
+  the café; `/readme/` is plain server-rendered HTML.
+
 ## Still to come
 
-- Approval of designs 4 and 5, and of the chalkboard and traces correction.
-- The rest of the design: the client (rendering, sprites as data, pointer
-  input, layouts at 390×844 and 1920×1080), shown as mockups if the user wants
-  the visual companion; logging and testing, including which README promises
-  `spec/` enforces.
+- The user's choices on design 6.
+- Logging and testing, including which README promises `spec/` enforces.
+- Then the spec: `docs/design.md` and the ADRs, for review.
