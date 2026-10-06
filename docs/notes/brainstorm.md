@@ -32,9 +32,16 @@ approved.
    of what the cats do; the café should get better with more people in it. The
    cats remembering each person supplies the lasting trace, and furnishing the
    café together is how the room changes. (Q1)
-2. **The world never stops.** The cats go on moving and acting whether or not
-   anyone is there. Character decides how: some cats are more active when no
-   humans are around, some less.
+2. **The world never stops, as far as anyone can tell.** The cats go on moving
+   and acting whether or not anyone is there. Character decides how: some cats
+   are more active when no humans are around, some less. The course's
+   `fly.toml` stops the machine when nobody is connected and every deploy
+   restarts it, so the server saves the world and, on waking, fast-forwards
+   the simulation through the time it was down, with the same rules (as Neko
+   Atsume does while the app is closed). Cats that are busier alone leave
+   traces for the first visitor. Turning auto-stop off was rejected: it goes
+   against a setting the course chose and wouldn't cover deploys. (Accepted
+   with Q2; to become an ADR in the approaches step.)
 3. **The roster will grow past three cats**, so cat characters and their
    effects are a modular system, not three hand-written cats.
 4. **The server is in a compiled language such as Rust** (the user's lean;
@@ -45,19 +52,15 @@ approved.
 6. **Accounts are a minimal username-and-password system**, not an identity
    the browser remembers.
 7. **No deadline pressure.** The C8 cutoff doesn't shape the design.
+8. **It's for people who miss having a cat, and for a small group of regulars
+   who make it their café.** Visitors drop in for a few minutes of cat time;
+   some come back often enough that the cats, and each other, know them. So
+   the café has to be good with one to three people in it, regulars need to
+   be recognisable, and the showcase crowd is the stress test, not the
+   audience. (Q2: "A & C")
 
 ## Proposed, awaiting the user
 
-- **How decision 2 meets `fly.toml`.** The course config stops the machine a
-  few minutes after the last connection closes, and every deploy restarts it.
-  Proposal: the world never stops *as far as anyone can tell*. The server saves
-  the world and, on waking, fast-forwards the simulation through the time it
-  was down, with the same rules (Neko Atsume works this way: cats visit while
-  the app is closed). Cats that are more active when nobody is around leave
-  traces for the first visitor. The alternative, turning auto-stop off, goes
-  against a setting the course chose ("most of why the app costs cents, not
-  dollars") and still wouldn't cover deploys. To become an ADR in the
-  approaches step.
 - **A refinement of decision 5.** The pointer snaps to tiles, and Tab jumps
   between things you can act on (cats, people, furniture), so no one nudges a
   cursor pixel by pixel. To settle with the controls question.
@@ -74,13 +77,17 @@ approved.
    around the cats at the heart; the cats remembering you as the lasting
    trace; furnishing together as how the room changes ("exactly what i
    thought").
-2. **Who is the café for?** Asked 2026-10-07; options were people who miss
-   having a cat, the class at the showcase, a small group of regulars, or
-   cozy-game players. *Awaiting an answer.*
+2. **Who is the café for?** Options were people who miss having a cat, the
+   class at the showcase, a small group of regulars, or cozy-game players.
+   Answer: people who miss having a cat, and a small group of regulars.
+   Fast-forward on wake was accepted in the same reply.
+3. **How many people inside at once, and what happens when it's full?** Asked
+   2026-10-07; options were a cap of about twelve with a window to watch from,
+   no cap with cats reacting to the crowd, several cafés with their own cats,
+   or one café with several capped rooms. *Awaiting an answer.*
 
 ## Questions still to ask, roughly in order
 
-- Scale: how many people inside at once, and what happens when it's full?
 - Talking: does clicking an avatar address that person, or is every bubble
   public? Do bubbles vanish, or is there a log? Do cats react to a noisy room?
 - Moving and controls: click-to-walk, keys, or both; the keyboard pointer; touch
