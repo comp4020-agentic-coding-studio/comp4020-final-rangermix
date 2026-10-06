@@ -9255,3 +9255,15 @@ Where carrying out this plan departed from it, task by task, and why.
   Escape puts the pointer away and Tab moves on to the talk box. Not done:
   the two-window check and the phone-size sheet (see
   `docs/notes/crit-8-mvp.md`).
+- **Task 15.** `cargo fmt` would have rewrapped about 1,500 lines to
+  rustfmt's default width of 100; the code was written wide, so
+  `rustfmt.toml` sets `max_width = 140` (the longest line was 144) and the
+  one formatting pass is its own commit. Clippy's `-D warnings` stopped on
+  two items kept for later phases, `FurnitureKind.perch` (phase 3) and
+  `store::get_world` (phase 4); each has `#[allow(dead_code)]` and a comment
+  naming its phase. Checked against the built image on port 18081: `pnpm
+  check` passed (client 27, spec 16); the log holds 3 `say` actions and none
+  of the spec's words; a script signed up, petted Tora (trust 0.6),
+  restarted the container on a named volume and came back to trust 0.6 with
+  the same session. Steps 7 and 8 by hand were cut to that script (see
+  `docs/notes/crit-8-mvp.md`).

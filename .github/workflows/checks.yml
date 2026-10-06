@@ -67,8 +67,26 @@ jobs:
             --include-detectors=CustomRegex --results=unverified
             --no-verification
 
+  rust:
+    # The server's own rules, format and lints, and the drift check on the
+    # TypeScript generated from its types.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Rust
+        run: rustup toolchain install stable --profile minimal --component rustfmt,clippy && rustup default stable
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - name: The generated TypeScript matches the Rust types
+        run: git diff --exit-code -- client/src/protocol
+
   deploy:
-    needs: check
+    needs: [check, rust]
     # The template repo itself has no Fly app; only student repos deploy.
     if: ${{ !github.event.repository.private && !github.event.repository.is_template && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest

@@ -1,18 +1,42 @@
 # syntax = docker/dockerfile:1
 
-# A placeholder, and yours to replace: it serves one page, plus README.md
-# verbatim at /readme/, which is enough to prove the deploy path end to end.
-# Whatever your app is built with, the image that replaces this one must serve
-# HTTP on 0.0.0.0:$PORT (fly.toml sets PORT) and publish README.md at /readme/
-# (spec/README.md says what's checked).
+# Three stages: the client (TypeScript, built by Vite), the server (one Rust
+# binary), and the slim image Fly runs. The course's fixed shape still holds:
+# HTTP on 0.0.0.0:$PORT, state only under /data, README.md published at /readme/.
 
-FROM docker.io/library/busybox:1.38.0
-COPY placeholder/ /src/
-COPY README.md /src/
-# README.md goes into the page as-is, HTML-escaped, in place of @README@;
-# rendering it properly is your app's job
-RUN mkdir -p /site/readme \
-    && cp /src/index.html /site/ \
-    && sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' /src/README.md > /src/body \
-    && sed -e '/@README@/{r /src/body' -e 'd}' /src/readme.html > /site/readme/index.html
-CMD ["sh", "-c", "exec httpd -f -p 0.0.0.0:${PORT:-8080} -h /site"]
+FROM node:24-slim AS client
+WORKDIR /src
+RUN npm install -g pnpm@11.9.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY client/package.json client/
+RUN pnpm install --frozen-lockfile --filter cafe-client
+COPY client/ client/
+COPY content/ content/
+RUN pnpm -C client build
+
+FROM rust:1.93-slim-bookworm AS server
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY server/Cargo.toml server/
+# Build the dependencies on their own first, so a code change doesn't rebuild them.
+RUN mkdir -p server/src && echo 'fn main() {}' > server/src/main.rs \
+    && cargo build --release -p cafe \
+    && rm -rf server/src
+COPY server/ server/
+RUN touch server/src/main.rs && cargo build --release -p cafe
+
+FROM debian:bookworm-slim
+WORKDIR /app
+COPY --from=server /src/target/release/cafe /app/cafe
+COPY --from=client /src/client/dist /app/client
+COPY content/ /app/content/
+COPY README.md /app/README.md
+COPY docs/ /app/docs/
+ENV PORT=8080 \
+    DATA_DIR=/data \
+    CONTENT_DIR=/app/content \
+    CLIENT_DIR=/app/client \
+    README_PATH=/app/README.md \
+    DOCS_DIR=/app/docs
+EXPOSE 8080
+CMD ["/app/cafe"]
