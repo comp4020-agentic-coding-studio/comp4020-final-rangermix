@@ -270,3 +270,28 @@ them), TypeScript everywhere, or Rust compiled to WebAssembly. The costs were
 stated: Rust means two languages and slow builds, twice per push once CI
 deploys. The design comes next, a few sections at a time.
 [`1794606`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1794606)
+
+---
+
+*Sent 2026-10-07 02:59:55 AEDT*
+
+> use 1. i'm well aware of the pros and that's why i proposed it. i'm curious how you define in rust and generate to TS. I know protobuf / grpc and other template language can do this, but don't know rust can do it.
+
+**Result.** Approach 1 is settled: a Rust server with a TypeScript canvas
+client. The question about generating TypeScript got an answer checked
+against the ts-rs README first. A derive macro is the compile-time plugin
+serde uses to generate JSON code, and ts-rs's `#[derive(TS)]` generates the
+TypeScript declaration the same way, honouring serde's attributes, so the
+types describe exactly the JSON on the wire. Unlike protobuf it is code-first,
+with JSON instead of a binary format; a build id checked on connect replaces
+field-number versioning, since both ends deploy together. Two guards came out
+of the check: 64-bit integers default to `bigint`, so the protocol overrides
+them to `number`, and a check fails if the committed bindings drift from the
+Rust types. The first two design sections went out for approval. Design 1 is
+the architecture: one binary, one world task that owns the café and processes
+commands in order (which makes "first grab wins" free), SQLite on `/data` with
+batched writes and snapshots, and cats as data files. Design 2 is the
+real-time behaviour: snapshot then events, walks sent as paths, the server
+deciding every outcome, slow connections healed by a fresh snapshot, and
+calling a cat folded into saying its name.
+[`6c22ccc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6c22ccc)
