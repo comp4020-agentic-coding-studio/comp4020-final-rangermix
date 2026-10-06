@@ -295,3 +295,32 @@ real-time behaviour: snapshot then events, walks sent as paths, the server
 deciding every outcome, slow connections healed by a fresh snapshot, and
 calling a cat folded into saying its name.
 [`6c22ccc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6c22ccc)
+
+---
+
+*Sent 2026-10-07 03:12:02 AEDT*
+
+> nice explanation. D1: agreed D2: agreed but relex a bit on the limits
+
+**Result.** Designs 1 and 2 were approved. The limits moved to token buckets
+that allow a burst and then refill: up to 5 bubbles then one every 2 seconds
+(was 3 per 10 seconds), up to 3 furniture changes then one every 20 seconds
+(was one a minute), and 10 actions a second for everything else. Design 3, the
+cat character system, went out for approval:
+- A cat is a TOML file of look, traits, daily rhythm and behaviour weights,
+  and new kinds of behaviour are Rust modules that cats opt into.
+- Needs drift with the Canberra hour.
+- Events become stimuli each cat notices.
+- Behaviours score themselves from needs, traits, stimuli, trust and the hour,
+  and the cat picks among the top few, so it stays in character without being
+  predictable.
+- Handling ends in welcome, tolerate, refuse, scratch-and-escape, or a ban
+  when the cat is furious.
+- Trust never fades, and its gains taper within a day so regulars beat
+  grinders.
+- One seeded generator runs both live and fast-forward.
+
+The first three cats were restated in these terms. Mochi naps after lunch,
+Burakku is nocturnal, and Tora has dawn and dusk zoomies, after real cats'
+crepuscular habits.
+[`f4f2b63`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f4f2b63)
