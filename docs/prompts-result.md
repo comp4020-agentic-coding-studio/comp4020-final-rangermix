@@ -415,3 +415,46 @@ The last section, design 7, went out:
   and judged (and how assessed).
 - The `CLAUDE.md` rules that follow from the design.
 [`a4ce6c2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4ce6c2)
+
+---
+
+*Sent 2026-10-07 03:54:43 AEDT*
+
+> approved
+
+**Result.** With design 7 approved, the brainstorm ended and the spec was
+written in one commit.
+
+`docs/design.md` now specifies the whole app, from the café and who it is for
+through the cats' character system, the room, architecture, real-time,
+persistence, accounts, the client, logging and checks. It ends with one table
+of every tunable number.
+
+Ten ADRs record the significant decisions with their rejected options:
+- 0002 the app's shape and scope;
+- 0003 the Rust and TypeScript stack;
+- 0004 the single authoritative world over WebSockets;
+- 0005 SQLite on the volume;
+- 0006 fast-forward on wake;
+- 0007 password accounts with a recovery code;
+- 0008 the cap of six with a window line;
+- 0009 the quiet-seat rule, as crit 9's decision;
+- 0010 fleeting speech;
+- 0011 data-defined cats, including why not LLM-driven ones.
+
+`AGENTS.md` gained "What the app must keep": never store or log speech, no
+email or IP addresses stored, the server decides, the cap and the door
+walkway, trust that never fades, the keyboard and both marking sizes, cats
+through `content/`, and generated types never edited by hand.
+
+Before the user reviewed it, the self-review checked the spec:
+- Links and anchors all resolve.
+- A contradiction was fixed: no stored IPs against per-IP rate limits, now
+  counted in memory only.
+- Numbers the design had left open were pinned as tunable defaults.
+- A wrong row about Mochi's rhythm was corrected.
+
+The visual companion was stopped. The spec now waits for the user's review
+before any implementation plan.
+[`02b176a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/02b176a)
+[`0e4e982`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0e4e982)
