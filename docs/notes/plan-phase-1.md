@@ -29,7 +29,28 @@ The spec says what the café must do; these are the inputs it will meet that no 
 2. **A phone that drops and comes back.** A sleeping phone or a change of network must keep the seat within the grace period and heal by snapshot, without a second avatar or a "left" message. Pinned in Task 8 (grace period, rejoin) and Task 10 (reconnect over a real socket).
 3. **Two tabs on one account.** One avatar only; the older tab is told and stops reconnecting. Pinned in Task 8 (no second person) and Task 10 (`replaced` over real sockets).
 4. **Odd text in a bubble.** Emoji count as one character each, not as bytes; markup like `<img onerror>` is shown as text and never becomes HTML. Pinned in Task 8 (100 emoji accepted, 101 refused) and Task 14 (a bubble with markup creates no element).
-5. **A deploy mid-visit.** The cats come back where they were, trust is intact, open tabs reconnect on their own, and a tab on the old build reloads. Pinned in Task 9 (saved cats restored), Task 12 (`needsReload`) and Task 10 (reconnect after a server restart, by hand in the verification step).
+5. **A deploy mid-visit.** The cats come back where they were, trust is intact, open tabs reconnect on their own, and a tab on the old build reloads. Pinned in Task 9 (saved cats restored), Task 12 (`needsReload`) and Task 15 Step 8 (a restart mid-visit, checked by hand against the built image).
+
+## Not in this phase
+
+Settled in the design, built in later phases (see [plan.md](plan.md)), so their
+absence here is deliberate and not a finding:
+
+- the quiet-seat rule's nudge and walk-out (ADR 0009); in phase 1 a seat frees
+  when someone leaves or their grace period ends;
+- rearranging furniture, the catalogue, first grab wins, the floor limit;
+  sitting on furniture; emotes; giving treats and passing cats;
+- treats and bowls, picking up and carrying, anger and bans, grudges, and the
+  rest of the character system (hunger, play, toys, perching, knocking things
+  over, investigating, cats noticing each other); calling a cat over and over
+  as pushing;
+- phone layout B and its switch; browser checks with Playwright;
+- fast-forward on wake, traces, the chalkboard, mute, the slur blocklist, the
+  admin ban;
+- log lines for the cats' behaviour changes and wake-ups, and the narrating
+  log tail (phase 1 logs every person's action; the rest is phase 3, for C10);
+- music, which the user's README mentions but the design doesn't have
+  (Task 17 raises it).
 
 ## File map
 
@@ -5289,4 +5310,3880 @@ git push origin HEAD:main
 
 ---
 
-<!-- tasks follow -->
+### Task 10: The WebSocket and the world task
+
+The world comes alive on the network: one task owns it, steps it ten times a
+second and routes what it says; each connection authenticates by its cookie,
+passes rate limits, and forwards intents. A connection that falls behind is
+dropped and heals by snapshot; a second tab takes over; the world is saved on
+Fly's stop signal.
+
+**Files:**
+- Create: `server/src/ws.rs`, `spec/realtime.test.ts`
+- Modify: `server/src/http.rs` (AppState gains `world` and `conn_ids`; the `/ws` route; test helper), `server/src/main.rs` (build the world, start its task, save on stop), `spec/helpers.ts` (a WebSocket visitor), `package.json` (`ws` and `@types/ws` for the spec)
+
+**Interfaces:**
+- Consumes: `world::{World, Input, Out, To}` (Tasks 8, 9); `api::current_user` (Task 5); `limits::Bucket`; `http::origin_ok`.
+- Produces: `ws::Command { Join { id, name, look, conn, tx }, Leave { id, conn }, Msg { id, conn, msg }, Shutdown { done } }`; `ws::spawn_world(World) -> mpsc::Sender<Command>`; `ws::upgrade` (the `/ws` handler); `http::AppState::new(config, readme, store, tuning, world)`. In the spec: `Visitor.connect(cookie)`, `visitor.welcome`, `visitor.next(test, timeoutMs?, from?)`, `visitor.send(msg)`, `visitor.leave()`, `visitor.close()`, `catPoses(visitor)`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`server/src/ws.rs`:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn out(to: To, n: u32) -> Out {
+        Out { to, msg: ServerMsg::PersonLeft { id: n } }
+    }
+
+    #[test]
+    fn a_connection_that_falls_behind_is_dropped_and_the_others_keep_receiving() {
+        let mut conns: Conns = HashMap::new();
+        let (slow_tx, _slow_rx) = mpsc::channel(1);
+        let (fast_tx, mut fast_rx) = mpsc::channel(16);
+        conns.insert(1, (1, slow_tx));
+        conns.insert(2, (2, fast_tx));
+        let dropped = route(&mut conns, (0..3).map(|n| out(To::All, n)).collect());
+        assert_eq!(dropped, vec![1]);
+        assert!(!conns.contains_key(&1));
+        let mut received = 0;
+        while fast_rx.try_recv().is_ok() {
+            received += 1;
+        }
+        assert_eq!(received, 3);
+    }
+
+    #[test]
+    fn a_message_for_one_person_reaches_only_them() {
+        let mut conns: Conns = HashMap::new();
+        let (a_tx, mut a_rx) = mpsc::channel(4);
+        let (b_tx, mut b_rx) = mpsc::channel(4);
+        conns.insert(1, (1, a_tx));
+        conns.insert(2, (2, b_tx));
+        assert!(route(&mut conns, vec![out(To::One(2), 9)]).is_empty());
+        assert!(a_rx.try_recv().is_err());
+        assert_eq!(b_rx.try_recv().unwrap().as_ref(), r#"{"type":"personLeft","id":9}"#);
+    }
+}
+```
+
+Replace the test helper `app` in `server/src/http.rs`:
+
+```rust
+    fn app(dir: &std::path::Path) -> Router {
+        let config = Config::from_lookup(|k| match k {
+            "CLIENT_DIR" => Some(dir.join("no-client-yet").display().to_string()),
+            "DOCS_DIR" => Some(dir.display().to_string()),
+            _ => None,
+        });
+        let store = crate::store::Store::open(&dir.join("cafe.db")).unwrap();
+        let tuning = crate::content::repo_content().tuning;
+        let (world, _) = tokio::sync::mpsc::channel(1);
+        router(AppState::new(config, crate::readme::render_page("# Hello\n\n## Second"), store, tuning, world))
+    }
+```
+
+Add `mod ws;` to `server/src/main.rs`.
+
+Add the spec's WebSocket client: `pnpm add -D ws@^8.22.0 @types/ws@^8.18.2` (in the repo root), then append to `spec/helpers.ts`:
+
+```ts
+import WebSocket from "ws";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Msg = { type: string; [key: string]: any };
+
+/** One visitor's WebSocket, keeping every message the café sends. */
+export class Visitor {
+  readonly messages: Msg[] = [];
+  private waiters: { test: (m: Msg) => boolean; from: number; resolve: (m: Msg) => void }[] = [];
+
+  private constructor(private readonly ws: WebSocket) {
+    ws.on("message", (data) => {
+      const msg = JSON.parse(String(data)) as Msg;
+      this.messages.push(msg);
+      const index = this.messages.length - 1;
+      this.waiters = this.waiters.filter((w) => {
+        if (index >= w.from && w.test(msg)) {
+          w.resolve(msg);
+          return false;
+        }
+        return true;
+      });
+    });
+  }
+
+  static async connect(cookie: string): Promise<Visitor> {
+    const ws = new WebSocket(new URL("/ws", baseUrl.replace(/^http/, "ws")), { headers: { cookie } });
+    await new Promise<void>((resolve, reject) => {
+      ws.once("open", () => resolve());
+      ws.once("error", reject);
+      ws.once("unexpected-response", (_req, res) => reject(new Error(`upgrade refused: ${res.statusCode}`)));
+    });
+    const visitor = new Visitor(ws);
+    await visitor.next((m) => m.type === "welcome");
+    return visitor;
+  }
+
+  get welcome(): Msg {
+    const welcome = this.messages.find((m) => m.type === "welcome");
+    if (!welcome) throw new Error("no welcome yet");
+    return welcome;
+  }
+
+  /** The first message at or after index `from` that passes `test`, waiting up to `timeoutMs`. */
+  next(test: (m: Msg) => boolean, timeoutMs = 3000, from = 0): Promise<Msg> {
+    const seen = this.messages.slice(from).find(test);
+    if (seen) return Promise.resolve(seen);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`nothing matched within ${timeoutMs} ms`)), timeoutMs);
+      this.waiters.push({ test, from, resolve: (m) => (clearTimeout(timer), resolve(m)) });
+    });
+  }
+
+  send(msg: object): void {
+    this.ws.send(JSON.stringify(msg));
+  }
+
+  /** Leaves through the door, freeing the seat at once, then closes. */
+  async leave(): Promise<void> {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.send({ type: "leave" });
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    this.ws.close();
+  }
+
+  /** Drops the connection without leaving: the seat is kept for the grace period. */
+  close(): void {
+    this.ws.close();
+  }
+}
+
+/** Each cat's latest pose, from the welcome and what has happened since. */
+export function catPoses(v: Visitor): { id: string; pose: string }[] {
+  const poses = new Map<string, string>(v.welcome.snapshot.cats.map((c: Msg) => [c.id, c.pose]));
+  for (const m of v.messages) {
+    if (m.type === "catPosed") poses.set(m.cat, m.pose);
+    if (m.type === "catMoved") poses.set(m.cat, "walk");
+  }
+  return [...poses].map(([id, pose]) => ({ id, pose }));
+}
+```
+
+`spec/realtime.test.ts`:
+
+```ts
+import { afterEach, describe, expect, it } from "vitest";
+import { catPoses, signUp, Visitor, type Msg } from "./helpers";
+
+// Real time (brief: within about a second), the cap and the line (ADR 0008),
+// fleeting bubbles (ADR 0010), and the cats remembering people (ADR 0002).
+const open: Visitor[] = [];
+
+async function visitor(cookie?: string): Promise<Visitor> {
+  const v = await Visitor.connect(cookie ?? (await signUp()).cookie);
+  open.push(v);
+  return v;
+}
+
+function forget(v: Visitor): void {
+  open.splice(open.indexOf(v), 1);
+}
+
+afterEach(async () => {
+  await Promise.all(open.splice(0).map((v) => v.leave()));
+});
+
+describe("real time", () => {
+  it("one person's bubble reaches another within a second", async () => {
+    const a = await visitor();
+    const b = await visitor();
+    const from = b.messages.length;
+    const sent = Date.now();
+    a.send({ type: "say", text: "hello there", to: null });
+    const said = await b.next((m) => m.type === "said" && m.text === "hello there", 1000, from);
+    expect(said.from).toBe(a.welcome.you);
+    expect(Date.now() - sent).toBeLessThan(1000);
+  });
+
+  it("refuses a bubble over 100 characters, and nobody else sees it", async () => {
+    const a = await visitor();
+    const b = await visitor();
+    const from = b.messages.length;
+    a.send({ type: "say", text: "x".repeat(101), to: null });
+    expect((await a.next((m) => m.type === "error")).code).toBe("tooLong");
+    await new Promise((r) => setTimeout(r, 300));
+    expect(b.messages.slice(from).some((m) => m.type === "said")).toBe(false);
+  });
+
+  it("never replays a bubble to someone who reconnects", async () => {
+    const account = await signUp();
+    const a = await visitor();
+    const first = await visitor(account.cookie);
+    a.send({ type: "say", text: "remember me?", to: null });
+    await first.next((m) => m.type === "said" && m.text === "remember me?");
+    first.close();
+    forget(first);
+    const again = await visitor(account.cookie);
+    expect(JSON.stringify(again.welcome)).not.toContain("remember me?");
+    await new Promise((r) => setTimeout(r, 300));
+    expect(again.messages.some((m) => m.type === "said")).toBe(false);
+  });
+
+  it("keeps one avatar when the same account opens a second tab, and tells the first", async () => {
+    const account = await signUp();
+    const first = await visitor(account.cookie);
+    const second = await visitor(account.cookie);
+    await first.next((m) => m.type === "replaced", 2000);
+    const mine = second.welcome.snapshot.people.filter((p: Msg) => p.id === second.welcome.you);
+    expect(mine).toHaveLength(1);
+  });
+
+  it("seats six inside; the next waits at the window, can only talk, and comes in when a seat frees", async () => {
+    const watcher = await visitor();
+    const inside = watcher.welcome.snapshot.people.filter((p: Msg) => p.place === "inside").length;
+    const fillers: Visitor[] = [];
+    for (let n = inside; n < 6; n++) fillers.push(await visitor());
+    const late = await visitor();
+    const me = late.welcome.snapshot.people.find((p: Msg) => p.id === late.welcome.you);
+    expect(me.place).toBe("window");
+    late.send({ type: "walkTo", tile: { x: 5, y: 5 } });
+    expect((await late.next((m) => m.type === "error")).code).toBe("notFromWindow");
+    const from = watcher.messages.length;
+    late.send({ type: "say", text: "can I come in?", to: null });
+    await watcher.next((m) => m.type === "said" && m.text === "can I come in?", 1000, from);
+    const leaving = fillers[0] ?? watcher;
+    await leaving.leave();
+    forget(leaving);
+    const placed = await late.next((m) => m.type === "personPlaced" && m.id === late.welcome.you, 1000);
+    expect(placed.place).toBe("inside");
+  });
+
+  it("the cats remember you when you come back", async () => {
+    const account = await signUp();
+    const v = await visitor(account.cookie);
+    let trust: Msg | null = null;
+    const deadline = Date.now() + 25_000;
+    for (let round = 0; !trust && Date.now() < deadline; round++) {
+      // Pet whichever cat is awake; a stranger's first pet is a sniff.
+      const cats = catPoses(v);
+      const awake = cats.filter((c) => c.pose !== "nap" && c.pose !== "hide");
+      const pool = awake.length > 0 ? awake : cats;
+      const from = v.messages.length;
+      v.send({ type: "pet", cat: pool[round % pool.length].id });
+      trust = await v.next((m) => m.type === "yourTrust" && m.trust.value > 0, 6000, from).catch(() => null);
+    }
+    expect(trust, "no cat warmed to the visitor within 25 seconds").not.toBeNull();
+    await v.leave();
+    forget(v);
+    const back = await visitor(account.cookie);
+    const remembered = back.welcome.snapshot.yourTrust.find((t: Msg) => t.cat === trust!.trust.cat);
+    expect(remembered.value).toBe(trust!.trust.value);
+  }, 40_000);
+});
+```
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `cargo test -p cafe ws`
+Expected: compile errors, `cannot find type Conns` / `function route`.
+
+- [ ] **Step 3: Write the implementation**
+
+Above the tests in `server/src/ws.rs`:
+
+```rust
+//! The task that owns the world (ADR 0004), the routing of its messages to
+//! connections, and the WebSocket endpoint at /ws.
+use crate::api::current_user;
+use crate::http::{AppState, origin_ok};
+use crate::limits::Bucket;
+use crate::protocol::{ClientMsg, ErrorCode, Look, ServerMsg};
+use crate::store::UserRow;
+use crate::time::now_ms;
+use crate::world::{Input, Out, To, World};
+use axum::extract::State;
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use futures_util::{SinkExt, StreamExt};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+use tokio::sync::{mpsc, oneshot};
+
+pub enum Command {
+    Join { id: u32, name: String, look: Look, conn: u64, tx: mpsc::Sender<Arc<str>> },
+    Leave { id: u32, conn: u64 },
+    Msg { id: u32, conn: u64, msg: ClientMsg },
+    /// Save the world and stop: Fly is stopping the machine.
+    Shutdown { done: oneshot::Sender<()> },
+}
+
+/// Each person's current connection: its id, and where to send its messages.
+type Conns = HashMap<u32, (u64, mpsc::Sender<Arc<str>>)>;
+
+pub fn spawn_world(world: World) -> mpsc::Sender<Command> {
+    let (tx, rx) = mpsc::channel(1024);
+    tokio::spawn(world_task(world, rx));
+    tx
+}
+
+async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
+    let mut conns: Conns = HashMap::new();
+    let mut ticker = tokio::time::interval(Duration::from_millis(100));
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    loop {
+        tokio::select! {
+            cmd = rx.recv() => {
+                let Some(cmd) = cmd else { break };
+                let now = now_ms();
+                match cmd {
+                    Command::Join { id, name, look, conn, tx } => {
+                        if let Some((_, old)) = conns.insert(id, (conn, tx)) {
+                            // A second tab: the first is told, then let go.
+                            let _ = old.try_send(text(&ServerMsg::Replaced {}));
+                        }
+                        let outs = world.handle(now, Input::Join { id, name, look });
+                        deliver(&mut world, &mut conns, outs, now);
+                    }
+                    Command::Leave { id, conn } => {
+                        if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
+                            conns.remove(&id);
+                            let outs = world.handle(now, Input::Drop { id });
+                            deliver(&mut world, &mut conns, outs, now);
+                        }
+                    }
+                    Command::Msg { id, conn, msg } => {
+                        if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
+                            let outs = world.handle(now, Input::Msg { id, msg });
+                            deliver(&mut world, &mut conns, outs, now);
+                        }
+                    }
+                    Command::Shutdown { done } => {
+                        world.save(now);
+                        let _ = done.send(());
+                        break;
+                    }
+                }
+            }
+            _ = ticker.tick() => {
+                let now = now_ms();
+                let outs = world.tick(now);
+                deliver(&mut world, &mut conns, outs, now);
+            }
+        }
+    }
+}
+
+/// Sends each message to its connections. A connection whose queue is full
+/// has fallen too far behind: it's let go (its client reconnects to a fresh
+/// snapshot) and the world hears it dropped.
+fn deliver(world: &mut World, conns: &mut Conns, outs: Vec<Out>, now: u64) {
+    let mut pending = outs;
+    while !pending.is_empty() {
+        let dropped = route(conns, pending);
+        pending = dropped.into_iter().flat_map(|id| world.handle(now, Input::Drop { id })).collect();
+    }
+}
+
+fn route(conns: &mut Conns, outs: Vec<Out>) -> Vec<u32> {
+    let mut dropped = Vec::new();
+    for out in outs {
+        let msg = text(&out.msg);
+        match out.to {
+            To::All => conns.retain(|id, (_, tx)| {
+                let ok = tx.try_send(msg.clone()).is_ok();
+                if !ok {
+                    dropped.push(*id);
+                }
+                ok
+            }),
+            To::One(id) => {
+                if let Some((_, tx)) = conns.get(&id)
+                    && tx.try_send(msg).is_err()
+                {
+                    conns.remove(&id);
+                    dropped.push(id);
+                }
+            }
+        }
+    }
+    dropped
+}
+
+fn text(msg: &ServerMsg) -> Arc<str> {
+    serde_json::to_string(msg).expect("server messages serialise").into()
+}
+
+pub async fn upgrade(State(app): State<AppState>, headers: HeaderMap, ws: WebSocketUpgrade) -> Response {
+    if !origin_ok(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    match current_user(&app, &headers).await {
+        Ok(Some(user)) => ws.on_upgrade(move |socket| connection(socket, app, user)),
+        Ok(None) => StatusCode::UNAUTHORIZED.into_response(),
+        Err(failure) => failure.into_response(),
+    }
+}
+
+async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
+    let (mut sink, mut stream) = socket.split();
+    let (tx, mut rx) = mpsc::channel::<Arc<str>>(app.tuning.outbound_queue);
+    let conn = app.conn_ids.fetch_add(1, Ordering::Relaxed);
+    let id = user.id as u32;
+    let look = Look { avatar: user.avatar, colour: user.colour };
+    if app.world.send(Command::Join { id, name: user.name.clone(), look, conn, tx }).await.is_err() {
+        return;
+    }
+    let t = &app.tuning;
+    let now = now_ms();
+    let mut speech = Bucket::new(t.bubble_burst, 1.0 / t.bubble_refill_secs, now);
+    let mut actions = Bucket::new(t.action_burst, t.action_per_sec, now);
+    // Fly's proxy drops connections that go quiet; a ping keeps a calm café open.
+    let mut ping = tokio::time::interval(Duration::from_secs(25));
+    loop {
+        tokio::select! {
+            out = rx.recv() => match out {
+                Some(text) => {
+                    if sink.send(Message::Text(text.as_ref().into())).await.is_err() {
+                        break;
+                    }
+                }
+                // The world let go: another tab took over, or this one fell behind.
+                None => break,
+            },
+            incoming = stream.next() => match incoming {
+                Some(Ok(Message::Text(frame))) => {
+                    let Ok(msg) = serde_json::from_str::<ClientMsg>(frame.as_str()) else { continue };
+                    let now = now_ms();
+                    let allowed = match msg {
+                        ClientMsg::Say { .. } | ClientMsg::Call { .. } => speech.take(now),
+                        _ => actions.take(now),
+                    };
+                    if !allowed {
+                        let slow = text(&ServerMsg::Error { code: ErrorCode::RateLimited, detail: "Slow down a little.".into() });
+                        if sink.send(Message::Text(slow.as_ref().into())).await.is_err() {
+                            break;
+                        }
+                        continue;
+                    }
+                    if app.world.send(Command::Msg { id, conn, msg }).await.is_err() {
+                        break;
+                    }
+                }
+                Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
+                Some(Ok(_)) => {}
+            },
+            _ = ping.tick() => {
+                if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
+                    break;
+                }
+            }
+        }
+    }
+    let _ = app.world.send(Command::Leave { id, conn }).await;
+}
+```
+
+In `server/src/http.rs`, extend `AppState` and the router:
+
+```rust
+#[derive(Clone)]
+pub struct AppState {
+    pub config: Arc<Config>,
+    pub readme: Arc<str>,
+    pub store: Store,
+    pub tuning: Arc<Tuning>,
+    /// At most two password hashes at once: argon2id takes 19 MiB each, and the
+    /// machine has 256 MB.
+    pub hashing: Arc<Semaphore>,
+    pub auth_limits: Arc<Mutex<AuthLimits>>,
+    /// The world task's inbox.
+    pub world: tokio::sync::mpsc::Sender<crate::ws::Command>,
+    pub conn_ids: Arc<std::sync::atomic::AtomicU64>,
+}
+
+impl AppState {
+    pub fn new(config: Config, readme: String, store: Store, tuning: Tuning, world: tokio::sync::mpsc::Sender<crate::ws::Command>) -> AppState {
+        let per_min = |n: f64| Keyed::new(n, n / 60.0);
+        let auth_limits = AuthLimits { by_name: per_min(tuning.auth_per_name_per_min), by_ip: per_min(tuning.auth_per_ip_per_min) };
+        AppState {
+            config: Arc::new(config),
+            readme: readme.into(),
+            store,
+            tuning: Arc::new(tuning),
+            hashing: Arc::new(Semaphore::new(2)),
+            auth_limits: Arc::new(Mutex::new(auth_limits)),
+            world,
+            conn_ids: Arc::new(std::sync::atomic::AtomicU64::new(1)),
+        }
+    }
+}
+```
+
+and add `.route("/ws", get(crate::ws::upgrade))` after the `/api/recover` route.
+
+Replace `server/src/main.rs`:
+
+```rust
+//! The cat café server: one binary that serves the client, the README, the
+//! accounts API and the WebSocket, and owns the café's world.
+mod api;
+mod auth;
+mod cats;
+mod config;
+mod content;
+mod http;
+mod limits;
+mod protocol;
+mod readme;
+mod room;
+mod store;
+mod time;
+mod trust;
+mod tuning;
+mod world;
+mod ws;
+
+use std::net::SocketAddr;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt().json().flatten_event(true).init();
+    let config = config::Config::from_env();
+    std::fs::create_dir_all(&config.data_dir)?;
+    let store = store::Store::open(&config.data_dir.join("cafe.db"))?;
+    let content = content::load(&config.content_dir)?;
+    let tuning = content.tuning.clone();
+    let mut trust = trust::TrustBook::new(tuning.trust_levels, tuning.trust_daily_cap);
+    trust.load(store.call(|c| store::all_trust(c)).await?);
+    let saved_cats = store.call(|c| store::all_cat_states(c)).await?;
+    let build = config.build_id();
+    let now = time::now_ms();
+    let world = world::World::new(content, trust, saved_cats, now, Some(store.clone()), build.clone(), now);
+    let world_tx = ws::spawn_world(world);
+    let readme = readme::render_page(&std::fs::read_to_string(&config.readme_path).unwrap_or_default());
+    let port = config.port;
+    let state = http::AppState::new(config, readme, store.clone(), tuning, world_tx.clone());
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
+    tracing::info!(target: "sys", port, build = %build, "listening");
+    let save_on_stop = async move {
+        shutdown_signal().await;
+        tracing::info!(target: "sys", "stopping: saving the café");
+        let (done, saved) = tokio::sync::oneshot::channel();
+        if world_tx.send(ws::Command::Shutdown { done }).await.is_ok() {
+            let _ = saved.await;
+        }
+        let _ = store.flush().await;
+    };
+    axum::serve(listener, http::router(state).into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(save_on_stop)
+        .await?;
+    Ok(())
+}
+
+/// Fly stops a machine with SIGINT, and waits only about five seconds; SIGTERM
+/// is the fallback. The world is saved every five seconds anyway.
+async fn shutdown_signal() {
+    let interrupt = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut s) => {
+                s.recv().await;
+            }
+            Err(_) => std::future::pending::<()>().await,
+        }
+    };
+    tokio::select! {
+        _ = interrupt => {}
+        _ = terminate => {}
+    }
+}
+```
+
+- [ ] **Step 4: Run the Rust tests to see them pass**
+
+Run: `cargo test -p cafe`
+Expected: PASS, every test (the two new `ws` tests included).
+
+- [ ] **Step 5: Run the spec against the running server**
+
+Run: `cargo run -p cafe` in one terminal, then `pnpm test` in another.
+Expected: PASS: `invariants` (2), `accounts` (7), `realtime` (6).
+
+- [ ] **Step 6: Check saving on stop by hand**
+
+Run: start the server, connect with `node -e` or the spec, pet a cat, then stop the server with Ctrl+C.
+Expected: the log ends with `"stopping: saving the café"`; restarting prints `listening`, and `sqlite3 .data/cafe.db "select cat_id, state from cat_state"` shows each cat's saved tile.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add server/src spec package.json pnpm-lock.yaml
+git commit -m "Put the world on a WebSocket: routing, rate limits, saving on stop"
+git push origin HEAD:main
+```
+
+---
+
+### Task 11: Client package and sprites
+
+The client becomes a pnpm workspace package, and the pixel art arrives as data:
+sheets of grids in `content/sprites/`, one character per pixel naming a
+palette slot, and the palettes in `palettes.json`. Cats share one base sprite
+coloured per coat; avatars share one body coloured per look. These are first
+drafts drawn as code; Task 15 looks at them on screen and adjusts.
+
+**Files:**
+- Create: `client/package.json`, `client/tsconfig.json`, `client/vite.config.ts`, `client/vitest.config.ts`, `client/src/env.d.ts`, `client/src/sprites.ts`, `client/test/sprites.test.ts`, `content/sprites/room.txt`, `content/sprites/furniture.txt`, `content/sprites/cat.txt`, `content/sprites/avatar.txt`, `content/sprites/emotes.txt`, `content/sprites/palettes.json`
+- Modify: `pnpm-workspace.yaml` (add the client package), `package.json` (`check` runs the client's checks too), `server/src/content.rs` (tests: sprites exist at their sizes; every coat has a palette)
+
+**Interfaces:**
+- Produces: `sprites.ts`: `parseSheet(text) -> Map<string, Grid>`, `toRgba(grid, palette) -> Uint8ClampedArray`, `avatarPalette(look) -> string[]`, `AVATARS` (4), `COLOURS` (6), `shirtColour(i)`, `class Sprites` with `tile(TileName)`, `furniture(kind)`, `cat(coat, CatFrame)`, `avatar(look, AvatarFrame)`, `emote(EmoteName)`, each `HTMLCanvasElement | null`; types `Grid`, `TileName` (`floor | wall | window | door | board`), `CatFrame` (`sit | walk_a | walk_b | nap`), `AvatarFrame` (`stand | walk_a | walk_b`), `EmoteName` (`heart | question | dots | zzz | sniff`). The global `__BUILD_ID__: string`.
+
+- [ ] **Step 1: Set up the client package**
+
+`pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - client
+
+# esbuild (used by Vitest) needs its postinstall to set up its native binary.
+allowBuilds:
+  esbuild: true
+```
+
+`client/package.json`:
+
+```json
+{
+  "name": "cafe-client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test"
+  }
+}
+```
+
+Run: `pnpm -C client add -D vite@^8.3.3 typescript@^6.0.3 vitest@^5.0.3 jsdom@^30.1.2 @types/node@^24`
+
+`client/tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "noUnusedLocals": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
+}
+```
+
+`client/vite.config.ts`:
+
+```ts
+import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { defineConfig } from "vite";
+
+// The client and server come from one build: Vite stamps an id into the client
+// and writes it next to index.html, where the server reads it, so a tab left
+// open across a deploy reloads (design.md, "Real-time").
+const buildId = process.env.BUILD_ID ?? Date.now().toString(36);
+
+export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(buildId) },
+  server: {
+    fs: { allow: [".."] },
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/readme": "http://localhost:8080",
+      "/ws": { target: "ws://localhost:8080", ws: true },
+    },
+  },
+  plugins: [
+    {
+      name: "write-build-id",
+      writeBundle(options) {
+        writeFileSync(resolve(options.dir ?? "dist", "build-id.txt"), buildId);
+      },
+    },
+  ],
+});
+```
+
+`client/vitest.config.ts`:
+
+```ts
+import { defineConfig } from "vitest/config";
+
+// The client's own unit tests; spec/ (the root's Vitest) checks the running app.
+export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify("test") },
+  test: { include: ["test/**/*.test.ts"], environment: "jsdom" },
+});
+```
+
+`client/src/env.d.ts`:
+
+```ts
+/** Stamped by Vite at build time; the server reads the same id from build-id.txt. */
+declare const __BUILD_ID__: string;
+```
+
+In the root `package.json`, change `check` to:
+
+```json
+"check": "pnpm typecheck && pnpm -C client check && pnpm test",
+```
+
+- [ ] **Step 2: Draw the sprites**
+
+Each sheet is a list of sprites; a line `== name` starts one; `.` is
+transparent and `0` to `f` name palette slots.
+
+`content/sprites/room.txt` (palette `room`: 0 plank, 1 knot, 2 seam, 3 wallpaper, 4 wainscot, 5 trim, 6 wallpaper dot, 8 glass, 9 door, a brass, b board, c chalk):
+
+```
+== floor
+0000000000020000
+0000010000020000
+0000000000020000
+2222222222222222
+0002000000000000
+0002000001000000
+0002000000000000
+2222222222222222
+0000000000200000
+0010000000200000
+0000000000200000
+2222222222222222
+0000020000000000
+0000020000000100
+0000020000000000
+2222222222222222
+
+== wall
+3333333333333333
+3333333333333333
+3363333333633333
+3333333333333333
+3333333333333333
+3333336333333336
+3333333333333333
+3333333333333333
+3363333333633333
+3333333333333333
+5555555555555555
+4444444444444444
+4444444444444444
+4444444444444444
+4444444444444444
+5555555555555555
+
+== window
+5555555555555555
+5888888888888885
+5888888888888885
+5888888888888885
+5888888888888885
+5888888888888885
+5888888888888885
+5888888888888885
+5888888888888885
+5888888888888885
+5555555555555555
+4444444444444444
+4444444444444444
+4444444444444444
+4444444444444444
+5555555555555555
+
+== door
+5555555555555555
+5999999999999995
+5944444444444495
+5949999999999495
+5949999999999495
+5949999999999495
+5949999999999495
+59499999999a9495
+59499999999a9495
+5949999999999495
+5949999999999495
+5949999999999495
+5949999999999495
+5944444444444495
+5999999999999995
+5555555555555555
+
+== board
+3333333333333333
+3555555555555553
+35bbbbbbbbbbbb53
+35bcbbccbbbbbb53
+35bbbbbbbbcbbb53
+35bccbbbcccbbb53
+35bbbbbbbbbbbb53
+35bbcbbbbccbbb53
+35bbbbbbbbbbbb53
+3555555555555553
+5555555555555555
+4444444444444444
+4444444444444444
+4444444444444444
+4444444444444444
+5555555555555555
+```
+
+`content/sprites/cat.txt` (palette: the cat's coat: 0 outline, 1 coat, 2 second coat, 3 light, 4 eye, 5 pink):
+
+```
+== sit
+................
+................
+................
+.........0...0..
+........050.050.
+........0111110.
+.......014111410
+.......011353110
+........0133310.
+...00...0111110.
+..0110.011111110
+..010.0111211110
+..010.0112211310
+..01101111111310
+...0111111113310
+....000000000000
+
+== walk_a
+................
+................
+................
+................
+..........0...0.
+.........050.050
+.0.......0111110
+.10.....01411410
+..10....01135310
+...0000000133310
+..01111211111110
+..01112211111130
+...011111111330.
+...010.010.010..
+...010.010.010..
+...00..00..00...
+
+== walk_b
+................
+................
+................
+................
+..........0...0.
+.........050.050
+.0.......0111110
+.10.....01411410
+..10....01135310
+...0000000133310
+..01111211111110
+..01112211111130
+...011111111330.
+....010.010.010.
+....010.010.010.
+....00..00..00..
+
+== nap
+................
+................
+................
+................
+................
+................
+................
+..........0..0..
+......00000550..
+....00111111110.
+...0111211111010
+...0112211113310
+..01111111111110
+..0111111111110.
+...00000000000..
+................
+```
+
+`content/sprites/avatar.txt` (palette built from the look: 0 outline and eyes, 1 skin, 2 hair, 3 shirt, 4 trousers, 5 shoes, 6 white):
+
+```
+== stand
+......2222......
+.....222222.....
+....22222222....
+....22111112....
+....21101101....
+....21111111....
+.....111111.....
+......1111......
+....33333333....
+...3333333333...
+...1333333331...
+...1333333331...
+....44444444....
+....444..444....
+....444..444....
+....555..555....
+
+== walk_a
+......2222......
+.....222222.....
+....22222222....
+....22111112....
+....21101101....
+....21111111....
+.....111111.....
+......1111......
+....33333333....
+...3333333333...
+...1333333331...
+...1333333331...
+....44444444....
+...444....444...
+...444....444...
+...555....555...
+
+== walk_b
+......2222......
+.....222222.....
+....22222222....
+....22111112....
+....21101101....
+....21111111....
+.....111111.....
+......1111......
+....33333333....
+...3333333333...
+...1333333331...
+...1333333331...
+....44444444....
+.....444444.....
+.....444444.....
+.....555555.....
+```
+
+`content/sprites/emotes.txt` (palette `emotes`: 0 outline, 1 red, 2 white, 3 yellow, 4 blue):
+
+```
+== heart
+........
+.11.11..
+1121111.
+1111111.
+.11111..
+..111...
+...1....
+........
+
+== question
+..333...
+.3...3..
+.....3..
+....3...
+...3....
+...3....
+........
+...3....
+
+== dots
+........
+........
+........
+........
+........
+4..4..4.
+........
+........
+
+== zzz
+....444.
+......4.
+.....4..
+....444.
+.444....
+...4....
+..4.....
+.444....
+
+== sniff
+........
+.4.4.4..
+4.4.4.4.
+........
+.4.4.4..
+4.4.4.4.
+........
+........
+```
+
+`content/sprites/furniture.txt` (palette `furniture`: 0 outline, 1 fabric, 2 fabric shade, 3 wood, 4 dark wood, 5 cream, 6 leaf, 7 dark leaf, 8 pot, 9 rug, a rug light, b card, c dark card, d bowl, e kibble, f water). Each sprite is its kind's `w` × 16 by `h` × 16 pixels:
+
+```
+== chair
+................
+....00000000....
+....03333330....
+....04444440....
+....03333330....
+....04444440....
+....03333330....
+...0000000000...
+...0555555550...
+...0555555550...
+...0000000000...
+...04......40...
+...04......40...
+...04......40...
+...00......00...
+................
+
+== table
+................................
+.000000000000000000000000000000.
+.033333333333333333333333333330.
+.034443333333333333333333344430.
+.033333333333333333333333333330.
+.033333334443333333334443333330.
+.033333333333333333333333333330.
+.000000000000000000000000000000.
+..04........................40..
+..04........................40..
+..04........................40..
+..04........................40..
+..04........................40..
+..04........................40..
+..00........................00..
+................................
+
+== cat_bed
+................
+................
+................
+................
+................
+...0000000000...
+..011111111110..
+.01155555555110.
+.01555555555510.
+.01555555555510.
+.01155555555110.
+..011111111110..
+...0000000000...
+................
+................
+................
+
+== box
+................
+................
+................
+..000000000000..
+..0cccccccccc0..
+..0cccccccccc0..
+..0bbbbbbbbbb0..
+..0bbbbbcbbbb0..
+..0bbbbbcbbbb0..
+..0bbbbbbbbbb0..
+..0bbbbbbbbbb0..
+..0bbbbbbbbbb0..
+..0bbbbbbbbbb0..
+..000000000000..
+................
+................
+
+== plant
+................
+.......6........
+.....6.66.6.....
+....66.676.6....
+...6667676766...
+....67777776....
+...6676767766...
+....66777766....
+.....666666.....
+....00000000....
+....08888880....
+....08888880....
+.....088880.....
+.....088880.....
+.....000000.....
+................
+
+== toys
+................
+................
+................
+................
+................
+.........5......
+........55......
+.......55.......
+......000.......
+.....01110......
+....0112110.....
+....0121210.....
+....0112110.....
+.....01110......
+......000.......
+................
+
+== bowls
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+................................
+...00000000.......00000000......
+..0eeeeeeee0.....0ffffffff0.....
+..0deeeeeed0.....0dffffffd0.....
+..0dddddddd0.....0dddddddd0.....
+...0dddddd0.......0dddddd0......
+....000000.........000000.......
+................................
+................................
+
+== window_seat
+................................
+................................
+................................
+................................
+................................
+................................
+.000000000000000000000000000000.
+.055555555555555555555555555550.
+.055555555555555555555555555550.
+.000000000000000000000000000000.
+.033333333333333333333333333330.
+.034444444444444444444444444430.
+.034444444444444444444444444430.
+.033333333333333333333333333330.
+.000000000000000000000000000000.
+................................
+
+== sofa
+................................................
+................................................
+..00000000000000000000000000000000000000000000..
+.0111111111111111111111111111111111111111111110.
+.0111111111111111111111111111111111111111111110.
+.0222222222222222222222222222222222222222222220.
+.0110000000000000000000000000000000000000000110.
+.0110111111111111211111111111121111111111110110.
+.0110111111111111211111111111121111111111110110.
+.0110111111111111211111111111121111111111110110.
+.0110222222222222222222222222222222222222220110.
+.0110000000000000000000000000000000000000000110.
+.0222222222222222222222222222222222222222222220.
+.0000000000000000000000000000000000000000000000.
+..04........................................40..
+..00........................................00..
+
+== cat_tower
+................................
+................................
+..0000000000000000000000000000..
+.055555555555555555555555555550.
+.055555555555555555555555555550.
+.033333333333333333333333333330.
+..0000000000000000000000000000..
+...........0555555550...........
+...........0333333330...........
+...........0555555550...........
+...........0333333330...........
+...........0555555550...........
+...........0333333330...........
+...........0555555550...........
+...00000000000000000000000000...
+...05555555555555555555555550...
+...03333333333333333333333330...
+...00000000000000000000000000...
+...........0333333330...........
+...........0555555550...........
+...........0333333330...........
+...........0555555550...........
+...........0333333330...........
+...........0555555550...........
+...........0333333330...........
+...........0555555550...........
+.000000000000000000000000000000.
+.033333333333333333333333333330.
+.034444444444444444444444444430.
+.033333333333333333333333333330.
+.000000000000000000000000000000.
+................................
+
+== rug
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aa999999999999999999999999999999999999999999999999999999999999aa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```
+
+The check in Step 3 catches any sprite with a row of the wrong length.
+
+`content/sprites/palettes.json`:
+
+```json
+{
+  "room": ["#d9b48a", "#b98f62", "#a07850", "#efe2c8", "#8a5a3b", "#5e3b26", "#e3cfa8", "#000000", "#bfe3f2", "#9c6b45", "#e8c25a", "#2f4a3a", "#e8efe6"],
+  "furniture": ["#4a3426", "#c96f6f", "#a85656", "#a8794e", "#7d5636", "#f0d6a8", "#5f9e5a", "#3f7a3d", "#c2703f", "#7a9cc6", "#a9c3e0", "#c9a26b", "#a07d4b", "#d8d8e0", "#a0522d", "#7fb8e6"],
+  "coats": {
+    "white_grey": ["#3b3340", "#f4f1ec", "#a8a3ad", "#ffffff", "#3d6b8f", "#f2a0a8"],
+    "black": ["#0f0d14", "#2b2833", "#3d3946", "#565164", "#e3b23c", "#c97f8a"],
+    "orange_tabby": ["#5a2e14", "#e8954a", "#c06a2b", "#f7d9b0", "#4f7a3a", "#e98b8b"]
+  },
+  "avatars": {
+    "skins": ["#f1c9a5", "#d9a066", "#a8714a", "#6b4429"],
+    "hair": ["#3a2a1e", "#d8b04a", "#7a3b2a", "#2b2b33"],
+    "colours": ["#d9534f", "#f0ad4e", "#5cb85c", "#5bc0de", "#7a5cc7", "#e86fa8"],
+    "base": ["#2b2230", "#3d3a52", "#5a4632", "#ffffff"]
+  },
+  "emotes": ["#2b2230", "#e8486a", "#ffffff", "#f6c445", "#7fa7d9"]
+}
+```
+
+- [ ] **Step 3: Write the failing tests**
+
+Add to the tests in `server/src/content.rs`:
+
+```rust
+    /// Each sprite in a sheet, by name, as (width, height); every row the same width.
+    fn sprite_sizes(file: &str) -> std::collections::HashMap<String, (usize, usize)> {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites").join(file);
+        let text = std::fs::read_to_string(path).unwrap();
+        let mut sizes = std::collections::HashMap::new();
+        let mut current: Option<(String, Vec<usize>)> = None;
+        let mut finish = |sprite: Option<(String, Vec<usize>)>| {
+            if let Some((name, rows)) = sprite {
+                assert!(rows.iter().all(|&w| w == rows[0]), "{file}: {name} has rows of different widths");
+                sizes.insert(name, (rows[0], rows.len()));
+            }
+        };
+        for line in text.lines().map(str::trim_end) {
+            if let Some(name) = line.strip_prefix("== ") {
+                finish(current.take());
+                current = Some((name.trim().to_string(), Vec::new()));
+            } else if !line.is_empty()
+                && let Some((_, rows)) = current.as_mut()
+            {
+                rows.push(line.chars().count());
+            }
+        }
+        finish(current);
+        sizes
+    }
+
+    #[test]
+    fn every_sprite_the_client_draws_exists_at_its_size() {
+        let c = repo_content();
+        let furniture = sprite_sizes("furniture.txt");
+        for piece in &c.room.pieces {
+            let size = furniture.get(&piece.kind).unwrap_or_else(|| panic!("no sprite for {}", piece.kind));
+            assert_eq!(*size, (piece.spec.w as usize * 16, piece.spec.h as usize * 16), "{}", piece.kind);
+        }
+        let room = sprite_sizes("room.txt");
+        for tile in ["floor", "wall", "window", "door", "board"] {
+            assert_eq!(room[tile], (16, 16), "{tile}");
+        }
+        let cat = sprite_sizes("cat.txt");
+        for frame in ["sit", "walk_a", "walk_b", "nap"] {
+            assert_eq!(cat[frame], (16, 16), "{frame}");
+        }
+        let avatar = sprite_sizes("avatar.txt");
+        for frame in ["stand", "walk_a", "walk_b"] {
+            assert_eq!(avatar[frame], (16, 16), "{frame}");
+        }
+        let emotes = sprite_sizes("emotes.txt");
+        for emote in ["heart", "question", "dots", "zzz", "sniff"] {
+            assert_eq!(emotes[emote], (8, 8), "{emote}");
+        }
+    }
+
+    #[test]
+    fn every_cat_coat_has_a_palette() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/palettes.json");
+        let palettes: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        for cat in repo_content().cats {
+            let coat = palettes["coats"][&cat.coat].as_array().unwrap_or_else(|| panic!("no palette for {}'s coat {}", cat.id, cat.coat));
+            assert!(coat.len() >= 6, "{}", cat.coat);
+        }
+    }
+```
+
+`client/test/sprites.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import catSheet from "../../content/sprites/cat.txt?raw";
+import palettes from "../../content/sprites/palettes.json";
+import { AVATARS, COLOURS, avatarPalette, parseSheet, toRgba } from "../src/sprites";
+
+describe("sprites", () => {
+  it("splits a sheet into named rectangles", () => {
+    const sheet = parseSheet("== a\n0.\n.1\n\n== b\n22\n");
+    expect([...sheet.keys()]).toEqual(["a", "b"]);
+    expect(sheet.get("a")).toEqual([
+      [0, -1],
+      [-1, 1],
+    ]);
+  });
+
+  it("refuses ragged rows and unknown pixels", () => {
+    expect(() => parseSheet("== a\n00\n0\n")).toThrow(/rectangle/);
+    expect(() => parseSheet("== a\n0x\n")).toThrow(/unknown pixel/);
+  });
+
+  it("colours pixels from the palette and leaves dots clear", () => {
+    expect([...toRgba([[0, -1]], ["#ff8000"])]).toEqual([255, 128, 0, 255, 0, 0, 0, 0]);
+  });
+
+  it("draws every cat frame at 16 pixels, in every coat", () => {
+    const sheet = parseSheet(catSheet);
+    expect([...sheet.keys()].sort()).toEqual(["nap", "sit", "walk_a", "walk_b"]);
+    for (const grid of sheet.values()) {
+      expect([grid[0].length, grid.length]).toEqual([16, 16]);
+      for (const coat of Object.values(palettes.coats)) expect(() => toRgba(grid, coat)).not.toThrow();
+    }
+  });
+
+  it("offers four avatars in six colours", () => {
+    expect([AVATARS, COLOURS]).toEqual([4, 6]);
+    expect(avatarPalette({ avatar: 1, colour: 2 })).toHaveLength(7);
+  });
+});
+```
+
+- [ ] **Step 4: Run the tests to see them fail**
+
+Run: `cargo test -p cafe content && pnpm -C client test`
+Expected: the Rust sprite tests pass or name a mis-sized sprite (fix the sheet until they pass); the client test fails with `Failed to resolve import "../src/sprites"`.
+
+- [ ] **Step 5: Write the sprite module**
+
+`client/src/sprites.ts`:
+
+```ts
+import avatarSheet from "../../content/sprites/avatar.txt?raw";
+import catSheet from "../../content/sprites/cat.txt?raw";
+import emoteSheet from "../../content/sprites/emotes.txt?raw";
+import furnitureSheet from "../../content/sprites/furniture.txt?raw";
+import palettes from "../../content/sprites/palettes.json";
+import roomSheet from "../../content/sprites/room.txt?raw";
+import type { Look } from "./protocol/Look";
+
+// Sprites are data (design.md, "The client"): grids of palette slots in
+// content/sprites, coloured here and cached as canvases. Any of them can be
+// redrawn without touching this code.
+
+/** Palette slots; -1 is transparent. */
+export type Grid = number[][];
+export type TileName = "floor" | "wall" | "window" | "door" | "board";
+export type CatFrame = "sit" | "walk_a" | "walk_b" | "nap";
+export type AvatarFrame = "stand" | "walk_a" | "walk_b";
+export type EmoteName = "heart" | "question" | "dots" | "zzz" | "sniff";
+
+const SLOTS = "0123456789abcdef";
+
+/** Splits a sheet into named grids; a line "== name" starts each one. */
+export function parseSheet(text: string): Map<string, Grid> {
+  const sheet = new Map<string, Grid>();
+  let name: string | null = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trimEnd();
+    if (line.startsWith("== ")) {
+      name = line.slice(3).trim();
+      sheet.set(name, []);
+    } else if (line !== "" && name !== null) {
+      const sprite = name;
+      sheet.get(sprite)!.push(
+        [...line].map((ch) => {
+          if (ch === ".") return -1;
+          const slot = SLOTS.indexOf(ch);
+          if (slot < 0) throw new Error(`sprite ${sprite}: unknown pixel ${JSON.stringify(ch)}`);
+          return slot;
+        }),
+      );
+    }
+  }
+  for (const [sprite, grid] of sheet) {
+    if (grid.length === 0 || grid.some((row) => row.length !== grid[0].length)) {
+      throw new Error(`sprite ${sprite} isn't a rectangle`);
+    }
+  }
+  return sheet;
+}
+
+function rgb(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** The grid's pixels as RGBA bytes, ready for ImageData. */
+export function toRgba(grid: Grid, palette: string[]): Uint8ClampedArray<ArrayBuffer> {
+  const height = grid.length;
+  const width = grid[0].length;
+  const bytes = new Uint8ClampedArray(width * height * 4);
+  grid.forEach((row, y) =>
+    row.forEach((slot, x) => {
+      if (slot < 0) return;
+      const colour = palette[slot];
+      if (!colour) throw new Error(`the palette has no slot ${slot}`);
+      bytes.set([...rgb(colour), 255], (y * width + x) * 4);
+    }),
+  );
+  return bytes;
+}
+
+export const AVATARS = palettes.avatars.skins.length;
+export const COLOURS = palettes.avatars.colours.length;
+export const shirtColour = (i: number): string => palettes.avatars.colours[i % COLOURS];
+
+/** An avatar's palette: outline and eyes, skin, hair, shirt, trousers, shoes, white. */
+export function avatarPalette(look: Look): string[] {
+  const a = palettes.avatars;
+  return [a.base[0], a.skins[look.avatar % AVATARS], a.hair[look.avatar % AVATARS], shirtColour(look.colour), a.base[1], a.base[2], a.base[3]];
+}
+
+export class Sprites {
+  private readonly sheets = {
+    room: parseSheet(roomSheet),
+    furniture: parseSheet(furnitureSheet),
+    cat: parseSheet(catSheet),
+    avatar: parseSheet(avatarSheet),
+    emote: parseSheet(emoteSheet),
+  };
+  private readonly cache = new Map<string, HTMLCanvasElement | null>();
+
+  tile(name: TileName): HTMLCanvasElement | null {
+    return this.get(`room:${name}`, this.sheets.room.get(name), palettes.room);
+  }
+
+  furniture(kind: string): HTMLCanvasElement | null {
+    return this.get(`furniture:${kind}`, this.sheets.furniture.get(kind), palettes.furniture);
+  }
+
+  cat(coat: string, frame: CatFrame): HTMLCanvasElement | null {
+    const coats = palettes.coats as Record<string, string[]>;
+    return this.get(`cat:${coat}:${frame}`, this.sheets.cat.get(frame), coats[coat] ?? coats.white_grey);
+  }
+
+  avatar(look: Look, frame: AvatarFrame): HTMLCanvasElement | null {
+    return this.get(`avatar:${look.avatar}:${look.colour}:${frame}`, this.sheets.avatar.get(frame), avatarPalette(look));
+  }
+
+  emote(name: EmoteName): HTMLCanvasElement | null {
+    return this.get(`emote:${name}`, this.sheets.emote.get(name), palettes.emotes);
+  }
+
+  private get(key: string, grid: Grid | undefined, palette: string[]): HTMLCanvasElement | null {
+    const cached = this.cache.get(key);
+    if (cached !== undefined) return cached;
+    let canvas: HTMLCanvasElement | null = null;
+    if (grid) {
+      canvas = document.createElement("canvas");
+      canvas.width = grid[0].length;
+      canvas.height = grid.length;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.putImageData(new ImageData(toRgba(grid, palette), canvas.width, canvas.height), 0, 0);
+      else canvas = null;
+    }
+    this.cache.set(key, canvas);
+    return canvas;
+  }
+}
+```
+
+- [ ] **Step 6: Run the tests to see them pass**
+
+Run: `cargo test -p cafe content && pnpm -C client check`
+Expected: PASS: the Rust content tests (including both sprite tests), the client typecheck, and 5 client tests.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add client content/sprites server/src/content.rs pnpm-workspace.yaml package.json pnpm-lock.yaml
+git commit -m "Draw the café's sprites as data and colour them in the client"
+git push origin HEAD:main
+```
+
+---
+
+### Task 12: Pages, accounts and the live connection
+
+The page itself: the way in (sign up with a look, log in, recover, the
+recovery code shown once, a link to the README), and once inside, a live
+connection that keeps a copy of the café up to date, reconnects on its own,
+reloads a stale tab, and stops when another tab takes over.
+
+**Files:**
+- Create: `client/index.html`, `client/src/style.css`, `client/src/main.ts`, `client/src/api.ts`, `client/src/auth.ts`, `client/src/announce.ts`, `client/src/net.ts`, `client/src/state.ts`, `client/src/cafe.ts`, `client/test/state.test.ts`, `spec/login-page.test.ts`
+
+**Interfaces:**
+- Consumes: the generated protocol types; `sprites.ts` (Task 11) for the look picker.
+- Produces: `state.ts`: `CafeState { you, build, cap, offset, room, people: Map<number, PersonView>, cats: Map<string, Cat>, trust: Map<string, TrustView>, bubbles: Bubble[], said: SaidLine[] }`, `Cat` (a `CatView` plus `reaction`), `Bubble { id, from, text, to, until }`, `SaidLine { from, name, text, toName }`, `Effect`, `fromWelcome(msg, localNow?)`, `apply(state, msg, localNow?) -> Effect[]`, `serverNow(state, localNow?)`, `needsReload(serverBuild, clientBuild)`, `pruneBubbles(state, localNow?)`; `net.ts`: `class Connection { start(), stop(), send(msg), isOpen() }`; `cafe.ts`: `class Cafe { state, me, start(), send(msg), leave(), onChange(listener) -> unsubscribe, statusLine() }` with hooks `{ onSignedOut(), onError?(effect) }`; `announce.ts`: `announce(text)`; `api.ts`: `me()`, `signUp(req)`, `logIn(req)`, `recover(req)`, `logOut()`, each `Promise<Answer<T>>`; `auth.ts`: `showAuth(enter: (me: ApiMe) => void)`. Element ids in `index.html` that later tasks use: `cafe`, `status-text`, `leave`, `your-cats`, `stage`, `room` (the canvas), `overlay`, `here`, `said`, `talk`, `talk-to`, `talk-input`, `left-cafe`, `come-back`, `announcer`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`client/test/state.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import type { ServerMsg } from "../src/protocol/ServerMsg";
+import { apply, fromWelcome, needsReload, pruneBubbles } from "../src/state";
+
+type Welcome = Extract<ServerMsg, { type: "welcome" }>;
+
+function welcome(): Welcome {
+  return {
+    type: "welcome",
+    you: 1,
+    build: "b1",
+    now: 10_000,
+    cap: 6,
+    snapshot: {
+      room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, furniture: [] },
+      people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null }],
+      cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 1, y: 5 }, pose: "nap", walk: null }],
+      yourTrust: [{ cat: "mochi", value: 1.5, level: "stranger" }],
+    },
+  };
+}
+
+describe("the client's copy of the café", () => {
+  it("starts from the welcome, with the server's clock", () => {
+    const s = fromWelcome(welcome(), 4_000);
+    expect(s.offset).toBe(6_000);
+    expect(s.cap).toBe(6);
+    expect(s.people.get(1)?.name).toBe("me");
+    expect(s.cats.get("mochi")?.pose).toBe("nap");
+    expect(s.trust.get("mochi")?.value).toBe(1.5);
+  });
+
+  it("adds, places, moves and removes people", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    const sam = { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "window" as const, at: { x: 7, y: 0 }, walk: null };
+    expect(apply(s, { type: "personJoined", person: sam })).toEqual([{ kind: "announce", text: "sam is waiting at the window." }]);
+    expect(apply(s, { type: "personJoined", person: sam })).toEqual([]);
+    apply(s, { type: "personPlaced", id: 2, place: "inside", at: { x: 7, y: 0 }, walk: null });
+    expect(s.people.get(2)?.place).toBe("inside");
+    apply(s, { type: "personLeft", id: 2 });
+    expect(s.people.has(2)).toBe(false);
+  });
+
+  it("keeps a bubble until its time is up, and remembers it for the visit", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    apply(s, { type: "said", from: 1, text: "hello", to: null, ttlMs: 3000 }, 10_000);
+    expect(s.said).toEqual([{ from: 1, name: "me", text: "hello", toName: null }]);
+    pruneBubbles(s, 12_999);
+    expect(s.bubbles).toHaveLength(1);
+    pruneBubbles(s, 13_000);
+    expect(s.bubbles).toHaveLength(0);
+    expect(s.said).toHaveLength(1);
+  });
+
+  it("announces only the cat reactions that involve you", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    expect(apply(s, { type: "catReacted", cat: "mochi", reaction: { kind: "purr", by: 1 } })).toEqual([{ kind: "announce", text: "Mochi purrs." }]);
+    expect(apply(s, { type: "catReacted", cat: "mochi", reaction: { kind: "purr", by: 2 } })).toEqual([]);
+    expect(s.cats.get("mochi")?.reaction?.reaction).toEqual({ kind: "purr", by: 2 });
+  });
+
+  it("updates your trust and the cats' poses", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    apply(s, { type: "yourTrust", trust: { cat: "mochi", value: 3, level: "stranger" } });
+    expect(s.trust.get("mochi")?.value).toBe(3);
+    apply(s, { type: "catPosed", cat: "mochi", pose: "sit", at: { x: 2, y: 5 } });
+    expect(s.cats.get("mochi")).toMatchObject({ pose: "sit", at: { x: 2, y: 5 }, walk: null });
+  });
+
+  it("reloads only when both builds are known and differ", () => {
+    expect(needsReload("a", "b")).toBe(true);
+    expect(needsReload("a", "a")).toBe(false);
+    expect(needsReload("dev", "b")).toBe(false);
+    expect(needsReload("a", "dev")).toBe(false);
+  });
+});
+```
+
+`spec/login-page.test.ts`:
+
+```ts
+import { expect, it } from "vitest";
+import { baseUrl } from "./helpers";
+
+// The way in links to the README, so a newcomer can find out what this is.
+it("the log-in card links to the README", async () => {
+  const html = await (await fetch(new URL("/", baseUrl))).text();
+  expect(html).toMatch(/<a [^>]*href="\/readme\/"/);
+});
+```
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `pnpm -C client test`
+Expected: FAIL: `Failed to resolve import "../src/state"`.
+
+- [ ] **Step 3: Write the page and its modules**
+
+`client/index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The cat café</title>
+    <meta name="description" content="An online cat café: three cats, six seats, and whoever else is here right now." />
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main id="auth" class="auth" hidden>
+      <div class="card">
+        <h1>The cat café</h1>
+        <p class="lede">Three cats, six seats, and whoever else is here right now.</p>
+        <p><a href="/readme/">What is this place?</a></p>
+        <div class="tabs" role="tablist" aria-label="Get in">
+          <button type="button" role="tab" id="tab-signup" aria-selected="true" aria-controls="signup">New here</button>
+          <button type="button" role="tab" id="tab-login" aria-selected="false" aria-controls="login">I've been before</button>
+        </div>
+        <form id="signup" role="tabpanel" aria-labelledby="tab-signup">
+          <label>Name <span class="hint">(everyone in the café sees it)</span>
+            <input name="name" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_\-]{3,20}" />
+          </label>
+          <label>Password <span class="hint">(8 or more characters)</span>
+            <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128" />
+          </label>
+          <fieldset class="looks">
+            <legend>Your look</legend>
+            <div id="look-picker" class="look-picker"></div>
+          </fieldset>
+          <button type="submit">Walk in</button>
+        </form>
+        <form id="login" role="tabpanel" aria-labelledby="tab-login" hidden>
+          <label>Name <input name="name" autocomplete="username" required /></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+          <button type="submit">Walk in</button>
+          <button type="button" class="link" id="show-recover">I've forgotten my password</button>
+        </form>
+        <form id="recover" hidden>
+          <p>Use the recovery code you saved when you signed up.</p>
+          <label>Name <input name="name" autocomplete="username" required /></label>
+          <label>Recovery code <input name="code" autocomplete="one-time-code" required /></label>
+          <label>New password <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128" /></label>
+          <button type="submit">Reset it and walk in</button>
+          <button type="button" class="link" id="hide-recover">Back</button>
+        </form>
+        <section id="code" hidden>
+          <h2>Your recovery code</h2>
+          <p>Keep it somewhere safe. It's the only way back in if you forget your password, and it won't be shown again.</p>
+          <p class="recovery-code"><code id="code-text"></code> <button type="button" id="copy-code">Copy</button></p>
+          <button type="button" id="code-done" class="primary">I've saved it, let me in</button>
+        </section>
+        <p id="auth-error" class="error" role="alert"></p>
+      </div>
+    </main>
+
+    <div id="cafe" class="cafe" hidden>
+      <header class="status">
+        <span id="status-text">Opening the café…</span>
+        <button type="button" id="leave">Leave</button>
+      </header>
+      <aside id="your-cats" class="panel left" aria-label="Your cats"></aside>
+      <div id="stage" class="stage">
+        <canvas
+          id="room"
+          width="192"
+          height="160"
+          tabindex="0"
+          aria-label="The café. Arrow keys move a pointer, Tab steps through the cats and people, Enter acts, Escape puts the pointer away."
+        ></canvas>
+        <div id="overlay" class="overlay"></div>
+      </div>
+      <aside class="panel right">
+        <section id="here" aria-label="Who's here"></section>
+        <section aria-labelledby="said-heading">
+          <h2 id="said-heading">Said this visit</h2>
+          <ol id="said" class="said"></ol>
+        </section>
+      </aside>
+      <form id="talk" class="talk">
+        <button type="button" id="talk-to" class="talk-to" hidden></button>
+        <input id="talk-input" maxlength="100" autocomplete="off" placeholder="Say something…" aria-label="Say something" />
+        <button type="submit">Say</button>
+      </form>
+    </div>
+
+    <section id="left-cafe" class="left-cafe" hidden>
+      <p>You've left the café. The cats will remember you.</p>
+      <button type="button" id="come-back" class="primary">Come back in</button>
+    </section>
+
+    <div id="announcer" class="sr-only" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+```
+
+`client/src/style.css`:
+
+```css
+:root {
+  color-scheme: light dark;
+  --paper: #fbf6ee;
+  --ink: #2b2230;
+  --muted: #6d6170;
+  --card: #fffdf9;
+  --line: #e6d9c8;
+  --accent: #b4572d;
+  --accent-ink: #ffffff;
+  --focus: #2f6fd1;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1c1820;
+    --ink: #efe6dc;
+    --muted: #b5a9b0;
+    --card: #262029;
+    --line: #3a313d;
+    --accent: #e8955c;
+    --accent-ink: #1c1820;
+    --focus: #8ab4ff;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--paper); color: var(--ink); }
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 0.45rem 0.9rem; cursor: pointer; }
+button[type="submit"], button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.link { background: none; border: none; color: var(--accent); text-decoration: underline; padding: 0.25rem 0; justify-self: start; }
+button:disabled { opacity: 0.6; cursor: progress; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+input { font: inherit; width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* The way in */
+.auth { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.card { width: min(100%, 27rem); background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgb(0 0 0 / 0.08); }
+.card h1 { margin: 0 0 0.25rem; font-family: Georgia, "Iowan Old Style", serif; }
+.lede { margin: 0 0 0.5rem; color: var(--muted); }
+.tabs { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
+.tabs [aria-selected="true"] { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+form { display: grid; gap: 0.8rem; }
+label { display: grid; gap: 0.25rem; font-weight: 600; }
+.hint { font-weight: 400; color: var(--muted); font-size: 0.9em; }
+.looks { border: 1px solid var(--line); border-radius: 8px; }
+.look-picker { display: grid; gap: 0.6rem; }
+.look-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.look-row label { position: relative; display: block; }
+.look-row input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.look-row canvas { display: block; width: 48px; height: 48px; image-rendering: pixelated; border: 2px solid var(--line); border-radius: 8px; background: var(--paper); }
+.swatch { display: block; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); }
+.look-row input:checked + canvas, .look-row input:checked + .swatch { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.look-row input:focus-visible + canvas, .look-row input:focus-visible + .swatch { outline: 3px solid var(--focus); outline-offset: 2px; }
+.recovery-code code { font-size: 1.25rem; letter-spacing: 0.08em; background: var(--paper); padding: 0.3rem 0.5rem; border-radius: 6px; }
+.error { color: #c0392b; min-height: 1.5em; margin: 0.5rem 0 0; }
+.left-cafe { min-height: 100vh; display: grid; place-content: center; text-align: center; gap: 1rem; padding: 16px; }
+
+/* The café, on a desktop: the room in the middle, panels either side */
+.cafe {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr) 19rem;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "status status status" "left stage right" "left talk right";
+  gap: 12px;
+  padding: 12px;
+}
+.status { grid-area: status; display: flex; align-items: center; gap: 0.75rem; }
+#status-text { flex: 1; color: var(--muted); }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 1rem; overflow: auto; min-height: 0; }
+.panel h2 { font-size: 0.95rem; margin: 0.25rem 0 0.5rem; }
+.left { grid-area: left; }
+.right { grid-area: right; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0.5rem; }
+.stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }
+#room { display: block; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); touch-action: manipulation; }
+.overlay { position: absolute; inset: 0; pointer-events: none; }
+.overlay > * { pointer-events: auto; }
+.talk { grid-area: talk; display: flex; gap: 0.5rem; align-items: center; }
+.talk-to { white-space: nowrap; border-radius: 999px; padding: 0.2rem 0.7rem; }
+.said { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.95rem; overflow-wrap: anywhere; }
+.said .who { font-weight: 600; }
+.cat-row { display: grid; gap: 0.25rem; margin-bottom: 0.75rem; }
+.trust-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.trust-bar > span { display: block; height: 100%; background: var(--accent); }
+
+/* Bubbles, menus and notes over the room */
+.bubble { position: absolute; transform: translate(-50%, -100%); max-width: 14rem; background: #fffdf9; color: #2b2230; border: 2px solid #2b2230; border-radius: 10px; padding: 0.3rem 0.55rem; font-size: 0.9rem; line-height: 1.3; pointer-events: none; overflow-wrap: anywhere; box-shadow: 0 2px 0 #2b2230; }
+.bubble .to { display: block; font-size: 0.75rem; color: #6d6170; }
+.menu { position: absolute; min-width: 11rem; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem; display: grid; gap: 0.35rem; box-shadow: 0 10px 30px rgb(0 0 0 / 0.2); z-index: 2; }
+.menu h2 { font-size: 1rem; margin: 0 0 0.25rem; }
+.menu .note { color: var(--muted); font-size: 0.85rem; margin: 0 0 0.25rem; }
+.toast { position: absolute; left: 50%; bottom: 0.75rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.9rem; pointer-events: none; }
+
+/* The café on a phone, layout A: the whole room on top, full width, the rest below */
+@media (max-width: 700px) {
+  .cafe {
+    height: auto;
+    min-height: 100vh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+    grid-template-areas: "status" "stage" "talk" "right" "left";
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .status, .panel, .talk { margin: 0 8px; }
+  .stage { place-items: start center; }
+  .right { grid-template-rows: auto auto; }
+  .menu.sheet { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding: 1rem; }
+}
+```
+
+`client/src/api.ts`:
+
+```ts
+import type { ApiError } from "./protocol/ApiError";
+import type { ApiMe } from "./protocol/ApiMe";
+import type { LogInRequest } from "./protocol/LogInRequest";
+import type { RecoverRequest } from "./protocol/RecoverRequest";
+import type { SignUpRequest } from "./protocol/SignUpRequest";
+
+// The accounts API (ADR 0007). The session is an HttpOnly cookie the page never sees.
+
+export type Answer<T> = { ok: true; value: T } | { ok: false; error: ApiError };
+
+async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<Answer<T>> {
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method,
+      credentials: "same-origin",
+      headers: body === undefined ? {} : { "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, error: { error: "server", detail: "Can't reach the café. Check your connection and try again." } };
+  }
+  if (res.status === 204) return { ok: true, value: undefined as T };
+  const data: unknown = await res.json().catch(() => null);
+  if (res.ok) return { ok: true, value: data as T };
+  return { ok: false, error: (data as ApiError | null) ?? { error: "server", detail: `The café answered ${res.status}.` } };
+}
+
+export const me = () => call<ApiMe>("GET", "/api/me");
+export const signUp = (req: SignUpRequest) => call<ApiMe>("POST", "/api/signup", req);
+export const logIn = (req: LogInRequest) => call<ApiMe>("POST", "/api/login", req);
+export const recover = (req: RecoverRequest) => call<ApiMe>("POST", "/api/recover", req);
+export const logOut = () => call<void>("POST", "/api/logout");
+```
+
+`client/src/announce.ts`:
+
+```ts
+/** Says a line through the page's polite live region, for screen readers. */
+export function announce(text: string): void {
+  const region = document.getElementById("announcer");
+  if (!region) return;
+  region.textContent = "";
+  window.setTimeout(() => {
+    region.textContent = text;
+  }, 30);
+}
+```
+
+`client/src/auth.ts`:
+
+```ts
+import * as api from "./api";
+import type { ApiMe } from "./protocol/ApiMe";
+import { AVATARS, COLOURS, Sprites, shirtColour } from "./sprites";
+
+// The way in (ADR 0007): sign up with a name, a password and a look, log in,
+// or recover with the code shown once at sign-up.
+
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+const COLOUR_NAMES = ["Red", "Orange", "Green", "Sky blue", "Purple", "Pink"];
+let wired = false;
+let enterCafe: (me: ApiMe) => void = () => {};
+
+export function showAuth(enter: (me: ApiMe) => void): void {
+  enterCafe = enter;
+  $("auth").hidden = false;
+  if (wired) return;
+  wired = true;
+  const error = $("auth-error");
+  const forms = { signup: $<HTMLFormElement>("signup"), login: $<HTMLFormElement>("login"), recover: $<HTMLFormElement>("recover") };
+  const show = (which: keyof typeof forms) => {
+    for (const [name, form] of Object.entries(forms)) form.hidden = name !== which;
+    $("code").hidden = true;
+    $("tab-signup").setAttribute("aria-selected", String(which === "signup"));
+    $("tab-login").setAttribute("aria-selected", String(which !== "signup"));
+    error.textContent = "";
+    forms[which].querySelector("input")?.focus();
+  };
+  $("tab-signup").onclick = () => show("signup");
+  $("tab-login").onclick = () => show("login");
+  $("show-recover").onclick = () => show("recover");
+  $("hide-recover").onclick = () => show("login");
+  buildLookPicker();
+
+  const fields = (form: HTMLFormElement) => Object.fromEntries(new FormData(form)) as Record<string, string>;
+  const submit = (form: HTMLFormElement, send: (f: Record<string, string>) => Promise<api.Answer<ApiMe>>) => {
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const buttons = form.querySelectorAll("button");
+      buttons.forEach((b) => (b.disabled = true));
+      error.textContent = "";
+      const answer = await send(fields(form));
+      buttons.forEach((b) => (b.disabled = false));
+      if (!answer.ok) {
+        error.textContent = answer.error.detail;
+        return;
+      }
+      const me = answer.value;
+      if (me.recoveryCode) showCode(me.recoveryCode, () => done(me));
+      else done(me);
+    };
+  };
+  submit(forms.signup, (f) =>
+    api.signUp({ name: f.name, password: f.password, look: { avatar: Number(f.avatar ?? 0), colour: Number(f.colour ?? 0) } }),
+  );
+  submit(forms.login, (f) => api.logIn({ name: f.name, password: f.password }));
+  submit(forms.recover, (f) => api.recover({ name: f.name, code: f.code, password: f.password }));
+}
+
+function done(me: ApiMe): void {
+  $("auth").hidden = true;
+  enterCafe(me);
+}
+
+function showCode(code: string, then: () => void): void {
+  for (const id of ["signup", "login", "recover"]) $(id).hidden = true;
+  $("code").hidden = false;
+  $("code-text").textContent = code;
+  const copy = $<HTMLButtonElement>("copy-code");
+  copy.textContent = "Copy";
+  copy.onclick = async () => {
+    await navigator.clipboard?.writeText(code).catch(() => undefined);
+    copy.textContent = "Copied";
+  };
+  const doneButton = $<HTMLButtonElement>("code-done");
+  doneButton.onclick = () => {
+    $("code").hidden = true;
+    then();
+  };
+  doneButton.focus();
+}
+
+/** Four avatars, previewed in the chosen colour, and six colours: native radio groups, so arrow keys work. */
+function buildLookPicker(): void {
+  const picker = $("look-picker");
+  const sprites = new Sprites();
+  const avatarRow = document.createElement("div");
+  const colourRow = document.createElement("div");
+  avatarRow.className = colourRow.className = "look-row";
+  const previews: HTMLCanvasElement[] = [];
+  const radio = (name: string, value: number, label: string) => {
+    const input = Object.assign(document.createElement("input"), { type: "radio", name, value: String(value), checked: value === 0 });
+    input.setAttribute("aria-label", label);
+    return input;
+  };
+  for (let a = 0; a < AVATARS; a++) {
+    const canvas = Object.assign(document.createElement("canvas"), { width: 16, height: 16 });
+    previews.push(canvas);
+    const label = document.createElement("label");
+    label.append(radio("avatar", a, `Look ${a + 1}`), canvas);
+    avatarRow.append(label);
+  }
+  for (let c = 0; c < COLOURS; c++) {
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.background = shirtColour(c);
+    const input = radio("colour", c, COLOUR_NAMES[c] ?? `Colour ${c + 1}`);
+    input.addEventListener("change", draw);
+    const label = document.createElement("label");
+    label.append(input, swatch);
+    colourRow.append(label);
+  }
+  picker.replaceChildren(avatarRow, colourRow);
+  function draw(): void {
+    const chosen = picker.querySelector<HTMLInputElement>("input[name=colour]:checked");
+    const colour = Number(chosen?.value ?? 0);
+    previews.forEach((canvas, avatar) => {
+      const ctx = canvas.getContext("2d");
+      const img = sprites.avatar({ avatar, colour }, "stand");
+      if (ctx && img) {
+        ctx.clearRect(0, 0, 16, 16);
+        ctx.drawImage(img, 0, 0);
+      }
+    });
+  }
+  draw();
+}
+```
+
+`client/src/net.ts`:
+
+```ts
+import type { ClientMsg } from "./protocol/ClientMsg";
+import type { ServerMsg } from "./protocol/ServerMsg";
+
+export type Status = "connecting" | "open" | "closed";
+
+/** One WebSocket to /ws. It reconnects on its own, waiting 0.5 s and doubling to 5 s, until stopped. */
+export class Connection {
+  private ws: WebSocket | null = null;
+  private delay = 500;
+  private stopped = false;
+  private timer: number | undefined;
+
+  constructor(
+    private readonly onMessage: (msg: ServerMsg) => void,
+    private readonly onStatus: (status: Status) => void,
+  ) {}
+
+  start(): void {
+    this.stopped = false;
+    this.open();
+  }
+
+  stop(): void {
+    this.stopped = true;
+    window.clearTimeout(this.timer);
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+  }
+
+  isOpen(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  send(msg: ClientMsg): void {
+    if (this.ws && this.isOpen()) this.ws.send(JSON.stringify(msg));
+  }
+
+  private open(): void {
+    this.onStatus("connecting");
+    const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+    this.ws = ws;
+    ws.onopen = () => {
+      this.delay = 500;
+      this.onStatus("open");
+    };
+    ws.onmessage = (event) => {
+      let msg: ServerMsg;
+      try {
+        msg = JSON.parse(String(event.data)) as ServerMsg;
+      } catch {
+        return;
+      }
+      this.onMessage(msg);
+    };
+    ws.onclose = () => {
+      if (this.ws !== ws) return;
+      this.ws = null;
+      this.onStatus("closed");
+      if (this.stopped) return;
+      this.timer = window.setTimeout(() => this.open(), this.delay);
+      this.delay = Math.min(this.delay * 2, 5000);
+    };
+  }
+}
+```
+
+`client/src/state.ts`:
+
+```ts
+import type { CatView } from "./protocol/CatView";
+import type { ErrorCode } from "./protocol/ErrorCode";
+import type { PersonView } from "./protocol/PersonView";
+import type { Reaction } from "./protocol/Reaction";
+import type { RoomView } from "./protocol/RoomView";
+import type { ServerMsg } from "./protocol/ServerMsg";
+import type { TrustView } from "./protocol/TrustView";
+
+// The client's copy of the café: built from the welcome, then kept up to date
+// by applying each message in order. The server decides; this only mirrors.
+
+export interface Bubble {
+  id: number;
+  from: number;
+  text: string;
+  to: number | null;
+  until: number;
+}
+
+export interface SaidLine {
+  from: number;
+  name: string;
+  text: string;
+  toName: string | null;
+}
+
+export interface Cat extends CatView {
+  reaction: { reaction: Reaction; at: number } | null;
+}
+
+export interface CafeState {
+  you: number;
+  build: string;
+  cap: number;
+  /** Server clock minus local clock, in milliseconds. */
+  offset: number;
+  room: RoomView;
+  people: Map<number, PersonView>;
+  cats: Map<string, Cat>;
+  trust: Map<string, TrustView>;
+  bubbles: Bubble[];
+  said: SaidLine[];
+}
+
+export type Effect =
+  | { kind: "replaced" }
+  | { kind: "error"; code: ErrorCode; detail: string }
+  | { kind: "announce"; text: string };
+
+type Welcome = Extract<ServerMsg, { type: "welcome" }>;
+
+const SAID_KEPT = 50;
+let nextBubble = 1;
+
+export function serverNow(state: CafeState, localNow = Date.now()): number {
+  return localNow + state.offset;
+}
+
+export function fromWelcome(msg: Welcome, localNow = Date.now()): CafeState {
+  const s = msg.snapshot;
+  return {
+    you: msg.you,
+    build: msg.build,
+    cap: msg.cap,
+    offset: msg.now - localNow,
+    room: s.room,
+    people: new Map(s.people.map((p) => [p.id, p])),
+    cats: new Map(s.cats.map((c) => [c.id, { ...c, reaction: null }])),
+    trust: new Map(s.yourTrust.map((t) => [t.cat, t])),
+    bubbles: [],
+    said: [],
+  };
+}
+
+/** The client and server come from one build; a tab left open across a deploy reloads. */
+export function needsReload(serverBuild: string, clientBuild: string): boolean {
+  return serverBuild !== clientBuild && serverBuild !== "dev" && clientBuild !== "dev";
+}
+
+const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {
+  lookUp: (cat) => `${cat} looks up at you.`,
+  sniff: (cat) => `${cat} sniffs your hand.`,
+  purr: (cat) => `${cat} purrs.`,
+  tolerate: (cat) => `${cat} puts up with it.`,
+  refuse: (cat) => `${cat} pulls away.`,
+  greet: (cat) => `${cat} comes to greet you.`,
+};
+
+function reactionTarget(r: Reaction): number {
+  switch (r.kind) {
+    case "lookUp":
+      return r.at;
+    case "greet":
+      return r.to;
+    default:
+      return r.by;
+  }
+}
+
+/** Applies one message (other than the welcome), returning what the page should say or show. */
+export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): Effect[] {
+  const now = serverNow(state, localNow);
+  const name = (id: number) => state.people.get(id)?.name ?? "someone";
+  switch (msg.type) {
+    case "welcome":
+      return [];
+    case "replaced":
+      return [{ kind: "replaced" }];
+    case "personJoined": {
+      const isNew = !state.people.has(msg.person.id);
+      state.people.set(msg.person.id, msg.person);
+      if (!isNew || msg.person.id === state.you) return [];
+      const where = msg.person.place === "inside" ? "came in." : "is waiting at the window.";
+      return [{ kind: "announce", text: `${msg.person.name} ${where}` }];
+    }
+    case "personLeft": {
+      const who = name(msg.id);
+      state.people.delete(msg.id);
+      return [{ kind: "announce", text: `${who} left.` }];
+    }
+    case "personPlaced": {
+      const p = state.people.get(msg.id);
+      if (p) state.people.set(msg.id, { ...p, place: msg.place, at: msg.at, walk: msg.walk });
+      return msg.id === state.you ? [{ kind: "announce", text: "A seat came free. You're coming in." }] : [];
+    }
+    case "personMoved": {
+      const p = state.people.get(msg.id);
+      if (p) state.people.set(msg.id, { ...p, walk: msg.walk });
+      return [];
+    }
+    case "catMoved": {
+      const c = state.cats.get(msg.cat);
+      if (c) state.cats.set(msg.cat, { ...c, walk: msg.walk, pose: "walk" });
+      return [];
+    }
+    case "catPosed": {
+      const c = state.cats.get(msg.cat);
+      if (c) state.cats.set(msg.cat, { ...c, pose: msg.pose, at: msg.at, walk: null });
+      return [];
+    }
+    case "catReacted": {
+      const c = state.cats.get(msg.cat);
+      if (c) state.cats.set(msg.cat, { ...c, reaction: { reaction: msg.reaction, at: now } });
+      if (reactionTarget(msg.reaction) !== state.you) return [];
+      return [{ kind: "announce", text: REACTION_WORDS[msg.reaction.kind](c?.name ?? "A cat") }];
+    }
+    case "said": {
+      state.bubbles.push({ id: nextBubble++, from: msg.from, text: msg.text, to: msg.to, until: now + msg.ttlMs });
+      state.said.push({ from: msg.from, name: name(msg.from), text: msg.text, toName: msg.to === null ? null : name(msg.to) });
+      if (state.said.length > SAID_KEPT) state.said.splice(0, state.said.length - SAID_KEPT);
+      const to = msg.to === null ? "" : ` to ${name(msg.to)}`;
+      return [{ kind: "announce", text: `${name(msg.from)} says${to}: ${msg.text}` }];
+    }
+    case "yourTrust":
+      state.trust.set(msg.trust.cat, msg.trust);
+      return [];
+    case "error":
+      return [{ kind: "error", code: msg.code, detail: msg.detail }];
+  }
+}
+
+/** Drops bubbles whose time is up; "said this visit" keeps them. */
+export function pruneBubbles(state: CafeState, localNow = Date.now()): void {
+  const now = serverNow(state, localNow);
+  state.bubbles = state.bubbles.filter((b) => b.until > now);
+}
+```
+
+`client/src/cafe.ts`:
+
+```ts
+import { announce } from "./announce";
+import * as api from "./api";
+import { Connection } from "./net";
+import type { ApiMe } from "./protocol/ApiMe";
+import type { ClientMsg } from "./protocol/ClientMsg";
+import type { ServerMsg } from "./protocol/ServerMsg";
+import { type CafeState, type Effect, apply, fromWelcome, needsReload } from "./state";
+
+export interface CafeHooks {
+  onSignedOut(): void;
+  onError?(effect: Extract<Effect, { kind: "error" }>): void;
+}
+
+/** The live café: one connection, the state it keeps up to date, and who's listening. */
+export class Cafe {
+  state: CafeState | null = null;
+  private readonly listeners = new Set<() => void>();
+  private readonly connection: Connection;
+  private replaced = false;
+
+  constructor(
+    readonly me: ApiMe,
+    private readonly hooks: CafeHooks,
+  ) {
+    this.connection = new Connection(
+      (msg) => this.receive(msg),
+      (status) => {
+        if (status === "closed" && !this.replaced) void this.checkSignedIn();
+        this.notify();
+      },
+    );
+  }
+
+  start(): void {
+    this.connection.start();
+  }
+
+  send(msg: ClientMsg): void {
+    this.connection.send(msg);
+  }
+
+  /** Walks out at once, freeing the seat (design.md, "People"). */
+  leave(): void {
+    this.send({ type: "leave" });
+    window.setTimeout(() => this.connection.stop(), 100);
+  }
+
+  onChange(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  statusLine(): string {
+    if (this.replaced) return "You opened the café in another tab.";
+    const s = this.state;
+    if (!s || !this.connection.isOpen()) return "Reconnecting to the café…";
+    const people = [...s.people.values()];
+    const inside = people.filter((p) => p.place === "inside").length;
+    const waiting = people.length - inside;
+    const where = s.people.get(s.you)?.place === "window" ? "You're waiting at the window. " : "";
+    return `${where}${inside}/${s.cap} inside${waiting > 0 ? ` · ${waiting} at the window` : ""}`;
+  }
+
+  private receive(msg: ServerMsg): void {
+    if (msg.type === "welcome") {
+      if (needsReload(msg.build, __BUILD_ID__)) {
+        location.reload();
+        return;
+      }
+      this.state = fromWelcome(msg);
+    } else if (this.state) {
+      for (const effect of apply(this.state, msg)) this.handle(effect);
+    }
+    this.notify();
+  }
+
+  private handle(effect: Effect): void {
+    switch (effect.kind) {
+      case "announce":
+        announce(effect.text);
+        break;
+      case "replaced":
+        this.replaced = true;
+        this.connection.stop();
+        break;
+      case "error":
+        announce(effect.detail);
+        this.hooks.onError?.(effect);
+        break;
+    }
+  }
+
+  /** A closed connection might mean the session ended: then show the way in. */
+  private async checkSignedIn(): Promise<void> {
+    const me = await api.me();
+    if (!me.ok && me.error.error === "signedOut") {
+      this.connection.stop();
+      this.hooks.onSignedOut();
+    }
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) listener();
+  }
+}
+```
+
+`client/src/main.ts`:
+
+```ts
+import "./style.css";
+import * as api from "./api";
+import { showAuth } from "./auth";
+import { Cafe } from "./cafe";
+import type { ApiMe } from "./protocol/ApiMe";
+
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+
+async function start(): Promise<void> {
+  const me = await api.me();
+  if (me.ok) enter(me.value);
+  else showAuth(enter);
+}
+
+function enter(me: ApiMe): void {
+  $("left-cafe").hidden = true;
+  $("cafe").hidden = false;
+  const cafe = new Cafe(me, {
+    onSignedOut: () => {
+      $("cafe").hidden = true;
+      showAuth(enter);
+    },
+  });
+  cafe.onChange(() => {
+    $("status-text").textContent = cafe.statusLine();
+  });
+  $("leave").onclick = () => {
+    cafe.leave();
+    $("cafe").hidden = true;
+    $("left-cafe").hidden = false;
+    $("come-back").onclick = () => enter(me);
+  };
+  cafe.start();
+}
+
+void start();
+```
+
+- [ ] **Step 4: Run the client checks to see them pass**
+
+Run: `pnpm -C client check`
+Expected: PASS: typecheck clean; `state` (6) and `sprites` (5) tests.
+
+- [ ] **Step 5: Try it by hand**
+
+Run: `pnpm -C client build && cargo run -p cafe`, then open `http://localhost:8080`.
+Expected: the way in, with the README link; signing up shows a recovery code once; "I've saved it" leads to the café, whose status line reads "1/6 inside". A second browser profile signing up makes it "2/6 inside" in both within a second. Wrong passwords show the server's message.
+
+- [ ] **Step 6: Run the spec**
+
+Run: with the server still running, `pnpm test`.
+Expected: PASS, including `login-page`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add client spec/login-page.test.ts
+git commit -m "Add the way in and the live connection to the client"
+git push origin HEAD:main
+```
+
+---
+
+### Task 13: Drawing the café
+
+The room on screen at the largest whole-number scale that fits, so pixels stay
+crisp and a resize mid-use just refits; walks animated between tiles from the
+server's paths; everything drawn back to front by row; faces of the line at
+the window; emotes over the cats; and the light by the Canberra hour.
+
+**Files:**
+- Create: `client/src/scale.ts`, `client/src/motion.ts`, `client/src/canberra.ts`, `client/src/render.ts`, `client/src/stage.ts`, `client/test/scale.test.ts`, `client/test/motion.test.ts`, `client/test/canberra.test.ts`
+- Modify: `client/src/main.ts` (start a `Stage`)
+
+**Interfaces:**
+- Consumes: `state.ts`, `sprites.ts`, `cafe.ts` (Tasks 11, 12).
+- Produces: `scale.ts`: `TILE` (16), `fitScale(availWidth, availHeight, roomWidth, roomHeight) -> number`; `motion.ts`: `Spot { x, y, moving, facing }`, `positionAt(walk, at, serverNow) -> Spot` (fractional tiles); `canberra.ts`: `canberraHour(date?) -> number`, `Tint { colour, alpha }`, `nightTint(hour) -> Tint | null`; `render.ts`: `Pointer { tile, visible }`, `draw(ctx, state, sprites, localNow, pointer, hour)`, `windowTiles(room)`, `windowSpot(state, id)`; `stage.ts`: `class Stage { sprites, pointer, scale, canvas, frameHooks: (() => void)[], start(), stop(), tileToCss(x, y) -> { left, top }, cssToTile(clientX, clientY) -> Tile | null }`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`client/test/scale.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { fitScale } from "../src/scale";
+
+describe("whole-number scaling", () => {
+  it("fits the room at 2× across a 390-pixel phone", () => {
+    expect(fitScale(390, Infinity, 12, 10)).toBe(2);
+  });
+  it("fits it at 5× in the middle of a 1920×1080 desktop", () => {
+    expect(fitScale(1296, 947, 12, 10)).toBe(5);
+  });
+  it("uses an exact fit and never drops below 1×", () => {
+    expect(fitScale(384, 320, 12, 10)).toBe(2);
+    expect(fitScale(100, 100, 12, 10)).toBe(1);
+  });
+});
+```
+
+`client/test/motion.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { positionAt } from "../src/motion";
+
+const walk = { path: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], start: 1000, speed: 2 };
+
+describe("walks between tiles", () => {
+  it("is halfway along the first step a quarter of a second in", () => {
+    expect(positionAt(walk, { x: 9, y: 9 }, 1250)).toEqual({ x: 0.5, y: 0, moving: true, facing: 1 });
+  });
+  it("arrives, and stops, when the path runs out", () => {
+    expect(positionAt(walk, { x: 9, y: 9 }, 2000)).toMatchObject({ x: 1, y: 1, moving: false });
+  });
+  it("faces left when walking left", () => {
+    const left = { path: [{ x: 3, y: 0 }, { x: 2, y: 0 }], start: 0, speed: 1 };
+    expect(positionAt(left, { x: 3, y: 0 }, 500).facing).toBe(-1);
+  });
+  it("stands where it is without a walk", () => {
+    expect(positionAt(null, { x: 4, y: 5 }, 0)).toEqual({ x: 4, y: 5, moving: false, facing: 1 });
+  });
+});
+```
+
+`client/test/canberra.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { canberraHour, nightTint } from "../src/canberra";
+
+describe("the Canberra clock", () => {
+  it("reads the hour across daylight saving", () => {
+    expect(canberraHour(new Date("2026-10-06T13:48:15Z"))).toBe(0);
+    expect(canberraHour(new Date("2026-07-01T00:00:00Z"))).toBe(10);
+  });
+  it("leaves the morning clear and darkens the evening, then the night", () => {
+    expect(nightTint(9)).toBeNull();
+    const afternoon = nightTint(13)!.alpha;
+    const evening = nightTint(18)!.alpha;
+    const night = nightTint(23)!.alpha;
+    expect(afternoon).toBeLessThan(evening);
+    expect(evening).toBeLessThan(night);
+    expect(nightTint(3)).toEqual(nightTint(23));
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `pnpm -C client test`
+Expected: FAIL: `Failed to resolve import "../src/scale"` (and `motion`, `canberra`).
+
+- [ ] **Step 3: Write the implementation**
+
+`client/src/scale.ts`:
+
+```ts
+export const TILE = 16;
+
+/** The largest whole-number scale at which the room fits, so pixels stay crisp; never below 1. */
+export function fitScale(availWidth: number, availHeight: number, roomWidth: number, roomHeight: number): number {
+  return Math.max(1, Math.floor(Math.min(availWidth / (roomWidth * TILE), availHeight / (roomHeight * TILE))));
+}
+```
+
+`client/src/motion.ts`:
+
+```ts
+import type { Tile } from "./protocol/Tile";
+import type { Walk } from "./protocol/Walk";
+
+// Walks are sent once, as paths (design.md, "Real-time"); every client
+// animates them from the same start time and speed.
+
+export interface Spot {
+  x: number;
+  y: number;
+  moving: boolean;
+  facing: 1 | -1;
+}
+
+/** Where a walker is at `serverNow`, in tiles: fractional while moving. */
+export function positionAt(walk: Walk | null, at: Tile, serverNow: number): Spot {
+  if (!walk || walk.path.length === 0) return { x: at.x, y: at.y, moving: false, facing: 1 };
+  const steps = Math.max(0, ((serverNow - walk.start) * walk.speed) / 1000);
+  const last = walk.path.length - 1;
+  if (steps >= last) {
+    const end = walk.path[last];
+    const before = walk.path[Math.max(0, last - 1)];
+    return { x: end.x, y: end.y, moving: false, facing: end.x < before.x ? -1 : 1 };
+  }
+  const i = Math.floor(steps);
+  const f = steps - i;
+  const a = walk.path[i];
+  const b = walk.path[i + 1];
+  return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, moving: true, facing: b.x < a.x ? -1 : 1 };
+}
+```
+
+`client/src/canberra.ts`:
+
+```ts
+// The café keeps Canberra time (design.md, "The café"), whoever is looking.
+
+const HOUR = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", hourCycle: "h23" });
+
+export function canberraHour(date = new Date()): number {
+  return Number(HOUR.format(date)) % 24;
+}
+
+export interface Tint {
+  colour: string;
+  alpha: number;
+}
+
+/** The light by the hour (design.md, "Numbers to tune"): morning from 6, afternoon from 12, evening from 17, night from 21. */
+export function nightTint(hour: number): Tint | null {
+  if (hour >= 21 || hour < 6) return { colour: "#0b1030", alpha: 0.38 };
+  if (hour >= 17) return { colour: "#1d2350", alpha: 0.16 };
+  if (hour >= 12) return { colour: "#ffb347", alpha: 0.06 };
+  return null;
+}
+```
+
+`client/src/render.ts`:
+
+```ts
+import { nightTint } from "./canberra";
+import { type Spot, positionAt } from "./motion";
+import type { Look } from "./protocol/Look";
+import type { Reaction } from "./protocol/Reaction";
+import type { RoomView } from "./protocol/RoomView";
+import { TILE } from "./scale";
+import type { AvatarFrame, CatFrame, EmoteName, Sprites, TileName } from "./sprites";
+import { type CafeState, type Cat, serverNow } from "./state";
+
+// Draws the whole café at 1:1 into the canvas; CSS scales it by a whole number.
+
+export interface Pointer {
+  tile: { x: number; y: number } | null;
+  visible: boolean;
+}
+
+const GROUND: Record<string, TileName> = { ".": "floor", W: "wall", G: "window", D: "door", C: "board" };
+/** Pieces that lie flat, drawn before anything that stands. */
+const FLAT = new Set(["rug"]);
+const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
+  lookUp: "question",
+  sniff: "sniff",
+  purr: "heart",
+  tolerate: "dots",
+  refuse: "dots",
+  greet: "heart",
+};
+
+/** The window's tiles, left to right. */
+export function windowTiles(room: RoomView): { x: number; y: number }[] {
+  return [...(room.tiles[0] ?? "")].flatMap((ch, x) => (ch === "G" ? [{ x, y: 0 }] : []));
+}
+
+/** Where someone waiting shows: the window's tiles, in line order. */
+export function windowSpot(state: CafeState, id: number): { x: number; y: number } {
+  const tiles = windowTiles(state.room);
+  const line = [...state.people.values()].filter((p) => p.place === "window").map((p) => p.id);
+  const i = Math.max(0, line.indexOf(id));
+  return tiles.length > 0 ? tiles[i % tiles.length] : { x: 0, y: 0 };
+}
+
+function blit(ctx: CanvasRenderingContext2D, img: CanvasImageSource | null, x: number, y: number): void {
+  if (img) ctx.drawImage(img, x, y);
+}
+
+export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, hour: number): void {
+  const now = serverNow(state, localNow);
+  const { room } = state;
+  const width = room.width * TILE;
+  const height = room.height * TILE;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, width, height);
+
+  room.tiles.forEach((row, y) => [...row].forEach((ch, x) => blit(ctx, sprites.tile(GROUND[ch] ?? "floor"), x * TILE, y * TILE)));
+
+  // The line at the window: faces through the glass.
+  const tiles = windowTiles(room);
+  const line = [...state.people.values()].filter((p) => p.place === "window").slice(0, tiles.length);
+  line.forEach((person, i) => {
+    const img = sprites.avatar(person.look, "stand");
+    if (img) ctx.drawImage(img, 0, 0, TILE, 9, tiles[i].x * TILE, 1, TILE, 9);
+  });
+
+  for (const f of room.furniture) if (FLAT.has(f.kind)) blit(ctx, sprites.furniture(f.kind), f.x * TILE, f.y * TILE);
+
+  // Everything that stands, back to front by the row it stands on.
+  const items: { y: number; paint: () => void }[] = [];
+  for (const f of room.furniture) {
+    if (!FLAT.has(f.kind)) items.push({ y: f.y + f.h - 1, paint: () => blit(ctx, sprites.furniture(f.kind), f.x * TILE, f.y * TILE) });
+  }
+  for (const cat of state.cats.values()) {
+    const spot = positionAt(cat.walk, cat.at, now);
+    items.push({ y: spot.y + 0.1, paint: () => drawCat(ctx, sprites, cat, spot, now) });
+  }
+  for (const person of state.people.values()) {
+    if (person.place !== "inside") continue;
+    const spot = positionAt(person.walk, person.at, now);
+    items.push({ y: spot.y + 0.2, paint: () => drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you) });
+  }
+  items.sort((a, b) => a.y - b.y).forEach((item) => item.paint());
+
+  const tint = nightTint(hour);
+  if (tint) {
+    ctx.globalAlpha = tint.alpha;
+    ctx.fillStyle = tint.colour;
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = 1;
+  }
+
+  if (pointer.visible && pointer.tile) {
+    const { x, y } = pointer.tile;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#ffffff";
+    ctx.strokeRect(x * TILE + 0.5, y * TILE + 0.5, TILE - 1, TILE - 1);
+    ctx.strokeStyle = "#2f6fd1";
+    ctx.strokeRect(x * TILE + 1.5, y * TILE + 1.5, TILE - 3, TILE - 3);
+  }
+}
+
+function drawFlipped(ctx: CanvasRenderingContext2D, img: CanvasImageSource, x: number, y: number, facing: 1 | -1): void {
+  if (facing > 0) {
+    ctx.drawImage(img, x, y);
+    return;
+  }
+  ctx.save();
+  ctx.translate(x + TILE, y);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
+function drawCat(ctx: CanvasRenderingContext2D, sprites: Sprites, cat: Cat, spot: Spot, now: number): void {
+  const frame: CatFrame = cat.pose === "nap" ? "nap" : spot.moving ? (Math.floor(now / 160) % 2 ? "walk_a" : "walk_b") : "sit";
+  const img = sprites.cat(cat.coat, frame);
+  const x = Math.round(spot.x * TILE);
+  const y = Math.round(spot.y * TILE);
+  if (img) {
+    ctx.save();
+    if (cat.pose === "hide") ctx.globalAlpha = 0.55;
+    drawFlipped(ctx, img, x, y, spot.facing);
+    ctx.restore();
+  }
+  const fresh = cat.reaction && now - cat.reaction.at < 2500 ? EMOTE_FOR[cat.reaction.reaction.kind] : null;
+  const emote = fresh ?? (cat.pose === "nap" ? "zzz" : null);
+  if (emote) blit(ctx, sprites.emote(emote), x + 4, y - 8);
+}
+
+function drawPerson(ctx: CanvasRenderingContext2D, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean): void {
+  const frame: AvatarFrame = spot.moving ? (Math.floor(now / 180) % 2 ? "walk_a" : "walk_b") : "stand";
+  const img = sprites.avatar(look, frame);
+  const x = Math.round(spot.x * TILE);
+  const y = Math.round(spot.y * TILE);
+  if (img) drawFlipped(ctx, img, x, y, spot.facing);
+  if (isYou) {
+    // A small marker over your own head.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x + 6, y - 4, 4, 2);
+    ctx.fillRect(x + 7, y - 2, 2, 1);
+  }
+}
+```
+
+`client/src/stage.ts`:
+
+```ts
+import type { Cafe } from "./cafe";
+import { canberraHour } from "./canberra";
+import { type Pointer, draw } from "./render";
+import { TILE, fitScale } from "./scale";
+import { Sprites } from "./sprites";
+
+/** The room on screen: sized to the largest whole-number scale that fits, drawn every frame. */
+export class Stage {
+  readonly sprites = new Sprites();
+  readonly pointer: Pointer = { tile: null, visible: false };
+  /** Run after each frame is drawn (bubbles follow the people they belong to). */
+  readonly frameHooks: (() => void)[] = [];
+  scale = 1;
+  private frame = 0;
+  private readonly resize = new ResizeObserver(() => this.fit());
+
+  constructor(
+    private readonly cafe: Cafe,
+    readonly canvas: HTMLCanvasElement,
+    private readonly box: HTMLElement,
+  ) {
+    this.resize.observe(box);
+  }
+
+  start(): void {
+    const loop = () => {
+      this.paint();
+      for (const hook of this.frameHooks) hook();
+      this.frame = requestAnimationFrame(loop);
+    };
+    this.frame = requestAnimationFrame(loop);
+  }
+
+  stop(): void {
+    cancelAnimationFrame(this.frame);
+    this.resize.disconnect();
+  }
+
+  /** CSS pixels, within the stage box, of a point given in tiles. */
+  tileToCss(x: number, y: number): { left: number; top: number } {
+    return { left: this.canvas.offsetLeft + x * TILE * this.scale, top: this.canvas.offsetTop + y * TILE * this.scale };
+  }
+
+  /** The tile under a pointer, or null outside the room. */
+  cssToTile(clientX: number, clientY: number): { x: number; y: number } | null {
+    const room = this.cafe.state?.room;
+    if (!room) return null;
+    const r = this.canvas.getBoundingClientRect();
+    const x = Math.floor((clientX - r.left) / (TILE * this.scale));
+    const y = Math.floor((clientY - r.top) / (TILE * this.scale));
+    return x >= 0 && y >= 0 && x < room.width && y < room.height ? { x, y } : null;
+  }
+
+  private fit(): void {
+    const room = this.cafe.state?.room;
+    const w = room?.width ?? 12;
+    const h = room?.height ?? 10;
+    // On a phone the page scrolls, so only the width limits the room.
+    const phone = matchMedia("(max-width: 700px)").matches;
+    this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight, w, h);
+    this.canvas.width = w * TILE;
+    this.canvas.height = h * TILE;
+    this.canvas.style.width = `${w * TILE * this.scale}px`;
+    this.canvas.style.height = `${h * TILE * this.scale}px`;
+  }
+
+  private paint(): void {
+    const state = this.cafe.state;
+    if (!state) return;
+    if (this.canvas.width !== state.room.width * TILE) this.fit();
+    const ctx = this.canvas.getContext("2d");
+    if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, canberraHour());
+  }
+}
+```
+
+Replace `client/src/main.ts`:
+
+```ts
+import "./style.css";
+import * as api from "./api";
+import { showAuth } from "./auth";
+import { Cafe } from "./cafe";
+import type { ApiMe } from "./protocol/ApiMe";
+import { Stage } from "./stage";
+
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+
+async function start(): Promise<void> {
+  const me = await api.me();
+  if (me.ok) enter(me.value);
+  else showAuth(enter);
+}
+
+function enter(me: ApiMe): void {
+  $("left-cafe").hidden = true;
+  $("cafe").hidden = false;
+  const cafe = new Cafe(me, {
+    onSignedOut: () => {
+      stage.stop();
+      $("cafe").hidden = true;
+      showAuth(enter);
+    },
+  });
+  const stage = new Stage(cafe, $<HTMLCanvasElement>("room"), $("stage"));
+  cafe.onChange(() => {
+    $("status-text").textContent = cafe.statusLine();
+  });
+  $("leave").onclick = () => {
+    cafe.leave();
+    stage.stop();
+    $("cafe").hidden = true;
+    $("left-cafe").hidden = false;
+    $("come-back").onclick = () => enter(me);
+  };
+  cafe.start();
+  stage.start();
+}
+
+void start();
+```
+
+- [ ] **Step 4: Run the client checks to see them pass**
+
+Run: `pnpm -C client check`
+Expected: PASS: typecheck clean; `scale` (3), `motion` (4), `canberra` (2), `state` (6), `sprites` (5).
+
+- [ ] **Step 5: Look at it**
+
+Run: `pnpm -C client build && cargo run -p cafe`, open `http://localhost:8080`, sign in.
+Expected: the café drawn crisp at 5× in a 1920×1080 window and 2× at 390×844 (DevTools device toolbar); the three cats move on their own; your avatar walks in from the door with a marker over its head; a second browser's avatar appears and walks; resizing refits without blurring.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add client
+git commit -m "Draw the café: whole-number scaling, walks, the window line, the light"
+git push origin HEAD:main
+```
+
+---
+
+### Task 14: Acting in the café
+
+Point, then act (design.md, "People"): click or tap a spot to walk there, or a
+cat or person for a menu; on the keyboard, arrows move a pointer that snaps to
+tiles, Tab steps through cats and people, Enter acts, Escape puts the pointer
+away (so Tab can leave the room again). Menus are real buttons; bubbles are
+HTML, so any language renders and markup stays text; panels show who's here,
+what was said this visit and your cats' trust.
+
+**Files:**
+- Create: `client/src/input.ts`, `client/src/menu.ts`, `client/src/talk.ts`, `client/src/bubbles.ts`, `client/src/panels.ts`, `client/test/input.test.ts`, `client/test/bubbles.test.ts`, `client/test/panels.test.ts`
+- Modify: `client/src/main.ts` (replace: wire it all together)
+
+**Interfaces:**
+- Consumes: `Stage`, `Cafe`, `state.ts`, `motion.ts`, `render.ts` (`windowSpot`), `announce`.
+- Produces: `input.ts`: `Target` (`{ kind: "cat", id, tile } | { kind: "person", id, tile }`), `targetsAt(state, tile, localNow) -> Target[]`, `cycleOrder(state, from, localNow) -> Target[]`, `attachInput(stage, cafe, hooks) -> detach`; `menu.ts`: `openMenu(overlay, anchor, title, note, actions, returnFocus)`, `closeMenu()`; `talk.ts`: `class Talk { address(person | null), focus() }`; `bubbles.ts`: `makeBubble(text, toName) -> HTMLElement`, `class Bubbles { update(state, localNow?) }`; `panels.ts`: `renderYourCats(box, state)`, `renderHere(box, state)`, `renderSaid(list, state)`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`client/test/input.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { cycleOrder, targetsAt } from "../src/input";
+import { fromWelcome } from "../src/state";
+
+function state() {
+  return fromWelcome(
+    {
+      type: "welcome",
+      you: 1,
+      build: "b",
+      now: 0,
+      cap: 6,
+      snapshot: {
+        room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, furniture: [] },
+        people: [
+          { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null },
+          { id: 2, name: "sam", look: { avatar: 0, colour: 1 }, place: "inside", at: { x: 9, y: 5 }, walk: null },
+          { id: 3, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null },
+        ],
+        cats: [
+          { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 6, y: 5 }, pose: "sit", walk: null },
+          { id: "tora", name: "Tora", coat: "orange_tabby", at: { x: 1, y: 8 }, pose: "idle", walk: null },
+        ],
+        yourTrust: [],
+      },
+    },
+    0,
+  );
+}
+
+describe("pointing at things", () => {
+  it("finds the cat on a tile, and never you", () => {
+    const s = state();
+    expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([{ kind: "cat", id: "mochi", tile: { x: 6, y: 5 } }]);
+    expect(targetsAt(s, { x: 5, y: 5 }, 0)).toEqual([]);
+  });
+
+  it("steps through cats and people inside, nearest first", () => {
+    const order = cycleOrder(state(), { x: 5, y: 5 }, 0).map((t) => t.id);
+    expect(order).toEqual(["mochi", 2, "tora"]);
+  });
+});
+```
+
+`client/test/bubbles.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { makeBubble } from "../src/bubbles";
+
+describe("speech bubbles", () => {
+  it("show markup as text and never make elements from it", () => {
+    const bubble = makeBubble('<img src=x onerror="alert(1)">', null);
+    expect(bubble.querySelector("img")).toBeNull();
+    expect(bubble.textContent).toContain("<img");
+  });
+
+  it("say who a bubble is addressed to", () => {
+    expect(makeBubble("hi", "sam").textContent).toBe("to samhi");
+  });
+});
+```
+
+`client/test/panels.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { renderHere, renderYourCats } from "../src/panels";
+import { fromWelcome } from "../src/state";
+
+const s = fromWelcome(
+  {
+    type: "welcome",
+    you: 1,
+    build: "b",
+    now: 0,
+    cap: 6,
+    snapshot: {
+      room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, furniture: [] },
+      people: [
+        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null },
+        { id: 2, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null },
+      ],
+      cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 6, y: 5 }, pose: "sit", walk: null }],
+      yourTrust: [{ cat: "mochi", value: 23.5, level: "familiar" }],
+    },
+  },
+  0,
+);
+
+describe("panels", () => {
+  it("show each cat's trust in you, in words and as a bar", () => {
+    const box = document.createElement("div");
+    renderYourCats(box, s);
+    expect(box.textContent).toContain("Mochi knows you.");
+    expect(box.querySelector(".trust-bar")?.getAttribute("aria-label")).toBe("Mochi's trust in you: 23.5 of 100");
+  });
+
+  it("show who's inside and who's at the window", () => {
+    const box = document.createElement("div");
+    renderHere(box, s);
+    expect(box.textContent).toContain("Here (1/6)");
+    expect(box.textContent).toContain("me (you)");
+    expect(box.textContent).toContain("At the window (1)");
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `pnpm -C client test`
+Expected: FAIL: `Failed to resolve import "../src/input"` (and `bubbles`, `panels`).
+
+- [ ] **Step 3: Write the implementation**
+
+`client/src/input.ts`:
+
+```ts
+import { announce } from "./announce";
+import type { Cafe } from "./cafe";
+import { positionAt } from "./motion";
+import type { Stage } from "./stage";
+import { type CafeState, serverNow } from "./state";
+
+// Point, then act (design.md, "People"): one model for mouse, touch and keys.
+
+type Tile = { x: number; y: number };
+export type Target = { kind: "cat"; id: string; tile: Tile } | { kind: "person"; id: number; tile: Tile };
+
+function rounded(state: CafeState, walk: Parameters<typeof positionAt>[0], at: Tile, localNow: number): Tile {
+  const p = positionAt(walk, at, serverNow(state, localNow));
+  return { x: Math.round(p.x), y: Math.round(p.y) };
+}
+
+/** Everything you can act on (cats, and other people inside), where each is now. */
+function everyone(state: CafeState, localNow: number): Target[] {
+  const out: Target[] = [];
+  for (const c of state.cats.values()) out.push({ kind: "cat", id: c.id, tile: rounded(state, c.walk, c.at, localNow) });
+  for (const p of state.people.values()) {
+    if (p.place === "inside" && p.id !== state.you) out.push({ kind: "person", id: p.id, tile: rounded(state, p.walk, p.at, localNow) });
+  }
+  return out;
+}
+
+/** What's on a tile: cats first, since they're the point. */
+export function targetsAt(state: CafeState, tile: Tile, localNow: number): Target[] {
+  return everyone(state, localNow).filter((t) => t.tile.x === tile.x && t.tile.y === tile.y);
+}
+
+/** What Tab steps through: nearest first. */
+export function cycleOrder(state: CafeState, from: Tile, localNow: number): Target[] {
+  const distance = (t: Target) => Math.abs(t.tile.x - from.x) + Math.abs(t.tile.y - from.y);
+  return everyone(state, localNow).sort((a, b) => distance(a) - distance(b));
+}
+
+function nameOf(state: CafeState, t: Target): string {
+  return t.kind === "cat" ? (state.cats.get(t.id)?.name ?? "a cat") : (state.people.get(t.id)?.name ?? "someone");
+}
+
+export interface InputHooks {
+  act(target: Target, at: Tile): void;
+  walk(tile: Tile): void;
+  talk(): void;
+  close(): void;
+}
+
+const MOVES: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+
+export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => void {
+  const canvas = stage.canvas;
+  const pointer = stage.pointer;
+  let cycle: Target[] = [];
+  let index = -1;
+
+  const actAt = (tile: Tile) => {
+    const state = cafe.state;
+    if (!state) return;
+    const [target] = targetsAt(state, tile, Date.now());
+    if (target) hooks.act(target, tile);
+    else hooks.walk(tile);
+  };
+  const myTile = (): Tile => {
+    const s = cafe.state;
+    const me = s?.people.get(s.you);
+    return s && me ? rounded(s, me.walk, me.at, Date.now()) : { x: 6, y: 5 };
+  };
+
+  const onPointer = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    const tile = stage.cssToTile(e.clientX, e.clientY);
+    if (!tile) return;
+    pointer.visible = false;
+    actAt(tile);
+  };
+
+  const onKey = (e: KeyboardEvent) => {
+    const state = cafe.state;
+    if (!state) return;
+    const move = MOVES[e.key];
+    if (move) {
+      e.preventDefault();
+      // The first arrow shows the pointer where you stand; the next ones move it.
+      const from = pointer.visible && pointer.tile ? pointer.tile : myTile();
+      const step = pointer.visible ? move : [0, 0];
+      pointer.tile = {
+        x: Math.max(0, Math.min(state.room.width - 1, from.x + step[0])),
+        y: Math.max(1, Math.min(state.room.height - 1, from.y + step[1])),
+      };
+      pointer.visible = true;
+      cycle = [];
+      return;
+    }
+    if (e.key === "Tab" && pointer.visible) {
+      e.preventDefault();
+      if (cycle.length === 0) {
+        cycle = cycleOrder(state, myTile(), Date.now());
+        index = -1;
+      }
+      if (cycle.length === 0) return;
+      index = (index + (e.shiftKey ? -1 : 1) + cycle.length) % cycle.length;
+      pointer.tile = cycle[index].tile;
+      announce(nameOf(state, cycle[index]));
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (pointer.visible && pointer.tile) actAt(pointer.tile);
+      else hooks.talk();
+      return;
+    }
+    if (e.key === "Escape") {
+      // Puts the pointer away, so Tab leaves the room as it would anywhere else.
+      pointer.visible = false;
+      cycle = [];
+      hooks.close();
+    }
+  };
+  const onBlur = () => {
+    pointer.visible = false;
+  };
+
+  canvas.addEventListener("pointerup", onPointer);
+  canvas.addEventListener("keydown", onKey);
+  canvas.addEventListener("blur", onBlur);
+  return () => {
+    canvas.removeEventListener("pointerup", onPointer);
+    canvas.removeEventListener("keydown", onKey);
+    canvas.removeEventListener("blur", onBlur);
+  };
+}
+```
+
+`client/src/menu.ts`:
+
+```ts
+// A small menu of what you can do: beside the thing on a desktop, a sheet from
+// the bottom on a phone. Real buttons, so the keyboard reaches every action.
+
+export interface Action {
+  label: string;
+  run: () => void;
+}
+
+let open: HTMLElement | null = null;
+
+export function closeMenu(): void {
+  open?.remove();
+  open = null;
+}
+
+export function openMenu(
+  overlay: HTMLElement,
+  anchor: { left: number; top: number },
+  title: string,
+  note: string | null,
+  actions: Action[],
+  returnFocus: HTMLElement,
+): void {
+  closeMenu();
+  const menu = document.createElement("div");
+  menu.className = "menu";
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", title);
+  const heading = document.createElement("h2");
+  heading.textContent = title;
+  menu.append(heading);
+  if (note) {
+    const p = document.createElement("p");
+    p.className = "note";
+    p.textContent = note;
+    menu.append(p);
+  }
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "menuitem");
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      closeMenu();
+      returnFocus.focus();
+      action.run();
+    });
+    menu.append(button);
+  }
+  menu.addEventListener("keydown", (e) => {
+    const items = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+    const at = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeMenu();
+      returnFocus.focus();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(at + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+    }
+  });
+  if (matchMedia("(max-width: 700px)").matches) {
+    menu.classList.add("sheet");
+  } else {
+    menu.style.left = `${Math.min(anchor.left, Math.max(0, overlay.clientWidth - 200))}px`;
+    menu.style.top = `${Math.max(0, anchor.top)}px`;
+  }
+  overlay.append(menu);
+  open = menu;
+  menu.querySelector("button")?.focus();
+}
+```
+
+`client/src/talk.ts`:
+
+```ts
+import type { Cafe } from "./cafe";
+
+/** The talk box: says what you type to the room, or to the person you picked. */
+export class Talk {
+  private to: { id: number; name: string } | null = null;
+
+  constructor(
+    private readonly cafe: Cafe,
+    form: HTMLFormElement,
+    private readonly input: HTMLInputElement,
+    private readonly chip: HTMLButtonElement,
+  ) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.send();
+    });
+    chip.addEventListener("click", () => this.address(null));
+  }
+
+  address(person: { id: number; name: string } | null): void {
+    this.to = person;
+    this.chip.hidden = person === null;
+    this.chip.textContent = person ? `To ${person.name} ✕` : "";
+    this.chip.setAttribute("aria-label", person ? `Talking to ${person.name}; press to talk to the room` : "");
+    this.input.placeholder = person ? `Say something to ${person.name}…` : "Say something…";
+  }
+
+  focus(): void {
+    this.input.focus();
+  }
+
+  private send(): void {
+    const text = this.input.value.trim();
+    if (!text) return;
+    this.cafe.send({ type: "say", text, to: this.to?.id ?? null });
+    this.input.value = "";
+  }
+}
+```
+
+`client/src/bubbles.ts`:
+
+```ts
+import { positionAt } from "./motion";
+import { windowSpot } from "./render";
+import type { Stage } from "./stage";
+import { type CafeState, pruneBubbles, serverNow } from "./state";
+
+// Speech bubbles are HTML over the canvas, so any language renders crisply
+// (design.md, "The client"). Their text is only ever text, never markup.
+
+export function makeBubble(text: string, toName: string | null): HTMLElement {
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  if (toName) {
+    const to = document.createElement("span");
+    to.className = "to";
+    to.textContent = `to ${toName}`;
+    bubble.append(to);
+  }
+  bubble.append(document.createTextNode(text));
+  return bubble;
+}
+
+export class Bubbles {
+  private readonly shown = new Map<number, HTMLElement>();
+
+  constructor(
+    private readonly overlay: HTMLElement,
+    private readonly stage: Stage,
+  ) {}
+
+  update(state: CafeState, localNow = Date.now()): void {
+    pruneBubbles(state, localNow);
+    const now = serverNow(state, localNow);
+    const live = new Set<number>();
+    const lift = new Map<number, number>();
+    // Newest first, so it sits nearest the speaker's head.
+    for (const b of [...state.bubbles].reverse()) {
+      const speaker = state.people.get(b.from);
+      if (!speaker) continue;
+      live.add(b.id);
+      let el = this.shown.get(b.id);
+      if (!el) {
+        el = makeBubble(b.text, b.to === null ? null : (state.people.get(b.to)?.name ?? null));
+        this.overlay.append(el);
+        this.shown.set(b.id, el);
+      }
+      const spot = speaker.place === "inside" ? positionAt(speaker.walk, speaker.at, now) : windowSpot(state, speaker.id);
+      const { left, top } = this.stage.tileToCss(spot.x + 0.5, spot.y);
+      const above = lift.get(b.from) ?? 0;
+      el.style.left = `${left}px`;
+      el.style.top = `${top - 4 - above}px`;
+      lift.set(b.from, above + el.offsetHeight + 4);
+    }
+    for (const [id, el] of this.shown) {
+      if (!live.has(id)) {
+        el.remove();
+        this.shown.delete(id);
+      }
+    }
+  }
+}
+```
+
+`client/src/panels.ts`:
+
+```ts
+import type { CafeState } from "./state";
+
+// The panels beside (or under) the room: your cats, who's here, and what was
+// said this visit. Built from DOM nodes: names and words are text, never markup.
+
+const LEVEL_WORDS = { stranger: "doesn't know you yet", familiar: "knows you", friend: "is your friend", devoted: "adores you" } as const;
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string | null, ...children: (Node | string)[]): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  node.append(...children);
+  return node;
+}
+
+export function renderYourCats(box: HTMLElement, state: CafeState): void {
+  const rows = [...state.cats.values()].map((cat) => {
+    const trust = state.trust.get(cat.id);
+    const value = trust?.value ?? 0;
+    const fill = el("span", null);
+    fill.style.width = `${Math.min(100, value)}%`;
+    const bar = el("div", "trust-bar", fill);
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", `${cat.name}'s trust in you: ${value} of 100`);
+    return el("div", "cat-row", el("strong", null, cat.name), el("span", "hint", `${cat.name} ${LEVEL_WORDS[trust?.level ?? "stranger"]}.`), bar);
+  });
+  box.replaceChildren(el("h2", null, "Your cats"), ...rows);
+}
+
+export function renderHere(box: HTMLElement, state: CafeState): void {
+  const people = [...state.people.values()];
+  const name = (p: { id: number; name: string }) => (p.id === state.you ? `${p.name} (you)` : p.name);
+  const inside = people.filter((p) => p.place === "inside");
+  const waiting = people.filter((p) => p.place === "window");
+  const parts: Node[] = [el("h2", null, `Here (${inside.length}/${state.cap})`), el("p", null, inside.map(name).join(" · ") || "Nobody yet.")];
+  if (waiting.length > 0) parts.push(el("h2", null, `At the window (${waiting.length})`), el("p", null, waiting.map(name).join(" · ")));
+  box.replaceChildren(...parts);
+}
+
+export function renderSaid(list: HTMLElement, state: CafeState): void {
+  list.replaceChildren(
+    ...state.said.slice(-30).map((line) => el("li", null, el("span", "who", line.toName ? `${line.name} to ${line.toName}: ` : `${line.name}: `), line.text)),
+  );
+  const scroller = list.closest(".panel");
+  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+}
+```
+
+Replace `client/src/main.ts`:
+
+```ts
+import "./style.css";
+import { announce } from "./announce";
+import * as api from "./api";
+import { showAuth } from "./auth";
+import { Bubbles } from "./bubbles";
+import { Cafe } from "./cafe";
+import { type Target, attachInput } from "./input";
+import { closeMenu, openMenu } from "./menu";
+import { renderHere, renderSaid, renderYourCats } from "./panels";
+import type { ApiMe } from "./protocol/ApiMe";
+import { Stage } from "./stage";
+import { Talk } from "./talk";
+
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+
+async function start(): Promise<void> {
+  const me = await api.me();
+  if (me.ok) enter(me.value);
+  else showAuth(enter);
+}
+
+/** A short note over the room, for refusals ("Mochi moved away"). */
+function toast(overlay: HTMLElement, text: string): void {
+  const note = document.createElement("div");
+  note.className = "toast";
+  note.textContent = text;
+  overlay.append(note);
+  window.setTimeout(() => note.remove(), 2500);
+}
+
+function enter(me: ApiMe): void {
+  $("left-cafe").hidden = true;
+  $("cafe").hidden = false;
+  const canvas = $<HTMLCanvasElement>("room");
+  const overlay = $("overlay");
+  const cafe = new Cafe(me, {
+    onSignedOut: () => {
+      stop();
+      $("cafe").hidden = true;
+      showAuth(enter);
+    },
+    onError: (e) => toast(overlay, e.detail),
+  });
+  const stage = new Stage(cafe, canvas, $("stage"));
+  const bubbles = new Bubbles(overlay, stage);
+  const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"));
+  stage.frameHooks.push(() => {
+    if (cafe.state) bubbles.update(cafe.state);
+  });
+  const anchor = (tile: { x: number; y: number }) => {
+    const { left, top } = stage.tileToCss(tile.x + 1, tile.y);
+    return { left: left + 4, top };
+  };
+  const act = (target: Target, at: { x: number; y: number }) => {
+    const state = cafe.state;
+    if (!state) return;
+    if (target.kind === "cat") {
+      const cat = state.cats.get(target.id);
+      if (!cat) return;
+      const trust = state.trust.get(cat.id);
+      const note = trust ? `${cat.name}'s trust in you: ${trust.value} of 100` : null;
+      openMenu(overlay, anchor(at), cat.name, note, [
+        { label: `Pet ${cat.name}`, run: () => cafe.send({ type: "pet", cat: cat.id }) },
+        { label: `Call ${cat.name}`, run: () => cafe.send({ type: "call", cat: cat.id }) },
+      ], canvas);
+    } else {
+      const person = state.people.get(target.id);
+      if (!person) return;
+      openMenu(overlay, anchor(at), person.name, null, [
+        {
+          label: `Talk to ${person.name}`,
+          run: () => {
+            talk.address({ id: person.id, name: person.name });
+            talk.focus();
+          },
+        },
+      ], canvas);
+    }
+  };
+  const detach = attachInput(stage, cafe, {
+    act,
+    walk: (tile) => {
+      closeMenu();
+      cafe.send({ type: "walkTo", tile });
+    },
+    talk: () => talk.focus(),
+    close: () => closeMenu(),
+  });
+  const unsubscribe = cafe.onChange(() => {
+    $("status-text").textContent = cafe.statusLine();
+    const s = cafe.state;
+    if (!s) return;
+    renderHere($("here"), s);
+    renderSaid($("said"), s);
+    renderYourCats($("your-cats"), s);
+  });
+  function stop(): void {
+    detach();
+    unsubscribe();
+    stage.stop();
+    closeMenu();
+  }
+  $("leave").onclick = () => {
+    cafe.leave();
+    stop();
+    $("cafe").hidden = true;
+    $("left-cafe").hidden = false;
+    $<HTMLButtonElement>("come-back").focus();
+    $("come-back").onclick = () => enter(me);
+  };
+  cafe.start();
+  stage.start();
+  canvas.focus();
+  announce("You're walking into the café.");
+}
+
+void start();
+```
+
+- [ ] **Step 4: Run the client checks to see them pass**
+
+Run: `pnpm -C client check`
+Expected: PASS: typecheck clean; `input` (2), `bubbles` (2), `panels` (2), and the earlier tests.
+
+- [ ] **Step 5: Use it with a mouse, then with the keyboard alone**
+
+Run: `pnpm -C client build && cargo run -p cafe`, open `http://localhost:8080` in two browser profiles.
+Expected, with the mouse: clicking the floor walks there; clicking a cat opens Pet and Call; petting walks you over and the cat sniffs (first time) and the trust bar under "Your cats" moves; typing a message shows a bubble over your head in both windows and a line in "Said this visit"; "Call Tora" puts "Tora" in a bubble and Tora looks up. With the keyboard alone (no mouse): Tab reaches the room; an arrow shows the pointer; Tab steps through cats and people; Enter opens the menu; arrow keys and Enter choose; Escape puts the pointer away and Tab moves on to the talk box. At 390×844 the menu is a sheet from the bottom.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add client
+git commit -m "Act in the café: point then act, menus, talk, bubbles, panels"
+git push origin HEAD:main
+```
+
+---
+
+### Task 15: Image, CI and the local loop
+
+The image Fly runs, built in three stages; CI gains a Rust job the deploy waits
+for; and the whole phase is checked the way CI checks it, against the built
+image, then by eye and hand in a browser at both marking sizes.
+
+**Files:**
+- Modify: `Dockerfile` (replace), `.dockerignore`, `.github/workflows/checks.yml`, `package.json` (a `dev` script)
+- Create: `scripts/dev.sh`
+- Possibly modify: `content/sprites/*.txt` (art adjustments after looking)
+
+**Interfaces:**
+- Consumes: everything so far.
+- Produces: an image serving HTTP on `0.0.0.0:$PORT` with `DATA_DIR=/data`, the client in `/app/client`, content in `/app/content`, `README.md` and `docs/` beside them.
+
+- [ ] **Step 1: Write the image**
+
+Replace `Dockerfile`:
+
+```dockerfile
+# syntax = docker/dockerfile:1
+
+# Three stages: the client (TypeScript, built by Vite), the server (one Rust
+# binary), and the slim image Fly runs. The course's fixed shape still holds:
+# HTTP on 0.0.0.0:$PORT, state only under /data, README.md published at /readme/.
+
+FROM node:24-slim AS client
+WORKDIR /src
+RUN npm install -g pnpm@11.9.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY client/package.json client/
+RUN pnpm install --frozen-lockfile --filter cafe-client
+COPY client/ client/
+COPY content/ content/
+RUN pnpm -C client build
+
+FROM rust:1.93-slim-bookworm AS server
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY server/Cargo.toml server/
+# Build the dependencies on their own first, so a code change doesn't rebuild them.
+RUN mkdir -p server/src && echo 'fn main() {}' > server/src/main.rs \
+    && cargo build --release -p cafe \
+    && rm -rf server/src
+COPY server/ server/
+RUN touch server/src/main.rs && cargo build --release -p cafe
+
+FROM debian:bookworm-slim
+WORKDIR /app
+COPY --from=server /src/target/release/cafe /app/cafe
+COPY --from=client /src/client/dist /app/client
+COPY content/ /app/content/
+COPY README.md /app/README.md
+COPY docs/ /app/docs/
+ENV PORT=8080 \
+    DATA_DIR=/data \
+    CONTENT_DIR=/app/content \
+    CLIENT_DIR=/app/client \
+    README_PATH=/app/README.md \
+    DOCS_DIR=/app/docs
+EXPOSE 8080
+CMD ["/app/cafe"]
+```
+
+Append to `.dockerignore`:
+
+```
+target
+client/node_modules
+client/dist
+.data
+.superpowers
+```
+
+- [ ] **Step 2: Add the Rust job to CI**
+
+In `.github/workflows/checks.yml`, add this job after `check`, and make `deploy` wait for both (`needs: [check, rust]`):
+
+```yaml
+  rust:
+    # The server's own rules, format and lints, and the drift check on the
+    # TypeScript generated from its types.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Rust
+        run: rustup toolchain install stable --profile minimal --component rustfmt,clippy && rustup default stable
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - name: The generated TypeScript matches the Rust types
+        run: git diff --exit-code -- client/src/protocol
+```
+
+- [ ] **Step 3: Write the local loop**
+
+`scripts/dev.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Builds the client and runs the server from the repo root, where the spec
+# looks for it (APP_URL defaults to http://localhost:8080). The database goes
+# in .data/, which git ignores.
+set -euo pipefail
+pnpm -C client build
+cargo run -p cafe
+```
+
+Run: `chmod +x scripts/dev.sh`, and add `"dev": "bash scripts/dev.sh",` to the root `package.json` scripts.
+
+- [ ] **Step 4: Format and lint like CI**
+
+Run: `cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test`
+Expected: no warnings; PASS. Fix anything clippy raises, keeping behaviour.
+
+- [ ] **Step 5: Build the image and run the checks against it, as CI does**
+
+Run: `docker build -t cafe . && docker run -d --init --name cafe -p 8080:8080 -e PORT=8080 --tmpfs /data cafe && pnpm check`
+Expected: the image builds; `pnpm check` passes: root typecheck, the client's checks, and the whole spec (`invariants`, `accounts`, `realtime`, `login-page`).
+
+- [ ] **Step 6: Check from outside that nothing said was logged**
+
+Run: `docker logs cafe 2>&1 | grep -c '"what":"say"'` then `docker logs cafe 2>&1 | grep -c 'hello there'`
+Expected: the first is at least 1 (the spec's bubbles were logged as actions); the second is `0` (their words weren't).
+
+- [ ] **Step 7: Use it in a browser, at both marking sizes**
+
+Open `http://localhost:8080` in Chrome at 1920×1080, and with DevTools' iPhone preset at 390×844. Sign up two accounts in two profiles. Check, and fix anything that fails:
+- the room is crisp at 5× (desktop) and 2× (phone), and a resize mid-use refits without blurring or losing state;
+- each sprite reads as what it is (a cat sitting, walking and napping; a person; each piece of furniture); adjust grids in `content/sprites/` where one doesn't, re-running Task 11's checks;
+- the keyboard-only pass from Task 14 Step 5 works at both sizes;
+- bubbles, the menu (a sheet on the phone), the panels and the status line behave in both windows within a second.
+
+Save a screenshot of each size to `docs/notes/screens/phase-1-desktop.png` and `docs/notes/screens/phase-1-phone.png`.
+
+- [ ] **Step 8: Check a restart mid-visit (Review Focus 5)**
+
+Run: `docker rm -f cafe && docker run -d --init --name cafe -p 8080:8080 -e PORT=8080 -v cafe-data:/data cafe`, sign in in the browser, pet a cat until the trust bar moves, note where each cat is, then `docker restart cafe`.
+Expected: the page says it's reconnecting, then carries on by itself; the cats come back where they were (within a few seconds of wandering); the trust bar is unchanged.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add Dockerfile .dockerignore .github/workflows/checks.yml scripts/dev.sh package.json content/sprites docs/notes/screens
+git commit -m "Build the café's image in three stages and add a Rust CI job"
+git push origin HEAD:main
+docker rm -f cafe
+```
+
+---
+
+### Task 16: Deploy and check it live
+
+Deployed by hand, as the course does while the repo is private, and checked
+live with read-only checks: no test accounts are made on the real café.
+
+**Files:** none (deploy only), then `docs/notes/plan.md` (status).
+
+- [ ] **Step 1: Check the deploy credentials**
+
+Run: `flyctl auth whoami` (or, with the course's token, `flyctl apps list`).
+Expected: an identity, and `comp4020-final-rangermix` among the apps. If not, stop: the user puts the course's token in `mise.local.toml` (`FLY_API_TOKEN`), which no agent enters for them.
+
+- [ ] **Step 2: Deploy**
+
+Run: `flyctl deploy --remote-only --ha=false -a comp4020-final-rangermix`
+Expected: the remote build succeeds and the machine starts; `flyctl logs -a comp4020-final-rangermix` shows `"listening"`.
+
+- [ ] **Step 3: Check it live, read-only**
+
+Run: `APP_URL=https://comp4020-final-rangermix.fly.dev pnpm vitest run spec/invariants.test.ts spec/login-page.test.ts`
+Expected: PASS. Then `curl -s -o /dev/null -w "%{http_code}\n" https://comp4020-final-rangermix.fly.dev/ws` prints `401` (no session, no café).
+
+- [ ] **Step 4: Record it**
+
+In `docs/notes/plan.md`, mark phase 1 as deployed, with the date and the commit deployed.
+
+```bash
+git add docs/notes/plan.md
+git commit -m "Record phase 1's first deploy"
+git push origin HEAD:main
+```
+
+---
+
+### Task 17: Material for the README
+
+The brief asks `README.md` to argue what good means here, with sources, in the
+user's own words; agents may help find sources and spot gaps. This task does
+exactly that and writes nothing in `README.md` itself.
+
+**Files:**
+- Create: `docs/notes/briefs/readme-sources.md` (a research brief), `docs/notes/readme-material.md` (what came back, checked)
+
+- [ ] **Step 1: Write the research brief**
+
+`docs/notes/briefs/readme-sources.md` asks for sources that bear on this café's idea of good, each with a citation, a working URL, a short summary, which decision it bears on (ADR numbers), and at most one quote under fifteen words, verified by fetching the page. The areas: third places (Oldenburg's *The Great Good Place*); software for a small known group (Shirky's "Situated Software", Sloan's "An app can be a home-cooked meal"); cozy games (Project Horseshoe's 2017 report on coziness); Neko Atsume's design (cats visiting while the app is closed); cat cafés and visitor caps for the cats' wellbeing; co-presence and ambient awareness; ephemeral talk versus logged chat.
+
+- [ ] **Step 2: Dispatch a research subagent with the brief**
+
+Give a fresh agent only the brief's path, and ask it to write its findings to `docs/notes/readme-material.md`, marking any source it couldn't open.
+
+- [ ] **Step 3: Check what came back, and add what only this repo knows**
+
+Open each URL in `docs/notes/readme-material.md` and drop any that don't support what they're cited for. Then add two sections from the repo: "Enforced and judged" (from design.md's "Checks", naming the test file behind each enforced claim), and "Where the README and the design differ" (for example, the README mentions soothing music, which the design doesn't have yet, so the user can choose to build it or drop the line).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add docs/notes/briefs/readme-sources.md docs/notes/readme-material.md
+git commit -m "Gather sources and checked claims for the user's README"
+git push origin HEAD:main
+```
+
+---
+
+### Task 18: Whole-phase review
+
+A fresh reviewer reads the whole phase against the spec (ADR 0012), briefed
+through a file and answering in one. Findings are fixed (each with a test
+where it's behaviour) or answered, then everything is checked again.
+
+**Files:**
+- Create: `docs/notes/reviews/phase-1-brief.md`, `docs/notes/reviews/phase-1-findings.md`
+- Modify: whatever the confirmed findings touch; `docs/notes/plan.md` and this plan's "Execution log"
+
+- [ ] **Step 1: Write the brief**
+
+`docs/notes/reviews/phase-1-brief.md` names: the commit range of the phase; the spec (`docs/design.md`, the ADRs, `AGENTS.md`'s "What the app must keep"); this plan, its Global Constraints and Review Focus; what's out of scope (the "Not in this phase" list); and the answer's form: each finding with a severity, `file:line`, the failure scenario (input, then wrong behaviour), and whether a test would catch it, written to `docs/notes/reviews/phase-1-findings.md`.
+
+- [ ] **Step 2: Dispatch a fresh reviewer on the most capable model**
+
+Give it only the brief's path.
+
+- [ ] **Step 3: Triage the findings**
+
+For each: confirm it by reading the code (and reproducing it where it's behaviour); fix confirmed ones test-first, committing each; for any not taken up, write why under it in the findings file.
+
+- [ ] **Step 4: Check everything again**
+
+Run: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test && scripts/check-protocol.sh`, then rebuild the image and run `pnpm check` against it as in Task 15 Step 5, and redeploy as in Task 16 if anything changed.
+Expected: all green.
+
+- [ ] **Step 5: Close the phase**
+
+Mark phase 1 done in `docs/notes/plan.md`, finish this plan's "Execution log", and list what the user still writes and runs for crit 8: their `README.md` (with the material from Task 17), `PROCESS.md`, `reflections/crit-8.md`, and `/ship` to make the repo public at their cutoff.
+
+```bash
+git add docs/notes
+git commit -m "Close phase 1: review answered, everything green"
+git push origin HEAD:main
+```
+
+---
+
+## Execution log
+
+Where carrying out this plan departed from it, task by task, and why. Empty
+until execution starts.
