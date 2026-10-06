@@ -237,9 +237,19 @@ impl Room {
             .collect()
     }
 
-    /// The top-left tile of each piece whose kind passes `keep`.
+    /// Whether someone could stand next to `t`, so a cat there can be petted.
+    pub fn pettable(&self, t: Tile) -> bool {
+        !self.around(t, Walker::Person).is_empty()
+    }
+
+    /// For each piece whose kind passes `keep`, the first of its tiles that
+    /// someone could stand next to (its top-left if none).
     pub fn spots(&self, keep: impl Fn(&FurnitureKind) -> bool) -> Vec<Tile> {
-        self.pieces.iter().filter(|p| keep(&p.spec)).map(|p| Tile { x: p.x, y: p.y }).collect()
+        self.pieces
+            .iter()
+            .filter(|p| keep(&p.spec))
+            .map(|p| p.tiles().into_iter().find(|&t| self.pettable(t)).unwrap_or(Tile { x: p.x, y: p.y }))
+            .collect()
     }
 
     /// Every floor tile `who` can stand on.
@@ -333,6 +343,14 @@ mod tests {
         let r = room();
         assert!(r.spots(|k| k.hide).contains(&t(1, 9)), "the box");
         assert!(r.spots(|k| k.nap).contains(&t(0, 5)), "the sofa");
+    }
+
+    #[test]
+    fn every_nap_and_hide_spot_has_somewhere_beside_it_to_stand() {
+        let r = room();
+        for spot in r.spots(|k| k.nap || k.hide) {
+            assert!(!r.around(spot, Walker::Person).is_empty(), "nobody can reach a cat at ({}, {})", spot.x, spot.y);
+        }
     }
 
     #[test]

@@ -119,8 +119,9 @@ under [Numbers to tune](#numbers-to-tune).
   social ones in; a quiet one coaxes the shy ones out. A cat's name in a bubble
   makes it look up, and come over if it trusts the speaker. Matching cat names
   is the only thing the server reads in a bubble.
-- **Being handled:** the first time a cat that's awake meets someone, it sniffs
-  their hand: a small first gain in trust, so even a first visit leaves a trace.
+- **Being handled:** the first time a cat meets someone, it sniffs their hand,
+  even half asleep (a cat that's hiding stays hidden): a small first gain in
+  trust, so even a first visit leaves a trace.
   After that the cat answers from its affection, its state (asleep, eating,
   already held), its trust in the person and its anger at them. It may
   welcome it (purring, trust up), tolerate it, refuse it (walking off or

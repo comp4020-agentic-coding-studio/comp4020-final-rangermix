@@ -90,10 +90,11 @@ describe("real time", () => {
     let trust: Msg | null = null;
     const deadline = Date.now() + 25_000;
     for (let round = 0; !trust && Date.now() < deadline; round++) {
-      // Pet whichever cat is awake; a stranger's first pet is a sniff.
+      // A stranger's first pet is a sniff, even from a cat half asleep. A
+      // napping cat stays put; one on the move may be gone when you get there.
       const cats = catPoses(v);
-      const awake = cats.filter((c) => c.pose !== "nap" && c.pose !== "hide");
-      const pool = awake.length > 0 ? awake : cats;
+      const tiers = [cats.filter((c) => c.pose === "nap"), cats.filter((c) => c.pose === "sit" || c.pose === "idle"), cats];
+      const pool = tiers.find((t) => t.length > 0)!;
       const from = v.messages.length;
       v.send({ type: "pet", cat: pool[round % pool.length].id });
       trust = await v.next((m) => m.type === "yourTrust" && m.trust.value > 0, 6000, from).catch(() => null);

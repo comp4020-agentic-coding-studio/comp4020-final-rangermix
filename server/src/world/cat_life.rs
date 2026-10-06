@@ -71,10 +71,10 @@ fn contains_words(said: &[String], name: &[String]) -> bool {
 }
 
 impl World {
-    /// A cat comes back where it was saved, if a cat can still stand there;
-    /// otherwise somewhere on the floor, rested.
+    /// A cat comes back where it was saved, if a cat can still stand there and
+    /// be reached; otherwise somewhere on the floor, rested.
     pub(super) fn place_cat(&mut self, def: CatDef, saved: Option<Saved>, now: u64) -> Cat {
-        let saved = saved.filter(|s| self.room.walkable(s.at, Walker::Cat));
+        let saved = saved.filter(|s| self.room.walkable(s.at, Walker::Cat) && self.room.pettable(s.at));
         let (at, tiredness, company) = match saved {
             Some(s) => (s.at, s.tiredness.clamp(0.0, 1.0), s.company.clamp(0.0, 1.0)),
             None => (self.random_floor(), 0.2, 0.5),
@@ -83,8 +83,14 @@ impl World {
         Cat { def, at, walk: None, pose: Pose::Idle, until, plan: Plan::Idle, tiredness, company, refused: Vec::new() }
     }
 
+    /// Somewhere a cat can be, off the walkway, that someone could reach to pet it.
     fn random_floor(&mut self) -> Tile {
-        let tiles: Vec<Tile> = self.room.floor(Walker::Cat).into_iter().filter(|t| !self.room.walkway.contains(t)).collect();
+        let tiles: Vec<Tile> = self
+            .room
+            .floor(Walker::Cat)
+            .into_iter()
+            .filter(|&t| !self.room.walkway.contains(&t) && self.room.pettable(t))
+            .collect();
         if tiles.is_empty() {
             return self.room.entry;
         }
@@ -169,7 +175,7 @@ impl World {
             .room
             .floor(Walker::Cat)
             .into_iter()
-            .filter(|&t| t != from && manhattan(t, from) <= 6 && !self.cat_on(t, i, now))
+            .filter(|&t| t != from && manhattan(t, from) <= 6 && self.room.pettable(t) && !self.cat_on(t, i, now))
             .collect();
         (!near.is_empty()).then(|| near[self.rng.random_range(0..near.len())])
     }
@@ -330,8 +336,10 @@ impl World {
         let rate = self.cats[i].def.traits.trust_rate;
         let today = canberra_day(now);
         let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
-        // The first hello: awake, a cat sniffs the hand of someone it has never met.
-        if !self.cats[i].resting() && !self.trust.has_met(&cat_id, id) {
+        // The first hello: a cat sniffs the hand of someone it has never met,
+        // even half asleep, so a first visit always leaves a trace. A cat
+        // that's hiding stays hidden.
+        if self.cats[i].pose != Pose::Hide && !self.trust.has_met(&cat_id, id) {
             self.react(i, Reaction::Sniff { by: id }, out);
             self.change_trust(i, id, rate, &today, out);
             tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %cat_id, outcome = "sniff");
@@ -404,7 +412,7 @@ impl World {
             .room
             .floor(Walker::Cat)
             .into_iter()
-            .filter(|&t| manhattan(t, them) >= 3 && manhattan(t, here) <= 6 && !self.cat_on(t, i, now))
+            .filter(|&t| manhattan(t, them) >= 3 && manhattan(t, here) <= 6 && self.room.pettable(t) && !self.cat_on(t, i, now))
             .collect();
         if !away.is_empty() {
             let target = away[self.rng.random_range(0..away.len())];
@@ -540,6 +548,49 @@ mod tests {
         assert_eq!(reactions(&outs), vec![Reaction::Refuse { by: 1 }]);
         assert!(trust_msgs(&outs).is_empty());
         assert_eq!(w.cats[i].pose, Pose::Nap);
+    }
+
+    #[test]
+    fn a_napping_cat_still_sniffs_a_strangers_hand_and_stays_asleep() {
+        let mut w = world();
+        join(&mut w, 1, 0);
+        let i = hold(&mut w, "mochi", T(5, 7));
+        stand(&mut w, 1, T(5, 8));
+        w.cats[i].pose = Pose::Nap;
+        let outs = w.handle(10, pet(1, "mochi"));
+        assert_eq!(reactions(&outs), vec![Reaction::Sniff { by: 1 }]);
+        assert_eq!(trust_msgs(&outs).len(), 1);
+        assert_eq!(w.cats[i].pose, Pose::Nap);
+    }
+
+    #[test]
+    fn a_hiding_cat_does_not_come_out_for_a_stranger() {
+        let mut w = world();
+        join(&mut w, 1, 0);
+        let i = hold(&mut w, "burakku", T(1, 9));
+        stand(&mut w, 1, T(1, 8));
+        w.cats[i].pose = Pose::Hide;
+        let outs = w.handle(10, pet(1, "burakku"));
+        assert_eq!(reactions(&outs), vec![Reaction::Refuse { by: 1 }]);
+        assert!(trust_msgs(&outs).is_empty());
+    }
+
+    #[test]
+    fn cats_only_go_where_someone_can_reach_them() {
+        for seed in [1, 2, 3, 5, 8] {
+            let mut w = seeded(seed);
+            for c in &w.cats {
+                assert!(!w.room.around(c.at, Walker::Person).is_empty(), "seed {seed}: {} starts out of reach", c.def.id);
+            }
+            for step in 1..=6_000u64 {
+                for o in w.tick(step * 100) {
+                    if let ServerMsg::CatMoved { cat, walk } = &o.msg {
+                        let end = *walk.path.last().unwrap();
+                        assert!(!w.room.around(end, Walker::Person).is_empty(), "seed {seed}: {cat} went to ({}, {})", end.x, end.y);
+                    }
+                }
+            }
+        }
     }
 
     #[test]

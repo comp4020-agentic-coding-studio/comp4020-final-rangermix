@@ -9185,5 +9185,42 @@ git push origin HEAD:main
 
 ## Execution log
 
-Where carrying out this plan departed from it, task by task, and why. Empty
-until execution starts.
+Where carrying out this plan departed from it, task by task, and why.
+
+- **Throughout.** A filtered `cargo test` run also picks up other modules'
+  tests whose names contain the filter (`room` matches
+  `export_bindings_roomview`, `trust` matches the store's trust test, and so
+  on), so some counts differ from the Expected lines; each task's own tests
+  all ran and passed. Task 9's code holds 15 cat tests, not 14. Local checks
+  ran on port 18080 (`PORT=18080`, `APP_URL=http://localhost:18080`) because
+  another program holds 8080 on the machine they ran on; the app's default
+  stays 8080 for Fly.
+- **Tasks 5 and 9.** An empty `api.rs`, and `mod cat_life;` in the old
+  `world/mod.rs`, went in before the RED runs so the failing tests compiled
+  and failed for the reasons the plan names.
+- **Task 10.** The cap test in `spec/realtime.test.ts` gets a 20-second
+  timeout: it signs up seven accounts in a row, and against a debug build
+  (argon2 at about a quarter of a second a hash, two hashes a sign-up) it ran
+  past Vitest's default five seconds. `import WebSocket from "ws"` sits at the
+  top of `spec/helpers.ts` rather than halfway down.
+- **Task 11.** vite is `^8.3.2`, not `^8.3.3`: 8.3.3 was a day old, inside
+  pnpm 11's minimum release age, and pnpm answered by writing a
+  `minimumReleaseAgeExclude` entry, which turns that supply-chain guard off
+  for it. The lockfile was restored and reinstalled; root and client share
+  vite 8.3.2. The sprite sheets, configs and `sprites.ts` were extracted from
+  this plan by script rather than retyped.
+- **Task 12.** `.playwright-mcp/` (snapshots from browser checks) is ignored.
+- **After Task 12: two fixes to the cats.** The cats test in
+  `spec/realtime.test.ts` failed against a café that had been empty for a
+  while: all three cats were napping, and a first meeting only gave a sniff
+  from a cat that was awake, so a first visit could leave no trace at all,
+  against the reason the first sniff exists, and the CI check would flake.
+  Now a cat sniffs a newcomer's hand even half asleep (it stays asleep; a cat
+  that's hiding still refuses), and design.md says so. Looking into it showed
+  a second fault: the cat tower's top-left tile, (0, 1), is boxed in by walls
+  and the tower, so a cat napping or hiding there couldn't be petted. The room
+  gained `pettable`, a nap or hide spot is now the first tile of its piece
+  that someone can stand next to, and cats start, wander and walk off only to
+  tiles someone can reach. Four Rust tests pin both. The spec's cats test now
+  pets a napping cat first, then a sitting or idle one, since a cat on the
+  move may be gone before you get there.
