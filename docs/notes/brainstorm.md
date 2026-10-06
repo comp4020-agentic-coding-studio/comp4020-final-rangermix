@@ -141,8 +141,10 @@ asked; the numbers can change without reopening the decision.
       lifts into that person's hands, everyone sees it being carried, and if
       they disconnect it drops back where it was. A C9 candidate, alongside
       the quiet-seat rule.
-    - *Default number, to tune:* one change per person per minute. How much
-      the floor holds is set with the room's size in the design.
+    - *Default numbers, to tune:* up to three changes in a burst, then one
+      every 20 seconds (relaxed from one a minute at the user's request with
+      design 2). How much the floor holds is set with the room's size in the
+      design.
 19. **People can emote, sit together and give.** A handful of emotes (wave,
     laugh, heart, yawn) over your avatar; sharing a sofa; handing someone one
     of your treats; passing them the cat you're holding, if the cat agrees.
@@ -179,8 +181,9 @@ asked; the numbers can change without reopening the decision.
     mute that hides someone's bubbles on your own screen; an admin ban run
     from the server, with no admin screen; and a short blocklist of slurs,
     matched as whole words. (Q19)
-    - *Default numbers, to tune:* 100 characters; three bubbles per ten
-      seconds.
+    - *Default numbers, to tune:* 100 characters; up to five bubbles in a
+      burst, then one every two seconds (relaxed from three per ten seconds at
+      the user's request with design 2).
 26. **What persists and what expires.** Persists across restarts and
     redeploys: accounts and looks; each cat's trust in each person; bans until
     they expire; the furniture layout; each cat's state (where it is, what it's
@@ -327,7 +330,7 @@ they differ from what's committed. Alternatives doing the same job: typeshare
 (a CLI that parses the Rust source) and specta. Checked against the ts-rs
 README (version 12, MSRV 1.88) on 2026-10-07.
 
-### Design 1: architecture and data flow (presented 2026-10-07, *awaiting approval*)
+### Design 1: architecture and data flow (approved 2026-10-07)
 
 - One Rust binary (tokio and axum) on the one machine. `/` serves the client;
   `/readme/` serves `README.md` rendered to HTML at startup, so its headings
@@ -355,7 +358,7 @@ README (version 12, MSRV 1.88) on 2026-10-07.
   blocklist checks, goes out as `said` (never stored), counts as noise, and
   makes Mochi look up.
 
-### Design 2: real-time behaviour (presented 2026-10-07, *awaiting approval*)
+### Design 2: real-time behaviour (approved 2026-10-07, with relaxed limits)
 
 - Snapshot, then events: on connect, a build-id check (a stale tab reloads),
   then a snapshot of the whole café stamped with the server's clock, then
@@ -373,16 +376,74 @@ README (version 12, MSRV 1.88) on 2026-10-07.
   "still there?" nudge are yours alone; others see trust only through what the
   cats do.
 - The window gets the same stream but can only send speech.
-- Each connection's bubbles (3 per 10 s), furniture changes (1 a minute) and
-  actions per second are limited before anything reaches the world task.
+- Each connection is rate-limited before anything reaches the world task,
+  with token buckets that allow a burst and then refill. The user asked to
+  relax the first numbers (3 bubbles per 10 s, 1 furniture change a minute);
+  the defaults are now up to 5 bubbles in a burst then one every 2 seconds,
+  up to 3 furniture changes then one every 20 seconds, and 10 actions a second
+  for everything else. All of them are tunable numbers.
 - Calling is speaking: the "call" action puts the cat's name in a bubble, so
   the cats treat calling and saying a name the same way.
 
+### Design 3: the cat character system (presented 2026-10-07, *awaiting approval*)
+
+- A cat is a data file (`content/cats/mochi.toml`): name, look (base sprite,
+  coat palette, pattern, eyes), traits, daily rhythm, behaviour weights and
+  handling parameters. A new cat is a new file; a new kind of behaviour is a
+  new Rust module that cats can switch on. Balancing is editing numbers, not
+  code.
+- Traits are fixed per cat (0 to 1): sociability, boldness, curiosity,
+  playfulness, appetite, energy, affection; plus tuning knobs for activity
+  when alone (a multiplier), trust rate, temper (how fast anger rises) and
+  grudge (how slowly it cools, and how long bans last).
+- Needs change over time: hunger, tiredness, company, play and comfort, drifting
+  at rates set by traits and the hour of the Canberra day.
+- Stimuli: the world turns events into things each cat notices: someone
+  arriving or leaving, the room's noise (bubbles in the last minute), its name
+  in a bubble, a treat put down or offered, furniture placed or moved, being
+  handled, another cat close by, someone waiting at the window.
+- Choosing what to do is utility scoring. Each behaviour (wander, nap, eat,
+  groom, approach someone, greet at the door, investigate, play, hide, perch at
+  the window, knock something over, sit on a lap) scores itself from needs,
+  traits, stimuli, trust and the hour. The cat picks among the top few,
+  weighted by score: in character, not predictable. A stimulus interrupts the
+  current behaviour only if it beats it by a margin, so cats don't dither.
+- Being handled (pet, pick up, play, a treat, being passed): the cat answers
+  from its affection, its state (asleep, eating, already held), its trust in
+  the person and its anger at them. The outcomes are welcome (purr, trust up),
+  tolerate, refuse (walk off or hiss, anger up), scratch and escape (trust
+  down), or, when furious, a ban on that action from that person for as long
+  as its grudge lasts. A banned action is refused with the time left.
+- Trust runs 0 to 100 per cat per person, with levels that unlock behaviours:
+  comes when called; then greets you at the door and sits by you; then naps on
+  your lap and puts up with being carried longer. It never fades, and gains
+  taper within a day, so regular visits beat one long session: it rewards
+  regulars rather than grinding.
+- Anger is per cat per person and held in memory only: it rises by temper and
+  cools by grudge.
+- Effects on the world: a cat lying on furniture claims it (moving it makes the
+  cat jump off, annoyed); cats knock things over and scatter toys (the night's
+  traces); notable moments become chalkboard lines; cats notice each other,
+  napping together or keeping their distance.
+- The same rules run live and in fast-forward, with one seeded random generator
+  for the whole world. With nobody there, behaviours that need people aren't
+  on offer and the alone-activity trait takes over: that is how Burakku's
+  night happens. Seeded randomness also makes every behaviour reproducible in
+  tests.
+- The first three in these terms:
+  - **Mochi:** naps after lunch and at night; sleeps more when alone; seeks
+    everyone and is first to any treat; trusts quickly; grudges last hours.
+  - **Burakku:** nocturnal; prowls and knocks things over when alone; hides
+    when the room is noisy; trusts slowly and is devoted after; grudges last
+    two days.
+  - **Tora:** dawn and dusk zoomies (real cats are crepuscular); the same alone
+    or not; first to new furniture; won over by play, bored by petting, quick to
+    swat; grudges last hours.
+
 ## Still to come
 
-- Approval of designs 1 and 2.
-- The rest of the design: the cat character system (traits, needs, reactions
-  to events, effects on the room and other cats, cats defined as data);
-  persistence and fast-forward; accounts and safety; the client (rendering,
-  sprites as data, pointer input, layouts at 390×844 and 1920×1080); logging
-  and testing, including which README promises `spec/` enforces.
+- Approval of design 3.
+- The rest of the design: persistence and fast-forward; accounts and safety;
+  the client (rendering, sprites as data, pointer input, layouts at 390×844
+  and 1920×1080); logging and testing, including which README promises
+  `spec/` enforces.
