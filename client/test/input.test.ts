@@ -11,17 +11,18 @@ function state() {
       now: 0,
       cap: 6,
       snapshot: {
-        room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, furniture: [] },
+        room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
         people: [
-          { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null },
-          { id: 2, name: "sam", look: { avatar: 0, colour: 1 }, place: "inside", at: { x: 9, y: 5 }, walk: null },
-          { id: 3, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null },
+          { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false },
+          { id: 2, name: "sam", look: { avatar: 0, colour: 1 }, place: "inside", at: { x: 9, y: 5 }, walk: null, sitting: false },
+          { id: 3, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false },
         ],
         cats: [
           { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 6, y: 5 }, pose: "sit", walk: null },
           { id: "tora", name: "Tora", coat: "orange_tabby", at: { x: 1, y: 8 }, pose: "idle", walk: null },
         ],
         yourTrust: [],
+        held: [],
       },
     },
     0,
@@ -43,8 +44,8 @@ describe("pointing at things", () => {
   it("finds a piece that moves, after any cat on it, and steps to it too", () => {
     const s = state();
     s.room.furniture = [
-      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true },
-      { id: 3, kind: "sofa", x: 0, y: 5, w: 3, h: 1, movable: false },
+      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true },
+      { id: 3, kind: "bowls", x: 0, y: 5, w: 3, h: 1, movable: false, blocks: true, under: false, seats: false },
     ];
     expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([
       { kind: "cat", id: "mochi", tile: { x: 6, y: 5 } },

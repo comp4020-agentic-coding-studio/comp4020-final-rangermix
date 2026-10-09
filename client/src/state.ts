@@ -1,5 +1,6 @@
 import type { CatView } from "./protocol/CatView";
 import type { Emote } from "./protocol/Emote";
+import type { FurnitureView } from "./protocol/FurnitureView";
 import type { ErrorCode } from "./protocol/ErrorCode";
 import type { PersonView } from "./protocol/PersonView";
 import type { Reaction } from "./protocol/Reaction";
@@ -43,6 +44,8 @@ export interface CafeState {
   said: SaidLine[];
   /** Each person's latest emote and when, in server time. */
   emotes: Map<number, { emote: Emote; at: number }>;
+  /** What each person is carrying, by who carries it. */
+  held: Map<number, FurnitureView>;
 }
 
 export type Effect =
@@ -77,6 +80,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     bubbles: [],
     said: previous?.said ?? [],
     emotes: new Map(),
+    held: new Map(s.held.map((h) => [h.by, h.piece])),
   };
 }
 
@@ -111,6 +115,7 @@ const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {
   tolerate: (cat) => `${cat} puts up with it.`,
   refuse: (cat) => `${cat} pulls away.`,
   greet: (cat) => `${cat} comes to greet you.`,
+  annoyed: (cat) => `${cat} jumps off, annoyed.`,
 };
 
 const EMOTE_WORDS: Record<Emote, string> = { wave: "waves", laugh: "laughs", heart: "sends a heart", yawn: "yawns" };
@@ -161,7 +166,12 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     }
     case "personMoved": {
       const p = state.people.get(msg.id);
-      if (p) state.people.set(msg.id, { ...p, walk: msg.walk });
+      if (p) state.people.set(msg.id, { ...p, walk: msg.walk, sitting: false });
+      return [];
+    }
+    case "personSat": {
+      const p = state.people.get(msg.id);
+      if (p) state.people.set(msg.id, { ...p, at: msg.at, walk: null, sitting: true });
       return [];
     }
     case "catMoved": {
@@ -190,13 +200,29 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     case "yourTrust":
       state.trust.set(msg.trust.cat, msg.trust);
       return [];
-    case "furnitureMoved": {
-      const piece = state.room.furniture.find((f) => f.id === msg.id);
-      if (!piece) return [];
-      piece.x = msg.at.x;
-      piece.y = msg.at.y;
+    case "furnitureHeld": {
+      state.room.furniture = state.room.furniture.filter((f) => f.id !== msg.piece.id);
+      state.held.set(msg.by, msg.piece);
       if (msg.by === state.you) return [];
-      return [{ kind: "announce", text: `${name(msg.by)} moved the ${pieceName(piece.kind)}.` }];
+      return [{ kind: "announce", text: `${name(msg.by)} picked up the ${pieceName(msg.piece.kind)}.` }];
+    }
+    case "furniturePlaced": {
+      for (const [by, piece] of state.held) if (piece.id === msg.piece.id) state.held.delete(by);
+      state.room.furniture = [...state.room.furniture.filter((f) => f.id !== msg.piece.id), msg.piece];
+      if (msg.by === state.you) return [];
+      return [{ kind: "announce", text: `${name(msg.by)} put the ${pieceName(msg.piece.kind)} down.` }];
+    }
+    case "furnitureRemoved": {
+      let kind = state.room.furniture.find((f) => f.id === msg.id)?.kind;
+      for (const [by, piece] of state.held) {
+        if (piece.id === msg.id) {
+          kind = piece.kind;
+          state.held.delete(by);
+        }
+      }
+      state.room.furniture = state.room.furniture.filter((f) => f.id !== msg.id);
+      if (msg.by === state.you || !kind) return [];
+      return [{ kind: "announce", text: `${name(msg.by)} put the ${pieceName(kind)} away.` }];
     }
     case "emoted":
       state.emotes.set(msg.from, { emote: msg.emote, at: now });

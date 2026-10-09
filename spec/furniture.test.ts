@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { signUp, Visitor, type Msg } from "./helpers";
 
-// Moving furniture (design.md, "People": rearranging), cut down to one movable
-// piece for now; and the door's walkway, which is never blocked (AGENTS.md).
+// Rearranging (design.md, "People"): anyone inside carries furniture, the
+// first grab wins, and the door's walkway is never blocked (AGENTS.md).
 const open: Visitor[] = [];
 
 async function visitor(): Promise<Visitor> {
@@ -15,66 +15,108 @@ afterEach(async () => {
   await Promise.all(open.splice(0).map((v) => v.leave()));
 });
 
-/** The movable piece, where it stands now by this visitor's messages. */
-function cushion(v: Visitor): { id: number; x: number; y: number } {
-  const piece = v.welcome.snapshot.room.furniture.find((f: Msg) => f.movable);
-  if (!piece) throw new Error("nothing in the room moves");
-  let at = { x: piece.x, y: piece.y };
-  for (const m of v.messages) if (m.type === "furnitureMoved" && m.id === piece.id) at = m.at;
-  return { id: piece.id, ...at };
+const settle = (ms = 600) => new Promise((r) => setTimeout(r, ms));
+
+/** Where this visitor stands once their walk in is over. */
+function standing(v: Visitor): { x: number; y: number } {
+  const me = v.welcome.snapshot.people.find((p: Msg) => p.id === v.welcome.you);
+  return me.walk ? me.walk.path[me.walk.path.length - 1] : me.at;
 }
 
-/** Free floor away from the door's column, other than where the cushion is. */
-function freeTiles(v: Visitor): { x: number; y: number }[] {
+/** Where everyone this visitor knows of stands, or is walking to. */
+function people(v: Visitor): { x: number; y: number }[] {
+  const everyone = [...v.welcome.snapshot.people, ...v.messages.filter((m) => m.type === "personJoined").map((m) => m.person)];
+  return everyone.map((p: Msg) => (p.walk ? p.walk.path[p.walk.path.length - 1] : p.at));
+}
+
+/** A free floor tile beside this visitor, off the door's walkway and away from everyone. */
+function besideMe(v: Visitor): { x: number; y: number } {
   const room = v.welcome.snapshot.room;
-  const c = cushion(v);
-  const covered = (x: number, y: number) =>
-    room.furniture.some((f: Msg) => f.id !== c.id && x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
-  const tiles: { x: number; y: number }[] = [];
-  for (let y = room.height - 1; y >= 1; y--) {
-    for (let x = 0; x < room.width; x++) {
-      if (room.tiles[y][x] === "." && x !== room.door.x && !covered(x, y) && !(x === c.x && y === c.y)) tiles.push({ x, y });
-    }
+  const me = standing(v);
+  const taken = (x: number, y: number) =>
+    room.furniture.some((f: Msg) => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h) ||
+    room.walkway.some((w: Msg) => w.x === x && w.y === y) ||
+    v.messages.some((m) => (m.type === "furniturePlaced" || m.type === "furnitureHeld") && m.piece.x === x && m.piece.y === y) ||
+    people(v).some((p) => p.x === x && p.y === y);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [0, -1]]) {
+    const x = me.x + dx;
+    const y = me.y + dy;
+    if (y >= 1 && room.tiles[y]?.[x] === "." && !taken(x, y)) return { x, y };
   }
-  return tiles;
+  throw new Error("nowhere free beside me");
 }
 
-describe("moving furniture", () => {
-  it("one person moves the cushion and another sees it within a second", async () => {
+describe("rearranging the café", () => {
+  it("one person takes a lamp and another sees it in their hands within a second", async () => {
     const a = await visitor();
     const b = await visitor();
-    const { id } = cushion(a);
-    const to = freeTiles(a)[0];
     const from = b.messages.length;
     const sent = Date.now();
-    a.send({ type: "moveFurniture", id, to });
-    const moved = await b.next((m) => m.type === "furnitureMoved", 1000, from);
-    expect(moved).toMatchObject({ id, at: to, by: a.welcome.you });
+    a.send({ type: "take", kind: "lamp" });
+    const held = await b.next((m) => m.type === "furnitureHeld", 1000, from);
+    expect(held).toMatchObject({ by: a.welcome.you, piece: { kind: "lamp" } });
     expect(Date.now() - sent).toBeLessThan(1000);
+    a.send({ type: "putBack" });
   });
 
-  it("never lets anything block the door's walkway", async () => {
+  it("puts a piece down where everyone sees it, within a second", async () => {
     const a = await visitor();
     const b = await visitor();
-    const { id } = cushion(a);
-    const door = a.welcome.snapshot.room.door;
+    await settle();
+    a.send({ type: "take", kind: "lamp" });
+    await a.next((m) => m.type === "furnitureHeld");
+    const to = besideMe(a);
     const from = b.messages.length;
-    a.send({ type: "moveFurniture", id, to: { x: door.x, y: door.y + 1 } });
-    expect((await a.next((m) => m.type === "error")).code).toBe("cantPlace");
-    await new Promise((r) => setTimeout(r, 300));
-    expect(b.messages.slice(from).some((m) => m.type === "furnitureMoved")).toBe(false);
+    const sent = Date.now();
+    a.send({ type: "place", to });
+    const placed = await b.next((m) => m.type === "furniturePlaced", 1000, from);
+    expect(placed).toMatchObject({ by: a.welcome.you, piece: { kind: "lamp", x: to.x, y: to.y } });
+    expect(Date.now() - sent).toBeLessThan(1000);
+    // Tidy up: carry it off again.
+    a.send({ type: "grab", id: placed.piece.id });
+    await a.next((m) => m.type === "furnitureHeld" && m.piece.id === placed.piece.id);
+    a.send({ type: "putBack" });
   });
 
-  it("lets a person move furniture three times at once, then slows them down", async () => {
+  it("never lets anything onto the door's walkway", async () => {
     const a = await visitor();
-    const { id } = cushion(a);
-    const spots = freeTiles(a).slice(0, 4);
-    for (const to of spots) a.send({ type: "moveFurniture", id, to });
-    expect((await a.next((m) => m.type === "error" && m.code === "rateLimited")).code).toBe("rateLimited");
-    // The refusal comes straight back; the moves go round through the world.
-    const mine = () => a.messages.filter((m) => m.type === "furnitureMoved" && m.by === a.welcome.you);
-    for (let waited = 0; mine().length < 3 && waited < 1000; waited += 20) await new Promise((r) => setTimeout(r, 20));
-    await new Promise((r) => setTimeout(r, 200));
-    expect(mine()).toHaveLength(3);
+    const b = await visitor();
+    a.send({ type: "take", kind: "cushion" });
+    await a.next((m) => m.type === "furnitureHeld");
+    const door = a.welcome.snapshot.room.door;
+    const from = b.messages.length;
+    a.send({ type: "place", to: { x: door.x, y: door.y + 1 } });
+    expect((await a.next((m) => m.type === "error")).code).toBe("cantPlace");
+    await settle(300);
+    expect(b.messages.slice(from).some((m) => m.type === "furniturePlaced")).toBe(false);
+    a.send({ type: "putBack" });
+  });
+
+  it("gives a piece to the first of two who reach for it at once", async () => {
+    const a = await visitor();
+    const b = await visitor();
+    const plant = a.welcome.snapshot.room.furniture.find((f: Msg) => f.kind === "plant");
+    a.send({ type: "grab", id: plant.id });
+    b.send({ type: "grab", id: plant.id });
+    const refusal = await Promise.race([
+      a.next((m) => m.type === "error" && m.code === "taken").then(() => "a"),
+      b.next((m) => m.type === "error" && m.code === "taken").then(() => "b"),
+    ]);
+    const loser = refusal === "a" ? a : b;
+    await settle(300);
+    expect(loser.messages.filter((m) => m.type === "error" && m.code === "taken")).toHaveLength(1);
+    expect([a, b].filter((v) => v.messages.some((m) => m.type === "error" && m.code === "taken"))).toHaveLength(1);
+  });
+
+  it("lets a person make three furniture changes at once, then slows them down", async () => {
+    const a = await visitor();
+    a.send({ type: "take", kind: "lamp" });
+    a.send({ type: "putAway" });
+    a.send({ type: "take", kind: "lamp" });
+    a.send({ type: "putAway" });
+    expect((await a.next((m) => m.type === "error" && m.code === "rateLimited")).detail).toMatch(/slow down/i);
+    const mine = a.messages.filter((m) => m.type === "furnitureHeld" || m.type === "furnitureRemoved");
+    expect(mine).toHaveLength(3);
+    a.send({ type: "putBack" });
   });
 });

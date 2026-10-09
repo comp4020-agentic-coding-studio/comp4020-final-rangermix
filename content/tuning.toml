@@ -15,6 +15,7 @@ bubble_burst = 5.0            # bubbles: a burst, then one every refill_secs
 bubble_refill_secs = 2.0
 furniture_burst = 3.0         # moving furniture: a burst, then one every refill_secs
 furniture_refill_secs = 20.0
+furniture_max = 30            # movable pieces on the floor and in hands
 action_burst = 10.0           # everything else: 10 a second
 action_per_sec = 10.0
 

@@ -4,6 +4,8 @@
 //! changes go to the store as writes it doesn't wait for.
 mod cat_life;
 mod furniture;
+#[cfg(test)]
+mod furniture_tests;
 mod people;
 mod quiet;
 
@@ -66,12 +68,30 @@ struct Person {
     nudged: Option<u64>,
     /// Walking out after an unanswered nudge; their seat is already free.
     leaving: bool,
+    /// The piece they sit on; `at` is the seat.
+    sitting: Option<u32>,
+    /// Their furniture changes: a burst, then a slow refill (per person, so a
+    /// reconnect doesn't refill it).
+    furniture: crate::limits::Bucket,
 }
 
 /// Something a person asked for that happens when their walk ends.
 #[derive(Debug, Clone, PartialEq)]
 enum Pending {
     Pet(String),
+    Grab(u32),
+    Place(Tile),
+    Sit(u32),
+}
+
+/// How the furniture was left when the server last stopped.
+pub enum SavedArrangement {
+    /// Nothing saved: `room.toml` as it is.
+    Fresh,
+    /// Every movable piece by kind and place.
+    Current(String),
+    /// Phase 1's cushion-only save, by list position.
+    Legacy(String),
 }
 
 /// A bubble, held in memory until the next tick so the cats can hear it.
@@ -97,13 +117,17 @@ pub struct World {
     build: String,
     last_tick: u64,
     last_save: u64,
+    held: Vec<furniture::Held>,
+    reserved: furniture::Reserved,
 }
 
 impl World {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         content: Content,
         trust: TrustBook,
         saved_cats: Vec<(String, String)>,
+        arrangement: SavedArrangement,
         seed: u64,
         store: Option<Store>,
         build: String,
@@ -124,7 +148,15 @@ impl World {
             build,
             last_tick: now,
             last_save: now,
+            held: Vec::new(),
+            reserved: Default::default(),
         };
+        // The furniture first, so each cat is checked against the room it wakes in.
+        match arrangement {
+            SavedArrangement::Fresh => {}
+            SavedArrangement::Current(json) => world.restore_arrangement(&json),
+            SavedArrangement::Legacy(json) => world.restore_legacy_arrangement(&json),
+        }
         for def in cats {
             let saved = saved_cats
                 .iter()
@@ -152,7 +184,12 @@ impl World {
                     ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
                     ClientMsg::Pet { cat } => self.pet(now, id, &cat, &mut out),
                     ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
-                    ClientMsg::MoveFurniture { id: piece, to } => self.move_furniture(id, piece, to, &mut out),
+                    ClientMsg::Grab { id: piece } => self.grab(now, id, piece, &mut out),
+                    ClientMsg::Take { kind } => self.take(now, id, &kind, &mut out),
+                    ClientMsg::Place { to } => self.place(now, id, to, &mut out),
+                    ClientMsg::PutBack {} => self.put_back(now, id, &mut out),
+                    ClientMsg::PutAway {} => self.put_away(now, id, &mut out),
+                    ClientMsg::Sit { id: piece } => self.sit(now, id, piece, &mut out),
                     ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
                     ClientMsg::Emote { emote } => self.emote(id, emote, &mut out),
                     ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
@@ -160,6 +197,16 @@ impl World {
             }
         }
         out
+    }
+
+    /// Someone's walk ended with something to do.
+    fn arrived_with(&mut self, now: u64, id: u32, then: Pending, out: &mut Vec<Out>) {
+        match then {
+            Pending::Pet(cat) => self.pet_on_arrival(now, id, &cat, out),
+            Pending::Grab(piece) => self.pick_up(now, id, piece, out),
+            Pending::Place(to) => self.put_down(now, id, to, out),
+            Pending::Sit(piece) => self.sit_down(now, id, piece, out),
+        }
     }
 
     pub fn tick(&mut self, now: u64) -> Vec<Out> {
@@ -184,6 +231,7 @@ impl World {
             people: self.people.iter().map(|p| people::person_view(p, now)).collect(),
             cats: self.cats.iter().map(|c| c.view(now)).collect(),
             your_trust: self.cats.iter().map(|c| self.trust.view(&c.def.id, id)).collect(),
+            held: self.held_views(),
         }
     }
 

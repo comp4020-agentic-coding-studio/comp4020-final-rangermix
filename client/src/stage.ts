@@ -7,7 +7,7 @@ import { Sprites } from "./sprites";
 /** The room on screen: sized to the largest whole-number scale that fits, drawn every frame. */
 export class Stage {
   readonly sprites = new Sprites();
-  readonly pointer: Pointer = { tile: null, visible: false };
+  readonly pointer: Pointer = { tile: null, visible: false, hover: null, ghost: null };
   /** Run after each frame is drawn (bubbles follow the people they belong to). */
   readonly frameHooks: (() => void)[] = [];
   scale = 1;

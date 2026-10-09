@@ -3,4 +3,4 @@
 /**
  * A moment a cat shows over its head.
  */
-export type Reaction = { "kind": "lookUp", at: number, } | { "kind": "sniff", by: number, } | { "kind": "purr", by: number, } | { "kind": "tolerate", by: number, } | { "kind": "refuse", by: number, } | { "kind": "greet", to: number, };
+export type Reaction = { "kind": "lookUp", at: number, } | { "kind": "sniff", by: number, } | { "kind": "purr", by: number, } | { "kind": "tolerate", by: number, } | { "kind": "refuse", by: number, } | { "kind": "greet", to: number, } | { "kind": "annoyed", by: number, };

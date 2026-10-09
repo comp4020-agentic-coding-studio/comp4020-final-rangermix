@@ -24,10 +24,10 @@ function everyone(state: CafeState, localNow: number): Target[] {
   return out;
 }
 
-/** The furniture that can be moved, by its top-left tile. */
+/** The furniture you can do something with (carry it, sit on it), by its top-left tile. */
 function movable(state: CafeState): { target: Target; covers: (t: Tile) => boolean }[] {
   return state.room.furniture
-    .filter((f) => f.movable)
+    .filter((f) => f.movable || f.seats)
     .map((f) => ({
       target: { kind: "piece" as const, id: f.id, tile: { x: f.x, y: f.y } },
       covers: (t: Tile) => t.x >= f.x && t.x < f.x + f.w && t.y >= f.y && t.y < f.y + f.h,
@@ -54,7 +54,7 @@ function nameOf(state: CafeState, t: Target): string {
 }
 
 export interface InputHooks {
-  act(target: Target, at: Tile): void;
+  act(targets: Target[], at: Tile): void;
   walk(tile: Tile): void;
   talk(): void;
   close(): void;
@@ -71,8 +71,8 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
   const actAt = (tile: Tile) => {
     const state = cafe.state;
     if (!state) return;
-    const [target] = targetsAt(state, tile, Date.now());
-    if (target) hooks.act(target, tile);
+    const targets = targetsAt(state, tile, Date.now());
+    if (targets.length > 0) hooks.act(targets, tile);
     else hooks.walk(tile);
   };
   const myTile = (): Tile => {
@@ -134,12 +134,23 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
   const onBlur = () => {
     pointer.visible = false;
   };
+  // Where the mouse is, for the preview of something being placed.
+  const onMove = (e: PointerEvent) => {
+    pointer.hover = stage.cssToTile(e.clientX, e.clientY);
+  };
+  const onLeave = () => {
+    pointer.hover = null;
+  };
 
   canvas.addEventListener("pointerup", onPointer);
+  canvas.addEventListener("pointermove", onMove);
+  canvas.addEventListener("pointerleave", onLeave);
   canvas.addEventListener("keydown", onKey);
   canvas.addEventListener("blur", onBlur);
   return () => {
     canvas.removeEventListener("pointerup", onPointer);
+    canvas.removeEventListener("pointermove", onMove);
+    canvas.removeEventListener("pointerleave", onLeave);
     canvas.removeEventListener("keydown", onKey);
     canvas.removeEventListener("blur", onBlur);
   };

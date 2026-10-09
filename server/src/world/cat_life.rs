@@ -248,7 +248,20 @@ impl World {
 
     /// Ends a walk, or a choice that needed none, in the pose its plan asked for.
     fn settle(&mut self, i: usize, now: u64, out: &mut Vec<Out>) {
-        let plan = self.cats[i].plan;
+        let mut plan = self.cats[i].plan;
+        // The bed it was heading for may have been carried off on the way.
+        let end = self.cats[i]
+            .walk
+            .as_ref()
+            .map_or(self.cats[i].at, |w| *w.path.last().expect("paths are never empty"));
+        let spot_kept = |k: &FurnitureKind| match plan {
+            Plan::Nap => k.nap,
+            Plan::Hide => k.hide,
+            _ => true,
+        };
+        if matches!(plan, Plan::Nap | Plan::Hide) && !self.room.pieces.iter().any(|p| p.covers(end) && spot_kept(&p.spec)) {
+            plan = Plan::Idle;
+        }
         let secs: u64 = match plan {
             Plan::Nap => self.rng.random_range(120..600),
             Plan::Sit => self.rng.random_range(20..60),
@@ -362,9 +375,8 @@ impl World {
         }
     }
 
-    /// Someone's walk ended with something to do.
-    pub(super) fn arrived_with(&mut self, now: u64, id: u32, then: Pending, out: &mut Vec<Out>) {
-        let Pending::Pet(cat) = then;
+    /// Someone walked over to pet a cat.
+    pub(super) fn pet_on_arrival(&mut self, now: u64, id: u32, cat: &str, out: &mut Vec<Out>) {
         let Some(i) = self.cats.iter().position(|c| c.def.id == cat) else {
             return;
         };
@@ -472,6 +484,24 @@ impl World {
         });
     }
 
+    /// Someone picked up a piece: any cat lying or sitting on it jumps off,
+    /// annoyed, and walks a little way off.
+    pub(super) fn cats_jump_off(&mut self, now: u64, by: u32, tiles: &[Tile], out: &mut Vec<Out>) {
+        for i in 0..self.cats.len() {
+            if self.cats[i].walk.is_some() || !tiles.contains(&self.cats[i].at) {
+                continue;
+            }
+            self.react(i, Reaction::Annoyed { by }, out);
+            let cat = &mut self.cats[i];
+            cat.plan = Plan::Idle;
+            cat.pose = Pose::Idle;
+            self.walk_away(i, by, now, out);
+            if self.cats[i].walk.is_none() {
+                self.settle(i, now, out);
+            }
+        }
+    }
+
     /// A refusing cat walks off, a few tiles from whoever it refused.
     fn walk_away(&mut self, i: usize, from_person: u32, now: u64, out: &mut Vec<Out>) {
         let minute = canberra_minute_of_day(now);
@@ -500,7 +530,7 @@ mod tests {
     fn seeded(seed: u64) -> World {
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
-        World::new(content, trust, Vec::new(), seed, None, "test".into(), 0)
+        World::new(content, trust, Vec::new(), SavedArrangement::Fresh, seed, None, "test".into(), 0)
     }
 
     fn cat_index(w: &World, id: &str) -> usize {
@@ -891,7 +921,7 @@ mod tests {
                 r#"{"at":{"x":0,"y":0},"tiredness":0.1,"company":0.1}"#.to_string(),
             ),
         ];
-        let w = World::new(content, trust, saved, 11, None, "test".into(), 0);
+        let w = World::new(content, trust, saved, SavedArrangement::Fresh, 11, None, "test".into(), 0);
         let mochi = &w.cats[cat_index(&w, "mochi")];
         assert_eq!((mochi.at, mochi.tiredness), (T(1, 5), 0.7));
         let tora = &w.cats[cat_index(&w, "tora")];
@@ -904,7 +934,16 @@ mod tests {
         let store = Store::open(&dir.path().join("cafe.db")).unwrap();
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
-        let mut w = World::new(content, trust, Vec::new(), 13, Some(store.clone()), "test".into(), 0);
+        let mut w = World::new(
+            content,
+            trust,
+            Vec::new(),
+            SavedArrangement::Fresh,
+            13,
+            Some(store.clone()),
+            "test".into(),
+            0,
+        );
         w.save(5_000);
         let states = store.call(|c| crate::store::all_cat_states(c)).await.unwrap();
         assert_eq!(states.len(), 3);

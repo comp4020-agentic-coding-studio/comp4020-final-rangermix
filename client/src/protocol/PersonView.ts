@@ -4,4 +4,8 @@ import type { Place } from "./Place";
 import type { Tile } from "./Tile";
 import type { Walk } from "./Walk";
 
-export type PersonView = { id: number, name: string, look: Look, place: Place, at: Tile, walk: Walk | null, };
+export type PersonView = { id: number, name: string, look: Look, place: Place, at: Tile, walk: Walk | null, 
+/**
+ * Sitting on a piece of furniture at `at`.
+ */
+sitting: boolean, };

@@ -20,6 +20,12 @@ impl Bucket {
         }
     }
 
+    /// Whether a `take` now would succeed; spends nothing.
+    pub fn ready(&self, now: u64) -> bool {
+        let elapsed = now.saturating_sub(self.last) as f64;
+        (self.tokens + elapsed * self.refill_per_sec / 1000.0).min(self.burst) >= 1.0 - 1e-9
+    }
+
     pub fn take(&mut self, now: u64) -> bool {
         let elapsed = now.saturating_sub(self.last) as f64;
         self.tokens = (self.tokens + elapsed * self.refill_per_sec / 1000.0).min(self.burst);
@@ -76,6 +82,16 @@ mod tests {
         assert!(!b.take(1_000));
         assert!(b.take(2_000));
         assert!(!b.take(2_000));
+    }
+
+    #[test]
+    fn asking_whether_a_bucket_is_ready_spends_nothing() {
+        let mut b = Bucket::new(1.0, 0.5, 0);
+        assert!(b.ready(0));
+        assert!(b.ready(0));
+        assert!(b.take(0));
+        assert!(!b.ready(0));
+        assert!(b.ready(2_000));
     }
 
     #[test]

@@ -1,5 +1,6 @@
 import { nightTint } from "./canberra";
 import { type Spot, positionAt } from "./motion";
+import type { FurnitureView } from "./protocol/FurnitureView";
 import type { Look } from "./protocol/Look";
 import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
@@ -12,6 +13,10 @@ import { type CafeState, type Cat, serverNow } from "./state";
 export interface Pointer {
   tile: { x: number; y: number } | null;
   visible: boolean;
+  /** The tile under the mouse, if it's over the room. */
+  hover: { x: number; y: number } | null;
+  /** What you carry, shown where it would go, and whether that looks allowed. */
+  ghost: { piece: FurnitureView; at: { x: number; y: number }; ok: boolean } | null;
 }
 
 const GROUND: Record<string, TileName> = { ".": "floor", W: "wall", G: "window", D: "door", C: "board" };
@@ -26,6 +31,7 @@ const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
   tolerate: "dots",
   refuse: "dots",
   greet: "heart",
+  annoyed: "dots",
 };
 
 /** The window's tiles, left to right. */
@@ -79,7 +85,16 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
     const spot = positionAt(person.walk, person.at, now);
     const emote = state.emotes.get(person.id);
     const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
-    items.push({ y: spot.y + 0.2, paint: () => drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing) });
+    const carried = state.held.get(person.id) ?? null;
+    // Sitting, they sink a little into the seat.
+    const seat = person.sitting && !spot.moving ? { ...spot, y: spot.y + 0.2 } : spot;
+    items.push({
+      y: spot.y + 0.2,
+      paint: () => {
+        drawPerson(ctx, sprites, person.look, seat, now, person.id === state.you, showing);
+        if (carried) drawCarried(ctx, sprites, carried, seat);
+      },
+    });
   }
   items.sort((a, b) => a.y - b.y).forEach((item) => item.paint());
 
@@ -89,6 +104,16 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
     ctx.fillStyle = tint.colour;
     ctx.fillRect(0, 0, width, height);
     ctx.globalAlpha = 1;
+  }
+
+  if (pointer.ghost) {
+    const { piece, at, ok } = pointer.ghost;
+    ctx.globalAlpha = 0.6;
+    blit(ctx, sprites.furniture(piece.kind), at.x * TILE, at.y * TILE);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = ok ? "#3c9a5f" : "#d9534f";
+    ctx.strokeRect(at.x * TILE + 0.5, at.y * TILE + 0.5, piece.w * TILE - 1, piece.h * TILE - 1);
   }
 
   if (pointer.visible && pointer.tile) {
@@ -127,6 +152,13 @@ function drawCat(ctx: CanvasRenderingContext2D, sprites: Sprites, cat: Cat, spot
   const fresh = cat.reaction && now - cat.reaction.at < 2500 ? EMOTE_FOR[cat.reaction.reaction.kind] : null;
   const emote = fresh ?? (cat.pose === "nap" ? "zzz" : null);
   if (emote) blit(ctx, sprites.emote(emote), x + 4, y - 8);
+}
+
+/** A carried piece, held up over its carrier's head. */
+function drawCarried(ctx: CanvasRenderingContext2D, sprites: Sprites, piece: FurnitureView, spot: Spot): void {
+  const x = Math.round(spot.x * TILE - ((piece.w - 1) * TILE) / 2);
+  const y = Math.round(spot.y * TILE - piece.h * TILE + 4);
+  blit(ctx, sprites.furniture(piece.kind), x, y);
 }
 
 function drawPerson(ctx: CanvasRenderingContext2D, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean, emote: EmoteName | null): void {

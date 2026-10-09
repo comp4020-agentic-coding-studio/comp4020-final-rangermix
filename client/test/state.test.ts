@@ -12,10 +12,11 @@ function welcome(): Welcome {
     now: 10_000,
     cap: 6,
     snapshot: {
-      room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, furniture: [] },
-      people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null }],
+      room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
+      people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false }],
       cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 1, y: 5 }, pose: "nap", walk: null }],
       yourTrust: [{ cat: "mochi", value: 1.5, level: "stranger" }],
+      held: [],
     },
   };
 }
@@ -32,7 +33,7 @@ describe("the client's copy of the café", () => {
 
   it("adds, places, moves and removes people", () => {
     const s = fromWelcome(welcome(), 10_000);
-    const sam = { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "window" as const, at: { x: 7, y: 0 }, walk: null };
+    const sam = { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "window" as const, at: { x: 7, y: 0 }, walk: null, sitting: false };
     expect(apply(s, { type: "personJoined", person: sam })).toEqual([{ kind: "announce", text: "sam is waiting at the window." }]);
     expect(apply(s, { type: "personJoined", person: sam })).toEqual([]);
     apply(s, { type: "personPlaced", id: 2, place: "inside", at: { x: 7, y: 0 }, walk: null });
@@ -74,15 +75,30 @@ describe("the client's copy of the café", () => {
     expect(needsReload("a", "dev")).toBe(false);
   });
 
-  it("moves furniture where the server says, and says who moved it", () => {
+  it("follows a piece from the floor into someone's hands and down again", () => {
     const w = welcome();
-    w.snapshot.room.furniture = [{ id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true }];
+    const cushion = { id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true };
+    w.snapshot.room.furniture = [cushion];
     const s = fromWelcome(w, 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null });
-    expect(apply(s, { type: "furnitureMoved", id: 14, at: { x: 3, y: 8 }, by: 2 })).toEqual([{ kind: "announce", text: "sam moved the cushion." }]);
-    expect(s.room.furniture[0]).toMatchObject({ x: 3, y: 8 });
-    expect(apply(s, { type: "furnitureMoved", id: 14, at: { x: 4, y: 8 }, by: 1 })).toEqual([]);
-    expect(s.room.furniture[0]).toMatchObject({ x: 4, y: 8 });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    expect(apply(s, { type: "furnitureHeld", piece: cushion, by: 2 })).toEqual([{ kind: "announce", text: "sam picked up the cushion." }]);
+    expect(s.room.furniture).toEqual([]);
+    expect(s.held.get(2)?.id).toBe(14);
+    expect(apply(s, { type: "furniturePlaced", piece: { ...cushion, x: 3, y: 8 }, by: 2 })).toEqual([{ kind: "announce", text: "sam put the cushion down." }]);
+    expect(s.held.has(2)).toBe(false);
+    expect(s.room.furniture).toEqual([{ ...cushion, x: 3, y: 8 }]);
+    apply(s, { type: "furnitureHeld", piece: { ...cushion, x: 3, y: 8 }, by: 1 });
+    expect(apply(s, { type: "furnitureRemoved", id: 14, by: 1 })).toEqual([]);
+    expect(s.held.size).toBe(0);
+    expect(s.room.furniture).toEqual([]);
+  });
+
+  it("seats someone and stands them up when they walk", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    apply(s, { type: "personSat", id: 1, at: { x: 1, y: 5 } });
+    expect(s.people.get(1)).toMatchObject({ at: { x: 1, y: 5 }, sitting: true, walk: null });
+    apply(s, { type: "personMoved", id: 1, walk: { path: [{ x: 1, y: 5 }, { x: 1, y: 6 }], start: 10_000, speed: 3 } });
+    expect(s.people.get(1)?.sitting).toBe(false);
   });
 
   it("reloads at most once for the same server build, so a mismatch can't loop", () => {
@@ -100,7 +116,7 @@ describe("the client's copy of the café", () => {
 
   it("shows an emote over its person and announces someone else's", () => {
     const s = fromWelcome(welcome(), 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
     expect(apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000)).toEqual([{ kind: "announce", text: "sam waves." }]);
     expect(s.emotes.get(2)).toEqual({ emote: "wave", at: 10_000 });
     expect(apply(s, { type: "emoted", from: 1, emote: "laugh" }, 10_000)).toEqual([]);

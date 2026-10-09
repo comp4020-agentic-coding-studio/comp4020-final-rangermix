@@ -47,6 +47,16 @@ pub struct PersonView {
     pub place: Place,
     pub at: Tile,
     pub walk: Option<Walk>,
+    /// Sitting on a piece of furniture at `at`.
+    pub sitting: bool,
+}
+
+/// A piece someone is carrying.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct HeldView {
+    pub by: u32,
+    pub piece: FurnitureView,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
@@ -66,12 +76,28 @@ pub enum Pose {
 #[serde(tag = "kind", rename_all = "camelCase")]
 #[ts(export)]
 pub enum Reaction {
-    LookUp { at: u32 },
-    Sniff { by: u32 },
-    Purr { by: u32 },
-    Tolerate { by: u32 },
-    Refuse { by: u32 },
-    Greet { to: u32 },
+    LookUp {
+        at: u32,
+    },
+    Sniff {
+        by: u32,
+    },
+    Purr {
+        by: u32,
+    },
+    Tolerate {
+        by: u32,
+    },
+    Refuse {
+        by: u32,
+    },
+    Greet {
+        to: u32,
+    },
+    /// Jumped off a piece someone picked up.
+    Annoyed {
+        by: u32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -125,10 +151,27 @@ pub struct FurnitureView {
     pub w: u8,
     pub h: u8,
     pub movable: bool,
+    pub blocks: bool,
+    /// Other pieces can stand on it, as on a rug.
+    pub under: bool,
+    pub seats: bool,
+}
+
+/// A kind of furniture the catalogue offers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct KindView {
+    pub kind: String,
+    pub w: u8,
+    pub h: u8,
+    pub blocks: bool,
+    pub under: bool,
+    pub seats: bool,
 }
 
 /// The floor plan: `tiles` holds one string per row (W wall, G window, D door,
-/// C chalkboard, . floor).
+/// C chalkboard, . floor). `furniture` is what stands on the floor, not what
+/// someone carries.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct RoomView {
@@ -136,7 +179,10 @@ pub struct RoomView {
     pub height: u8,
     pub tiles: Vec<String>,
     pub door: Tile,
+    /// The door's walkway, which nothing may stand on.
+    pub walkway: Vec<Tile>,
     pub furniture: Vec<FurnitureView>,
+    pub catalogue: Vec<KindView>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -147,6 +193,7 @@ pub struct Snapshot {
     pub people: Vec<PersonView>,
     pub cats: Vec<CatView>,
     pub your_trust: Vec<TrustView>,
+    pub held: Vec<HeldView>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -162,6 +209,11 @@ pub enum ErrorCode {
     BadTile,
     MovedAway,
     CantPlace,
+    /// Someone else has it, or is on their way to it.
+    Taken,
+    /// The floor holds no more furniture.
+    Full,
+    NotHolding,
 }
 
 /// What a client asks for. The server decides what happens (AGENTS.md).
@@ -182,10 +234,25 @@ pub enum ClientMsg {
     Call {
         cat: String,
     },
-    /// Put a movable piece of furniture with its top-left at `to`.
-    MoveFurniture {
+    /// Walk over to a piece and pick it up.
+    Grab {
         id: u32,
+    },
+    /// Take a new piece of this kind from the catalogue, in your hands.
+    Take {
+        kind: String,
+    },
+    /// Walk over and put what you're carrying down with its top-left at `to`.
+    Place {
         to: Tile,
+    },
+    /// Put what you're carrying back where it was (a new piece just goes).
+    PutBack {},
+    /// Put what you're carrying away, out of the café.
+    PutAway {},
+    /// Walk over to a piece and sit on it.
+    Sit {
+        id: u32,
     },
     Leave {},
     /// The tab was hidden or shown again (ADR 0009's quiet signals).
@@ -261,11 +328,24 @@ pub enum ServerMsg {
     },
     /// Sent to you alone: the "still there?" is over, answered or not needed.
     NudgeOver {},
-    /// A piece of furniture now has its top-left at `at`; `by` moved it.
-    FurnitureMoved {
+    /// `by` picked a piece up (or took a new one): it's off the floor, in their hands.
+    FurnitureHeld {
+        piece: FurnitureView,
+        by: u32,
+    },
+    /// A piece is on the floor where it says; `by` put it there.
+    FurniturePlaced {
+        piece: FurnitureView,
+        by: u32,
+    },
+    /// A piece is gone from the café; `by` put it away.
+    FurnitureRemoved {
+        id: u32,
+        by: u32,
+    },
+    PersonSat {
         id: u32,
         at: Tile,
-        by: u32,
     },
     Error {
         code: ErrorCode,
@@ -390,11 +470,14 @@ mod tests {
                 height: 1,
                 tiles: vec![".".into()],
                 door: Tile { x: 0, y: 0 },
+                walkway: vec![],
                 furniture: vec![],
+                catalogue: vec![],
             },
             people: vec![],
             cats: vec![],
             your_trust: vec![],
+            held: vec![],
         };
         assert!(serde_json::to_string(&snapshot).unwrap().contains(r#""yourTrust":[]"#));
         let me = ApiMe {

@@ -12,6 +12,7 @@ pub(super) fn person_view(p: &Person, now: u64) -> PersonView {
         place: p.place,
         at: p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now)),
         walk: p.walk.clone(),
+        sitting: p.sitting.is_some(),
     }
 }
 
@@ -59,6 +60,8 @@ impl World {
                 hidden_since: None,
                 nudged: None,
                 leaving: false,
+                sitting: None,
+                furniture: crate::limits::Bucket::new(self.tuning.furniture_burst, 1.0 / self.tuning.furniture_refill_secs, now),
             });
             tracing::info!(target: "action", uid = id, who = %name, what = "arrive", place = ?place);
             let person = person_view(self.person(id).expect("just added"), now);
@@ -94,9 +97,12 @@ impl World {
     }
 
     pub(super) fn remove(&mut self, now: u64, id: u32, why: &str, out: &mut Vec<Out>) {
-        let Some(i) = self.people.iter().position(|p| p.id == id) else {
+        if !self.people.iter().any(|p| p.id == id) {
             return;
-        };
+        }
+        // Whatever they carried goes back where it was.
+        self.put_back(now, id, out);
+        let i = self.people.iter().position(|p| p.id == id).expect("checked above");
         let gone = self.people.remove(i);
         tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", why);
         out.push(Out {
@@ -216,7 +222,16 @@ impl World {
         let p = self.person_mut(id).expect("callers check the person is here");
         p.at = from;
         p.walk = Some(walk.clone());
-        p.pending = then;
+        // A new walk stands you up, and replaces whatever waited at the old one's end.
+        p.sitting = None;
+        let replaced = std::mem::replace(&mut p.pending, then);
+        let still = p.pending.clone();
+        if let Some(Pending::Grab(piece)) = replaced
+            && still != Some(Pending::Grab(piece))
+            && self.reserved.get(&piece) == Some(&id)
+        {
+            self.reserved.remove(&piece);
+        }
         out.push(Out {
             to: To::All,
             msg: ServerMsg::PersonMoved { id, walk },
@@ -316,7 +331,7 @@ pub(crate) mod tests {
     pub(crate) fn world() -> World {
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
-        World::new(content, trust, Vec::new(), 7, None, "test".into(), 0)
+        World::new(content, trust, Vec::new(), SavedArrangement::Fresh, 7, None, "test".into(), 0)
     }
 
     pub(crate) fn join(w: &mut World, id: u32, now: u64) -> Vec<Out> {

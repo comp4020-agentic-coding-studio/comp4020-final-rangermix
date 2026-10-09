@@ -5,4 +5,4 @@ import type { Tile } from "./Tile";
 /**
  * What a client asks for. The server decides what happens (AGENTS.md).
  */
-export type ClientMsg = { "type": "walkTo", tile: Tile, } | { "type": "say", text: string, to: number | null, } | { "type": "pet", cat: string, } | { "type": "call", cat: string, } | { "type": "moveFurniture", id: number, to: Tile, } | { "type": "leave", } | { "type": "presence", hidden: boolean, } | { "type": "here", } | { "type": "emote", emote: Emote, };
+export type ClientMsg = { "type": "walkTo", tile: Tile, } | { "type": "say", text: string, to: number | null, } | { "type": "pet", cat: string, } | { "type": "call", cat: string, } | { "type": "grab", id: number, } | { "type": "take", kind: string, } | { "type": "place", to: Tile, } | { "type": "putBack", } | { "type": "putAway", } | { "type": "sit", id: number, } | { "type": "leave", } | { "type": "presence", hidden: boolean, } | { "type": "here", } | { "type": "emote", emote: Emote, };

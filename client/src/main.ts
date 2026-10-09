@@ -6,7 +6,9 @@ import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
 import { closeMenu, openMenu } from "./menu";
+import { menuFor } from "./menus";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
+import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
 import { pieceName } from "./state";
@@ -89,64 +91,84 @@ function enter(me: ApiMe): void {
     const { left, top } = stage.tileToCss(tile.x + 1, tile.y);
     return { left: left + 4, top };
   };
-  let placing: number | null = null;
-  const stopPlacing = () => {
-    placing = null;
-    canvas.classList.remove("placing");
-  };
-  /** Puts the piece being placed down at `tile`, if one is; the server decides whether it fits. */
+  /** What you're carrying, if anything. */
+  const carrying = () => (cafe.state ? (cafe.state.held.get(cafe.state.you) ?? null) : null);
+  /** While you carry something, any tile you choose is where it goes; the server decides whether it fits. */
   const place = (tile: { x: number; y: number }): boolean => {
-    if (placing === null) return false;
-    cafe.send({ type: "moveFurniture", id: placing, to: tile });
-    stopPlacing();
+    if (!carrying()) return false;
+    cafe.send({ type: "place", to: tile });
     return true;
   };
-  const act = (target: Target, at: { x: number; y: number }) => {
+  const act = (targets: Target[], at: { x: number; y: number }) => {
     if (place(at)) return;
     const state = cafe.state;
     if (!state) return;
-    if (target.kind === "cat") {
-      const cat = state.cats.get(target.id);
-      if (!cat) return;
-      const trust = state.trust.get(cat.id);
-      const note = trust ? `${cat.name}'s trust in you: ${trust.value} of 100` : null;
-      openMenu(overlay, anchor(at), cat.name, note, [
-        { label: `Pet ${cat.name}`, run: () => cafe.send({ type: "pet", cat: cat.id }) },
-        { label: `Call ${cat.name}`, run: () => cafe.send({ type: "call", cat: cat.id }) },
-      ], canvas);
-    } else if (target.kind === "piece") {
-      const piece = state.room.furniture.find((f) => f.id === target.id);
-      if (!piece) return;
-      const what = pieceName(piece.kind);
-      openMenu(overlay, anchor(at), what[0].toUpperCase() + what.slice(1), null, [
-        {
-          label: `Move the ${what}`,
-          run: () => {
-            // The next spot chosen, by click, tap or Enter, is where it goes.
-            placing = piece.id;
-            canvas.classList.add("placing");
-            // Arrows move on from the piece, not from where you stand.
-            stage.pointer.tile = { x: piece.x, y: piece.y };
-            stage.pointer.visible = true;
-            const hint = `Choose where the ${what} goes. Escape to keep it where it is.`;
-            toast(overlay, hint);
-            announce(hint);
-          },
-        },
-      ], canvas);
-    } else {
-      const person = state.people.get(target.id);
-      if (!person) return;
-      openMenu(overlay, anchor(at), person.name, null, [
-        {
-          label: `Talk to ${person.name}`,
-          run: () => {
-            talk.address({ id: person.id, name: person.name });
+    const menu = menuFor(state, targets);
+    if (!menu) return;
+    openMenu(
+      overlay,
+      anchor(at),
+      menu.title,
+      menu.note,
+      menu.actions.map((a) => ({
+        label: a.label,
+        run: () => {
+          if (a.msg) cafe.send(a.msg);
+          if (a.talkTo) {
+            talk.address(a.talkTo);
             talk.focus();
-          },
+          }
         },
-      ], canvas);
+      })),
+      canvas,
+    );
+  };
+  // The carrying bar, and the preview of where the piece would go.
+  let wasCarrying: number | null = null;
+  stage.frameHooks.push(() => {
+    const state = cafe.state;
+    const held = carrying();
+    if ((held?.id ?? null) !== wasCarrying) {
+      wasCarrying = held?.id ?? null;
+      $("carrying").hidden = !held;
+      canvas.classList.toggle("placing", !!held);
+      if (held) {
+        const what = pieceName(held.kind);
+        $("carrying-text").textContent = `Carrying the ${what}. Choose where it goes.`;
+        // Arrows move on from the piece's old place, not from where you stand.
+        stage.pointer.tile = { x: held.x, y: held.y };
+        announce(`You're carrying the ${what}. Choose where it goes, or press Escape to put it back.`);
+      }
     }
+    const at = stage.pointer.visible && stage.pointer.tile ? stage.pointer.tile : stage.pointer.hover;
+    if (!state || !held || !at) {
+      stage.pointer.ghost = null;
+      return;
+    }
+    const people = [...state.people.values()].filter((p) => p.place === "inside" && p.id !== state.you).map((p) => p.at);
+    stage.pointer.ghost = { piece: held, at, ok: guessPlace(state.room, held, at, people) };
+  });
+  $("put-back").onclick = () => {
+    cafe.send({ type: "putBack" });
+    canvas.focus();
+  };
+  $("put-away").onclick = () => {
+    cafe.send({ type: "putAway" });
+    canvas.focus();
+  };
+  $("add-furniture").onclick = () => {
+    const state = cafe.state;
+    if (!state) return;
+    const box = $("add-furniture").getBoundingClientRect();
+    const stageBox = $("stage").getBoundingClientRect();
+    openMenu(
+      overlay,
+      { left: box.left - stageBox.left, top: 0 },
+      "Add furniture",
+      "It comes in your hands; then choose where it goes.",
+      state.room.catalogue.map((k) => ({ label: `A ${pieceName(k.kind)}`, run: () => cafe.send({ type: "take", kind: k.kind }) })),
+      $("add-furniture"),
+    );
   };
   const detach = attachInput(stage, cafe, {
     act,
@@ -158,7 +180,7 @@ function enter(me: ApiMe): void {
     talk: () => talk.focus(),
     close: () => {
       closeMenu();
-      stopPlacing();
+      if (carrying()) cafe.send({ type: "putBack" });
     },
   });
   const unsubscribe = cafe.onChange(() => {

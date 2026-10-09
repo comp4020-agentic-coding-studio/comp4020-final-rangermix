@@ -32,10 +32,23 @@ async fn main() -> anyhow::Result<()> {
     let saved_cats = store.call(|c| store::all_cat_states(c)).await?;
     let build = config.build_id();
     let now = time::now_ms();
-    let mut world = world::World::new(content, trust, saved_cats, now, Some(store.clone()), build.clone(), now);
-    if let Some(arrangement) = store.call(|c| store::get_world(c, "furniture")).await? {
-        world.restore_arrangement(&arrangement);
-    }
+    let arrangement = match store.call(|c| store::get_world(c, "arrangement")).await? {
+        Some(json) => world::SavedArrangement::Current(json),
+        None => match store.call(|c| store::get_world(c, "furniture")).await? {
+            Some(json) => world::SavedArrangement::Legacy(json),
+            None => world::SavedArrangement::Fresh,
+        },
+    };
+    let world = world::World::new(
+        content,
+        trust,
+        saved_cats,
+        arrangement,
+        now,
+        Some(store.clone()),
+        build.clone(),
+        now,
+    );
     let world_tx = ws::spawn_world(world);
     let readme = readme::render_page(&std::fs::read_to_string(&config.readme_path).unwrap_or_default());
     let port = config.port;
