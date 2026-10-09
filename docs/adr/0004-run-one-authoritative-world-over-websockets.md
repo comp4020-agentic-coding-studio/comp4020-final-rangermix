@@ -56,4 +56,5 @@ JSON messages whose types are generated from Rust
 - Reconnects heal by snapshot rather than replaying missed events, so there is
   no replay logic to get wrong.
 - Revisit if one task can't keep up, which isn't expected at six seats.
-- The commits that carry it out will be linked here as they land.
+- The commits that carry it out will be linked here as they land:
+  [`77dbe99`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/77dbe99) (first grab wins, from the one order of events).

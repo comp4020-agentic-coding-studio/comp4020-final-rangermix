@@ -42,4 +42,5 @@ waiting, after a "still there?" nudge they can answer.
 - The rule is tested in Rust with a controllable clock, because waiting real
   minutes is too slow for CI's black-box checks.
 - At the crit, the pod's natural counter-argument is option 2, timed visits.
-- The commits that carry it out will be linked here as they land.
+- The commits that carry it out will be linked here as they land:
+  [`207fa4b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/207fa4b) (the nudge and the walk-out).

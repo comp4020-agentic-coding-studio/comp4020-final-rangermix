@@ -148,3 +148,36 @@ Small enough not to need an ADR; each is recorded in design.md when built.
 ## Execution log
 
 Where carrying out this plan departed from it, task by task, and why.
+
+- **Task 1 and 2 (2026-10-09).** Built as planned in one commit, since the
+  protocol changed on both sides. The quiet seat lives in its own module,
+  `world/quiet.rs`; a person walking out is ignored until they've gone,
+  and doesn't count toward the six, so the first in line comes in at once.
+- **Before Task 3: phase 1's review.** Its findings were answered between
+  Tasks 2 and 3 (see `reviews/phase-1-findings.md`); four of them (8, 13,
+  14, 15) were folded into Task 5.
+- **Task 3.** As planned. Emote kinds are logged in lower case to match the
+  wire.
+- **Tasks 4 to 7.** Built together in one commit, because removing the
+  cushion's `moveFurniture` changed the protocol for client and server at
+  once. Two changes from the plan: the furniture limit moved from the
+  connection into the world, per person, so a reconnect doesn't refill it
+  and only an accepted change spends a token (it also answers review
+  findings 5 and 6 for furniture); and a grab reserves the piece the moment
+  the server accepts it, so "first grab wins" means the first request, not
+  the first to arrive. The "cut off" rule caught two of the plan's own test
+  spots (the sofa at (1, 8) would have shut in (0, 8) and (0, 9)), and the
+  tests moved to spots that don't. Cats coming to look at moved furniture
+  stays phase 3's ("investigating"), as the roadmap had it.
+- **Task 8.** In a browser the first version showed three faults: the room
+  at 3x is shorter than a 844-pixel phone and sat at the top, the ring's
+  top button hid under the floating status bar, and the menu's note showed
+  behind it. The room is now centred when smaller than the screen, the ring
+  stays between the bars, and the note is for screen readers only.
+- **Task 9.** Playwright 1.63.0, the newest release older than two weeks.
+  The first full run failed six checks, none of them faults in the café:
+  spec files ran in parallel against one café that seats six, so visitors
+  landed at the window. Files now run one at a time, and each browser check
+  walks its visitors out.
+- **Task 10.** design.md records decisions 1 to 11; ADRs 0004 and 0009 link
+  their commits.

@@ -43,6 +43,12 @@ under [Numbers to tune](#numbers-to-tune).
   but a forgotten tab shouldn't hold a sixth of it. This is crit 9's recorded
   decision about several people at once.
   ([ADR 0009](adr/0009-free-a-quiet-seat-only-when-someone-is-waiting.md))
+  The page tells the server when its tab is hidden or shown, and, at most
+  every 30 seconds, that someone touched it; any message counts as an
+  answer, except "my tab is hidden". An unanswered nudge frees the seat at
+  once: the first in line walks in while the quiet visitor walks out the
+  door, and their page says why and offers to come back, which joins the
+  line. A dropped connection is left to the grace period instead.
 - **The world never stops, as far as anyone can tell.** The cats go on living
   whether or not anyone is there. When the machine has been stopped (idle,
   deploy or crash), the server fast-forwards through the gap on waking.
@@ -79,7 +85,19 @@ under [Numbers to tune](#numbers-to-tune).
   always stays clear, and a floor that holds only so much (*tunable*). The
   first person to grab a piece holds it, everyone sees it being carried, and if
   they disconnect it drops back where it was. A cat lying on a piece that's
-  moved jumps off, annoyed.
+  moved jumps off, annoyed. In detail: grabbing walks you over and lifts the
+  piece, and reserves it from the moment the server accepts the grab, so the
+  second person to reach for it is told who has it; putting it down walks
+  you beside the spot; Put it back returns it (a new piece just goes) and
+  Put it away removes it; the catalogue puts a new piece in your hands.
+  Every rule is the server's: on the floor, never on the door's walkway, no
+  overlap except on a rug, and a piece that blocks never lands on someone
+  standing or heading there, never cuts any floor off from the door, and
+  never leaves a cat's bed out of reach. The arrangement is saved by kind
+  and place. (plan-phase-2.md, decisions 3 to 7.)
+- **Sitting:** the sofa, chairs, window seat and cushion seat one person to
+  a tile, so two can share the sofa; any walk stands you up, and a piece
+  someone sits on can't be carried.
 - **Treats:** the café fills the bowls on a schedule, so no cat goes hungry
   because nobody came, and each visitor has a few treats a day (*tunable*) to
   put down or offer by hand. *Why:* scarcity makes a treat a choice, and stops
@@ -172,8 +190,7 @@ renamed.
   cat tower; a sofa; a rug; a table and two chairs; a cat bed; a box; a floor
   cushion; toys; and plants. Everything moves except the walls, window, door,
   chalkboard and bowls. The catalogue offers these kinds plus a scratching
-  post and a lamp. (For now only the cushion moves; see
-  [notes/crit-8-mvp.md](notes/crit-8-mvp.md).)
+  post and a lamp.
 - **Traces stay until someone tidies them.** Standing a toppled plant back up
   is just moving furniture, so tidying is a small thing regulars do for each
   other.
@@ -229,9 +246,10 @@ renamed.
 - **Public by default.** Everything that happens in the room goes to everyone
   inside and at the window. Only your treats left, your trust with each cat,
   ban notices and the "still there?" nudge are sent to you alone.
-- **Limits before the world:** each connection's bubbles, furniture changes and
-  other actions pass token buckets that allow a burst and then refill
-  (*tunable*).
+- **Limits before the world:** each connection's bubbles and emotes, and its
+  other actions, pass token buckets that allow a burst and then refill
+  (*tunable*). Furniture changes are counted per person inside the world, so
+  a reconnect doesn't refill them, and only an accepted change spends one.
 
 ## Persistence and fast-forward
 
@@ -352,8 +370,11 @@ renamed.
   walks in when a seat frees); bubbles never replayed on reconnect; the
   100-character cap, burst limits and blocklist; first grab wins; sign-up's
   one-time recovery code, and recovery; the log-in card's link to `/readme/`.
-- **Browser checks** (Playwright, in `spec/`): a keyboard-only pass at 390×844
-  and 1920×1080 with a resize mid-use, and the phone layout switch.
+- **Browser checks** (Playwright, in `spec/browser.test.ts`): a keyboard-only
+  pass at 390×844 and 1920×1080 with a resize mid-use, a tap on a cat by
+  touch, the phone layout switch, and one visitor's change reaching
+  another's page. CI installs Chromium for them, and spec files run one at a
+  time, since they share one café that seats six.
 - **CI:** a Rust job (format, lint, `cargo test`, type drift) beside the
   existing check job, and the deploy waits for both.
 - **Enforced and judged.** Enforced by `spec/`: six inside and the line,
@@ -377,7 +398,7 @@ renamed.
 | Bubble on screen | 3 seconds + 60 ms per character, at most 10 seconds |
 | Bubble length | 100 characters |
 | Bubbles | 5 in a burst, then 1 every 2 seconds |
-| Furniture changes | 3 in a burst, then 1 every 20 seconds |
+| Furniture changes | 3 in a burst, then 1 every 20 seconds, per person; only accepted changes count |
 | Other actions | 10 a second |
 | Furniture on the floor | at most 30 movable pieces |
 | Treats | 3 per visitor per Canberra day |
