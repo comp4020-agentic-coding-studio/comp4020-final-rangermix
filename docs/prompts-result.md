@@ -716,3 +716,55 @@ browser, a first look at the art, `placeholder/` removed), run after Task 17
 and before Task 18's review. Items 16 to 24, all the cushion's, go to phase
 2's rearranging, which `plan.md` now spells out. `crit-8-mvp.md` gained a
 table saying where each item went, with a column for its outcome.
+
+*Continued, same prompt.* Phase 1 was then closed, and phase 2 built.
+
+- **Task 17, README material**, as a workflow: one researcher per area, an
+  independent checker re-opening every source (seven that wouldn't open
+  were dropped), one writer; two quotes re-checked by hand and one wrong
+  line corrected. `docs/notes/readme-material.md` adds what a check
+  enforces, by test file, and where the README and the design differ (the
+  template's first lines are still published; the README promises music).
+  Nothing was written in `README.md`.
+  [`343d8be`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/343d8be)
+- **Task 19, the crit 8 cut.** A tab on an old build now says to refresh;
+  bubbles stay inside the room; far pets are pinned by tests (a second pet
+  on the way replaces the first, which explains crit 8's script). The
+  "wrong look" after a sign-up was found, not a fluke: everyone walked in
+  to the same tile, so whoever stood there hid the newcomer; newcomers now
+  go to a free tile. Two browsers side by side, the phone by touch and
+  keyboard with a resize, and a restart mid-visit were checked by hand in
+  Playwright against the image, with screenshots in `docs/notes/screens/`.
+  [`a41b6a2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a41b6a2)
+  [`dfb30b9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dfb30b9)
+  [`2756005`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2756005)
+  [`4fc73eb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4fc73eb)
+  [`8cbdedf`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8cbdedf)
+  [`bc44fea`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bc44fea)
+- **Task 18, phase 1's review**, as a workflow: six reviewers by area, two
+  skeptics per finding. 17 findings stood (4 major: a silent phone holding
+  its seat for minutes, huge names as rate-limit keys, anyone locking a
+  name out of log-in, the talk box dead after Leave and Come back). Eleven
+  were fixed test first, two answered as settled design, four folded into
+  phase 2. Phase 1 closed with everything green.
+  [`b21b06c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b21b06c)
+  [`02ba73f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/02ba73f)
+  [`123a899`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/123a899)
+- **Phase 2's plan** ([`c34c3b9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c34c3b9)),
+  then its build, test first: the quiet seat of ADR 0009, crit 9's
+  recorded decision
+  ([`207fa4b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/207fa4b));
+  emotes
+  ([`4ec24e3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4ec24e3));
+  rearranging together, where everything but the bowls moves, a grab
+  reserves the piece so the first grab wins, the server keeps the walkway
+  clear and never lets a piece cut the café off, cats jump off, and
+  people sit and share the sofa
+  ([`77dbe99`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/77dbe99));
+  the phone's layout B
+  ([`d3ef876`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d3ef876));
+  and browser checks in the spec and CI, after which spec files run one at
+  a time because they share one café that seats six
+  ([`e42f2a4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e42f2a4)).
+  design.md and ADRs 0004 and 0009 record it
+  ([`487c519`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/487c519)).
