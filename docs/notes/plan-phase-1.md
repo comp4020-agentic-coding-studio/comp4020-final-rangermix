@@ -9385,3 +9385,16 @@ Where carrying out this plan departed from it, task by task, and why.
   restarted the container on a named volume and came back to trust 0.6 with
   the same session. Steps 7 and 8 by hand were cut to that script (see
   `docs/notes/crit-8-mvp.md`).
+- **Task 17 (2026-10-09).** Run as a workflow: one researcher per area of
+  the brief, an independent checker re-opening every source (seven that
+  wouldn't open were dropped), one writer. Two quotes were checked again by
+  hand, and a line calling the café account-free was corrected before the
+  repo's own sections were added.
+- **Task 19 (2026-10-09).** Step 5 found a real fault, not a fluke: it
+  reproduced only while someone else stood at the entry, because every
+  newcomer walked to the same tile. The fix sends newcomers to the nearest
+  free tile off the walkway. Step 3 needed no fix; two tests pin the
+  behaviour. Step 6's checks ran in Playwright with two browser contexts
+  against the image on port 18081. The announcer looked empty right after
+  a Tab only because it writes 30 ms late on purpose. Outcomes are in
+  [crit-8-mvp.md](crit-8-mvp.md).

@@ -142,21 +142,21 @@ in [plan-phase-1.md](plan-phase-1.md).
 
 | Item | Goes to | Outcome |
 |---|---|---|
-| 1. No two-window check | phase 1, Task 19 Step 6 | |
-| 2. Phone checked only for drawing | phase 1, Task 19 Step 6 | |
-| 3. No art pass | phase 1, Task 19 Step 7 (a first look); phase 5 (the pass) | |
-| 4. Restart checked by script | phase 1, Task 19 Step 6 | |
-| 5. A stale tab says nothing | phase 1, Task 19 Step 2 | |
-| 6. The wrong look, once | phase 1, Task 19 Step 5 | |
-| 7. Far pets unexamined | phase 1, Task 19 Step 3 | |
-| 8. Bubbles placed without care | phase 1, Task 19 Step 4 | |
-| 9. Two pieces switched off | phase 1, Task 19 Step 8; `perch` in phase 3 | |
-| 10. rustfmt at width 140 | phase 1, Task 19 Step 8 | |
-| 11. No pre-flight scan | phase 1, Task 19 Step 8 | |
-| 12. No README material | phase 1, Task 17 | |
+| 1. No two-window check | phase 1, Task 19 Step 6 | Done 2026-10-09: two contexts, two accounts; a walk reached the other in 7 ms, a bubble in 19 ms, a cushion move in 1 ms (announced), a pet's sniff as it happened |
+| 2. Phone checked only for drawing | phase 1, Task 19 Step 6 | Done: at 390×844 with touch, no sideways scroll, room at 2×, panels below, the cat menu a full-width sheet, pet and cushion move by tap; a keyboard-only pass with a resize to 1920×1080 and back (384, 960, 384 px) reached every action and Leave |
+| 3. No art pass | phase 1, Task 19 Step 7 (a first look); phase 5 (the pass) | First look: every piece, coat and avatar reads; the window seat reads as a shelf and the cushion as a blue box, both for phase 5. Screens in `screens/` |
+| 4. Restart checked by script | phase 1, Task 19 Step 6 | Done: an open page showed "Reconnecting", came back without a reload, cats on the same tiles |
+| 5. A stale tab says nothing | phase 1, Task 19 Step 2 | Fixed: a refresh notice (`dfb30b9`) |
+| 6. The wrong look, once | phase 1, Task 19 Step 5 | Found and fixed: everyone walked in to the same tile, so the person standing there hid the newcomer; newcomers now go to a free tile (`8cbdedf`) |
+| 7. Far pets unexamined | phase 1, Task 19 Step 3 | Explained: a second pet on the way replaces the first; pinned by tests (`2756005`); every far pet that fails says why |
+| 8. Bubbles placed without care | phase 1, Task 19 Step 4 | Fixed: kept inside the room, under the speaker at the top (`4fc73eb`) |
+| 9. Two pieces switched off | phase 1, Task 19 Step 8; `perch` in phase 3 | `get_world` is in use since the cushion; only `perch` waits, for phase 3 |
+| 10. rustfmt at width 140 | phase 1, Task 19 Step 8 | Kept: rewrapping every file gains no reader anything |
+| 11. No pre-flight scan | phase 1, Task 19 Step 8 | Replaced by Task 18's review of the built phase |
+| 12. No README material | phase 1, Task 17 | Done: `readme-material.md` (`343d8be`) |
 | 13. No whole-phase review | phase 1, Task 18 | |
-| 14. CI hadn't run | phase 1, Task 19 Step 8 | |
-| 15. `placeholder/` still there | phase 1, Task 19 Step 1 | |
+| 14. CI hadn't run | phase 1, Task 19 Step 8 | Ran at the flip on 2026-10-07 and on every push since |
+| 15. `placeholder/` still there | phase 1, Task 19 Step 1 | Removed (`a41b6a2`) |
 | 16. Only the cushion moves | phase 2, rearranging | |
 | 17. No catalogue | phase 2, rearranging | |
 | 18. No carrying | phase 2, rearranging | |
