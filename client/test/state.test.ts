@@ -98,6 +98,13 @@ describe("the client's copy of the café", () => {
     expect(apply(s, { type: "personLeft", id: 1 })).toEqual([{ kind: "youLeft" }]);
   });
 
+  it("keeps 'said this visit' across a reconnect's welcome", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    apply(s, { type: "said", from: 1, text: "before the drop", to: null, ttlMs: 3000 }, 10_000);
+    const again = fromWelcome(welcome(), 20_000, s);
+    expect(again.said.map((l) => l.text)).toEqual(["before the drop"]);
+  });
+
   it("says 'still here' at most every 30 seconds", () => {
     expect(shouldPing(null, 1_000)).toBe(true);
     expect(shouldPing(1_000, 30_999)).toBe(false);

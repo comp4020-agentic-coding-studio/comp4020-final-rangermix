@@ -81,6 +81,10 @@ export class Cafe {
     this.connection.send(msg);
   }
 
+  isOpen(): boolean {
+    return this.connection.isOpen();
+  }
+
   /** Walks out at once, freeing the seat (design.md, "People"). */
   leave(): void {
     this.send({ type: "leave" });
@@ -127,7 +131,7 @@ export class Cafe {
         this.outdated = true;
         this.hooks.onOutdated?.();
       }
-      this.state = fromWelcome(msg);
+      this.state = fromWelcome(msg, Date.now(), this.state);
       if (document.hidden) this.send({ type: "presence", hidden: true });
     } else if (this.state) {
       for (const effect of apply(this.state, msg)) this.handle(effect);

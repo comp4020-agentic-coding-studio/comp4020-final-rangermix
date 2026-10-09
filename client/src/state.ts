@@ -59,7 +59,8 @@ export function serverNow(state: CafeState, localNow = Date.now()): number {
   return localNow + state.offset;
 }
 
-export function fromWelcome(msg: Welcome, localNow = Date.now()): CafeState {
+/** A fresh copy from a welcome; on a reconnect, `previous` keeps "said this visit". */
+export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeState | null = null): CafeState {
   const s = msg.snapshot;
   return {
     you: msg.you,
@@ -71,7 +72,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now()): CafeState {
     cats: new Map(s.cats.map((c) => [c.id, { ...c, reaction: null }])),
     trust: new Map(s.yourTrust.map((t) => [t.cat, t])),
     bubbles: [],
-    said: [],
+    said: previous?.said ?? [],
   };
 }
 

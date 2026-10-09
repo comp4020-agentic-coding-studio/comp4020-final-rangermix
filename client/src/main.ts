@@ -74,7 +74,10 @@ function enter(me: ApiMe): void {
   document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
   const bubbles = new Bubbles(overlay, stage);
-  const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"));
+  const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"), (why) => {
+    toast(overlay, why);
+    announce(why);
+  });
   stage.frameHooks.push(() => {
     if (cafe.state) bubbles.update(cafe.state);
   });
@@ -159,11 +162,13 @@ function enter(me: ApiMe): void {
     const s = cafe.state;
     if (!s) return;
     renderHere($("here"), s);
+    talk.peopleChanged(new Set(s.people.keys()));
     renderSaid($("said"), s);
     renderYourCats($("your-cats"), s);
   });
   function stop(): void {
     detach();
+    talk.dispose();
     unsubscribe();
     stage.stop();
     closeMenu();
