@@ -34,15 +34,40 @@ impl World {
     }
 
     /// Tiles people stand on or are heading to.
+    /// Tiles people stand on, and every tile left on their way.
     fn occupied(&self, now: u64) -> Vec<Tile> {
         self.people
             .iter()
             .filter(|p| p.place == crate::protocol::Place::Inside)
-            .flat_map(|p| {
-                let here = p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now));
-                std::iter::once(here).chain(p.walk.as_ref().and_then(|w| w.path.last().copied()))
+            .flat_map(|p| match &p.walk {
+                Some(w) => {
+                    let here = walk_tile(w, now);
+                    let from = w.path.iter().position(|&t| t == here).unwrap_or(0);
+                    w.path[from..].to_vec()
+                }
+                None => vec![p.at],
             })
             .collect()
+    }
+
+    /// Calls off a grab or a sit on the way, so a new request starts clean
+    /// and the piece is free for the next person to reach for.
+    fn call_off(&mut self, id: u32) {
+        self.reserved.retain(|_, by| *by != id);
+        if let Some(p) = self.people.iter_mut().find(|p| p.id == id)
+            && matches!(p.pending, Some(Pending::Grab(_) | Pending::Sit(_)))
+        {
+            p.pending = None;
+        }
+    }
+
+    /// Gets someone up off their seat where they are, for everyone to see.
+    fn stand_up(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
+        if self.person(id).is_some_and(|p| p.sitting.is_some())
+            && let Some(here) = self.person_tile(id, now)
+        {
+            self.start_walk(now, id, here, vec![here], None, out);
+        }
     }
 
     /// Whether `id` may make a furniture change now; spends nothing.
@@ -64,8 +89,9 @@ impl World {
     /// it at once if they're already there. False if there's no way there.
     fn go_beside(&mut self, now: u64, id: u32, piece: &Piece, then: Pending, out: &mut Vec<Out>) -> bool {
         let Some(here) = self.person_tile(id, now) else { return false };
-        let walking = self.person(id).is_some_and(|p| p.walk.is_some());
-        if !walking && beside(piece, here) {
+        // Someone seated gets up first: the walk, even of no steps, stands them up.
+        let busy = self.person(id).is_some_and(|p| p.walk.is_some() || p.sitting.is_some());
+        if !busy && beside(piece, here) {
             self.arrived_with(now, id, then, out);
             return true;
         }
@@ -116,8 +142,13 @@ impl World {
 
     /// The grab's walk ended: lift it, if it's still there to lift.
     pub(super) fn pick_up(&mut self, now: u64, id: u32, piece_id: u32, out: &mut Vec<Out>) {
-        if self.reserved.get(&piece_id) == Some(&id) {
-            self.reserved.remove(&piece_id);
+        // Only on their own reservation: one called off is someone else's to win.
+        if self.reserved.get(&piece_id) != Some(&id) {
+            return;
+        }
+        self.reserved.remove(&piece_id);
+        if self.holding(id).is_some() {
+            return error(out, id, ErrorCode::CantPlace, "Put down what you're carrying first.");
         }
         let Some(piece) = self.room.pieces.iter().find(|p| p.id == piece_id).cloned() else {
             return error(out, id, ErrorCode::CantPlace, "That isn't here any more.");
@@ -158,6 +189,9 @@ impl World {
         if !self.furniture_ready(id, now, out) {
             return;
         }
+        // Hands full now: no grab or sit still on its way, and nobody carries seated.
+        self.call_off(id);
+        self.stand_up(now, id, out);
         let door = self.room.door;
         let piece = self.room.new_piece(kind, door).expect("checked above");
         self.spend_furniture(id, now);
@@ -220,7 +254,7 @@ impl World {
     /// Puts back what `id` carries: where it was if that still fits, else the
     /// nearest spot that does; a new piece just goes.
     pub(super) fn put_back(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
-        self.reserved.retain(|_, by| *by != id);
+        self.call_off(id);
         let Some(i) = self.holding(id) else { return };
         let Held { piece, from, .. } = self.held.remove(i);
         let Some(from) = from else {
@@ -286,6 +320,11 @@ impl World {
         };
         if !piece.spec.seats {
             return error(out, id, ErrorCode::CantPlace, "That isn't for sitting on.");
+        }
+        if let Some(&by) = self.reserved.get(&piece_id)
+            && by != id
+        {
+            return error(out, id, ErrorCode::Taken, &format!("{} is moving it.", self.name_of(by)));
         }
         if self.free_seat(&piece, id, Tile { x: piece.x, y: piece.y }).is_none() {
             return error(out, id, ErrorCode::Taken, "There's no room to sit.");

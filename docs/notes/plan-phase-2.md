@@ -178,6 +178,9 @@ Where carrying out this plan departed from it, task by task, and why.
   The first full run failed six checks, none of them faults in the café:
   spec files ran in parallel against one café that seats six, so visitors
   landed at the window. Files now run one at a time, and each browser check
-  walks its visitors out.
+  walks its visitors out. The same crowding had already failed CI on
+  `77dbe99` and `d3ef876` (the cap check found a seventh visitor inside,
+  where another file's visitor had just left); those two never deployed,
+  and `e42f2a4` passed the Rust job, the checks and the deploy.
 - **Task 10.** design.md records decisions 1 to 11; ADRs 0004 and 0009 link
   their commits.

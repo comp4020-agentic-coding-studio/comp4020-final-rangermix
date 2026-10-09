@@ -172,7 +172,7 @@ impl World {
         let mut out = Vec::new();
         match input {
             Input::Join { id, name, look } => self.join(now, id, name, look, &mut out),
-            Input::Drop { id } => self.drop_connection(now, id),
+            Input::Drop { id } => self.drop_connection(now, id, &mut out),
             Input::Msg { id, msg } => {
                 // Someone walking out after an unanswered nudge is on their way.
                 if self.person(id).is_none_or(|p| p.leaving) {
@@ -201,6 +201,10 @@ impl World {
 
     /// Someone's walk ended with something to do.
     fn arrived_with(&mut self, now: u64, id: u32, then: Pending, out: &mut Vec<Out>) {
+        // Gone, or on the way out, in the same tick: nothing more to do.
+        if self.person(id).is_none_or(|p| p.leaving) {
+            return;
+        }
         match then {
             Pending::Pet(cat) => self.pet_on_arrival(now, id, &cat, out),
             Pending::Grab(piece) => self.pick_up(now, id, piece, out),

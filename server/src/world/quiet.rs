@@ -31,7 +31,8 @@ impl World {
     }
 
     pub(super) fn quiet_tick(&mut self, now: u64, out: &mut Vec<Out>) {
-        let waiting = self.people.iter().any(|p| p.place == Place::Window);
+        // Someone really there: a dropped connection at the window isn't waiting.
+        let waiting = self.people.iter().any(|p| p.place == Place::Window && p.away_since.is_none());
         let t = &self.tuning;
         let (hidden_ms, idle_ms, answer_ms) = (t.quiet_hidden_secs * 1000, t.quiet_idle_secs * 1000, t.nudge_answer_secs * 1000);
         let secs = t.nudge_answer_secs as u32;
@@ -69,6 +70,8 @@ impl World {
 
     /// An unanswered nudge: the seat frees now, and they walk out the door.
     fn walk_out(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
+        // Whatever they carried goes back first.
+        self.put_back(now, id, out);
         let Some(from) = self.person_tile(id, now) else { return };
         let door = self.room.door;
         let path = self.room.path(from, door, Walker::Person).unwrap_or_else(|| vec![from, door]);
@@ -240,6 +243,39 @@ mod tests {
         w.tick(10 * MIN);
         let outs = send(&mut w, 1, 10 * MIN + 1_000, ClientMsg::Presence { hidden: true });
         assert!(overs(&outs).is_empty());
+    }
+
+    #[test]
+    fn coming_back_on_a_new_connection_answers_the_question() {
+        let mut w = full();
+        others_active(&mut w, 1, 9 * MIN);
+        w.tick(10 * MIN);
+        w.handle(10 * MIN + 5_000, Input::Drop { id: 1 });
+        join(&mut w, 1, 10 * MIN + 10_000);
+        others_active(&mut w, 1, 10 * MIN + 30_000);
+        let outs = w.tick(11 * MIN + 1_000);
+        assert!(
+            !outs.iter().any(|o| matches!(o.msg, ServerMsg::PersonMoved { id: 1, .. })),
+            "not walked out"
+        );
+    }
+
+    #[test]
+    fn coming_back_visible_forgets_the_hidden_tab() {
+        let mut w = full();
+        send(&mut w, 1, MIN, ClientMsg::Presence { hidden: true });
+        w.handle(MIN + 30_000, Input::Drop { id: 1 });
+        join(&mut w, 1, MIN + 40_000);
+        others_active(&mut w, 1, 2 * MIN + 50_000);
+        assert!(nudges(&w.tick(3 * MIN)).is_empty());
+    }
+
+    #[test]
+    fn someone_at_the_window_whose_connection_dropped_isnt_waiting() {
+        let mut w = full();
+        others_active(&mut w, 1, 9 * MIN);
+        w.handle(9 * MIN + 45_000, Input::Drop { id: 7 });
+        assert!(nudges(&w.tick(10 * MIN)).is_empty(), "7 is only within the grace period");
     }
 
     #[test]

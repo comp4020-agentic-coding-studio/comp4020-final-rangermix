@@ -134,16 +134,6 @@ fn a_spot_the_room_refuses_keeps_it_in_hand() {
 }
 
 #[test]
-fn a_dropped_connection_puts_it_back_where_it_was() {
-    let (mut w, id) = holding_cushion();
-    let start = on_floor(&world(), id).unwrap();
-    w.handle(2_000, Input::Drop { id: 1 });
-    let outs = w.tick(2_000 + 30_000);
-    assert_eq!(placed(&outs), vec![(id, start)]);
-    assert_eq!(on_floor(&w, id), Some(start));
-}
-
-#[test]
 fn leaving_puts_it_back_too() {
     let (mut w, id) = holding_cushion();
     let start = on_floor(&world(), id).unwrap();
@@ -182,6 +172,109 @@ fn a_new_piece_comes_from_the_catalogue_and_can_be_put_away() {
     assert!(w.held.is_empty());
     let outs = send(&mut w, 1, 30_000, ClientMsg::Take { kind: "bowls".into() });
     assert_eq!(errors(&outs), vec![(To::One(1), ErrorCode::CantPlace)], "the bowls stay");
+}
+
+#[test]
+fn taking_from_the_catalogue_on_the_way_to_a_grab_calls_the_grab_off() {
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(7, 1));
+    let cushion = piece_of(&w, "cushion");
+    let outs = send(&mut w, 1, 1_000, ClientMsg::Grab { id: cushion });
+    send(&mut w, 1, 1_100, ClientMsg::Take { kind: "lamp".into() });
+    arrive(&mut w, &outs, 1);
+    assert_eq!(w.held.iter().filter(|h| h.by == 1).count(), 1, "one piece in hand");
+    assert!(on_floor(&w, cushion).is_some());
+}
+
+#[test]
+fn putting_back_with_empty_hands_calls_the_grab_off_and_the_next_grab_wins() {
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    stand(&mut w, 1, T(7, 1));
+    stand(&mut w, 2, T(6, 1));
+    let cushion = piece_of(&w, "cushion");
+    let a = send(&mut w, 1, 1_000, ClientMsg::Grab { id: cushion });
+    send(&mut w, 1, 1_100, ClientMsg::PutBack {});
+    let b = send(&mut w, 2, 1_200, ClientMsg::Grab { id: cushion });
+    assert!(errors(&b).is_empty());
+    let later = arrive(&mut w, &a, 1);
+    assert!(held(&later).iter().all(|&(_, _, by)| by != 1));
+    let later = arrive(&mut w, &b, 2);
+    assert_eq!(held(&later), vec![(To::All, cushion, 2)]);
+}
+
+#[test]
+fn a_dropped_connection_lets_go_at_once() {
+    let (mut w, id) = holding_cushion();
+    let start = on_floor(&world(), id).unwrap();
+    let outs = w.handle(2_000, Input::Drop { id: 1 });
+    assert_eq!(placed(&outs), vec![(id, start)]);
+    // And a grab on the way is called off, so nothing is lifted for someone who's gone.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(7, 1));
+    let plant = piece_of(&w, "plant");
+    let outs = send(&mut w, 1, 1_000, ClientMsg::Grab { id: plant });
+    w.handle(1_100, Input::Drop { id: 1 });
+    let later = arrive(&mut w, &outs, 1);
+    assert!(held(&later).is_empty());
+    assert!(on_floor(&w, plant).is_some());
+}
+
+#[test]
+fn a_blocking_piece_never_lands_across_someones_way() {
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    stand(&mut w, 1, T(3, 7));
+    stand(&mut w, 2, T(1, 8));
+    // 2 walks right along row 8, through (4, 8), to (6, 8).
+    let walk = send(&mut w, 2, 1_000, ClientMsg::WalkTo { tile: T(6, 8) });
+    assert!(walk_of(&walk, 2).unwrap().path.contains(&T(4, 8)));
+    send(&mut w, 1, 1_000, ClientMsg::Take { kind: "lamp".into() });
+    let outs = send(&mut w, 1, 1_050, ClientMsg::Place { to: T(4, 8) });
+    assert_eq!(errors(&outs), vec![(To::One(1), ErrorCode::CantPlace)]);
+}
+
+#[test]
+fn nobody_carries_and_sits_at_once() {
+    let mut w = world();
+    join(&mut w, 1, 0);
+    let sofa = piece_of(&w, "sofa");
+    stand(&mut w, 1, T(1, 6));
+    send(&mut w, 1, 1_000, ClientMsg::Sit { id: sofa });
+    let outs = send(&mut w, 1, 2_000, ClientMsg::Take { kind: "lamp".into() });
+    assert_eq!(held(&outs).len(), 1);
+    assert!(
+        w.snapshot_for(1, 2_000).people.iter().any(|p| p.id == 1 && !p.sitting),
+        "stood up to take it"
+    );
+    // Grabbing from a seat stands you up too, even beside the piece.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    let chair = piece_of(&w, "chair");
+    stand(&mut w, 1, T(9, 5));
+    send(&mut w, 1, 1_000, ClientMsg::Sit { id: chair });
+    let table = piece_of(&w, "table");
+    let outs = send(&mut w, 1, 2_000, ClientMsg::Grab { id: table });
+    let later = arrive(&mut w, &outs, 1);
+    assert_eq!(held(&later).len(), 1);
+    assert!(w.snapshot_for(1, 60_000).people.iter().any(|p| p.id == 1 && !p.sitting));
+}
+
+#[test]
+fn nobody_sits_on_a_piece_someone_is_coming_to_carry() {
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    stand(&mut w, 1, T(7, 1));
+    let sofa = piece_of(&w, "sofa");
+    send(&mut w, 1, 1_000, ClientMsg::Grab { id: sofa });
+    stand(&mut w, 2, T(1, 6));
+    let outs = send(&mut w, 2, 1_100, ClientMsg::Sit { id: sofa });
+    assert_eq!(errors(&outs), vec![(To::One(2), ErrorCode::Taken)]);
 }
 
 #[test]

@@ -37,7 +37,12 @@ impl World {
     pub(super) fn join(&mut self, now: u64, id: u32, name: String, look: Look, out: &mut Vec<Out>) {
         if let Some(p) = self.person_mut(id) {
             // Back within the grace period, or a second tab: the same seat.
+            // Coming back is a sign of life, and answers any "still there?";
+            // the new page reports a hidden tab itself.
             p.away_since = None;
+            p.last_input = now;
+            p.hidden_since = None;
+            p.nudged = None;
         } else {
             let place = if self.inside() < self.tuning.cap {
                 Place::Inside
@@ -90,10 +95,13 @@ impl World {
         );
     }
 
-    pub(super) fn drop_connection(&mut self, now: u64, id: u32) {
+    /// The seat waits for the grace period; what they carried goes back now,
+    /// and a grab on the way is called off.
+    pub(super) fn drop_connection(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
         if let Some(p) = self.person_mut(id) {
             p.away_since = Some(now);
         }
+        self.put_back(now, id, out);
     }
 
     pub(super) fn remove(&mut self, now: u64, id: u32, why: &str, out: &mut Vec<Out>) {
