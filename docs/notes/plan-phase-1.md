@@ -117,6 +117,8 @@ Dockerfile, .dockerignore     three-stage image
 16. Deploy and check it live
 17. Material for the README
 18. Whole-phase review
+19. Make good what the crit 8 cut skipped (added 2026-10-09; runs after
+    Task 17 and before Task 18, so the review reads the finished phase)
 
 ---
 
@@ -9180,6 +9182,122 @@ git add docs/notes
 git commit -m "Close phase 1: review answered, everything green"
 git push origin HEAD:main
 ```
+
+---
+
+### Task 19: Make good what the crit 8 cut skipped
+
+Added on 2026-10-09, when the user asked for "the cut-short parts" to go into
+the plan. [crit-8-mvp.md](crit-8-mvp.md) lists 24 things the crit 8 cut
+skipped or did more cheaply; its table "Where each one went" sends items 16
+to 24 (the cushion) to phase 2's rearranging, and the rest here. This task
+runs after Task 17 and before Task 18, so the whole-phase review reads the
+phase as it will be closed. Every check runs against the built image on a
+local port, never by making accounts on the real café (Task 16).
+
+**Files:**
+- Delete: `placeholder/`
+- Modify: `client/src/state.ts`, `client/src/cafe.ts`, `client/src/bubbles.ts`, `client/src/style.css`, `client/index.html`
+- Test: `client/test/state.test.ts`, `client/test/bubbles.test.ts`, `server/src/world/cat_life.rs`
+- Create: `docs/notes/screens/` (screenshots from the checks by hand)
+- Modify: [crit-8-mvp.md](crit-8-mvp.md) (each item's outcome), this plan's "Execution log"
+
+- [ ] **Step 1: Take out the starter's page (item 15)**
+
+`placeholder/` has been unused since the three-stage `Dockerfile`; only the
+notes name it. Delete it, check that nothing else refers to it
+(`grep -rn placeholder/ --exclude-dir=node_modules --exclude-dir=target .`
+finds only the notes), and that the image still builds.
+
+- [ ] **Step 2: Tell a tab on an old build to refresh (item 5)**
+
+A tab reloads at most once per server build; after that, a client from a
+different build carries on silently, and a tab without `sessionStorage` never
+reloads. Write the failing test first in `client/test/state.test.ts`: a pure
+`afterWelcome(serverBuild, clientBuild, reloadedFor, canRemember)` answers
+`"carryOn"` when the builds match (or either is `"dev"`), `"reload"` the first
+time a build differs and the tab can note it, and `"tellToRefresh"` when it
+already reloaded for that build or can't note it. Then `cafe.ts` shows a
+lasting notice for `"tellToRefresh"` ("The café was updated. Refresh to get
+the new version.", with a Refresh button), announced once to screen readers.
+
+- [ ] **Step 3: Find out what happens to a pet from across the room (item 7)**
+
+The crit 8 script sent a pet to each cat in quick succession; only Tora's was
+logged. The likely reason is that each pet starts a new walk, which replaces
+the walk (and the pet waiting at its end) of the one before. Pin it with a
+Rust test in `cat_life.rs`: two pets in a row, from across the room, end in
+only the second cat being touched, and the first cat's name never reaches a
+log line as petted. Check the other ways a far pet can end and what the
+person is told: the cat walks off before you arrive ("Mochi moved away."),
+no tile beside it is reachable ("You can't get next to that cat from
+here."), you're at the window ("From the window you can only talk."). If
+any of them says nothing, fix it test first.
+
+- [ ] **Step 4: Keep bubbles inside the room (item 8)**
+
+Test first in `client/test/bubbles.test.ts`: a pure `placeBubble(anchor,
+size, bounds)` keeps a bubble wholly inside the overlay, sideways and at the
+top, and puts it under the speaker instead of over them when there's no room
+above. `Bubbles.update` uses it. A bubble can still cover a cat beside its
+speaker; that's what a bubble is.
+
+- [ ] **Step 5: Chase the wrong look after a first sign-up (item 6)**
+
+Against the built image, in a fresh browser context each time, sign up five
+times with five different looks and sample your avatar's pixels in the first
+frame drawn after the welcome against `avatarPalette(look)`. If the wrong
+look comes back, debug it to its cause (superpowers:systematic-debugging)
+and fix it test first; if not, write down what was tried.
+
+- [ ] **Step 6: The checks the cut did by script, by hand in a browser (items 1, 2, 4)**
+
+Against the built image on a local port, with screenshots saved to
+`docs/notes/screens/`:
+
+1. **Two windows.** Two browser contexts, two accounts, side by side: a
+   walk, a bubble, a pet's reaction and a cushion move in one show in the
+   other within about a second, with no reload.
+2. **The phone.** At 390×844 with touch emulated: tapping a cat opens the
+   menu as a sheet from the bottom and its actions work by tap; the panels
+   sit under the room; nothing scrolls sideways. Then a keyboard-only pass
+   at the same size: arrows, Tab, Enter, Escape, the talk box, Leave.
+3. **A restart mid-visit.** With a page open, restart the container on its
+   volume: the page shows "Reconnecting", comes back on its own without a
+   reload, the cats are where they were, and your trust is unchanged.
+
+Anything that fails is fixed test first before the step is ticked.
+
+- [ ] **Step 7: A first look at the art (item 3)**
+
+At 5×, check that each sprite reads as what it is (each furniture kind, the
+three coats, the four avatars, the emotes) and save one screenshot of the
+whole room by day and one by night. Note any sprite that doesn't read in
+[crit-8-mvp.md](crit-8-mvp.md); the art pass itself is phase 5's.
+
+- [ ] **Step 8: Close the items that need no code (9, 10, 11, 12, 13, 14)**
+
+Write each one's outcome in [crit-8-mvp.md](crit-8-mvp.md):
+- 9: `store::get_world` is in use since the cushion's arrangement is
+  restored at startup, so only `FurnitureKind.perch` keeps
+  `#[allow(dead_code)]`, until cats perch in phase 3.
+- 10: rustfmt stays at width 140: one wide formatting pass is already in,
+  and changing the width now would rewrap every file for no reader's gain.
+- 11: the pre-flight scan was for a plan not yet built; Task 18's review of
+  the built phase replaces it.
+- 12 and 13: Tasks 17 and 18.
+- 14: CI first ran when the repo went public on 2026-10-07; the Rust job,
+  the checks and the deploy passed on `659952a`.
+
+The live sign-up the crit 8 notes flag isn't an agent's to try (no test
+accounts on the real café); CI runs the whole spec against the same image
+before every deploy, and the user's own visit is the live check.
+
+- [ ] **Step 9: Everything green, then push**
+
+Run: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test && scripts/check-protocol.sh`, then build the image, start it on a local port and run `pnpm check` against it.
+Expected: all green. Commit each step on its own and push to `main`; a push
+deploys through CI.
 
 ---
 

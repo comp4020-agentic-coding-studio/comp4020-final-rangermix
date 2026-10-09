@@ -133,6 +133,41 @@ What it simplifies, against design.md:
     as a sheet and the move went through, but under a mouse in a narrow
     window, not a touch-emulating device.
 
+## Where each one went
+
+On 2026-10-09 the user asked for these to go into the plan. Items 16 to 24
+are the cushion's, so they go to phase 2, whose rearranging replaces the
+cushion's cut-down move; the rest close phase 1, mostly through a new Task 19
+in [plan-phase-1.md](plan-phase-1.md).
+
+| Item | Goes to | Outcome |
+|---|---|---|
+| 1. No two-window check | phase 1, Task 19 Step 6 | |
+| 2. Phone checked only for drawing | phase 1, Task 19 Step 6 | |
+| 3. No art pass | phase 1, Task 19 Step 7 (a first look); phase 5 (the pass) | |
+| 4. Restart checked by script | phase 1, Task 19 Step 6 | |
+| 5. A stale tab says nothing | phase 1, Task 19 Step 2 | |
+| 6. The wrong look, once | phase 1, Task 19 Step 5 | |
+| 7. Far pets unexamined | phase 1, Task 19 Step 3 | |
+| 8. Bubbles placed without care | phase 1, Task 19 Step 4 | |
+| 9. Two pieces switched off | phase 1, Task 19 Step 8; `perch` in phase 3 | |
+| 10. rustfmt at width 140 | phase 1, Task 19 Step 8 | |
+| 11. No pre-flight scan | phase 1, Task 19 Step 8 | |
+| 12. No README material | phase 1, Task 17 | |
+| 13. No whole-phase review | phase 1, Task 18 | |
+| 14. CI hadn't run | phase 1, Task 19 Step 8 | |
+| 15. `placeholder/` still there | phase 1, Task 19 Step 1 | |
+| 16. Only the cushion moves | phase 2, rearranging | |
+| 17. No catalogue | phase 2, rearranging | |
+| 18. No carrying | phase 2, rearranging | |
+| 19. Cats don't notice | phase 2, rearranging | |
+| 20. Nothing overlaps | phase 2, rearranging | |
+| 21. A cat hides the cushion from a click | phase 2, rearranging | |
+| 22. No preview while placing | phase 2, rearranging | |
+| 23. Saved by piece number | phase 2, rearranging | |
+| 24. Phone checked with a mouse | phase 2, the browser checks | |
+| The core interaction untried live | the user's own visit (no test accounts on the real café); CI runs the whole spec against the same image before each deploy | |
+
 ## Deployed and shipped
 
 The deploy was blocked on the Fly token until the user added it. On

@@ -685,3 +685,34 @@ image, the evidence check, both secret scans) and the deploy. Fly release v2
 came from that run; the page and its assets load, and the read-only live
 checks pass. The deployed commit is tagged `crit-8`.
 [`659952a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/659952a)
+
+## 4. Closing phase 1 and building phase 2
+
+*Session `94478ac0`, Claude Code (Opus 5.5, then Sonnet 5.5 as the session's
+model changed).*
+
+*Sent 2026-10-09 17:24:24 AEDT*
+
+> read the repo, give an overview on where we are, and what we cut short for crit 8
+
+**Result.** An overview, no changes. Phase 1 is live and tagged `crit-8`,
+deliberately cut; Tasks 17 (README material) and 18 (the whole-phase review)
+never ran, and `docs/notes/crit-8-mvp.md` lists 24 things the cut skipped or
+simplified. The ones that matter most for crit 9 were named: nobody has
+watched two real browsers side by side, the phone was checked only for
+drawing, and nothing that signs up has been tried on the live site. ADR 0009
+is already written as crit 9's multi-user decision, but its nudge and
+walk-out aren't built.
+
+*Sent 2026-10-09 17:27:46 AEDT*
+
+> add the cut-short parts to the plan, then resume on the plan, keep working until reach hard blocker or finished phase 1 & 2 /goal
+
+**Result.** The cut list is now in the plan. Items 1 to 15 close phase 1
+through a new Task 19 in `plan-phase-1.md` (a refresh notice for a tab on an
+old build, far pets pinned by a test, bubbles kept inside the room, the wrong
+look chased, the two-window, phone and restart checks done by hand in a
+browser, a first look at the art, `placeholder/` removed), run after Task 17
+and before Task 18's review. Items 16 to 24, all the cushion's, go to phase
+2's rearranging, which `plan.md` now spells out. `crit-8-mvp.md` gained a
+table saying where each item went, with a column for its outcome.
