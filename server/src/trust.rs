@@ -54,7 +54,8 @@ impl TrustBook {
     /// cat today, up to the cat's daily allowance) or a dip (negative,
     /// untapered). Returns the record when the value changed.
     pub fn apply(&mut self, cat: &str, trust_rate: f32, person: u32, delta: f32, today: &str) -> Option<TrustRecord> {
-        if delta == 0.0 {
+        // Nothing to lose before a first meeting, and a dip mustn't count as one.
+        if delta == 0.0 || (delta < 0.0 && !self.records.contains_key(&(cat.to_string(), person))) {
             return None;
         }
         let cap = self.daily_cap * trust_rate;
@@ -167,6 +168,14 @@ mod tests {
         assert!((b.value("mochi", 1) - 1.0).abs() < 1e-4);
         b.apply("mochi", 1.0, 1, -5.0, "2026-10-07");
         assert_eq!(b.value("mochi", 1), 0.0);
+    }
+
+    #[test]
+    fn a_dip_before_any_meeting_is_not_a_meeting() {
+        // Pushing a hiding cat you've never met must not use up its first sniff.
+        let mut b = book();
+        assert!(b.apply("tora", 1.0, 7, -1.0, "2026-10-09").is_none());
+        assert!(!b.has_met("tora", 7));
     }
 
     #[test]

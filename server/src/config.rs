@@ -10,6 +10,8 @@ pub struct Config {
     pub client_dir: PathBuf,
     pub readme_path: PathBuf,
     pub docs_dir: PathBuf,
+    /// On Fly, its proxy sets `fly-client-ip`; anywhere else anyone could.
+    pub behind_fly: bool,
 }
 
 impl Config {
@@ -26,6 +28,7 @@ impl Config {
             client_dir: path("CLIENT_DIR", "client/dist"),
             readme_path: path("README_PATH", "README.md"),
             docs_dir: path("DOCS_DIR", "docs"),
+            behind_fly: get("FLY_APP_NAME").is_some(),
         }
     }
 
@@ -62,6 +65,12 @@ mod tests {
         });
         assert_eq!(c.port, 9000);
         assert_eq!(c.data_dir, PathBuf::from("/data"));
+    }
+
+    #[test]
+    fn only_a_machine_on_fly_is_behind_its_proxy() {
+        assert!(!Config::from_lookup(|_| None).behind_fly);
+        assert!(Config::from_lookup(|k| (k == "FLY_APP_NAME").then(|| "cafe".into())).behind_fly);
     }
 
     #[test]

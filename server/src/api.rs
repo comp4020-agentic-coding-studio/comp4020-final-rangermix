@@ -60,6 +60,14 @@ fn me_of(user: &UserRow) -> ApiMe {
     }
 }
 
+/// The per-name bucket's key: the name, ignoring case, from one address, so
+/// nobody elsewhere can use up someone's tries. None for a name too long to
+/// exist, which must never sit in memory as a key.
+fn name_key(name: &str, ip: &str) -> Option<String> {
+    let chars = name.chars().count();
+    (1..=20).contains(&chars).then(|| format!("{}|{ip}", name.to_lowercase()))
+}
+
 /// Origin check, then the per-address and per-name buckets.
 fn guard(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str) -> Result<(), Failure> {
     if !origin_ok(headers) {
@@ -69,10 +77,14 @@ fn guard(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str) -> R
             "Requests must come from the café's own pages.",
         ));
     }
+    let ip = client_ip(headers, peer, app.config.behind_fly);
+    let Some(key) = name_key(name, &ip) else {
+        return Err(bad_input("Names are 3 to 20 letters, digits, _ or -."));
+    };
     let now = now_ms();
     let mut limits = app.auth_limits.lock().expect("the limits lock isn't poisoned");
-    let by_ip = limits.by_ip.take(&client_ip(headers, peer), now);
-    let by_name = limits.by_name.take(&name.to_lowercase(), now);
+    let by_ip = limits.by_ip.take(&ip, now);
+    let by_name = limits.by_name.take(&key, now);
     if by_ip && by_name {
         Ok(())
     } else {
@@ -102,9 +114,13 @@ async fn start_session(app: &AppState, user_id: i64, me: ApiMe) -> Answer {
     let token = auth::new_session_token();
     let token_hash = auth::token_hash(&token);
     let max_age = app.tuning.session_days * 86_400;
-    let expires = now_ms() + max_age * 1000;
+    let now = now_ms();
+    let expires = now + max_age * 1000;
     app.store
-        .call(move |c| store::insert_session(c, &token_hash, user_id, expires))
+        .call(move |c| {
+            store::purge_sessions(c, now)?;
+            store::insert_session(c, &token_hash, user_id, expires)
+        })
         .await
         .map_err(server)?;
     let cookie = HeaderValue::from_str(&auth::session_cookie(&token, max_age)).map_err(server)?;
@@ -268,4 +284,23 @@ pub async fn recover(
     let mut me = me_of(&user);
     me.recovery_code = Some(code);
     start_session(&app, user_id, me).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_name_too_long_to_exist_is_never_a_limit_key() {
+        // A 2 MB name must not become a bucket that sits in memory.
+        assert_eq!(name_key(&"x".repeat(21), "10.0.0.1"), None);
+        assert_eq!(name_key("", "10.0.0.1"), None);
+        assert!(name_key(&"x".repeat(20), "10.0.0.1").is_some());
+    }
+
+    #[test]
+    fn a_name_is_limited_per_address_so_nobody_else_can_lock_it() {
+        assert_eq!(name_key("Sam", "10.0.0.1"), name_key("sam", "10.0.0.1"));
+        assert_ne!(name_key("sam", "10.0.0.1"), name_key("sam", "10.0.0.2"));
+    }
 }

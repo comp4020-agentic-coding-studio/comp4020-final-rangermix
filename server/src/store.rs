@@ -203,6 +203,11 @@ pub fn insert_session(conn: &Connection, token_hash: &str, user_id: i64, expires
     Ok(())
 }
 
+/// Deletes sessions that have run out, returning how many.
+pub fn purge_sessions(conn: &Connection, now: u64) -> rusqlite::Result<usize> {
+    conn.execute("DELETE FROM sessions WHERE expires_at <= ?1", params![now as i64])
+}
+
 pub fn session_user(conn: &Connection, token_hash: &str, now: u64) -> rusqlite::Result<Option<i64>> {
     conn.query_row(
         "SELECT user_id FROM sessions WHERE token_hash = ?1 AND expires_at > ?2",
@@ -326,6 +331,18 @@ mod tests {
         assert_eq!(session_user(&c, "h1", 1).unwrap(), None);
         delete_sessions_for(&c, id).unwrap();
         assert_eq!(session_user(&c, "h2", 1).unwrap(), None);
+    }
+
+    #[test]
+    fn expired_sessions_are_cleared_out() {
+        let (_d, c) = db();
+        let id = insert_user(&c, "sam", "p", "r", 0, 0, 1).unwrap().unwrap();
+        insert_session(&c, "old", id, 1000).unwrap();
+        insert_session(&c, "live", id, 9000).unwrap();
+        assert_eq!(purge_sessions(&c, 5000).unwrap(), 1);
+        let left: i64 = c.query_row("SELECT COUNT(*) FROM sessions", [], |r| r.get(0)).unwrap();
+        assert_eq!(left, 1);
+        assert_eq!(session_user(&c, "live", 5000).unwrap(), Some(id));
     }
 
     #[test]

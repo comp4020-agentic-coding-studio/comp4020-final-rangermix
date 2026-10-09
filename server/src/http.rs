@@ -73,6 +73,8 @@ pub fn router(state: AppState) -> Router {
         .route("/api/me", get(crate::api::me))
         .route("/api/recover", post(crate::api::recover))
         .route("/ws", get(crate::ws::upgrade))
+        // Sign-up and log-in bodies are tiny; nothing needs axum's 2 MB default.
+        .layer(axum::extract::DefaultBodyLimit::max(16 * 1024))
         .fallback_service(assets)
         .with_state(state)
 }
@@ -88,9 +90,10 @@ pub fn origin_ok(headers: &HeaderMap) -> bool {
 }
 
 /// The visitor's address: Fly's proxy says it in a header; locally, the peer.
-pub fn client_ip(headers: &HeaderMap, peer: SocketAddr) -> String {
+pub fn client_ip(headers: &HeaderMap, peer: SocketAddr, behind_fly: bool) -> String {
     headers
         .get("fly-client-ip")
+        .filter(|_| behind_fly)
         .and_then(|v| v.to_str().ok())
         .map(str::to_string)
         .unwrap_or_else(|| peer.ip().to_string())
@@ -212,8 +215,16 @@ mod tests {
     fn the_client_address_comes_from_fly_when_it_says() {
         let peer: std::net::SocketAddr = "10.0.0.1:5000".parse().unwrap();
         let mut h = axum::http::HeaderMap::new();
-        assert_eq!(client_ip(&h, peer), "10.0.0.1");
+        assert_eq!(client_ip(&h, peer, true), "10.0.0.1");
         h.insert("fly-client-ip", "203.0.113.9".parse().unwrap());
-        assert_eq!(client_ip(&h, peer), "203.0.113.9");
+        assert_eq!(client_ip(&h, peer, true), "203.0.113.9");
+    }
+
+    #[test]
+    fn off_fly_the_header_is_anyones_to_forge_so_it_is_ignored() {
+        let peer: std::net::SocketAddr = "10.0.0.1:5000".parse().unwrap();
+        let mut h = axum::http::HeaderMap::new();
+        h.insert("fly-client-ip", "203.0.113.9".parse().unwrap());
+        assert_eq!(client_ip(&h, peer, false), "10.0.0.1");
     }
 }

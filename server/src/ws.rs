@@ -77,8 +77,14 @@ async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
                     }
                     Command::Msg { id, conn, msg } => {
                         if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
+                            let leaving = matches!(msg, ClientMsg::Leave {});
                             let outs = world.handle(now, Input::Msg { id, msg });
                             deliver(&mut world, &mut conns, outs, now);
+                            // Gone through the door: let the connection go too,
+                            // rather than wait for the page to close it.
+                            if leaving {
+                                conns.remove(&id);
+                            }
                         }
                     }
                     Command::Shutdown { done } => {
@@ -133,6 +139,16 @@ fn route(conns: &mut Conns, outs: Vec<Out>) -> Vec<u32> {
     dropped
 }
 
+/// Nothing heard, not even a pong, for this long: the other end is gone.
+const SILENT_MS: u64 = 60_000;
+
+/// Whether a connection last heard from at `last_heard` has gone silent: a
+/// phone asleep without closing its socket, whose seat should start its
+/// grace period rather than wait minutes for TCP to give up.
+fn gone_silent(last_heard: u64, now: u64) -> bool {
+    now.saturating_sub(last_heard) > SILENT_MS
+}
+
 fn text(msg: &ServerMsg) -> Arc<str> {
     serde_json::to_string(msg).expect("server messages serialise").into()
 }
@@ -178,6 +194,7 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
     let mut furniture = Bucket::new(t.furniture_burst, 1.0 / t.furniture_refill_secs, now);
     // Fly's proxy drops connections that go quiet; a ping keeps a calm café open.
     let mut ping = tokio::time::interval(Duration::from_secs(25));
+    let mut last_heard = now_ms();
     loop {
         tokio::select! {
             out = rx.recv() => match out {
@@ -191,6 +208,7 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
             },
             incoming = stream.next() => match incoming {
                 Some(Ok(Message::Text(frame))) => {
+                    last_heard = now_ms();
                     let Ok(msg) = serde_json::from_str::<ClientMsg>(frame.as_str()) else { continue };
                     let now = now_ms();
                     let allowed = match msg {
@@ -210,9 +228,13 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
                     }
                 }
                 Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
-                Some(Ok(_)) => {}
+                // Pongs, and anything else, still say the other end is there.
+                Some(Ok(_)) => last_heard = now_ms(),
             },
             _ = ping.tick() => {
+                if gone_silent(last_heard, now_ms()) {
+                    break;
+                }
                 if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
                     break;
                 }
@@ -248,6 +270,14 @@ mod tests {
             received += 1;
         }
         assert_eq!(received, 3);
+    }
+
+    #[test]
+    fn a_connection_silent_past_two_pings_is_gone() {
+        // A phone that sleeps without closing its socket keeps answering
+        // nothing, not even pongs; it must not hold its seat for minutes.
+        assert!(!gone_silent(0, 60_000));
+        assert!(gone_silent(0, 60_001));
     }
 
     #[test]
