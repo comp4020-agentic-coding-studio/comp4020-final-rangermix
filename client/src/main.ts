@@ -8,6 +8,7 @@ import { type Target, attachInput } from "./input";
 import { closeMenu, openMenu } from "./menu";
 import { menuFor } from "./menus";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
+import { chooseLayout, saveLayout, savedLayout } from "./layout";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
@@ -87,10 +88,33 @@ function enter(me: ApiMe): void {
   stage.frameHooks.push(() => {
     if (cafe.state) bubbles.update(cafe.state);
   });
+  const ringLayout = () => document.body.classList.contains("layout-b");
+  /** Where a menu goes: beside the tile, or (for a ring) round its middle. */
   const anchor = (tile: { x: number; y: number }) => {
+    if (ringLayout()) return stage.tileToCss(tile.x + 0.5, tile.y + 0.5);
     const { left, top } = stage.tileToCss(tile.x + 1, tile.y);
     return { left: left + 4, top };
   };
+  // The phone's two layouts: B by choice, remembered on this device.
+  const phoneQuery = matchMedia("(max-width: 700px)");
+  const applyLayout = () => {
+    const layout = chooseLayout(savedLayout(), phoneQuery.matches);
+    document.body.classList.toggle("layout-b", layout === "b");
+    $("layout-switch").textContent = layout === "b" ? "Whole room" : "Bigger room";
+    $("layout-switch").setAttribute("aria-pressed", String(layout === "b"));
+    stage.setLayout(layout);
+  };
+  $("layout-switch").onclick = () => {
+    saveLayout(ringLayout() ? "a" : "b");
+    applyLayout();
+    announce(ringLayout() ? "The room fills the screen and follows you." : "The whole room is on screen.");
+  };
+  $("drawer-toggle").onclick = () => {
+    const open = document.body.classList.toggle("drawer-open");
+    $("drawer-toggle").setAttribute("aria-expanded", String(open));
+  };
+  phoneQuery.addEventListener("change", applyLayout);
+  applyLayout();
   /** What you're carrying, if anything. */
   const carrying = () => (cafe.state ? (cafe.state.held.get(cafe.state.you) ?? null) : null);
   /** While you carry something, any tile you choose is where it goes; the server decides whether it fits. */
@@ -121,6 +145,7 @@ function enter(me: ApiMe): void {
         },
       })),
       canvas,
+      ringLayout(),
     );
   };
   // The carrying bar, and the preview of where the piece would go.

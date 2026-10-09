@@ -1,5 +1,8 @@
+import { ringPositions } from "./layout";
+
 // A small menu of what you can do: beside the thing on a desktop, a sheet from
-// the bottom on a phone. Real buttons, so the keyboard reaches every action.
+// the bottom on a phone, a ring round it in phone layout B. Real buttons, so
+// the keyboard reaches every action.
 
 export interface Action {
   label: string;
@@ -20,6 +23,7 @@ export function openMenu(
   note: string | null,
   actions: Action[],
   returnFocus: HTMLElement,
+  ring = false,
 ): void {
   closeMenu();
   const menu = document.createElement("div");
@@ -54,12 +58,29 @@ export function openMenu(
       e.preventDefault();
       closeMenu();
       returnFocus.focus();
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    } else if (["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) {
       e.preventDefault();
-      items[(at + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+      const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : -1;
+      items[(at + step + items.length) % items.length]?.focus();
     }
   });
-  if (matchMedia("(max-width: 700px)").matches) {
+  if (ring) {
+    // Layout B: the actions in a ring round what you tapped, the title read out only.
+    menu.classList.add("ring");
+    heading.className = "sr-only";
+    menu.querySelector(".note")?.classList.add("sr-only");
+    const buttons = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+    // Clear of the bars floating over the room, top and bottom.
+    const box = overlay.getBoundingClientRect();
+    const top = document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top;
+    const bottom = document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom;
+    const free = { left: 0, top: top - box.top + 4, right: box.width, bottom: bottom - box.top - 4 };
+    const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, 72, free, 88);
+    buttons.forEach((b, i) => {
+      b.style.left = `${spots[i].x}px`;
+      b.style.top = `${spots[i].y}px`;
+    });
+  } else if (matchMedia("(max-width: 700px)").matches) {
     menu.classList.add("sheet");
   } else {
     menu.style.left = `${Math.min(anchor.left, Math.max(0, overlay.clientWidth - 200))}px`;

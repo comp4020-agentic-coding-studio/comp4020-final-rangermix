@@ -1,8 +1,11 @@
 import type { Cafe } from "./cafe";
 import { canberraHour } from "./canberra";
+import { type Layout, panOffset } from "./layout";
+import { positionAt } from "./motion";
 import { type Pointer, draw } from "./render";
 import { TILE, fitScale } from "./scale";
 import { Sprites } from "./sprites";
+import { serverNow } from "./state";
 
 /** The room on screen: sized to the largest whole-number scale that fits, drawn every frame. */
 export class Stage {
@@ -11,6 +14,7 @@ export class Stage {
   /** Run after each frame is drawn (bubbles follow the people they belong to). */
   readonly frameHooks: (() => void)[] = [];
   scale = 1;
+  layout: Layout = "a";
   private frame = 0;
   private readonly resize = new ResizeObserver(() => this.fit());
 
@@ -51,13 +55,26 @@ export class Stage {
     return x >= 0 && y >= 0 && x < room.width && y < room.height ? { x, y } : null;
   }
 
-  private fit(): void {
+  /** Switches between the phone's layouts; A everywhere else. */
+  setLayout(layout: Layout): void {
+    this.layout = layout;
+    this.fit();
+  }
+
+  fit(): void {
     const room = this.cafe.state?.room;
     const w = room?.width ?? 12;
     const h = room?.height ?? 10;
-    // On a phone the page scrolls, so only the width limits the room.
-    const phone = matchMedia("(max-width: 700px)").matches;
-    this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight, w, h);
+    if (this.layout === "b") {
+      // Layout B: the room at 3x, bigger than the screen, panned to follow you.
+      this.scale = 3;
+    } else {
+      // On a phone the page scrolls, so only the width limits the room.
+      const phone = matchMedia("(max-width: 700px)").matches;
+      this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight, w, h);
+      this.canvas.style.left = "";
+      this.canvas.style.top = "";
+    }
     this.canvas.width = w * TILE;
     this.canvas.height = h * TILE;
     this.canvas.style.width = `${w * TILE * this.scale}px`;
@@ -68,7 +85,22 @@ export class Stage {
     const state = this.cafe.state;
     if (!state) return;
     if (this.canvas.width !== state.room.width * TILE) this.fit();
+    if (this.layout === "b") this.pan(state);
     const ctx = this.canvas.getContext("2d");
     if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, canberraHour());
+  }
+
+  /** Keeps your avatar in the middle of the screen in layout B. */
+  private pan(state: NonNullable<Cafe["state"]>): void {
+    const me = state.people.get(state.you);
+    const spot = me ? positionAt(me.walk, me.at, serverNow(state)) : { x: state.room.width / 2, y: state.room.height / 2 };
+    const px = TILE * this.scale;
+    const offset = panOffset(
+      { x: (spot.x + 0.5) * px, y: (spot.y + 0.5) * px },
+      { w: this.box.clientWidth, h: this.box.clientHeight },
+      { w: state.room.width * px, h: state.room.height * px },
+    );
+    this.canvas.style.left = `${-offset.x}px`;
+    this.canvas.style.top = `${-offset.y}px`;
   }
 }

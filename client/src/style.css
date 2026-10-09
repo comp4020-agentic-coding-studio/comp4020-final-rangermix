@@ -121,3 +121,20 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   .emotes { width: 100%; justify-content: center; }
   .menu.sheet { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding: 1rem; }
 }
+
+/* The phone's layout switch, and layout B: the room fills the screen at 3x and
+   pans to follow you, the controls float over it, and actions open as a ring. */
+.phone-only, .b-only { display: none; }
+@media (max-width: 700px) { .phone-only { display: inline-block; } }
+.layout-b .b-only { display: inline-block; }
+.layout-b .cafe { display: block; height: 100vh; padding: 0; }
+.layout-b .stage { position: fixed; inset: 0; display: block; overflow: hidden; z-index: 0; }
+.layout-b #room { position: absolute; border-radius: 0; box-shadow: none; }
+.layout-b .status { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.35rem 0.6rem; }
+.layout-b .talk { position: fixed; bottom: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; }
+.layout-b .panel { display: none; }
+.layout-b.drawer-open .panel { display: block; position: fixed; left: 8px; right: 8px; z-index: 4; margin: 0; }
+.layout-b.drawer-open .panel.right { top: 72px; max-height: 40vh; }
+.layout-b.drawer-open .panel.left { bottom: 132px; max-height: 25vh; }
+.menu.ring { position: absolute; inset: 0; display: block; min-width: 0; padding: 0; background: none; border: none; box-shadow: none; pointer-events: none; }
+.menu.ring button { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 88px; min-height: 44px; border-radius: 999px; font-size: 0.85rem; padding: 0.3rem; box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }
