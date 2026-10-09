@@ -1,4 +1,5 @@
 import type { CatView } from "./protocol/CatView";
+import type { Emote } from "./protocol/Emote";
 import type { ErrorCode } from "./protocol/ErrorCode";
 import type { PersonView } from "./protocol/PersonView";
 import type { Reaction } from "./protocol/Reaction";
@@ -40,6 +41,8 @@ export interface CafeState {
   trust: Map<string, TrustView>;
   bubbles: Bubble[];
   said: SaidLine[];
+  /** Each person's latest emote and when, in server time. */
+  emotes: Map<number, { emote: Emote; at: number }>;
 }
 
 export type Effect =
@@ -73,6 +76,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     trust: new Map(s.yourTrust.map((t) => [t.cat, t])),
     bubbles: [],
     said: previous?.said ?? [],
+    emotes: new Map(),
   };
 }
 
@@ -108,6 +112,8 @@ const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {
   refuse: (cat) => `${cat} pulls away.`,
   greet: (cat) => `${cat} comes to greet you.`,
 };
+
+const EMOTE_WORDS: Record<Emote, string> = { wave: "waves", laugh: "laughs", heart: "sends a heart", yawn: "yawns" };
 
 function reactionTarget(r: Reaction): number {
   switch (r.kind) {
@@ -192,6 +198,9 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       if (msg.by === state.you) return [];
       return [{ kind: "announce", text: `${name(msg.by)} moved the ${pieceName(piece.kind)}.` }];
     }
+    case "emoted":
+      state.emotes.set(msg.from, { emote: msg.emote, at: now });
+      return msg.from === state.you ? [] : [{ kind: "announce", text: `${name(msg.from)} ${EMOTE_WORDS[msg.emote]}.` }];
     case "stillThere":
       return [{ kind: "stillThere", secs: msg.secs }];
     case "nudgeOver":

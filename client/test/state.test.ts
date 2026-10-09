@@ -98,6 +98,15 @@ describe("the client's copy of the café", () => {
     expect(apply(s, { type: "personLeft", id: 1 })).toEqual([{ kind: "youLeft" }]);
   });
 
+  it("shows an emote over its person and announces someone else's", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null });
+    expect(apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000)).toEqual([{ kind: "announce", text: "sam waves." }]);
+    expect(s.emotes.get(2)).toEqual({ emote: "wave", at: 10_000 });
+    expect(apply(s, { type: "emoted", from: 1, emote: "laugh" }, 10_000)).toEqual([]);
+    expect(s.emotes.get(1)?.emote).toBe("laugh");
+  });
+
   it("keeps 'said this visit' across a reconnect's welcome", () => {
     const s = fromWelcome(welcome(), 10_000);
     apply(s, { type: "said", from: 1, text: "before the drop", to: null, ttlMs: 3000 }, 10_000);

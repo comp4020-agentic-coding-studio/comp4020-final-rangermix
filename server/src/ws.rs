@@ -212,7 +212,7 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
                     let Ok(msg) = serde_json::from_str::<ClientMsg>(frame.as_str()) else { continue };
                     let now = now_ms();
                     let allowed = match msg {
-                        ClientMsg::Say { .. } | ClientMsg::Call { .. } => speech.take(now),
+                        ClientMsg::Say { .. } | ClientMsg::Call { .. } | ClientMsg::Emote { .. } => speech.take(now),
                         ClientMsg::MoveFurniture { .. } => furniture.take(now),
                         _ => actions.take(now),
                     };

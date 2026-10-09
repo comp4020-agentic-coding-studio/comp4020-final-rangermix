@@ -154,6 +154,7 @@ impl World {
                     ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
                     ClientMsg::MoveFurniture { id: piece, to } => self.move_furniture(id, piece, to, &mut out),
                     ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
+                    ClientMsg::Emote { emote } => self.emote(id, emote, &mut out),
                     ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
                 }
             }

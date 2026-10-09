@@ -8,6 +8,7 @@ import { type Target, attachInput } from "./input";
 import { closeMenu, openMenu } from "./menu";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
 import type { ApiMe } from "./protocol/ApiMe";
+import type { Emote } from "./protocol/Emote";
 import { pieceName } from "./state";
 import { Stage } from "./stage";
 import { Talk } from "./talk";
@@ -67,6 +68,9 @@ function enter(me: ApiMe): void {
     cafe.here();
     hideStillThere();
   };
+  for (const button of document.querySelectorAll<HTMLButtonElement>("#emotes button")) {
+    button.onclick = () => cafe.send({ type: "emote", emote: button.dataset.emote as Emote });
+  }
   const touched = () => cafe.touched();
   const visibility = () => cafe.send({ type: "presence", hidden: document.hidden });
   document.addEventListener("pointerdown", touched);

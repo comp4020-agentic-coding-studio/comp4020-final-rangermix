@@ -31,6 +31,17 @@ describe("real time", () => {
     expect(Date.now() - sent).toBeLessThan(1000);
   });
 
+  it("one person's wave reaches another within a second", async () => {
+    const a = await visitor();
+    const b = await visitor();
+    const from = b.messages.length;
+    const sent = Date.now();
+    a.send({ type: "emote", emote: "wave" });
+    const waved = await b.next((m) => m.type === "emoted" && m.from === a.welcome.you, 1000, from);
+    expect(waved.emote).toBe("wave");
+    expect(Date.now() - sent).toBeLessThan(1000);
+  });
+
   it("refuses a bubble over 100 characters, and nobody else sees it", async () => {
     const a = await visitor();
     const b = await visitor();

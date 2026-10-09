@@ -85,6 +85,17 @@ pub struct CatView {
     pub walk: Option<Walk>,
 }
 
+/// A small gesture anyone inside can make (design.md, "People").
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Emote {
+    Wave,
+    Laugh,
+    Heart,
+    Yawn,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -183,6 +194,9 @@ pub enum ClientMsg {
     },
     /// Someone touched the page: still here. Also answers "still there?".
     Here {},
+    Emote {
+        emote: Emote,
+    },
 }
 
 /// What the server tells clients: a snapshot on joining, then events in order.
@@ -235,6 +249,10 @@ pub enum ServerMsg {
     },
     YourTrust {
         trust: TrustView,
+    },
+    Emoted {
+        from: u32,
+        emote: Emote,
     },
     /// Sent to you alone: you've gone quiet while someone waits at the
     /// window; answer within `secs` seconds or your seat goes to them.

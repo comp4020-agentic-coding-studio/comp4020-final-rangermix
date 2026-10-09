@@ -15,7 +15,7 @@ export type Grid = number[][];
 export type TileName = "floor" | "wall" | "window" | "door" | "board";
 export type CatFrame = "sit" | "walk_a" | "walk_b" | "nap";
 export type AvatarFrame = "stand" | "walk_a" | "walk_b";
-export type EmoteName = "heart" | "question" | "dots" | "zzz" | "sniff";
+export type EmoteName = "heart" | "question" | "dots" | "zzz" | "sniff" | "wave" | "laugh" | "yawn";
 
 const SLOTS = "0123456789abcdef";
 

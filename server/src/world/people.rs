@@ -1,7 +1,7 @@
 //! People in the café: arriving, the line at the window (ADR 0008), walking,
 //! talking (ADR 0010), dropping out, coming back and leaving.
 use super::{Heard, Out, Pending, Person, To, World, error, walk_end, walk_tile};
-use crate::protocol::{ErrorCode, Look, PersonView, Place, ServerMsg, Tile, Walk};
+use crate::protocol::{Emote, ErrorCode, Look, PersonView, Place, ServerMsg, Tile, Walk};
 use crate::room::Walker;
 
 pub(super) fn person_view(p: &Person, now: u64) -> PersonView {
@@ -261,6 +261,20 @@ impl World {
         });
     }
 
+    /// A wave, laugh, heart or yawn, for everyone; from inside only, since
+    /// someone at the window can only talk (AGENTS.md).
+    pub(super) fn emote(&mut self, id: u32, emote: Emote, out: &mut Vec<Out>) {
+        if !self.inside_or_refuse(id, out) {
+            return;
+        }
+        let name = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        tracing::info!(target: "action", uid = id, who = %name, what = "emote", emote = %format!("{emote:?}").to_lowercase());
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::Emoted { from: id, emote },
+        });
+    }
+
     /// Ends finished walks, returning what people asked to do when they got
     /// there, and lets go of seats whose grace period has run out.
     pub(super) fn people_tick(&mut self, now: u64, out: &mut Vec<Out>) -> Vec<(u32, Pending)> {
@@ -297,7 +311,7 @@ impl World {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::super::*;
-    use crate::protocol::{ClientMsg, ErrorCode, Look, Place, ServerMsg, Tile};
+    use crate::protocol::{ClientMsg, Emote, ErrorCode, Look, Place, ServerMsg, Tile};
 
     pub(crate) fn world() -> World {
         let content = crate::content::repo_content();
@@ -526,6 +540,37 @@ pub(crate) mod tests {
             },
         );
         assert_eq!(errors(&outs), vec![(To::One(1), ErrorCode::TooLong)]);
+    }
+
+    #[test]
+    fn an_emote_reaches_everyone_and_is_logged_by_kind() {
+        let mut w = world();
+        join(&mut w, 1, 0);
+        join(&mut w, 2, 0);
+        let log = capture_logs(|| {
+            let outs = send(&mut w, 1, 10, ClientMsg::Emote { emote: Emote::Wave });
+            assert_eq!(
+                outs,
+                vec![Out {
+                    to: To::All,
+                    msg: ServerMsg::Emoted {
+                        from: 1,
+                        emote: Emote::Wave
+                    }
+                }]
+            );
+        });
+        assert!(log.contains(r#""what":"emote""#) && log.contains("wave"), "{log}");
+    }
+
+    #[test]
+    fn someone_at_the_window_cant_emote() {
+        let mut w = world();
+        for id in 1..=7 {
+            join(&mut w, id, 0);
+        }
+        let outs = send(&mut w, 7, 10, ClientMsg::Emote { emote: Emote::Heart });
+        assert_eq!(errors(&outs), vec![(To::One(7), ErrorCode::NotFromWindow)]);
     }
 
     #[test]

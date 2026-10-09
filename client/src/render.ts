@@ -15,6 +15,8 @@ export interface Pointer {
 }
 
 const GROUND: Record<string, TileName> = { ".": "floor", W: "wall", G: "window", D: "door", C: "board" };
+/** How long an emote shows over its person. */
+const EMOTE_MS = 2500;
 /** Pieces that lie flat, drawn before anything that stands. */
 const FLAT = new Set(["rug", "cushion"]);
 const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
@@ -75,7 +77,9 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;
     const spot = positionAt(person.walk, person.at, now);
-    items.push({ y: spot.y + 0.2, paint: () => drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you) });
+    const emote = state.emotes.get(person.id);
+    const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
+    items.push({ y: spot.y + 0.2, paint: () => drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing) });
   }
   items.sort((a, b) => a.y - b.y).forEach((item) => item.paint());
 
@@ -125,7 +129,7 @@ function drawCat(ctx: CanvasRenderingContext2D, sprites: Sprites, cat: Cat, spot
   if (emote) blit(ctx, sprites.emote(emote), x + 4, y - 8);
 }
 
-function drawPerson(ctx: CanvasRenderingContext2D, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean): void {
+function drawPerson(ctx: CanvasRenderingContext2D, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean, emote: EmoteName | null): void {
   const frame: AvatarFrame = spot.moving ? (Math.floor(now / 180) % 2 ? "walk_a" : "walk_b") : "stand";
   const img = sprites.avatar(look, frame);
   const x = Math.round(spot.x * TILE);
@@ -137,4 +141,5 @@ function drawPerson(ctx: CanvasRenderingContext2D, sprites: Sprites, look: Look,
     ctx.fillRect(x + 6, y - 4, 4, 2);
     ctx.fillRect(x + 7, y - 2, 2, 1);
   }
+  if (emote) blit(ctx, sprites.emote(emote), x + 4, y - 13);
 }

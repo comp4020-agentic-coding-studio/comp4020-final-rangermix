@@ -81,6 +81,8 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .overlay { position: absolute; inset: 0; pointer-events: none; }
 .overlay > * { pointer-events: auto; }
 .talk { grid-area: talk; display: flex; gap: 0.5rem; align-items: center; }
+.emotes { display: flex; gap: 0.25rem; }
+.emotes button { padding: 0.3rem 0.5rem; line-height: 1.2; }
 .talk-to { white-space: nowrap; border-radius: 999px; padding: 0.2rem 0.7rem; }
 .said { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.95rem; overflow-wrap: anywhere; }
 .said .who { font-weight: 600; }
@@ -112,5 +114,8 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   .status, .panel, .talk { margin: 0 8px; }
   .stage { place-items: start center; }
   .right { grid-template-rows: auto auto; }
+  .talk { flex-wrap: wrap; }
+  .talk input { flex: 1 1 10rem; }
+  .emotes { width: 100%; justify-content: center; }
   .menu.sheet { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding: 1rem; }
 }
