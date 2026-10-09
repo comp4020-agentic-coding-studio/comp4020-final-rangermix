@@ -33,6 +33,8 @@ pub(super) enum Plan {
     Idle,
     Nap,
     Sit,
+    /// Sitting by someone it came over to.
+    Near(u32),
     Hide,
     Greet(u32),
 }
@@ -180,7 +182,7 @@ impl World {
             Choice::Wander => (self.wander_target(i, from, now), Plan::Idle),
             Choice::Nap => (self.free_spot(i, now, |k| k.nap), Plan::Nap),
             Choice::Hide => (self.free_spot(i, now, |k| k.hide), Plan::Hide),
-            Choice::Approach(person) => (self.beside(i, person, now), Plan::Sit),
+            Choice::Approach(person) => (self.beside(i, person, now), Plan::Near(person)),
         };
         match target {
             Some(t) => self.walk_cat(i, now, minute, t, plan, out),
@@ -264,7 +266,7 @@ impl World {
         }
         let secs: u64 = match plan {
             Plan::Nap => self.rng.random_range(120..600),
-            Plan::Sit => self.rng.random_range(20..60),
+            Plan::Sit | Plan::Near(_) => self.rng.random_range(20..60),
             Plan::Hide => 60,
             Plan::Greet(_) => 10,
             Plan::Idle => self.rng.random_range(3..8),
@@ -272,7 +274,7 @@ impl World {
         let pose = match plan {
             Plan::Nap => Pose::Nap,
             Plan::Hide => Pose::Hide,
-            Plan::Sit | Plan::Greet(_) => Pose::Sit,
+            Plan::Sit | Plan::Near(_) | Plan::Greet(_) => Pose::Sit,
             Plan::Idle => Pose::Idle,
         };
         let cat = &mut self.cats[i];
@@ -283,6 +285,7 @@ impl World {
         cat.until = now + secs * 1000;
         cat.plan = Plan::Idle;
         let (id, at) = (cat.def.id.clone(), cat.at);
+        self.log_cat(i, plan);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::CatPosed { cat: id.clone(), pose, at },
@@ -296,6 +299,22 @@ impl World {
                 },
             });
         }
+    }
+
+    /// A `cat` line when a cat settles into something worth narrating; never
+    /// wandering or idling, so the logs tell its story and not its steps.
+    fn log_cat(&self, i: usize, plan: Plan) {
+        let cat = &self.cats[i];
+        let name_of = |id: u32| self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        let piece = self.room.piece_at(cat.at).map(|p| p.kind.clone()).unwrap_or_else(|| "floor".into());
+        let (what, with) = match plan {
+            Plan::Nap => ("nap", None),
+            Plan::Hide => ("hide", None),
+            Plan::Near(person) => ("come_to", Some(name_of(person))),
+            Plan::Greet(person) => ("greet", Some(name_of(person))),
+            Plan::Idle | Plan::Sit => return,
+        };
+        tracing::info!(target: "cat", cat = %cat.def.name, what, on = %piece, with);
     }
 
     /// Someone came inside: each awake cat that counts them a friend goes to the door.
@@ -339,7 +358,7 @@ impl World {
                     && self.trust.value(&id, heard.by) >= familiar
                     && let Some(t) = self.beside(i, heard.by, now)
                 {
-                    self.walk_cat(i, now, minute, t, Plan::Sit, out);
+                    self.walk_cat(i, now, minute, t, Plan::Near(heard.by), out);
                 }
             } else if !resting
                 && self.cats[i].plan != Plan::Hide
@@ -393,7 +412,7 @@ impl World {
         let Some(name) = self.cats.iter().find(|c| c.def.id == cat).map(|c| c.def.name.clone()) else {
             return error(out, id, ErrorCode::UnknownCat, "There's no cat by that name here.");
         };
-        self.say(now, id, name, None, out);
+        self.speak(now, id, name, None, "call", out);
     }
 
     fn touch(&mut self, now: u64, id: u32, i: usize, out: &mut Vec<Out>) {
@@ -407,7 +426,7 @@ impl World {
         if self.cats[i].pose != Pose::Hide && !self.trust.has_met(&cat_id, id) {
             self.react(i, Reaction::Sniff { by: id }, out);
             self.change_trust(i, id, rate, &today, out);
-            tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %cat_id, outcome = "sniff");
+            tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %self.cats[i].def.name, outcome = "sniff");
             return;
         }
         let pushing = self.cats[i]
@@ -453,7 +472,7 @@ impl World {
             (false, Outcome::Tolerate) => "tolerate",
             (false, Outcome::Refuse) => "refuse",
         };
-        tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %cat_id, outcome);
+        tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %self.cats[i].def.name, outcome);
     }
 
     fn react(&mut self, i: usize, reaction: Reaction, out: &mut Vec<Out>) {

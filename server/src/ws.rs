@@ -6,7 +6,7 @@ use crate::limits::Bucket;
 use crate::protocol::{ClientMsg, ErrorCode, Look, ServerMsg};
 use crate::store::UserRow;
 use crate::time::now_ms;
-use crate::world::{Input, Out, To, World};
+use crate::world::{Input, Out, To, World, action_name};
 use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::http::{HeaderMap, StatusCode};
@@ -215,6 +215,10 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
                         _ => actions.take(now),
                     };
                     if !allowed {
+                        // Refused before the world sees it, so logged here (crit 10).
+                        if let Some(what) = action_name(&msg) {
+                            tracing::info!(target: "action", uid = id, who = %user.name, what, outcome = "refused", code = "rateLimited");
+                        }
                         let slow = text(&ServerMsg::Error { code: ErrorCode::RateLimited, detail: "Slow down a little.".into() });
                         if sink.send(Message::Text(slow.as_ref().into())).await.is_err() {
                             break;

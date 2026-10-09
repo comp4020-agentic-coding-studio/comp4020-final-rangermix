@@ -6,6 +6,8 @@ mod cat_life;
 mod furniture;
 #[cfg(test)]
 mod furniture_tests;
+#[cfg(test)]
+mod log_tests;
 mod people;
 mod quiet;
 
@@ -179,6 +181,9 @@ impl World {
                     return out;
                 }
                 self.heard_from(now, id, &msg, &mut out);
+                let what = action_name(&msg);
+                let before = out.len();
+                let pending_before = self.person(id).and_then(|p| p.pending.clone());
                 match msg {
                     ClientMsg::WalkTo { tile } => self.walk_to(now, id, tile, &mut out),
                     ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
@@ -187,6 +192,10 @@ impl World {
                     ClientMsg::Grab { id: piece } => self.grab(now, id, piece, &mut out),
                     ClientMsg::Take { kind } => self.take(now, id, &kind, &mut out),
                     ClientMsg::Place { to } => self.place(now, id, to, &mut out),
+                    // With empty hands and no grab on the way there's nothing to put back.
+                    ClientMsg::PutBack {} if self.held.iter().all(|h| h.by != id) && !matches!(pending_before, Some(Pending::Grab(_))) => {
+                        error(&mut out, id, ErrorCode::NotHolding, "You aren't carrying anything.")
+                    }
                     ClientMsg::PutBack {} => self.put_back(now, id, &mut out),
                     ClientMsg::PutAway {} => self.put_away(now, id, &mut out),
                     ClientMsg::Sit { id: piece } => self.sit(now, id, piece, &mut out),
@@ -194,9 +203,31 @@ impl World {
                     ClientMsg::Emote { emote } => self.emote(id, emote, &mut out),
                     ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
                 }
+                if let Some(what) = what {
+                    self.log_request(id, what, &out[before..], pending_before);
+                }
             }
         }
         out
+    }
+
+    /// One line per action, whatever happened (crit 10): a refusal with its
+    /// code, or the start of a walk over to do it. Handlers log what happens
+    /// when it happens.
+    fn log_request(&self, id: u32, what: &str, outs: &[Out], pending_before: Option<Pending>) {
+        let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        let refusal = outs.iter().find_map(|o| match (&o.to, &o.msg) {
+            (To::One(to), ServerMsg::Error { code, .. }) if *to == id => Some(*code),
+            _ => None,
+        });
+        if let Some(code) = refusal {
+            tracing::info!(target: "action", uid = id, who = %who, what, outcome = "refused", code = code_name(code));
+            return;
+        }
+        let pending = self.person(id).and_then(|p| p.pending.clone());
+        if pending.is_some() && pending != pending_before {
+            tracing::info!(target: "action", uid = id, who = %who, what, outcome = "walking");
+        }
     }
 
     /// Someone's walk ended with something to do.
@@ -260,6 +291,34 @@ impl World {
             crate::store::put_world(conn, "saved_at", &now.to_string())
         });
     }
+}
+
+/// The name an action goes by in the logs; None for what isn't an action
+/// (a hidden tab, a "still here").
+pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {
+    Some(match msg {
+        ClientMsg::WalkTo { .. } => "walk",
+        ClientMsg::Say { .. } => "say",
+        ClientMsg::Pet { .. } => "pet",
+        ClientMsg::Call { .. } => "call",
+        ClientMsg::Grab { .. } => "grab",
+        ClientMsg::Take { .. } => "take",
+        ClientMsg::Place { .. } => "place",
+        ClientMsg::PutBack {} => "put_back",
+        ClientMsg::PutAway {} => "put_away",
+        ClientMsg::Sit { .. } => "sit",
+        ClientMsg::Leave {} => "leave",
+        ClientMsg::Emote { .. } => "emote",
+        ClientMsg::Presence { .. } | ClientMsg::Here {} => return None,
+    })
+}
+
+/// An error code as the wire spells it, for the logs.
+pub fn code_name(code: ErrorCode) -> String {
+    serde_json::to_value(code)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string))
+        .unwrap_or_default()
 }
 
 fn error(out: &mut Vec<Out>, id: u32, code: ErrorCode, detail: &str) {

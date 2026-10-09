@@ -68,7 +68,7 @@ impl World {
                 sitting: None,
                 furniture: crate::limits::Bucket::new(self.tuning.furniture_burst, 1.0 / self.tuning.furniture_refill_secs, now),
             });
-            tracing::info!(target: "action", uid = id, who = %name, what = "arrive", place = ?place);
+            tracing::info!(target: "action", uid = id, who = %name, what = "arrive", outcome = "ok", place = if place == Place::Inside { "inside" } else { "window" });
             let person = person_view(self.person(id).expect("just added"), now);
             out.push(Out {
                 to: To::All,
@@ -112,7 +112,7 @@ impl World {
         self.put_back(now, id, out);
         let i = self.people.iter().position(|p| p.id == id).expect("checked above");
         let gone = self.people.remove(i);
-        tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", why);
+        tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", outcome = "ok", why);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::PersonLeft { id },
@@ -140,7 +140,7 @@ impl World {
             p.at = door;
             p.walk = Some(walk.clone());
             let id = p.id;
-            tracing::info!(target: "action", uid = id, who = %p.name, what = "come_in");
+            tracing::info!(target: "action", uid = id, who = %p.name, what = "come_in", outcome = "ok");
             out.push(Out {
                 to: To::All,
                 msg: ServerMsg::PersonPlaced {
@@ -208,7 +208,7 @@ impl World {
         };
         self.start_walk(now, id, from, path, None, out);
         let name = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
-        tracing::info!(target: "action", uid = id, who = %name, what = "walk", x = tile.x, y = tile.y);
+        tracing::info!(target: "action", uid = id, who = %name, what = "walk", outcome = "ok", x = tile.x, y = tile.y);
     }
 
     /// Walks to `target` and does `then` on arrival. False if there's no way there.
@@ -247,6 +247,12 @@ impl World {
     }
 
     pub(super) fn say(&mut self, now: u64, id: u32, text: String, to: Option<u32>, out: &mut Vec<Out>) {
+        self.speak(now, id, text, to, "say", out);
+    }
+
+    /// A bubble, logged as `what` (a call is a call, though to the cats it's
+    /// saying the name).
+    pub(super) fn speak(&mut self, now: u64, id: u32, text: String, to: Option<u32>, what: &str, out: &mut Vec<Out>) {
         let Some(p) = self.person(id) else { return };
         let name = p.name.clone();
         let text = text.trim().to_string();
@@ -266,7 +272,8 @@ impl World {
             return error(out, id, ErrorCode::UnknownPerson, "They've left.");
         }
         // Never log what was said (AGENTS.md): who, how long, and to whom.
-        tracing::info!(target: "action", uid = id, who = %name, what = "say", len = chars, to = ?to);
+        let to_name = to.and_then(|t| self.person(t)).map(|p| p.name.clone());
+        tracing::info!(target: "action", uid = id, who = %name, what, outcome = "ok", len = chars, to = to_name);
         let ttl_ms = self.tuning.bubble_ttl_ms(chars);
         self.noise.push_back(now);
         self.heard.push(Heard {
@@ -291,7 +298,7 @@ impl World {
             return;
         }
         let name = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
-        tracing::info!(target: "action", uid = id, who = %name, what = "emote", emote = %format!("{emote:?}").to_lowercase());
+        tracing::info!(target: "action", uid = id, who = %name, what = "emote", outcome = "ok", emote = %format!("{emote:?}").to_lowercase());
         out.push(Out {
             to: To::All,
             msg: ServerMsg::Emoted { from: id, emote },

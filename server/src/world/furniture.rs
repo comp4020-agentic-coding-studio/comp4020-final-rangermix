@@ -158,7 +158,7 @@ impl World {
         }
         let piece = self.room.lift(piece_id).expect("found above");
         self.cats_jump_off(now, id, &piece.tiles(), out);
-        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "grab", piece = %piece.kind);
+        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "grab", outcome = "ok", piece = %piece.kind);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::FurnitureHeld {
@@ -195,7 +195,7 @@ impl World {
         let door = self.room.door;
         let piece = self.room.new_piece(kind, door).expect("checked above");
         self.spend_furniture(id, now);
-        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "take", piece = %kind);
+        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "take", outcome = "ok", piece = %kind);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::FurnitureHeld {
@@ -239,7 +239,7 @@ impl World {
         }
         self.spend_furniture(id, now);
         self.held.remove(i);
-        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "place", piece = %piece.kind, x = to.x, y = to.y);
+        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "place", outcome = "ok", piece = %piece.kind, x = to.x, y = to.y);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::FurniturePlaced {
@@ -276,7 +276,7 @@ impl World {
         });
         match spot {
             Some(p) => {
-                tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "put_back", piece = %p.kind);
+                tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "put_back", outcome = "ok", piece = %p.kind);
                 out.push(Out {
                     to: To::All,
                     msg: ServerMsg::FurniturePlaced { piece: p.view(), by: id },
@@ -300,7 +300,7 @@ impl World {
         }
         self.spend_furniture(id, now);
         let Held { piece, .. } = self.held.remove(i);
-        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "put_away", piece = %piece.kind);
+        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "put_away", outcome = "ok", piece = %piece.kind);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::FurnitureRemoved { id: piece.id, by: id },
@@ -358,7 +358,7 @@ impl World {
         p.at = seat;
         p.walk = None;
         p.sitting = Some(piece_id);
-        tracing::info!(target: "action", uid = id, who = %p.name, what = "sit", piece = %piece.kind);
+        tracing::info!(target: "action", uid = id, who = %p.name, what = "sit", outcome = "ok", piece = %piece.kind);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::PersonSat { id, at: seat },

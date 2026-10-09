@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm -C client check && pnpm test",
     "check:evidence": "node scripts/check-evidence.ts",
+    "logs": "flyctl logs -a comp4020-final-rangermix | node scripts/narrate.ts",
     "test": "vitest run"
   },
   "devDependencies": {
