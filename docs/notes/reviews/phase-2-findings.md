@@ -144,3 +144,25 @@ Brief: phase-2-brief.md. Method: six reviewers by dimension, two skeptics per fi
 - Scenario: The only layout B test taps the switch, checks the room width is 576px and that it persists after a reload. Nothing checks that the avatar stays centred, that the room is clamped at its edges, that a ring opens by touch within the bars, or that resizing 390x844 to 1920x1080 and back from layout B restores the right layout. A regression in any of these ships green.
 - Test: Add browser tests for those cases. The pan maths in layout.ts is also easy to unit test.
 - Skeptics: one could not refute it. The other refuted it as a test gap rather than wrong code.
+
+## Answered
+
+Triaged 2026-10-09, each confirmed by reading the code first; behaviour
+fixes went in test first.
+
+| # | Outcome |
+|---|---|
+| 1 | Fixed: coming back on a new connection answers "still there?" and forgets an old hidden tab (`4595f6f`). |
+| 2, 3 | Fixed: a grab on the way is called off by a take, a put back or a dropped connection, and a pickup happens only on its own reservation (`4595f6f`). |
+| 4 | Fixed: layout B follows the keyboard's pointer while it's out (`fc32dc5`). |
+| 5 | Fixed: Leave keeps its own note (`fc32dc5`). |
+| 6 | Fixed: a dropped connection at the window isn't waiting (`4595f6f`). |
+| 7 | Fixed: nothing happens on arrival for someone gone or walking out (`4595f6f`). |
+| 8 | Fixed: a dropped connection or a walk-out puts back what was carried at once, as design.md says (`4595f6f`). |
+| 9 | The walker half fixed: a blocking piece can't land on any tile left on someone's way (`4595f6f`). The cat half is by design: cats walk and sit on all furniture. |
+| 10 | Fixed: taking or grabbing gets you up first (`4595f6f`). |
+| 11 | By design: a cat may nap on a seat beside or under a sitter; laps are phase 3's. |
+| 12 | Sitting on a piece someone is coming to carry is now refused (`4595f6f`). A seat in use can't be carried, by decision 8; the sitter moves it by getting up. |
+| 13 | Fixed: carrying, a keyboard user's pointer starts on the piece (`fc32dc5`). |
+| 14 | Not taken up: the box's 100 matches the tuning, and the server's refusal is shown; keeping the text until the server accepts it would need an acknowledgement message, for little gain. |
+| 15, 17, 18, 19 | Fixed (`fc32dc5`). |

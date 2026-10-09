@@ -184,3 +184,14 @@ Where carrying out this plan departed from it, task by task, and why.
   and `e42f2a4` passed the Rust job, the checks and the deploy.
 - **Task 10.** design.md records decisions 1 to 11; ADRs 0004 and 0009 link
   their commits.
+- **Task 11 (2026-10-09).** Run as phase 1's was: six reviewers by area,
+  two skeptics per finding. 19 findings stood (4 major: a reconnect not
+  counting as being there, a carrier holding two pieces, a half-called-off
+  grab losing "first grab wins", and layout B's view leaving the keyboard
+  pointer off screen). Fifteen were fixed, test first where they were
+  behaviour; four answered; see
+  [reviews/phase-2-findings.md](reviews/phase-2-findings.md). After: 188
+  Rust tests, 59 client tests, and the spec (26, four in a browser) twice,
+  a minute apart, against the rebuilt image. Back-to-back runs within a
+  minute trip the per-address sign-up limit, which is that limit working.
+  Phase 2 is closed.

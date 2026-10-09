@@ -768,3 +768,15 @@ table saying where each item went, with a column for its outcome.
   ([`e42f2a4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e42f2a4)).
   design.md and ADRs 0004 and 0009 record it
   ([`487c519`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/487c519)).
+
+Phase 2's review, as a workflow like phase 1's, kept 19 findings (4
+major: a reconnect not counting as being there, a carrier able to hold two
+pieces, a half-called-off grab losing "first grab wins", and layout B
+leaving the keyboard's pointer off screen). Fifteen were fixed, test first
+where they were behaviour, and four answered. Two CI runs had failed on
+the cap check before the spec ran its files one at a time; neither
+deployed. Phase 2 closed with 188 Rust tests, 59 client tests and the
+spec's 26 (four in a browser) green twice, a minute apart, against the
+image.
+[`4595f6f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4595f6f)
+[`fc32dc5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/fc32dc5)
