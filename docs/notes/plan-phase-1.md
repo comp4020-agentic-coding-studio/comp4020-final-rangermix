@@ -9398,3 +9398,11 @@ Where carrying out this plan departed from it, task by task, and why.
   against the image on port 18081. The announcer looked empty right after
   a Tab only because it writes 30 ms late on purpose. Outcomes are in
   [crit-8-mvp.md](crit-8-mvp.md).
+- **Task 18 (2026-10-09).** Run as a workflow rather than one reviewer:
+  six reviewers, one per part of the phase, each finding put to two
+  skeptics told to refute it, kept if either couldn't. 17 findings stood
+  (4 major). Eleven were fixed test first, two answered as settled design,
+  four folded into phase 2's furniture rewrite; see
+  [reviews/phase-1-findings.md](reviews/phase-1-findings.md). Everything
+  green after: `cargo test` (155), clippy, the protocol check, the client
+  (42) and the spec against the rebuilt image (19). Phase 1 is closed.
