@@ -5,6 +5,7 @@
 use super::cat_life::Food;
 use super::{Out, To, World, error};
 use crate::protocol::{ErrorCode, Place, ServerMsg, Tile, TreatView};
+use crate::room::{Ground, Walker};
 use crate::store::TreatRow;
 use crate::time::{canberra_day, canberra_minute_of_day};
 
@@ -75,7 +76,12 @@ impl World {
         if self.treats_left(id, now) == 0 {
             return error(out, id, ErrorCode::NoTreats, "You've no treats left today.");
         }
-        let Some(at) = self.person_tile(id, now) else { return };
+        let Some(feet) = self.person_tile(id, now) else { return };
+        // At your feet, on the café's floor: never out in the doorway.
+        let at = self
+            .room
+            .nearest(feet, Walker::Person, |t| self.room.ground(t) == Ground::Floor)
+            .unwrap_or(self.room.entry);
         self.use_treat(id, now, out);
         let treat = FloorTreat {
             id: self.next_treat,

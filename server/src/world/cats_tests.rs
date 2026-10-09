@@ -143,6 +143,24 @@ fn three_treats_a_day_to_put_down_or_give_away() {
 }
 
 #[test]
+fn a_treat_put_down_in_the_doorway_lands_on_the_floor() {
+    let mut w = world();
+    let outs = join(&mut w, 1, 0);
+    assert!(outs.iter().any(|o| matches!(o.msg, ServerMsg::PersonJoined { .. })));
+    // Still in the doorway, walking in.
+    let outs = send(&mut w, 1, 10, ClientMsg::PutTreat {});
+    let at = outs
+        .iter()
+        .find_map(|o| match &o.msg {
+            ServerMsg::TreatPlaced { treat, .. } => Some(treat.at),
+            _ => None,
+        })
+        .expect("put down");
+    assert_ne!(at, w.room.door);
+    assert_eq!(w.room.ground(at), crate::room::Ground::Floor);
+}
+
+#[test]
 fn a_hungry_cat_finds_a_treat_and_its_giver_gains_a_little_trust() {
     let mut w = world();
     join(&mut w, 1, 0);
