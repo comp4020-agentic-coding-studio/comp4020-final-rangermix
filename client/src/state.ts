@@ -81,6 +81,21 @@ export function needsReload(serverBuild: string, clientBuild: string, reloadedFo
   return serverBuild !== clientBuild && serverBuild !== "dev" && clientBuild !== "dev" && reloadedFor !== serverBuild;
 }
 
+/**
+ * What a tab does on a welcome from `serverBuild`: carry on, reload once, or,
+ * when it already reloaded for that build or has nowhere to note a reload, ask
+ * the person to refresh, since the old client may misread the new protocol.
+ */
+export function afterWelcome(
+  serverBuild: string,
+  clientBuild: string,
+  reloadedFor: string | null,
+  canRemember: boolean,
+): "carryOn" | "reload" | "tellToRefresh" {
+  if (serverBuild === clientBuild || serverBuild === "dev" || clientBuild === "dev") return "carryOn";
+  return needsReload(serverBuild, clientBuild, reloadedFor) && canRemember ? "reload" : "tellToRefresh";
+}
+
 const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {
   lookUp: (cat) => `${cat} looks up at you.`,
   sniff: (cat) => `${cat} sniffs your hand.`,

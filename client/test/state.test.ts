@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
-import { apply, fromWelcome, needsReload, pruneBubbles } from "../src/state";
+import { afterWelcome, apply, fromWelcome, needsReload, pruneBubbles } from "../src/state";
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 
@@ -89,5 +89,14 @@ describe("the client's copy of the café", () => {
     expect(needsReload("a", "b", null)).toBe(true);
     expect(needsReload("a", "b", "a")).toBe(false);
     expect(needsReload("c", "b", "a")).toBe(true);
+  });
+
+  it("asks you to refresh when a reload didn't bring the new client, or can't be noted", () => {
+    expect(afterWelcome("a", "a", null, true)).toBe("carryOn");
+    expect(afterWelcome("dev", "b", null, true)).toBe("carryOn");
+    expect(afterWelcome("a", "b", null, true)).toBe("reload");
+    expect(afterWelcome("a", "b", "a", true)).toBe("tellToRefresh");
+    expect(afterWelcome("a", "b", null, false)).toBe("tellToRefresh");
+    expect(afterWelcome("c", "b", "a", true)).toBe("reload");
   });
 });

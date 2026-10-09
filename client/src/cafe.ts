@@ -4,7 +4,7 @@ import { Connection } from "./net";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { ClientMsg } from "./protocol/ClientMsg";
 import type { ServerMsg } from "./protocol/ServerMsg";
-import { type CafeState, type Effect, apply, fromWelcome, needsReload } from "./state";
+import { type CafeState, type Effect, afterWelcome, apply, fromWelcome } from "./state";
 
 // Which server build this tab last reloaded for. Storage can be missing or
 // refuse (a private window); then the tab simply doesn't reload.
@@ -15,6 +15,17 @@ function reloadedFor(): string | null {
     return sessionStorage.getItem(RELOADED_FOR);
   } catch {
     return null;
+  }
+}
+
+/** Whether this tab has somewhere to note a reload. */
+function canNote(): boolean {
+  try {
+    sessionStorage.setItem("cafe.probe", "1");
+    sessionStorage.removeItem("cafe.probe");
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -31,6 +42,8 @@ function rememberReload(build: string): boolean {
 export interface CafeHooks {
   onSignedOut(): void;
   onError?(effect: Extract<Effect, { kind: "error" }>): void;
+  /** The server runs a different build from this tab, and a reload didn't fix it. */
+  onOutdated?(): void;
 }
 
 /** The live café: one connection, the state it keeps up to date, and who's listening. */
@@ -39,6 +52,7 @@ export class Cafe {
   private readonly listeners = new Set<() => void>();
   private readonly connection: Connection;
   private replaced = false;
+  private outdated = false;
 
   constructor(
     readonly me: ApiMe,
@@ -85,9 +99,14 @@ export class Cafe {
 
   private receive(msg: ServerMsg): void {
     if (msg.type === "welcome") {
-      if (needsReload(msg.build, __BUILD_ID__, reloadedFor()) && rememberReload(msg.build)) {
+      const next = afterWelcome(msg.build, __BUILD_ID__, reloadedFor(), canNote());
+      if (next === "reload" && rememberReload(msg.build)) {
         location.reload();
         return;
+      }
+      if (next !== "carryOn" && !this.outdated) {
+        this.outdated = true;
+        this.hooks.onOutdated?.();
       }
       this.state = fromWelcome(msg);
     } else if (this.state) {

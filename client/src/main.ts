@@ -41,6 +41,11 @@ function enter(me: ApiMe): void {
       showAuth(enter);
     },
     onError: (e) => toast(overlay, e.detail),
+    onOutdated: () => {
+      $("outdated").hidden = false;
+      $("refresh").onclick = () => location.reload();
+      announce("The café was updated. Refresh to get the new version.");
+    },
   });
   const stage = new Stage(cafe, canvas, $("stage"));
   const bubbles = new Bubbles(overlay, stage);
