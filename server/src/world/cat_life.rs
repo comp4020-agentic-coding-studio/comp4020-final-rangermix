@@ -817,6 +817,55 @@ mod tests {
     }
 
     #[test]
+    fn a_second_pet_on_the_way_replaces_the_first() {
+        // The crit 8 script petted each cat in turn from across the room and
+        // only Tora answered: each pet starts a walk, and a new walk replaces
+        // the one before, with whatever was waiting at its end.
+        let mut w = world();
+        join(&mut w, 1, 0);
+        hold(&mut w, "mochi", T(1, 8));
+        hold(&mut w, "tora", T(10, 7));
+        stand(&mut w, 1, T(7, 1));
+        w.handle(10, pet(1, "mochi"));
+        let outs = w.handle(20, pet(1, "tora"));
+        let walk = outs
+            .iter()
+            .find_map(|o| match &o.msg {
+                ServerMsg::PersonMoved { id: 1, walk } => Some(walk.clone()),
+                _ => None,
+            })
+            .expect("walks over to tora");
+        assert!(chebyshev(*walk.path.last().unwrap(), T(10, 7)) <= 1);
+        let log = super::super::people::tests::capture_logs(|| {
+            let later = w.tick(walk_end(&walk) + 1);
+            assert_eq!(reactions(&later), vec![Reaction::Sniff { by: 1 }]);
+        });
+        assert!(log.contains(r#""cat":"tora""#), "{log}");
+        assert!(!log.contains(r#""cat":"mochi""#), "{log}");
+    }
+
+    #[test]
+    fn a_cat_that_walks_off_before_you_arrive_says_so() {
+        let mut w = world();
+        join(&mut w, 1, 0);
+        hold(&mut w, "tora", T(5, 8));
+        stand(&mut w, 1, T(7, 1));
+        let outs = w.handle(10, pet(1, "tora"));
+        let walk = outs
+            .iter()
+            .find_map(|o| match &o.msg {
+                ServerMsg::PersonMoved { id: 1, walk } => Some(walk.clone()),
+                _ => None,
+            })
+            .expect("walks over");
+        hold(&mut w, "tora", T(1, 2));
+        let later = w.tick(walk_end(&walk) + 1);
+        assert!(reactions(&later).is_empty());
+        assert!(later.iter().any(|o| o.to == To::One(1)
+            && matches!(&o.msg, ServerMsg::Error { code: ErrorCode::MovedAway, detail } if detail == "Tora moved away.")));
+    }
+
+    #[test]
     fn the_welcome_shows_the_cats_and_your_trust_in_each() {
         let mut w = world();
         w.trust.apply("tora", 0.6, 1, 0.6, "1970-01-01");
