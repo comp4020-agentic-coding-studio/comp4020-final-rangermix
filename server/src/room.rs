@@ -325,6 +325,24 @@ impl Room {
         None
     }
 
+    /// The tile nearest `from`, in steps `who` can walk, that passes `accept`;
+    /// `from` itself if it does.
+    pub fn nearest(&self, from: Tile, who: Walker, accept: impl Fn(Tile) -> bool) -> Option<Tile> {
+        let mut seen = std::collections::HashSet::from([from]);
+        let mut queue = VecDeque::from([from]);
+        while let Some(t) = queue.pop_front() {
+            if self.ground(t) == Ground::Floor && self.walkable(t, who) && accept(t) {
+                return Some(t);
+            }
+            for n in self.neighbours(t, false) {
+                if self.walkable(n, who) && seen.insert(n) {
+                    queue.push_back(n);
+                }
+            }
+        }
+        None
+    }
+
     /// The tiles touching `t`, diagonals included, that `who` can stand on.
     pub fn around(&self, t: Tile, who: Walker) -> Vec<Tile> {
         self.neighbours(t, true)

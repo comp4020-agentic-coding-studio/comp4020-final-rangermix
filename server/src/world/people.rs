@@ -136,10 +136,30 @@ impl World {
         }
     }
 
+    /// A walk in from the door to the free tile nearest the entry, so people
+    /// coming in don't stand on top of each other, and the walkway stays clear
+    /// for the next.
     fn entering_walk(&self, now: u64) -> Walk {
+        let taken: Vec<Tile> = self
+            .people
+            .iter()
+            .filter(|p| p.place == Place::Inside)
+            .flat_map(|p| {
+                let here = p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now));
+                let headed = p.walk.as_ref().and_then(|w| w.path.last().copied());
+                std::iter::once(here).chain(headed)
+            })
+            .collect();
+        let (entry, walkway) = (self.room.entry, &self.room.walkway);
+        let target = self
+            .room
+            .nearest(entry, Walker::Person, |t| {
+                !taken.contains(&t) && (t == entry || !walkway.contains(&t))
+            })
+            .unwrap_or(entry);
         let path = self
             .room
-            .path(self.room.door, self.room.entry, Walker::Person)
+            .path(self.room.door, target, Walker::Person)
             .unwrap_or_else(|| vec![self.room.door, self.room.entry]);
         Walk {
             path,
@@ -330,6 +350,55 @@ pub(crate) mod tests {
         assert_eq!((to, person.place), (To::All, Place::Inside));
         let walk = person.walk.expect("walking in");
         assert_eq!((walk.path[0], *walk.path.last().unwrap()), (w.room.door, w.room.entry));
+    }
+
+    fn walk_in(outs: &[Out], id: u32) -> Walk {
+        outs.iter()
+            .find_map(|o| match &o.msg {
+                ServerMsg::PersonJoined { person } if person.id == id => person.walk.clone(),
+                ServerMsg::PersonPlaced { id: placed, walk, .. } if *placed == id => walk.clone(),
+                _ => None,
+            })
+            .expect("walks in")
+    }
+
+    #[test]
+    fn newcomers_dont_pile_up_on_one_tile() {
+        // Everyone used to walk to the entry, so whoever stood there hid the
+        // next person coming in (crit 8's "wrong look" after a sign-up).
+        let mut w = world();
+        let mut ends = Vec::new();
+        for id in 1..=6 {
+            let outs = join(&mut w, id, id as u64);
+            let walk = walk_in(&outs, id);
+            assert_eq!(walk.path[0], w.room.door);
+            let end = *walk.path.last().unwrap();
+            assert!(w.room.walkable(end, crate::room::Walker::Person));
+            assert!(
+                end == w.room.entry || !w.room.walkway.contains(&end),
+                "({}, {}) is the walkway",
+                end.x,
+                end.y
+            );
+            ends.push(end);
+        }
+        assert_eq!(ends[0], w.room.entry);
+        let mut distinct = ends.clone();
+        distinct.sort_by_key(|t| (t.x, t.y));
+        distinct.dedup();
+        assert_eq!(distinct.len(), ends.len(), "{ends:?}");
+    }
+
+    #[test]
+    fn someone_coming_in_from_the_line_finds_a_free_tile_too() {
+        let mut w = world();
+        for id in 1..=7 {
+            join(&mut w, id, id as u64);
+        }
+        let outs = send(&mut w, 6, 50_000, ClientMsg::Leave {});
+        let end = *walk_in(&outs, 7).path.last().unwrap();
+        let taken: Vec<Tile> = (1..=5).filter_map(|id| w.person_tile(id, 50_000)).collect();
+        assert!(!taken.contains(&end), "{end:?} is taken: {taken:?}");
     }
 
     #[test]
