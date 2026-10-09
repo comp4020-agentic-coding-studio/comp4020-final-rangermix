@@ -70,6 +70,7 @@ w = 1
 h = 1
 blocks = true
 movable = true
+knocks = true
 
 # The bowls stay where the café fills them.
 [kinds.bowls]
@@ -82,6 +83,7 @@ w = 1
 h = 1
 blocks = true
 movable = true
+knocks = true
 
 # A floor cushion: people walk over it, cats nap on it.
 [kinds.cushion]
@@ -102,3 +104,4 @@ w = 1
 h = 1
 blocks = true
 movable = true
+knocks = true

@@ -102,6 +102,7 @@ impl World {
             p.away_since = Some(now);
         }
         self.put_back(now, id, out);
+        self.let_go_of_cat(now, id, out);
     }
 
     pub(super) fn remove(&mut self, now: u64, id: u32, why: &str, out: &mut Vec<Out>) {
@@ -110,6 +111,7 @@ impl World {
         }
         // Whatever they carried goes back where it was.
         self.put_back(now, id, out);
+        self.let_go_of_cat(now, id, out);
         let i = self.people.iter().position(|p| p.id == id).expect("checked above");
         let gone = self.people.remove(i);
         tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", outcome = "ok", why);

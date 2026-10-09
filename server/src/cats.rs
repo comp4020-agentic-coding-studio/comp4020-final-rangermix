@@ -138,9 +138,14 @@ pub struct Saved {
     pub at: Tile,
     pub tiredness: f32,
     pub company: f32,
+    #[serde(default)]
+    pub hunger: f32,
+    #[serde(default)]
+    pub play: f32,
 }
 
 /// The room as a cat deciding what to do sees it.
+#[derive(Default)]
 pub struct Situation<'a> {
     pub minute: u32,
     /// People inside, with this cat's trust in each.
@@ -149,6 +154,20 @@ pub struct Situation<'a> {
     pub noise: f32,
     pub tiredness: f32,
     pub company: f32,
+    pub hunger: f32,
+    pub play: f32,
+    /// A portion in the bowls, or a treat on the floor.
+    pub food: bool,
+    /// Toys to play with.
+    pub toys: bool,
+    /// Someone waiting at the window, and a window seat to watch them from.
+    pub window: bool,
+    /// A piece placed in the last two minutes.
+    pub new_piece: bool,
+    /// A plant, lamp or the toys standing, to knock over.
+    pub knockable: bool,
+    /// People sitting, with this cat's trust in each.
+    pub laps: &'a [(u32, f32)],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -158,7 +177,17 @@ pub enum Choice {
     Nap,
     Approach(u32),
     Hide,
+    Eat,
+    Play,
+    Groom,
+    Perch,
+    Investigate,
+    Knock,
+    Lap(u32),
 }
+
+/// The trust at which a cat naps on your lap (design.md, "Numbers to tune").
+pub const LAP_TRUST: f32 = 80.0;
 
 /// Every behaviour scores itself from character, needs, trust, noise and the hour.
 pub fn options(def: &CatDef, s: &Situation) -> Vec<(Choice, f32)> {
@@ -181,7 +210,115 @@ pub fn options(def: &CatDef, s: &Situation) -> Vec<(Choice, f32)> {
     if s.noise >= threshold {
         out.push((Choice::Hide, w.hide * (1.0 - t.boldness) * (s.noise / threshold).min(2.0)));
     }
+    out.push((Choice::Groom, 0.15));
+    if s.food {
+        // A greedy cat is first to any food.
+        out.push((Choice::Eat, 2.5 * s.hunger * (0.4 + t.appetite)));
+    }
+    if s.toys {
+        out.push((Choice::Play, 1.6 * s.play * t.playfulness * lively.min(1.5)));
+    }
+    if s.window {
+        out.push((Choice::Perch, 0.8 * t.curiosity));
+    }
+    if s.new_piece {
+        // A curious, bold cat is first to new furniture.
+        out.push((Choice::Investigate, 1.8 * t.curiosity * (0.5 + t.boldness)));
+    }
+    if s.knockable && alone {
+        out.push((Choice::Knock, 0.35 * t.curiosity * t.alone_activity));
+    }
+    for &(id, trust) in s.laps {
+        if trust >= LAP_TRUST {
+            out.push((Choice::Lap(id), 1.5 * t.affection * (0.4 + s.tiredness)));
+        }
+    }
     out
+}
+
+/// How hungry and how keen to play a cat gets over `hours`, by its appetite
+/// and playfulness; a full cat is hungry again in three to six hours.
+pub fn drift(def: &CatDef, hunger: f32, play: f32, hours: f32) -> (f32, f32) {
+    let t = &def.traits;
+    (
+        (hunger + hours * (0.15 + 0.2 * t.appetite)).min(1.0),
+        (play + hours * (0.1 + 0.4 * t.playfulness)).min(1.0),
+    )
+}
+
+/// Ways of handling a cat; each answers by the same rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Handling {
+    Pet,
+    Play,
+    Offer,
+    PickUp,
+}
+
+impl Handling {
+    /// Its name in the logs and in a ban.
+    pub fn name(self) -> &'static str {
+        match self {
+            Handling::Pet => "pet",
+            Handling::Play => "play",
+            Handling::Offer => "offer",
+            Handling::PickUp => "pick_up",
+        }
+    }
+
+    /// What a banned person is told the cat won't do: "won't {this} for another…".
+    pub fn refusal(self) -> &'static str {
+        match self {
+            Handling::Pet => "be petted by you",
+            Handling::Play => "play with you",
+            Handling::Offer => "take treats from you",
+            Handling::PickUp => "be picked up by you",
+        }
+    }
+}
+
+/// The chance a cat welcomes this handling. `need` is its hunger for an
+/// offered treat and its keenness to play for play.
+pub fn handling_chance(def: &CatDef, how: Handling, trust: f32, need: f32) -> f32 {
+    let t = &def.traits;
+    let trusted = trust / 100.0;
+    let chance = match how {
+        Handling::Pet => return welcome_chance(def, trust),
+        Handling::Play => 0.1 + 0.6 * t.playfulness * (0.4 + 0.6 * need) + 0.25 * trusted,
+        Handling::Offer => 0.15 + 0.85 * need * (0.3 + t.appetite) + 0.2 * trusted,
+        Handling::PickUp => welcome_chance(def, trust) * (0.4 + 0.6 * t.affection),
+    };
+    chance.clamp(0.05, 0.95)
+}
+
+/// How a cat answers being handled, given a roll in [0, 1). Asleep or hiding,
+/// it refuses; an angry cat scratches where it would otherwise pull away. A
+/// refused treat is only a refusal: there's no anger in not being hungry.
+pub fn handling_outcome(def: &CatDef, how: Handling, pose: Pose, trust: f32, need: f32, angry: bool, roll: f32) -> Outcome {
+    let refuse = if angry && how != Handling::Offer {
+        Outcome::Scratch
+    } else {
+        Outcome::Refuse
+    };
+    if matches!(pose, Pose::Nap | Pose::Hide) {
+        return refuse;
+    }
+    let welcome = handling_chance(def, how, trust, need);
+    if roll < welcome {
+        Outcome::Welcome
+    } else if roll < welcome + 0.2 {
+        Outcome::Tolerate
+    } else {
+        refuse
+    }
+}
+
+/// How long a cat puts up with being held, in milliseconds: longer the more
+/// it trusts and loves its holder, and half that if it only tolerated it.
+pub fn hold_ms(def: &CatDef, trust: f32, tolerated: bool) -> u64 {
+    let secs = 8.0 + 52.0 * (trust / 100.0) * def.traits.affection;
+    let secs = if tolerated { secs / 2.0 } else { secs };
+    (secs * 1000.0) as u64
 }
 
 /// One of the three best options, at random, weighted by score: in character
@@ -209,6 +346,8 @@ pub enum Outcome {
     Welcome,
     Tolerate,
     Refuse,
+    /// Refused with claws: an angry cat.
+    Scratch,
 }
 
 /// The chance this cat welcomes a pet from someone it trusts this much
@@ -220,18 +359,9 @@ pub fn welcome_chance(def: &CatDef, trust: f32) -> f32 {
 }
 
 /// How a cat answers a pet, given a roll in [0, 1). Asleep or hiding, it refuses.
+#[cfg(test)]
 pub fn pet_outcome(def: &CatDef, pose: Pose, trust: f32, roll: f32) -> Outcome {
-    if matches!(pose, Pose::Nap | Pose::Hide) {
-        return Outcome::Refuse;
-    }
-    let welcome = welcome_chance(def, trust);
-    if roll < welcome {
-        Outcome::Welcome
-    } else if roll < welcome + 0.2 {
-        Outcome::Tolerate
-    } else {
-        Outcome::Refuse
-    }
+    handling_outcome(def, Handling::Pet, pose, trust, 0.0, false, roll)
 }
 
 #[cfg(test)]
@@ -254,7 +384,108 @@ mod tests {
             noise: 0.0,
             tiredness: 0.2,
             company: 0.5,
+            ..Default::default()
         }
+    }
+
+    fn best(options: &[(Choice, f32)]) -> Choice {
+        options.iter().max_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
+    }
+
+    #[test]
+    fn a_hungry_cat_goes_for_food_and_mochi_most_of_all() {
+        let mut s = situation(&[(1, 0.0)]);
+        s.food = true;
+        s.hunger = 0.6;
+        assert_eq!(best(&options(&cat("mochi"), &s)), Choice::Eat);
+        assert!(score(&options(&cat("mochi"), &s), Choice::Eat) > score(&options(&cat("burakku"), &s), Choice::Eat));
+        s.food = false;
+        assert_eq!(score(&options(&cat("mochi"), &s), Choice::Eat), 0.0, "no food, no eating");
+    }
+
+    #[test]
+    fn tora_is_first_to_new_furniture_and_to_the_toys() {
+        let mut s = situation(&[(1, 0.0)]);
+        s.new_piece = true;
+        s.toys = true;
+        s.play = 0.8;
+        let (t, m, b) = (cat("tora"), cat("mochi"), cat("burakku"));
+        assert!(score(&options(&t, &s), Choice::Investigate) > score(&options(&m, &s), Choice::Investigate));
+        assert!(score(&options(&t, &s), Choice::Investigate) > score(&options(&b, &s), Choice::Investigate));
+        assert!(score(&options(&t, &s), Choice::Play) > score(&options(&m, &s), Choice::Play));
+        assert!(handling_chance(&t, Handling::Play, 0.0, 0.8) > handling_chance(&m, Handling::Play, 0.0, 0.8));
+    }
+
+    #[test]
+    fn burakku_knocks_things_over_when_nobody_is_there() {
+        let mut s = situation(&[]);
+        s.knockable = true;
+        let b = cat("burakku");
+        assert!(score(&options(&b, &s), Choice::Knock) > score(&options(&cat("mochi"), &s), Choice::Knock));
+        assert_eq!(
+            score(&options(&b, &situation(&[(1, 0.0)])), Choice::Knock),
+            0.0,
+            "not with people about"
+        );
+    }
+
+    #[test]
+    fn a_cat_perches_to_watch_the_line() {
+        let mut s = situation(&[(1, 0.0)]);
+        assert_eq!(score(&options(&cat("tora"), &s), Choice::Perch), 0.0);
+        s.window = true;
+        assert!(score(&options(&cat("tora"), &s), Choice::Perch) > 0.0);
+    }
+
+    #[test]
+    fn only_trust_of_eighty_earns_a_lap() {
+        let mut s = situation(&[(1, 0.0), (2, 0.0)]);
+        let laps = [(1, 79.0), (2, 85.0)];
+        s.laps = &laps;
+        let o = options(&cat("mochi"), &s);
+        assert_eq!(score(&o, Choice::Lap(1)), 0.0);
+        assert!(score(&o, Choice::Lap(2)) > 0.0);
+    }
+
+    #[test]
+    fn hunger_and_play_grow_by_character() {
+        let (m, b) = (cat("mochi"), cat("burakku"));
+        let (mh, _) = drift(&m, 0.0, 0.0, 2.0);
+        let (bh, _) = drift(&b, 0.0, 0.0, 2.0);
+        assert!(mh > bh, "greedy Mochi gets hungry first");
+        let (_, tp) = drift(&cat("tora"), 0.0, 0.0, 1.0);
+        let (_, mp) = drift(&m, 0.0, 0.0, 1.0);
+        assert!(tp > mp);
+        assert_eq!(drift(&m, 0.9, 0.9, 100.0), (1.0, 1.0));
+    }
+
+    #[test]
+    fn an_angry_cat_scratches_but_a_refused_treat_is_no_quarrel() {
+        let m = cat("mochi");
+        assert_eq!(
+            handling_outcome(&m, Handling::Pet, Pose::Idle, 0.0, 0.0, true, 0.99),
+            Outcome::Scratch
+        );
+        assert_eq!(
+            handling_outcome(&m, Handling::Pet, Pose::Nap, 0.0, 0.0, true, 0.0),
+            Outcome::Scratch
+        );
+        assert_eq!(
+            handling_outcome(&m, Handling::Offer, Pose::Nap, 0.0, 1.0, true, 0.0),
+            Outcome::Refuse
+        );
+        assert_eq!(
+            handling_outcome(&m, Handling::Offer, Pose::Idle, 0.0, 1.0, false, 0.5),
+            Outcome::Welcome
+        );
+    }
+
+    #[test]
+    fn a_cat_puts_up_with_being_held_longer_by_someone_it_loves() {
+        let (m, b) = (cat("mochi"), cat("burakku"));
+        assert!(hold_ms(&m, 90.0, false) > hold_ms(&m, 10.0, false));
+        assert!(hold_ms(&m, 50.0, true) < hold_ms(&m, 50.0, false));
+        assert!(handling_chance(&b, Handling::PickUp, 0.0, 0.0) < handling_chance(&m, Handling::PickUp, 0.0, 0.0));
     }
 
     #[test]

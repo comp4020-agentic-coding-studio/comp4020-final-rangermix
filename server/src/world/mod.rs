@@ -3,15 +3,19 @@
 //! connection layer to route; nothing here touches a socket, and durable
 //! changes go to the store as writes it doesn't wait for.
 mod cat_life;
+#[cfg(test)]
+mod cats_tests;
 mod furniture;
 #[cfg(test)]
 mod furniture_tests;
+mod handling;
 #[cfg(test)]
 mod log_tests;
 mod people;
 mod quiet;
+mod treats;
 
-use crate::cats::Saved;
+use crate::cats::{Handling, Saved};
 use crate::content::Content;
 use crate::protocol::{ClientMsg, ErrorCode, Look, Place, ServerMsg, Snapshot, Tile, Walk};
 use crate::room::Room;
@@ -80,7 +84,9 @@ struct Person {
 /// Something a person asked for that happens when their walk ends.
 #[derive(Debug, Clone, PartialEq)]
 enum Pending {
-    Pet(String),
+    /// Pet, play, offer a treat or pick up this cat.
+    Handle(String, crate::cats::Handling),
+    Tidy(u32),
     Grab(u32),
     Place(Tile),
     Sit(u32),
@@ -121,6 +127,16 @@ pub struct World {
     last_save: u64,
     held: Vec<furniture::Held>,
     reserved: furniture::Reserved,
+    anger: handling::Angers,
+    bans: Vec<crate::store::BanRow>,
+    treat_book: treats::TreatBook,
+    floor_treats: Vec<treats::FloorTreat>,
+    next_treat: u32,
+    bowls: u8,
+    /// Which refill the bowls are on, so each refill happens once.
+    bowls_key: String,
+    /// Pieces put down lately, for curious cats: piece, where, when.
+    new_pieces: Vec<(u32, Tile, u64)>,
 }
 
 impl World {
@@ -152,6 +168,14 @@ impl World {
             last_save: now,
             held: Vec::new(),
             reserved: Default::default(),
+            anger: Default::default(),
+            bans: Vec::new(),
+            treat_book: Default::default(),
+            floor_treats: Vec::new(),
+            next_treat: 1,
+            bowls: 0,
+            bowls_key: String::new(),
+            new_pieces: Vec::new(),
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -187,7 +211,15 @@ impl World {
                 match msg {
                     ClientMsg::WalkTo { tile } => self.walk_to(now, id, tile, &mut out),
                     ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
-                    ClientMsg::Pet { cat } => self.pet(now, id, &cat, &mut out),
+                    ClientMsg::Pet { cat } => self.handle_cat(now, id, &cat, Handling::Pet, &mut out),
+                    ClientMsg::Play { cat } => self.handle_cat(now, id, &cat, Handling::Play, &mut out),
+                    ClientMsg::OfferTreat { cat } => self.handle_cat(now, id, &cat, Handling::Offer, &mut out),
+                    ClientMsg::PickUp { cat } => self.handle_cat(now, id, &cat, Handling::PickUp, &mut out),
+                    ClientMsg::PutDown {} => self.put_down_cat(now, id, &mut out),
+                    ClientMsg::PassCat { to } => self.pass_cat(now, id, to, &mut out),
+                    ClientMsg::PutTreat {} => self.put_treat(now, id, &mut out),
+                    ClientMsg::GiveTreat { to } => self.give_treat(now, id, to, &mut out),
+                    ClientMsg::Tidy { id: piece } => self.tidy(now, id, piece, &mut out),
                     ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
                     ClientMsg::Grab { id: piece } => self.grab(now, id, piece, &mut out),
                     ClientMsg::Take { kind } => self.take(now, id, &kind, &mut out),
@@ -237,7 +269,8 @@ impl World {
             return;
         }
         match then {
-            Pending::Pet(cat) => self.pet_on_arrival(now, id, &cat, out),
+            Pending::Handle(cat, how) => self.handle_on_arrival(now, id, &cat, how, out),
+            Pending::Tidy(piece) => self.stand_up_piece(now, id, piece, out),
             Pending::Grab(piece) => self.pick_up(now, id, piece, out),
             Pending::Place(to) => self.put_down(now, id, to, out),
             Pending::Sit(piece) => self.sit_down(now, id, piece, out),
@@ -253,6 +286,7 @@ impl World {
             self.arrived_with(now, id, then, &mut out);
         }
         self.quiet_tick(now, &mut out);
+        self.bowls_tick(now, &mut out);
         self.cats_tick(now, dt, &mut out);
         if now.saturating_sub(self.last_save) >= self.tuning.save_every_secs * 1000 {
             self.save(now);
@@ -267,6 +301,9 @@ impl World {
             cats: self.cats.iter().map(|c| c.view(now)).collect(),
             your_trust: self.cats.iter().map(|c| self.trust.view(&c.def.id, id)).collect(),
             held: self.held_views(),
+            treats: self.treat_views(),
+            your_treats: self.treats_left(id, now),
+            bowls: self.bowls,
         }
     }
 
@@ -284,10 +321,12 @@ impl World {
                 )
             })
             .collect();
+        let bowls = self.bowls_json();
         store.fire(move |conn| {
             for (id, json) in &cats {
                 crate::store::put_cat_state(conn, id, json, now)?;
             }
+            crate::store::put_world(conn, "bowls", &bowls)?;
             crate::store::put_world(conn, "saved_at", &now.to_string())
         });
     }
@@ -309,6 +348,14 @@ pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {
         ClientMsg::Sit { .. } => "sit",
         ClientMsg::Leave {} => "leave",
         ClientMsg::Emote { .. } => "emote",
+        ClientMsg::Play { .. } => "play",
+        ClientMsg::OfferTreat { .. } => "offer",
+        ClientMsg::PickUp { .. } => "pick_up",
+        ClientMsg::PutDown {} => "put_down",
+        ClientMsg::PassCat { .. } => "pass_cat",
+        ClientMsg::PutTreat {} => "put_treat",
+        ClientMsg::GiveTreat { .. } => "give_treat",
+        ClientMsg::Tidy { .. } => "tidy",
         ClientMsg::Presence { .. } | ClientMsg::Here {} => return None,
     })
 }

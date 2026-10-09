@@ -72,6 +72,7 @@ impl World {
     fn walk_out(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
         // Whatever they carried goes back first.
         self.put_back(now, id, out);
+        self.let_go_of_cat(now, id, out);
         let Some(from) = self.person_tile(id, now) else { return };
         let door = self.room.door;
         let path = self.room.path(from, door, Walker::Person).unwrap_or_else(|| vec![from, door]);

@@ -69,6 +69,11 @@ pub enum Pose {
     Nap,
     Sit,
     Hide,
+    Eat,
+    Groom,
+    Play,
+    /// In someone's arms; `CatView.held_by` says whose.
+    Held,
 }
 
 /// A moment a cat shows over its head.
@@ -94,6 +99,17 @@ pub enum Reaction {
     Greet {
         to: u32,
     },
+    /// Lashed out at unwelcome handling: trust down.
+    Scratch {
+        by: u32,
+    },
+    /// Took a treat from someone's hand.
+    Eat {
+        from: u32,
+    },
+    Play {
+        with: u32,
+    },
     /// Jumped off a piece someone picked up.
     Annoyed {
         by: u32,
@@ -101,6 +117,7 @@ pub enum Reaction {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct CatView {
     pub id: String,
@@ -109,6 +126,15 @@ pub struct CatView {
     pub at: Tile,
     pub pose: Pose,
     pub walk: Option<Walk>,
+    pub held_by: Option<u32>,
+}
+
+/// A treat someone put down, until a cat eats it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TreatView {
+    pub id: u32,
+    pub at: Tile,
 }
 
 /// A small gesture anyone inside can make (design.md, "People").
@@ -155,6 +181,8 @@ pub struct FurnitureView {
     /// Other pieces can stand on it, as on a rug.
     pub under: bool,
     pub seats: bool,
+    /// Knocked over by a cat, until someone stands it back up.
+    pub toppled: bool,
 }
 
 /// A kind of furniture the catalogue offers.
@@ -194,6 +222,11 @@ pub struct Snapshot {
     pub cats: Vec<CatView>,
     pub your_trust: Vec<TrustView>,
     pub held: Vec<HeldView>,
+    pub treats: Vec<TreatView>,
+    /// Treats you have left today.
+    pub your_treats: u32,
+    /// Portions in the bowls.
+    pub bowls: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -214,6 +247,11 @@ pub enum ErrorCode {
     /// The floor holds no more furniture.
     Full,
     NotHolding,
+    /// A cat won't let you do this, for a while yet.
+    Banned,
+    NoTreats,
+    /// You're carrying a cat or a piece already.
+    HandsFull,
 }
 
 /// What a client asks for. The server decides what happens (AGENTS.md).
@@ -252,6 +290,32 @@ pub enum ClientMsg {
     PutAway {},
     /// Walk over to a piece and sit on it.
     Sit {
+        id: u32,
+    },
+    /// Put one of your treats down at your feet.
+    PutTreat {},
+    /// Walk over and offer a cat a treat from your hand.
+    OfferTreat {
+        cat: String,
+    },
+    /// Hand one of your treats to someone inside.
+    GiveTreat {
+        to: u32,
+    },
+    Play {
+        cat: String,
+    },
+    PickUp {
+        cat: String,
+    },
+    /// Set down the cat you're holding.
+    PutDown {},
+    /// Pass the cat you're holding to someone beside you.
+    PassCat {
+        to: u32,
+    },
+    /// Walk over and stand a knocked-over piece back up.
+    Tidy {
         id: u32,
     },
     Leave {},
@@ -346,6 +410,36 @@ pub enum ServerMsg {
     PersonSat {
         id: u32,
         at: Tile,
+    },
+    TreatPlaced {
+        treat: TreatView,
+        by: u32,
+    },
+    TreatEaten {
+        id: u32,
+        cat: String,
+    },
+    /// Sent to one person: treats they have left today.
+    YourTreats {
+        left: u32,
+    },
+    TreatGiven {
+        from: u32,
+        to: u32,
+    },
+    /// Portions in the bowls, after a refill or a meal.
+    Bowls {
+        portions: u8,
+    },
+    /// A cat was picked up, passed, or (with `by` none) is down again.
+    CatHeld {
+        cat: String,
+        by: Option<u32>,
+    },
+    FurnitureToppled {
+        id: u32,
+        toppled: bool,
+        by: Option<u32>,
     },
     Error {
         code: ErrorCode,
@@ -478,6 +572,9 @@ mod tests {
             cats: vec![],
             your_trust: vec![],
             held: vec![],
+            treats: vec![],
+            your_treats: 3,
+            bowls: 3,
         };
         assert!(serde_json::to_string(&snapshot).unwrap().contains(r#""yourTrust":[]"#));
         let me = ApiMe {

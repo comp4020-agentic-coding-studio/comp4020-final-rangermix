@@ -5,7 +5,7 @@ import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
-import { closeMenu, openMenu } from "./menu";
+import { closeMenu, moveRing, openMenu } from "./menu";
 import { menuFor } from "./menus";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
 import { chooseLayout, saveLayout, savedLayout } from "./layout";
@@ -114,9 +114,10 @@ function enter(me: ApiMe): void {
     $("drawer-toggle").setAttribute("aria-expanded", String(open));
   };
   phoneQuery.addEventListener("change", applyLayout);
-  // A ring sits round a tile on screen; once the room moves under it, it's stale.
+  // A ring sits round a tile: when the room pans under it, it follows the tile.
+  let ringTile: { x: number; y: number } | null = null;
   stage.panHooks.push(() => {
-    if (ringLayout()) closeMenu();
+    if (ringLayout() && ringTile) moveRing(stage.tileToCss(ringTile.x + 0.5, ringTile.y + 0.5));
   });
   applyLayout();
   /** What you're carrying, if anything. */
@@ -131,6 +132,7 @@ function enter(me: ApiMe): void {
     if (place(at)) return;
     const state = cafe.state;
     if (!state) return;
+    ringTile = at;
     const menu = menuFor(state, targets);
     if (!menu) return;
     openMenu(
@@ -221,7 +223,7 @@ function enter(me: ApiMe): void {
     renderHere($("here"), s);
     talk.peopleChanged(new Set(s.people.keys()));
     renderSaid($("said"), s);
-    renderYourCats($("your-cats"), s);
+    renderYourCats($("your-cats"), s, () => cafe.send({ type: "putTreat" }));
   });
   function stop(): void {
     detach();

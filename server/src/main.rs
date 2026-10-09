@@ -1,5 +1,6 @@
 //! The cat café server: one binary that serves the client, the README, the
 //! accounts API and the WebSocket, and owns the café's world.
+mod anger;
 mod api;
 mod auth;
 mod cats;
@@ -39,7 +40,10 @@ async fn main() -> anyhow::Result<()> {
             None => world::SavedArrangement::Fresh,
         },
     };
-    let world = world::World::new(
+    let bans = store.call(move |c| store::live_bans(c, now)).await?;
+    let treats = store.call(|c| store::all_treats(c)).await?;
+    let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
+    let mut world = world::World::new(
         content,
         trust,
         saved_cats,
@@ -49,6 +53,8 @@ async fn main() -> anyhow::Result<()> {
         build.clone(),
         now,
     );
+    world.restore_bans(bans);
+    world.restore_treats(bowls, treats);
     let world_tx = ws::spawn_world(world);
     let readme = readme::render_page(&std::fs::read_to_string(&config.readme_path).unwrap_or_default());
     let port = config.port;

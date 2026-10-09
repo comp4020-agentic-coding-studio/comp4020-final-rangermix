@@ -12,7 +12,23 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string | n
   return node;
 }
 
-export function renderYourCats(box: HTMLElement, state: CafeState): void {
+const BOWL_WORDS = ["The bowls are empty.", "The bowls are nearly empty.", "The bowls are half full.", "The bowls are full."];
+
+export function renderYourCats(box: HTMLElement, state: CafeState, onPutTreat?: () => void): void {
+  const treats: Node[] = [];
+  if (state.yourTreats > 0) {
+    const put = el("button", null, "Put a treat down");
+    put.type = "button";
+    if (onPutTreat) put.onclick = onPutTreat;
+    treats.push(el("p", "treats", `Treats today: ${state.yourTreats} `, put));
+  } else {
+    treats.push(el("p", "treats", "No treats left today."));
+  }
+  treats.push(el("p", "hint", BOWL_WORDS[Math.max(0, Math.min(3, state.bowls))]));
+  renderCats(box, state, treats);
+}
+
+function renderCats(box: HTMLElement, state: CafeState, after: Node[]): void {
   const rows = [...state.cats.values()].map((cat) => {
     const trust = state.trust.get(cat.id);
     const value = trust?.value ?? 0;
@@ -23,7 +39,7 @@ export function renderYourCats(box: HTMLElement, state: CafeState): void {
     bar.setAttribute("aria-label", `${cat.name}'s trust in you: ${value} of 100`);
     return el("div", "cat-row", el("strong", null, cat.name), el("span", "hint", `${cat.name} ${LEVEL_WORDS[trust?.level ?? "stranger"]}.`), bar);
   });
-  box.replaceChildren(el("h2", null, "Your cats"), ...rows);
+  box.replaceChildren(el("h2", null, "Your cats"), ...rows, ...after);
 }
 
 export function renderHere(box: HTMLElement, state: CafeState): void {

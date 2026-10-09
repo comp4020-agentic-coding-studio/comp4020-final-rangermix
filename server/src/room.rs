@@ -24,10 +24,12 @@ pub struct FurnitureKind {
     pub nap: bool,
     #[serde(default)]
     pub hide: bool,
-    // Read once cats perch at the window (phase 3).
+    /// Where cats perch to watch the line at the window.
     #[serde(default)]
-    #[allow(dead_code)]
     pub perch: bool,
+    /// Small enough for a cat to knock over.
+    #[serde(default)]
+    pub knocks: bool,
     /// People can pick it up and put it somewhere else; the catalogue offers it.
     #[serde(default)]
     pub movable: bool,
@@ -69,6 +71,8 @@ pub struct Saved {
     pub kind: String,
     pub x: u8,
     pub y: u8,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub toppled: bool,
 }
 
 /// The cushion-only arrangement phase 1 saved, keyed by list position.
@@ -87,6 +91,8 @@ pub struct Piece {
     pub x: u8,
     pub y: u8,
     pub spec: FurnitureKind,
+    /// Knocked over by a cat, until someone stands it back up.
+    pub toppled: bool,
 }
 
 impl Piece {
@@ -185,6 +191,7 @@ impl Room {
                 x: p.x,
                 y: p.y,
                 spec,
+                toppled: false,
             };
             for t in piece.tiles() {
                 anyhow::ensure!(
@@ -317,6 +324,7 @@ impl Room {
             x: at.x,
             y: at.y,
             spec,
+            toppled: false,
         })
     }
 
@@ -342,6 +350,7 @@ impl Room {
                 kind: p.kind.clone(),
                 x: p.x,
                 y: p.y,
+                toppled: p.toppled,
             })
             .collect()
     }
@@ -354,9 +363,10 @@ impl Room {
         let mut order: Vec<&Saved> = saved.iter().collect();
         order.sort_by_key(|s| !self.kinds.get(&s.kind).is_some_and(|k| k.under));
         for s in order {
-            let Some(piece) = self.new_piece(&s.kind, Tile { x: s.x, y: s.y }) else {
+            let Some(mut piece) = self.new_piece(&s.kind, Tile { x: s.x, y: s.y }) else {
                 continue;
             };
+            piece.toppled = s.toppled;
             if self.check_place(&piece, &[]).is_ok() {
                 self.pieces.push(piece);
             }
@@ -535,6 +545,7 @@ impl Piece {
             blocks: self.spec.blocks,
             under: self.spec.under,
             seats: self.spec.seats,
+            toppled: self.toppled,
         }
     }
 }
@@ -665,6 +676,7 @@ mod tests {
                 movable: false,
                 under: false,
                 seats: false,
+                knocks: false,
             },
         )]);
         let err = Room::build(&file, &kinds).unwrap_err().to_string();
@@ -682,6 +694,7 @@ mod tests {
             movable: true,
             under: false,
             seats: false,
+            knocks: false,
         }
     }
 
@@ -841,6 +854,7 @@ mod tests {
             kind: "no_such_thing".into(),
             x: 3,
             y: 8,
+            toppled: false,
         });
         let mut r = room();
         r.restore(&stale);

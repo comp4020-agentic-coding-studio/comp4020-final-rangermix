@@ -32,6 +32,9 @@ const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
   refuse: "dots",
   greet: "heart",
   annoyed: "dots",
+  scratch: "scratch",
+  eat: "heart",
+  play: "heart",
 };
 
 /** The window's tiles, left to right. */
@@ -69,14 +72,32 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
     if (img) ctx.drawImage(img, 0, 0, TILE, 9, tiles[i].x * TILE, 1, TILE, 9);
   });
 
-  for (const f of room.furniture) if (FLAT.has(f.kind)) blit(ctx, sprites.furniture(f.kind), f.x * TILE, f.y * TILE);
+  for (const f of room.furniture) if (FLAT.has(f.kind)) drawPiece(ctx, sprites, f);
+
+  // Treats on the floor, and something in the bowls while there's any left.
+  for (const at of state.treats.values()) blit(ctx, sprites.emote("treat"), at.x * TILE + 4, at.y * TILE + 6);
 
   // Everything that stands, back to front by the row it stands on.
   const items: { y: number; paint: () => void }[] = [];
   for (const f of room.furniture) {
-    if (!FLAT.has(f.kind)) items.push({ y: f.y + f.h - 1, paint: () => blit(ctx, sprites.furniture(f.kind), f.x * TILE, f.y * TILE) });
+    if (FLAT.has(f.kind)) continue;
+    items.push({
+      y: f.y + f.h - 1,
+      paint: () => {
+        drawPiece(ctx, sprites, f);
+        if (f.kind === "bowls" && state.bowls > 0) {
+          for (let k = 0; k < Math.min(state.bowls, f.w); k++) blit(ctx, sprites.emote("food"), (f.x + k) * TILE + 4, f.y * TILE + 4);
+        }
+      },
+    });
   }
+  // A held cat is drawn in its holder's arms, not on the floor.
+  const inArms = new Map<number, Cat>();
   for (const cat of state.cats.values()) {
+    if (cat.heldBy !== null && state.people.has(cat.heldBy)) {
+      inArms.set(cat.heldBy, cat);
+      continue;
+    }
     const spot = positionAt(cat.walk, cat.at, now);
     items.push({ y: spot.y + 0.1, paint: () => drawCat(ctx, sprites, cat, spot, now) });
   }
@@ -86,6 +107,7 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
     const emote = state.emotes.get(person.id);
     const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
     const carried = state.held.get(person.id) ?? null;
+    const held = inArms.get(person.id) ?? null;
     // Sitting, they sink a little into the seat.
     const seat = person.sitting && !spot.moving ? { ...spot, y: spot.y + 0.2 } : spot;
     items.push({
@@ -93,6 +115,7 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
       paint: () => {
         drawPerson(ctx, sprites, person.look, seat, now, person.id === state.you, showing);
         if (carried) drawCarried(ctx, sprites, carried, seat);
+        if (held) drawCat(ctx, sprites, held, { ...seat, y: seat.y - 0.35, moving: false }, now);
       },
     });
   }
@@ -139,7 +162,9 @@ function drawFlipped(ctx: CanvasRenderingContext2D, img: CanvasImageSource, x: n
 }
 
 function drawCat(ctx: CanvasRenderingContext2D, sprites: Sprites, cat: Cat, spot: Spot, now: number): void {
-  const frame: CatFrame = cat.pose === "nap" ? "nap" : spot.moving ? (Math.floor(now / 160) % 2 ? "walk_a" : "walk_b") : "sit";
+  // Playing, a cat bats about on the spot; eating, grooming and held, it sits.
+  const busy = spot.moving || cat.pose === "play";
+  const frame: CatFrame = cat.pose === "nap" ? "nap" : busy ? (Math.floor(now / 160) % 2 ? "walk_a" : "walk_b") : "sit";
   const img = sprites.cat(cat.coat, frame);
   const x = Math.round(spot.x * TILE);
   const y = Math.round(spot.y * TILE);
@@ -152,6 +177,21 @@ function drawCat(ctx: CanvasRenderingContext2D, sprites: Sprites, cat: Cat, spot
   const fresh = cat.reaction && now - cat.reaction.at < 2500 ? EMOTE_FOR[cat.reaction.reaction.kind] : null;
   const emote = fresh ?? (cat.pose === "nap" ? "zzz" : null);
   if (emote) blit(ctx, sprites.emote(emote), x + 4, y - 8);
+}
+
+/** A piece where it stands; knocked over, it lies on its side. */
+function drawPiece(ctx: CanvasRenderingContext2D, sprites: Sprites, f: FurnitureView): void {
+  const img = sprites.furniture(f.kind);
+  if (!img) return;
+  if (!f.toppled) {
+    ctx.drawImage(img, f.x * TILE, f.y * TILE);
+    return;
+  }
+  ctx.save();
+  ctx.translate(f.x * TILE + (f.w * TILE) / 2, f.y * TILE + (f.h * TILE) / 2 + 3);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(img, -(f.w * TILE) / 2, -(f.h * TILE) / 2);
+  ctx.restore();
 }
 
 /** A carried piece, held up over its carrier's head. */

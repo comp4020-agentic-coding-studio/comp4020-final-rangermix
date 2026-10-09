@@ -105,3 +105,33 @@ chalkboard, mute, the blocklist, the admin ban. Phase 5's: the art pass.
 ## Execution log
 
 Where carrying out this plan departed from it, task by task, and why.
+
+- **Task 1 (2026-10-09).** As planned. Refusals and walk-starts are logged
+  centrally in `World::handle` by comparing the messages and the pending
+  action before and after; Put it back with empty hands is now refused, so
+  even that leaves a line. Checked end to end: a local server driven by the
+  spec, its log piped through `scripts/narrate.ts`, read as a story.
+- **Tasks 2 to 6.** Built together, as one change to the protocol. The pure
+  rules (`anger.rs`, the scoring and handling in `cats.rs`, the store's
+  migration 2) went test first. The world's side (`handling.rs`,
+  `treats.rs`, and `cat_life.rs` rewritten around the new plans) was
+  written before its tests, a departure from the method; the tests in
+  `world/cats_tests.rs` followed straight after, and caught two things:
+  being already loaded answered with the wrong code (now `HandsFull`
+  whatever you carry), and a ban's time left rounds up to whole minutes,
+  so "2 h" is right where the test had guessed "1 h 59 min". The anger
+  rise was set to 0.3 + temper / 2, so Mochi is furious at the third
+  unwelcome try in a row and Burakku and Tora at the second. `CatView` was
+  the one wire type without camelCase names; it has them now.
+- **Task 7.** The menus test first; the drawing and the panel checked in
+  the client and by the browser spec.
+- **Task 8.** The keyboard pass now steps past the panel's "Put a treat
+  down" button on its way back to Leave, which is the right order.
+- **A layout B fault the new checks found.** The phase 2 review's fix closed
+  a ring whenever the view panned; but Tab moves the keyboard pointer and
+  the view pans to follow it on the next frame, so Tab then Enter opened a
+  ring that vanished at once. The ring now follows its tile as the room
+  pans. Two browser checks leaned on finding a still cat, and with the
+  cats busier in phase 3 none was found: the ring is now opened by
+  keyboard on whatever the pointer settles on, and the touch check taps a
+  chair.

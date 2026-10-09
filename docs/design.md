@@ -101,7 +101,11 @@ under [Numbers to tune](#numbers-to-tune).
 - **Treats:** the café fills the bowls on a schedule, so no cat goes hungry
   because nobody came, and each visitor has a few treats a day (*tunable*) to
   put down or offer by hand. *Why:* scarcity makes a treat a choice, and stops
-  a crowd flooding the floor with food.
+  a crowd flooding the floor with food. A treat goes down at your feet, or is
+  handed to someone inside (it joins their day's treats); used and received
+  treats are stored per Canberra day, treats on the floor are not. The bowls
+  hold three portions; a hungry cat eats one, and the treat's giver gains a
+  little trust when a cat eats a treat they put down.
 - **Controls: point, then act.** Click or tap a spot to walk there; click a
   cat, a person or a piece of furniture for a menu of what you can do. On the
   keyboard a pointer snaps to tiles: arrows move it, Tab and Shift+Tab cycle
@@ -157,7 +161,16 @@ under [Numbers to tune](#numbers-to-tune).
   in what the cats do.
 - **Anger** is per cat per person and kept in memory only: it rises with
   unwelcome handling by temper and cools by grudge. Bans are stored until they
-  expire.
+  expire. Pet, play, offer and pick up answer by one rule; a refusal or
+  pushing adds 0.3 plus half the cat's temper, most of it gone by the end of
+  the grudge. At 0.6 a cat scratches instead of pulling away (trust down 2);
+  at 1.0 it bans that action from that person for its grudge. A refused
+  treat is no quarrel: a cat that isn't hungry just doesn't take it.
+- **Carrying:** a cat that agrees is held and moves with its holder, whose
+  arms are then full (no furniture); it jumps down when it has had enough (8
+  seconds, plus up to 52 more by trust and affection, halved if it only
+  tolerated being picked up), at the door, or when its holder leaves or
+  drops. Passed to someone beside you, it goes if it knows them (trust 20).
 - **Effects on the room:** a cat lying on furniture claims it; cats knock
   things over and scatter toys, leaving traces; notable moments become
   chalkboard lines; cats notice each other, napping together or keeping their
@@ -343,15 +356,22 @@ renamed.
 
 - **One JSON line per user action** on stdout (Rust `tracing`), collected by
   Fly: who, what, when, and the outcome, so the logs can tell the story.
+  A refused action is logged too, with its code, in one place in the world
+  (and where the rate limit stops one first); an action that starts with a
+  walk over is logged when it starts, and again when it happens.
 - **Also logged:** arrivals, departures, the line and walk-outs; cats'
-  behaviour changes (not every step); each wake-up's fast-forward summary;
-  errors.
+  behaviour changes (a `cat` line when a cat starts to nap, hide, eat, play,
+  perch, investigate, knock something over, come to someone, greet, take a
+  lap or jump down; never per step); bans; the bowls' refills; each
+  wake-up's fast-forward summary; errors.
 - **Never logged:** bubble text (a `said` line records who, the length and who
   it was addressed to), passwords, recovery codes, session tokens, IP
   addresses.
-- **Live view:** `flyctl logs` through a small formatter script that turns the
-  JSON into readable lines. *Why no stats page:* crit 10 accepts a log tail,
-  and a page would be one more thing to build and secure.
+- **Live view:** `pnpm logs`, which pipes `flyctl logs` through
+  `scripts/narrate.ts` to turn the JSON into sentences in Canberra time
+  ("19:42:07  sam petted Mochi, who purred"). *Why no stats page:* crit 10
+  accepts a log tail, and a page would be one more thing to build and
+  secure.
 
 ## Checks
 
@@ -402,7 +422,10 @@ renamed.
 | Other actions | 10 a second |
 | Furniture on the floor | at most 30 movable pieces |
 | Treats | 3 per visitor per Canberra day |
-| Bowl refills | 7:00, 12:00 and 18:00 Canberra time |
+| Bowl refills | 7:00, 12:00 and 18:00 Canberra time, 3 portions each |
+| Anger | +0.3 + temper / 2 per unwelcome handling, cooling over the grudge; scratch at 0.6, ban at 1.0 |
+| Holding a cat | 8 seconds + up to 52 by trust and affection, halved if only tolerated |
+| New furniture | worth investigating for 2 minutes |
 | Day and night | morning from 6:00, afternoon from 12:00, evening from 17:00, night from 21:00 |
 | Trust levels | 20 comes when called; 50 greets you at the door and sits by you; 80 naps on your lap |
 | Trust gained per day | at most 10 points per cat per person, times the cat's trust rate |

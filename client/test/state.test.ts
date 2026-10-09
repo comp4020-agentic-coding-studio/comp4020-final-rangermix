@@ -14,9 +14,12 @@ function welcome(): Welcome {
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false }],
-      cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 1, y: 5 }, pose: "nap", walk: null }],
+      cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 1, y: 5 }, pose: "nap", walk: null, heldBy: null }],
       yourTrust: [{ cat: "mochi", value: 1.5, level: "stranger" }],
       held: [],
+      treats: [],
+      yourTreats: 3,
+      bowls: 2,
     },
   };
 }
@@ -77,7 +80,7 @@ describe("the client's copy of the café", () => {
 
   it("follows a piece from the floor into someone's hands and down again", () => {
     const w = welcome();
-    const cushion = { id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true };
+    const cushion = { id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false };
     w.snapshot.room.furniture = [cushion];
     const s = fromWelcome(w, 10_000);
     s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
@@ -91,6 +94,49 @@ describe("the client's copy of the café", () => {
     expect(apply(s, { type: "furnitureRemoved", id: 14, by: 1 })).toEqual([]);
     expect(s.held.size).toBe(0);
     expect(s.room.furniture).toEqual([]);
+  });
+
+  it("keeps the treats on the floor, your own, and the bowls, and says what happened", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    expect(s.yourTreats).toBe(3);
+    expect(s.bowls).toBe(2);
+    expect(apply(s, { type: "treatPlaced", treat: { id: 5, at: { x: 3, y: 3 } }, by: 2 })).toEqual([{ kind: "announce", text: "sam put a treat down." }]);
+    expect(s.treats.get(5)).toEqual({ x: 3, y: 3 });
+    expect(apply(s, { type: "treatEaten", id: 5, cat: "mochi" })).toEqual([{ kind: "announce", text: "Mochi ate a treat." }]);
+    expect(s.treats.size).toBe(0);
+    apply(s, { type: "yourTreats", left: 1 });
+    expect(s.yourTreats).toBe(1);
+    expect(apply(s, { type: "treatGiven", from: 2, to: 1 })).toEqual([{ kind: "announce", text: "sam gave you a treat." }]);
+    apply(s, { type: "bowls", portions: 0 });
+    expect(s.bowls).toBe(0);
+  });
+
+  it("follows a cat into someone's arms and down again", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    expect(apply(s, { type: "catHeld", cat: "mochi", by: 2 })).toEqual([{ kind: "announce", text: "sam picked up Mochi." }]);
+    expect(s.cats.get("mochi")).toMatchObject({ heldBy: 2, pose: "held" });
+    expect(apply(s, { type: "catHeld", cat: "mochi", by: null })).toEqual([{ kind: "announce", text: "Mochi got down." }]);
+    expect(s.cats.get("mochi")?.heldBy).toBeNull();
+  });
+
+  it("knows what's knocked over, and who stood it back up", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [{ id: 7, kind: "plant", x: 1, y: 1, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false }];
+    const s = fromWelcome(w, 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    expect(apply(s, { type: "furnitureToppled", id: 7, toppled: true, by: null })).toEqual([{ kind: "announce", text: "The plant got knocked over." }]);
+    expect(s.room.furniture[0].toppled).toBe(true);
+    expect(apply(s, { type: "furnitureToppled", id: 7, toppled: false, by: 2 })).toEqual([{ kind: "announce", text: "sam stood the plant back up." }]);
+    expect(s.room.furniture[0].toppled).toBe(false);
+  });
+
+  it("says when a cat scratches you, eats from your hand or plays", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    expect(apply(s, { type: "catReacted", cat: "mochi", reaction: { kind: "scratch", by: 1 } })).toEqual([{ kind: "announce", text: "Mochi scratches you!" }]);
+    expect(apply(s, { type: "catReacted", cat: "mochi", reaction: { kind: "eat", from: 1 } })).toEqual([{ kind: "announce", text: "Mochi eats from your hand." }]);
+    expect(apply(s, { type: "catReacted", cat: "mochi", reaction: { kind: "play", with: 1 } })).toEqual([{ kind: "announce", text: "Mochi plays with you." }]);
   });
 
   it("seats someone and stands them up when they walk", () => {
@@ -127,7 +173,7 @@ describe("the client's copy of the café", () => {
     const s = fromWelcome(welcome(), 10_000);
     s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
     apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000);
-    s.held.set(2, { id: 9, kind: "lamp", x: 0, y: 0, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false });
+    s.held.set(2, { id: 9, kind: "lamp", x: 0, y: 0, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false });
     apply(s, { type: "personLeft", id: 2 });
     expect(s.emotes.has(2)).toBe(false);
     expect(s.held.has(2)).toBe(false);

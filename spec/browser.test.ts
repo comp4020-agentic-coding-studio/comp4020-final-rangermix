@@ -86,25 +86,26 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.waitForFunction(() => document.getElementById("room")?.style.width === "960px");
     await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("room");
-    await page.keyboard.press("Shift+Tab");
+    // Back past the panel's own buttons (putting a treat down) to Leave.
+    const passed: string[] = [];
+    for (let i = 0; i < 4 && (await focused(page)) !== "leave"; i++) {
+      await page.keyboard.press("Shift+Tab");
+      passed.push(await page.evaluate(() => document.activeElement?.textContent ?? ""));
+    }
+    expect(passed).toContain("Put a treat down");
     expect(await focused(page)).toBe("leave");
     await page.keyboard.press("Enter");
     await page.locator("#left-cafe").waitFor();
     expect(await focused(page)).toBe("come-back");
   });
 
-  it("opens a cat's actions as a sheet from the bottom on a phone, by touch", async () => {
+  it("opens actions as a sheet from the bottom on a phone, by touch", async () => {
     const { page, frames } = await visit({ width: 390, height: 844 }, true);
     const welcome = frames.find((f) => f.type === "welcome")!;
     const box = (await page.locator("#room").boundingBox())!;
-    // The cat that has stayed still longest, where it is now.
-    const still = new Map<string, { x: number; y: number } | null>(welcome.snapshot.cats.map((c: Frame) => [c.id, c.pose === "walk" ? null : c.at]));
-    for (const f of frames) {
-      if (f.type === "catMoved") still.set(f.cat, null);
-      if (f.type === "catPosed") still.set(f.cat, f.at);
-    }
-    const [, at] = [...still].find(([, t]) => t !== null)!;
-    await page.touchscreen.tap(box.x + (at!.x + 0.5) * (box.width / 12), box.y + (at!.y + 0.5) * (box.height / 10));
+    // A chair stays put, where a cat might wander off just as it's tapped.
+    const chair = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "chair");
+    await page.touchscreen.tap(box.x + (chair.x + 0.5) * (box.width / 12), box.y + (chair.y + 0.5) * (box.height / 10));
     const menu = page.locator(".menu.sheet");
     await menu.waitFor();
     const r = (await menu.boundingBox())!;
@@ -126,49 +127,41 @@ describe("in a browser", { timeout: 30_000 }, () => {
     for (let i = 0; i < 6; i++) await page.keyboard.press(i === 0 ? "ArrowRight" : before === "0px" ? "ArrowRight" : "ArrowLeft");
     await expect.poll(leftOf).not.toBe(before);
     await page.keyboard.press("Escape");
-    // A tapped cat's actions open as a ring, every button on screen and clear
-    // of the bars. Cats wander, so it tries a few times with where they are now.
+    // Whatever the pointer settles on, its actions open as a ring, every button
+    // on screen and clear of the bars. (Cats wander, and a third of the room is
+    // off screen at 3x, so the pointer finds a target rather than a tap
+    // guessing where a cat will be.)
     const ring = page.locator(".menu.ring");
-    let opened = false;
-    for (let attempt = 0; attempt < 5 && !opened; attempt++) {
-      const still = new Map<string, { x: number; y: number } | null>(
-        frames.find((f) => f.type === "welcome")!.snapshot.cats.map((c: Frame) => [c.id, c.pose === "walk" ? null : c.at]),
-      );
-      for (const f of frames) {
-        if (f.type === "catMoved") still.set(f.cat, null);
-        if (f.type === "catPosed") still.set(f.cat, f.at);
-      }
-      const box = (await page.locator("#room").boundingBox())!;
-      const bars = await page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
-      const visible = [...still.values()]
-        .filter((t): t is { x: number; y: number } => t !== null)
-        .map((t) => ({ x: box.x + (t.x + 0.5) * (box.width / 12), y: box.y + (t.y + 0.5) * (box.height / 10) }))
-        .find((p) => p.x > 10 && p.x < 380 && p.y > bars[0] + 10 && p.y < bars[1] - 10);
-      if (!visible) {
-        await page.waitForTimeout(1000);
-        continue;
-      }
-      await page.touchscreen.tap(visible.x, visible.y);
-      opened = await ring.waitFor({ timeout: 2000 }).then(
-        () => true,
-        () => false,
-      );
-      if (!opened) continue;
-      for (const b of await ring.getByRole("menuitem").all()) {
-        const r = (await b.boundingBox())!;
-        expect(r.x).toBeGreaterThanOrEqual(0);
-        expect(r.x + r.width).toBeLessThanOrEqual(390);
-        expect(r.y).toBeGreaterThanOrEqual(bars[0]);
-        expect(r.y + r.height).toBeLessThanOrEqual(bars[1]);
-      }
-      await page.keyboard.press("Escape");
+    await page.locator("#room").focus();
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await ring.waitFor({ timeout: 3000 });
+    const bars = await page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
+    const buttons = await ring.getByRole("menuitem").all();
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const b of buttons) {
+      const r = (await b.boundingBox())!;
+      expect(r.x).toBeGreaterThanOrEqual(0);
+      expect(r.x + r.width).toBeLessThanOrEqual(390);
+      expect(r.y).toBeGreaterThanOrEqual(bars[0]);
+      expect(r.y + r.height).toBeLessThanOrEqual(bars[1]);
     }
-    expect(opened).toBe(true);
+    await page.keyboard.press("Escape");
     await page.reload();
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(true);
     await page.locator("#layout-switch").tap();
     expect(await roomWidth(page)).toBe("384px");
+  });
+
+  it("puts a treat down from the panel, and the other visitor sees it", async () => {
+    const a = await visit({ width: 1920, height: 1080 });
+    const b = await visit({ width: 1920, height: 1080 });
+    const from = b.frames.length;
+    await a.page.getByRole("button", { name: "Put a treat down" }).click();
+    await expect.poll(() => b.frames.slice(from).some((f) => f.type === "treatPlaced")).toBe(true);
+    await expect.poll(() => a.page.locator(".treats").textContent()).toContain("Treats today: 2");
   });
 
   it("shows one visitor's new lamp in the other's café", async () => {

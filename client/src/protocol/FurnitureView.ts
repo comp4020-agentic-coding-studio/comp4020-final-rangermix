@@ -4,4 +4,8 @@ export type FurnitureView = { id: number, kind: string, x: number, y: number, w:
 /**
  * Other pieces can stand on it, as on a rug.
  */
-under: boolean, seats: boolean, };
+under: boolean, seats: boolean, 
+/**
+ * Knocked over by a cat, until someone stands it back up.
+ */
+toppled: boolean, };

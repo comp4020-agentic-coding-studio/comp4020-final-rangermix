@@ -19,6 +19,10 @@ furniture_max = 30            # movable pieces on the floor and in hands
 action_burst = 10.0           # everything else: 10 a second
 action_per_sec = 10.0
 
+treats_per_day = 3            # per visitor, per Canberra day, plus any they're given
+bowl_portions = 3             # what the bowls hold when full
+bowl_refills = [420, 720, 1080]   # minutes after Canberra midnight: 7:00, 12:00, 18:00
+
 trust_levels = [20.0, 50.0, 80.0]   # comes when called; greets you at the door; naps on your lap
 trust_daily_cap = 10.0              # per cat, per person, per Canberra day, times the cat's trust rate
 

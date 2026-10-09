@@ -14,6 +14,7 @@ const piece = (over: Partial<FurnitureView>): FurnitureView => ({
   blocks: true,
   under: false,
   seats: false,
+  toppled: false,
   ...over,
 });
 

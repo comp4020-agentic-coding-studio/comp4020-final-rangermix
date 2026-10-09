@@ -103,8 +103,8 @@ impl World {
         if !self.inside_or_refuse(id, out) {
             return;
         }
-        if self.holding(id).is_some() {
-            return error(out, id, ErrorCode::CantPlace, "Put down what you're carrying first.");
+        if self.holding(id).is_some() || self.holding_cat(id).is_some() {
+            return error(out, id, ErrorCode::HandsFull, "Your arms are full.");
         }
         if let Some(h) = self.held.iter().find(|h| h.piece.id == piece_id) {
             return error(out, id, ErrorCode::Taken, &format!("{} has it.", self.name_of(h.by)));
@@ -147,8 +147,8 @@ impl World {
             return;
         }
         self.reserved.remove(&piece_id);
-        if self.holding(id).is_some() {
-            return error(out, id, ErrorCode::CantPlace, "Put down what you're carrying first.");
+        if self.holding(id).is_some() || self.holding_cat(id).is_some() {
+            return error(out, id, ErrorCode::HandsFull, "Your arms are full.");
         }
         let Some(piece) = self.room.pieces.iter().find(|p| p.id == piece_id).cloned() else {
             return error(out, id, ErrorCode::CantPlace, "That isn't here any more.");
@@ -156,7 +156,9 @@ impl World {
         if let Err(why) = self.can_lift(&piece) {
             return error(out, id, ErrorCode::CantPlace, why);
         }
-        let piece = self.room.lift(piece_id).expect("found above");
+        let mut piece = self.room.lift(piece_id).expect("found above");
+        // Picked up, a knocked-over piece is upright again.
+        piece.toppled = false;
         self.cats_jump_off(now, id, &piece.tiles(), out);
         tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "grab", outcome = "ok", piece = %piece.kind);
         out.push(Out {
@@ -177,8 +179,8 @@ impl World {
         if !self.inside_or_refuse(id, out) {
             return;
         }
-        if self.holding(id).is_some() {
-            return error(out, id, ErrorCode::CantPlace, "Put down what you're carrying first.");
+        if self.holding(id).is_some() || self.holding_cat(id).is_some() {
+            return error(out, id, ErrorCode::HandsFull, "Your arms are full.");
         }
         if !self.room.kinds.get(kind).is_some_and(|k| k.movable) {
             return error(out, id, ErrorCode::CantPlace, "The catalogue doesn't have that.");
@@ -247,8 +249,67 @@ impl World {
                 by: id,
             },
         });
+        // Something new where it stands: the curious cats come to look.
+        self.new_pieces.push((piece.id, Tile { x: piece.x, y: piece.y }, now));
         self.room.put(piece);
         self.save_arrangement();
+    }
+
+    pub(super) fn tidy(&mut self, now: u64, id: u32, piece_id: u32, out: &mut Vec<Out>) {
+        if !self.inside_or_refuse(id, out) {
+            return;
+        }
+        let Some(piece) = self.room.pieces.iter().find(|p| p.id == piece_id).cloned() else {
+            return error(out, id, ErrorCode::CantPlace, "That isn't here any more.");
+        };
+        if !piece.toppled {
+            return error(out, id, ErrorCode::CantPlace, "It's standing already.");
+        }
+        if !self.go_beside(now, id, &piece, Pending::Tidy(piece_id), out) {
+            error(out, id, ErrorCode::BadTile, "You can't get to that from here.");
+        }
+    }
+
+    /// The tidy's walk ended: stand it back up.
+    pub(super) fn stand_up_piece(&mut self, _now: u64, id: u32, piece_id: u32, out: &mut Vec<Out>) {
+        let Some(piece) = self.room.pieces.iter_mut().find(|p| p.id == piece_id && p.toppled) else {
+            return;
+        };
+        piece.toppled = false;
+        let kind = piece.kind.clone();
+        tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "tidy", outcome = "ok", piece = %kind);
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::FurnitureToppled {
+                id: piece_id,
+                toppled: false,
+                by: Some(id),
+            },
+        });
+        self.save_arrangement();
+    }
+
+    /// A cat at a small piece knocks it over, if it's still standing there.
+    pub(super) fn knock_over(&mut self, piece_id: u32, at: Tile, out: &mut Vec<Out>) -> bool {
+        let Some(piece) = self
+            .room
+            .pieces
+            .iter_mut()
+            .find(|p| p.id == piece_id && p.spec.knocks && !p.toppled && p.covers(at))
+        else {
+            return false;
+        };
+        piece.toppled = true;
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::FurnitureToppled {
+                id: piece_id,
+                toppled: true,
+                by: None,
+            },
+        });
+        self.save_arrangement();
+        true
     }
 
     /// Puts back what `id` carries: where it was if that still fits, else the
@@ -312,8 +373,8 @@ impl World {
         if !self.inside_or_refuse(id, out) {
             return;
         }
-        if self.holding(id).is_some() {
-            return error(out, id, ErrorCode::CantPlace, "Put down what you're carrying first.");
+        if self.holding(id).is_some() || self.holding_cat(id).is_some() {
+            return error(out, id, ErrorCode::HandsFull, "Your arms are full.");
         }
         let Some(piece) = self.room.pieces.iter().find(|p| p.id == piece_id).cloned() else {
             return error(out, id, ErrorCode::CantPlace, "That isn't here any more.");
@@ -384,6 +445,7 @@ impl World {
                 kind: h.piece.kind.clone(),
                 x: at.x,
                 y: at.y,
+                toppled: false,
             })
         }));
         serde_json::to_string(&saved).expect("an arrangement serialises")

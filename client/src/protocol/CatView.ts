@@ -3,4 +3,4 @@ import type { Pose } from "./Pose";
 import type { Tile } from "./Tile";
 import type { Walk } from "./Walk";
 
-export type CatView = { id: string, name: string, coat: string, at: Tile, pose: Pose, walk: Walk | null, };
+export type CatView = { id: string, name: string, coat: string, at: Tile, pose: Pose, walk: Walk | null, heldBy: number | null, };

@@ -16,6 +16,25 @@ export function closeMenu(): void {
   open = null;
 }
 
+/** Lays a ring's buttons out round `anchor`, clear of the bars floating over the room. */
+function placeRing(menu: HTMLElement, overlay: HTMLElement, anchor: { left: number; top: number }): void {
+  const buttons = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+  const box = overlay.getBoundingClientRect();
+  const top = document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top;
+  const bottom = document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom;
+  const free = { left: 0, top: top - box.top + 4, right: box.width, bottom: bottom - box.top - 4 };
+  const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, ringRadius(buttons.length, 88), free, 88);
+  buttons.forEach((b, i) => {
+    b.style.left = `${spots[i].x}px`;
+    b.style.top = `${spots[i].y}px`;
+  });
+}
+
+/** The room moved under an open ring: it follows its tile to `anchor`. */
+export function moveRing(anchor: { left: number; top: number }): void {
+  if (open?.classList.contains("ring") && open.parentElement) placeRing(open, open.parentElement, anchor);
+}
+
 export function openMenu(
   overlay: HTMLElement,
   anchor: { left: number; top: number },
@@ -69,17 +88,7 @@ export function openMenu(
     menu.classList.add("ring");
     heading.className = "sr-only";
     menu.querySelector(".note")?.classList.add("sr-only");
-    const buttons = [...menu.querySelectorAll<HTMLButtonElement>("button")];
-    // Clear of the bars floating over the room, top and bottom.
-    const box = overlay.getBoundingClientRect();
-    const top = document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top;
-    const bottom = document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom;
-    const free = { left: 0, top: top - box.top + 4, right: box.width, bottom: bottom - box.top - 4 };
-    const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, ringRadius(buttons.length, 88), free, 88);
-    buttons.forEach((b, i) => {
-      b.style.left = `${spots[i].x}px`;
-      b.style.top = `${spots[i].y}px`;
-    });
+    placeRing(menu, overlay, anchor);
   } else if (matchMedia("(max-width: 700px)").matches) {
     menu.classList.add("sheet");
   } else {

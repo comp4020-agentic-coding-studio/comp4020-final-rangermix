@@ -18,11 +18,14 @@ function state() {
           { id: 3, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false },
         ],
         cats: [
-          { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 6, y: 5 }, pose: "sit", walk: null },
-          { id: "tora", name: "Tora", coat: "orange_tabby", at: { x: 1, y: 8 }, pose: "idle", walk: null },
+          { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 6, y: 5 }, pose: "sit", walk: null, heldBy: null },
+          { id: "tora", name: "Tora", coat: "orange_tabby", at: { x: 1, y: 8 }, pose: "idle", walk: null, heldBy: null },
         ],
         yourTrust: [],
         held: [],
+        treats: [],
+        yourTreats: 3,
+        bowls: 3,
       },
     },
     0,
@@ -44,8 +47,8 @@ describe("pointing at things", () => {
   it("finds a piece that moves, after any cat on it, and steps to it too", () => {
     const s = state();
     s.room.furniture = [
-      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true },
-      { id: 3, kind: "bowls", x: 0, y: 5, w: 3, h: 1, movable: false, blocks: true, under: false, seats: false },
+      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false },
+      { id: 3, kind: "bowls", x: 0, y: 5, w: 3, h: 1, movable: false, blocks: true, under: false, seats: false, toppled: false },
     ];
     expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([
       { kind: "cat", id: "mochi", tile: { x: 6, y: 5 } },

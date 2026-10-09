@@ -3,6 +3,15 @@ import type { CatView } from "./CatView";
 import type { HeldView } from "./HeldView";
 import type { PersonView } from "./PersonView";
 import type { RoomView } from "./RoomView";
+import type { TreatView } from "./TreatView";
 import type { TrustView } from "./TrustView";
 
-export type Snapshot = { room: RoomView, people: Array<PersonView>, cats: Array<CatView>, yourTrust: Array<TrustView>, held: Array<HeldView>, };
+export type Snapshot = { room: RoomView, people: Array<PersonView>, cats: Array<CatView>, yourTrust: Array<TrustView>, held: Array<HeldView>, treats: Array<TreatView>, 
+/**
+ * Treats you have left today.
+ */
+yourTreats: number, 
+/**
+ * Portions in the bowls.
+ */
+bowls: number, };

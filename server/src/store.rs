@@ -15,7 +15,8 @@ pub struct Store {
 }
 
 /// Numbered migrations; `PRAGMA user_version` records how many have run.
-const MIGRATIONS: &[&str] = &["CREATE TABLE users (
+const MIGRATIONS: &[&str] = &[
+    "CREATE TABLE users (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         name_key TEXT NOT NULL UNIQUE,
@@ -46,7 +47,23 @@ const MIGRATIONS: &[&str] = &["CREATE TABLE users (
     CREATE TABLE world (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
-    );"];
+    );",
+    // Phase 3: a cat's bans, kept until they expire, and each visitor's
+    // treats for their latest Canberra day.
+    "CREATE TABLE bans (
+        cat_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        until INTEGER NOT NULL,
+        PRIMARY KEY (cat_id, user_id, action)
+    );
+    CREATE TABLE treats (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        used INTEGER NOT NULL,
+        received INTEGER NOT NULL
+    );",
+];
 
 impl Store {
     /// Opens (or creates) the database, runs any new migrations, and starts
@@ -278,6 +295,68 @@ pub fn get_world(conn: &Connection, key: &str) -> rusqlite::Result<Option<String
         .optional()
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BanRow {
+    pub cat_id: String,
+    pub user_id: i64,
+    pub action: String,
+    pub until: u64,
+}
+
+/// Bans still in force at `now`; expired ones are cleared out on the way.
+pub fn live_bans(conn: &Connection, now: u64) -> rusqlite::Result<Vec<BanRow>> {
+    conn.execute("DELETE FROM bans WHERE until <= ?1", params![now as i64])?;
+    let mut stmt = conn.prepare("SELECT cat_id, user_id, action, until FROM bans")?;
+    let rows = stmt.query_map([], |r| {
+        Ok(BanRow {
+            cat_id: r.get(0)?,
+            user_id: r.get(1)?,
+            action: r.get(2)?,
+            until: r.get::<_, i64>(3)? as u64,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn put_ban(conn: &Connection, ban: &BanRow) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT INTO bans (cat_id, user_id, action, until) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (cat_id, user_id, action) DO UPDATE SET until = excluded.until",
+        params![ban.cat_id, ban.user_id, ban.action, ban.until as i64],
+    )?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreatRow {
+    pub user_id: i64,
+    pub day: String,
+    pub used: u32,
+    pub received: u32,
+}
+
+pub fn all_treats(conn: &Connection) -> rusqlite::Result<Vec<TreatRow>> {
+    let mut stmt = conn.prepare("SELECT user_id, day, used, received FROM treats")?;
+    let rows = stmt.query_map([], |r| {
+        Ok(TreatRow {
+            user_id: r.get(0)?,
+            day: r.get(1)?,
+            used: r.get(2)?,
+            received: r.get(3)?,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn put_treats(conn: &Connection, row: &TreatRow) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT INTO treats (user_id, day, used, received) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (user_id) DO UPDATE SET day = excluded.day, used = excluded.used, received = excluded.received",
+        params![row.user_id, row.day, row.used, row.received],
+    )?;
+    Ok(())
+}
+
 pub fn put_world(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT INTO world (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -372,6 +451,52 @@ mod tests {
         put_world(&c, "saved_at", "1").unwrap();
         put_world(&c, "saved_at", "2").unwrap();
         assert_eq!(get_world(&c, "saved_at").unwrap().as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn bans_last_until_they_expire() {
+        let (_d, c) = db();
+        let id = insert_user(&c, "sam", "p", "r", 0, 0, 1).unwrap().unwrap();
+        let ban = BanRow {
+            cat_id: "mochi".into(),
+            user_id: id,
+            action: "pet".into(),
+            until: 5_000,
+        };
+        put_ban(&c, &ban).unwrap();
+        put_ban(
+            &c,
+            &BanRow {
+                until: 9_000,
+                ..ban.clone()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            live_bans(&c, 1_000).unwrap(),
+            vec![BanRow {
+                until: 9_000,
+                ..ban.clone()
+            }]
+        );
+        assert!(live_bans(&c, 9_000).unwrap().is_empty());
+        let left: i64 = c.query_row("SELECT COUNT(*) FROM bans", [], |r| r.get(0)).unwrap();
+        assert_eq!(left, 0, "expired bans are cleared out");
+    }
+
+    #[test]
+    fn a_visitors_treats_are_kept_for_their_latest_day() {
+        let (_d, c) = db();
+        let id = insert_user(&c, "sam", "p", "r", 0, 0, 1).unwrap().unwrap();
+        let row = TreatRow {
+            user_id: id,
+            day: "2026-10-09".into(),
+            used: 1,
+            received: 0,
+        };
+        put_treats(&c, &row).unwrap();
+        put_treats(&c, &TreatRow { used: 2, ..row.clone() }).unwrap();
+        assert_eq!(all_treats(&c).unwrap(), vec![TreatRow { used: 2, ..row }]);
     }
 
     #[test]

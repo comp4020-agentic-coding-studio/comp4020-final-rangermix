@@ -46,6 +46,12 @@ export interface CafeState {
   emotes: Map<number, { emote: Emote; at: number }>;
   /** What each person is carrying, by who carries it. */
   held: Map<number, FurnitureView>;
+  /** Treats on the floor, by id. */
+  treats: Map<number, { x: number; y: number }>;
+  /** Treats you have left today. */
+  yourTreats: number;
+  /** Portions in the bowls. */
+  bowls: number;
 }
 
 export type Effect =
@@ -81,6 +87,9 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     said: previous?.said ?? [],
     emotes: new Map(),
     held: new Map(s.held.map((h) => [h.by, h.piece])),
+    treats: new Map(s.treats.map((t) => [t.id, t.at])),
+    yourTreats: s.yourTreats,
+    bowls: s.bowls,
   };
 }
 
@@ -116,6 +125,9 @@ const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {
   refuse: (cat) => `${cat} pulls away.`,
   greet: (cat) => `${cat} comes to greet you.`,
   annoyed: (cat) => `${cat} jumps off, annoyed.`,
+  scratch: (cat) => `${cat} scratches you!`,
+  eat: (cat) => `${cat} eats from your hand.`,
+  play: (cat) => `${cat} plays with you.`,
 };
 
 const EMOTE_WORDS: Record<Emote, string> = { wave: "waves", laugh: "laughs", heart: "sends a heart", yawn: "yawns" };
@@ -126,6 +138,10 @@ function reactionTarget(r: Reaction): number {
       return r.at;
     case "greet":
       return r.to;
+    case "eat":
+      return r.from;
+    case "play":
+      return r.with;
     default:
       return r.by;
   }
@@ -229,6 +245,37 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     case "emoted":
       state.emotes.set(msg.from, { emote: msg.emote, at: now });
       return msg.from === state.you ? [] : [{ kind: "announce", text: `${name(msg.from)} ${EMOTE_WORDS[msg.emote]}.` }];
+    case "treatPlaced":
+      state.treats.set(msg.treat.id, msg.treat.at);
+      return msg.by === state.you ? [] : [{ kind: "announce", text: `${name(msg.by)} put a treat down.` }];
+    case "treatEaten": {
+      state.treats.delete(msg.id);
+      const cat = state.cats.get(msg.cat)?.name ?? "A cat";
+      return [{ kind: "announce", text: `${cat} ate a treat.` }];
+    }
+    case "yourTreats":
+      state.yourTreats = msg.left;
+      return [];
+    case "treatGiven":
+      return msg.to === state.you ? [{ kind: "announce", text: `${name(msg.from)} gave you a treat.` }] : [];
+    case "bowls":
+      state.bowls = msg.portions;
+      return [];
+    case "catHeld": {
+      const c = state.cats.get(msg.cat);
+      if (!c) return [];
+      state.cats.set(msg.cat, { ...c, heldBy: msg.by, pose: msg.by === null ? c.pose : "held", walk: null });
+      if (msg.by === null) return [{ kind: "announce", text: `${c.name} got down.` }];
+      return [{ kind: "announce", text: msg.by === state.you ? `You're holding ${c.name}.` : `${name(msg.by)} picked up ${c.name}.` }];
+    }
+    case "furnitureToppled": {
+      const piece = state.room.furniture.find((f) => f.id === msg.id);
+      if (!piece) return [];
+      piece.toppled = msg.toppled;
+      const what = pieceName(piece.kind);
+      if (msg.toppled) return [{ kind: "announce", text: `The ${what} got knocked over.` }];
+      return msg.by === state.you || msg.by === null ? [] : [{ kind: "announce", text: `${name(msg.by)} stood the ${what} back up.` }];
+    }
     case "stillThere":
       return [{ kind: "stillThere", secs: msg.secs }];
     case "nudgeOver":
