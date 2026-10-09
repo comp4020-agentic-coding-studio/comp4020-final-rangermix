@@ -94,6 +94,8 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .menu { position: absolute; min-width: 11rem; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem; display: grid; gap: 0.35rem; box-shadow: 0 10px 30px rgb(0 0 0 / 0.2); z-index: 2; }
 .menu h2 { font-size: 1rem; margin: 0 0 0.25rem; }
 .menu .note { color: var(--muted); font-size: 0.85rem; margin: 0 0 0.25rem; }
+.still-there { position: fixed; left: 50%; top: 20%; transform: translateX(-50%); z-index: 5; background: var(--card); border: 2px solid var(--accent); border-radius: 16px; padding: 1rem 1.25rem; display: grid; gap: 0.75rem; justify-items: center; box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); width: min(22rem, calc(100vw - 32px)); text-align: center; }
+.still-there p { margin: 0; font-weight: 600; }
 .toast { position: absolute; left: 50%; bottom: 0.75rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.9rem; pointer-events: none; }
 
 /* The café on a phone, layout A: the whole room on top, full width, the rest below */

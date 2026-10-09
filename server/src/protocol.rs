@@ -177,6 +177,12 @@ pub enum ClientMsg {
         to: Tile,
     },
     Leave {},
+    /// The tab was hidden or shown again (ADR 0009's quiet signals).
+    Presence {
+        hidden: bool,
+    },
+    /// Someone touched the page: still here. Also answers "still there?".
+    Here {},
 }
 
 /// What the server tells clients: a snapshot on joining, then events in order.
@@ -230,6 +236,13 @@ pub enum ServerMsg {
     YourTrust {
         trust: TrustView,
     },
+    /// Sent to you alone: you've gone quiet while someone waits at the
+    /// window; answer within `secs` seconds or your seat goes to them.
+    StillThere {
+        secs: u32,
+    },
+    /// Sent to you alone: the "still there?" is over, answered or not needed.
+    NudgeOver {},
     /// A piece of furniture now has its top-left at `at`; `by` moved it.
     FurnitureMoved {
         id: u32,

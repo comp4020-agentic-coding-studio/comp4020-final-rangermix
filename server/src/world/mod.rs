@@ -5,6 +5,7 @@
 mod cat_life;
 mod furniture;
 mod people;
+mod quiet;
 
 use crate::cats::Saved;
 use crate::content::Content;
@@ -58,6 +59,13 @@ struct Person {
     joined: u64,
     away_since: Option<u64>,
     pending: Option<Pending>,
+    /// When they last sent anything but "my tab is hidden" (ADR 0009).
+    last_input: u64,
+    hidden_since: Option<u64>,
+    /// When they were asked "still there?", until they answer.
+    nudged: Option<u64>,
+    /// Walking out after an unanswered nudge; their seat is already free.
+    leaving: bool,
 }
 
 /// Something a person asked for that happens when their walk ends.
@@ -133,14 +141,22 @@ impl World {
         match input {
             Input::Join { id, name, look } => self.join(now, id, name, look, &mut out),
             Input::Drop { id } => self.drop_connection(now, id),
-            Input::Msg { id, msg } => match msg {
-                ClientMsg::WalkTo { tile } => self.walk_to(now, id, tile, &mut out),
-                ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
-                ClientMsg::Pet { cat } => self.pet(now, id, &cat, &mut out),
-                ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
-                ClientMsg::MoveFurniture { id: piece, to } => self.move_furniture(id, piece, to, &mut out),
-                ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
-            },
+            Input::Msg { id, msg } => {
+                // Someone walking out after an unanswered nudge is on their way.
+                if self.person(id).is_none_or(|p| p.leaving) {
+                    return out;
+                }
+                self.heard_from(now, id, &msg, &mut out);
+                match msg {
+                    ClientMsg::WalkTo { tile } => self.walk_to(now, id, tile, &mut out),
+                    ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
+                    ClientMsg::Pet { cat } => self.pet(now, id, &cat, &mut out),
+                    ClientMsg::Call { cat } => self.call(now, id, &cat, &mut out),
+                    ClientMsg::MoveFurniture { id: piece, to } => self.move_furniture(id, piece, to, &mut out),
+                    ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
+                    ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
+                }
+            }
         }
         out
     }
@@ -153,6 +169,7 @@ impl World {
         for (id, then) in self.people_tick(now, &mut out) {
             self.arrived_with(now, id, then, &mut out);
         }
+        self.quiet_tick(now, &mut out);
         self.cats_tick(now, dt, &mut out);
         if now.saturating_sub(self.last_save) >= self.tuning.save_every_secs * 1000 {
             self.save(now);

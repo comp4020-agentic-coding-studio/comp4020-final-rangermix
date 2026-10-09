@@ -4,7 +4,7 @@ import { Connection } from "./net";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { ClientMsg } from "./protocol/ClientMsg";
 import type { ServerMsg } from "./protocol/ServerMsg";
-import { type CafeState, type Effect, afterWelcome, apply, fromWelcome } from "./state";
+import { type CafeState, type Effect, afterWelcome, apply, fromWelcome, shouldPing } from "./state";
 
 // Which server build this tab last reloaded for. Storage can be missing or
 // refuse (a private window); then the tab simply doesn't reload.
@@ -44,6 +44,11 @@ export interface CafeHooks {
   onError?(effect: Extract<Effect, { kind: "error" }>): void;
   /** The server runs a different build from this tab, and a reload didn't fix it. */
   onOutdated?(): void;
+  /** "Still there?": someone waits for a seat and you've gone quiet (ADR 0009). */
+  onStillThere?(secs: number): void;
+  onNudgeOver?(): void;
+  /** You didn't answer, and walked out so someone waiting could come in. */
+  onWalkedOut?(): void;
 }
 
 /** The live café: one connection, the state it keeps up to date, and who's listening. */
@@ -53,6 +58,7 @@ export class Cafe {
   private readonly connection: Connection;
   private replaced = false;
   private outdated = false;
+  private lastPing: number | null = null;
 
   constructor(
     readonly me: ApiMe,
@@ -79,6 +85,19 @@ export class Cafe {
   leave(): void {
     this.send({ type: "leave" });
     window.setTimeout(() => this.connection.stop(), 100);
+  }
+
+  /** Someone touched the page: tells the café, at most every 30 seconds. */
+  touched(localNow = Date.now()): void {
+    if (!shouldPing(this.lastPing, localNow) || !this.connection.isOpen()) return;
+    this.lastPing = localNow;
+    this.send({ type: "here" });
+  }
+
+  /** Answers "still there?" at once. */
+  here(): void {
+    this.lastPing = Date.now();
+    this.send({ type: "here" });
   }
 
   onChange(listener: () => void): () => void {
@@ -109,6 +128,7 @@ export class Cafe {
         this.hooks.onOutdated?.();
       }
       this.state = fromWelcome(msg);
+      if (document.hidden) this.send({ type: "presence", hidden: true });
     } else if (this.state) {
       for (const effect of apply(this.state, msg)) this.handle(effect);
     }
@@ -127,6 +147,16 @@ export class Cafe {
       case "error":
         announce(effect.detail);
         this.hooks.onError?.(effect);
+        break;
+      case "stillThere":
+        this.hooks.onStillThere?.(effect.secs);
+        break;
+      case "nudgeOver":
+        this.hooks.onNudgeOver?.();
+        break;
+      case "youLeft":
+        this.connection.stop();
+        this.hooks.onWalkedOut?.();
         break;
     }
   }

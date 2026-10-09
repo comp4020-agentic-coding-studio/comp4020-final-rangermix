@@ -46,7 +46,32 @@ function enter(me: ApiMe): void {
       $("refresh").onclick = () => location.reload();
       announce("The café was updated. Refresh to get the new version.");
     },
+    onStillThere: () => {
+      $("still-there").hidden = false;
+      $("im-here").focus();
+      announce("Still there? Someone's waiting for a seat.");
+    },
+    onNudgeOver: () => hideStillThere(),
+    onWalkedOut: () => {
+      hideStillThere();
+      stop();
+      showLeft("You'd gone quiet while someone was waiting, so your seat went to them. The cats will remember you.");
+    },
   });
+  const hideStillThere = () => {
+    if ($("still-there").hidden) return;
+    $("still-there").hidden = true;
+    canvas.focus();
+  };
+  $("im-here").onclick = () => {
+    cafe.here();
+    hideStillThere();
+  };
+  const touched = () => cafe.touched();
+  const visibility = () => cafe.send({ type: "presence", hidden: document.hidden });
+  document.addEventListener("pointerdown", touched);
+  document.addEventListener("keydown", touched);
+  document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
   const bubbles = new Bubbles(overlay, stage);
   const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"));
@@ -142,14 +167,21 @@ function enter(me: ApiMe): void {
     unsubscribe();
     stage.stop();
     closeMenu();
+    document.removeEventListener("pointerdown", touched);
+    document.removeEventListener("keydown", touched);
+    document.removeEventListener("visibilitychange", visibility);
+  }
+  function showLeft(text: string): void {
+    $("cafe").hidden = true;
+    $("left-text").textContent = text;
+    $("left-cafe").hidden = false;
+    $<HTMLButtonElement>("come-back").focus();
+    $("come-back").onclick = () => enter(me);
   }
   $("leave").onclick = () => {
     cafe.leave();
     stop();
-    $("cafe").hidden = true;
-    $("left-cafe").hidden = false;
-    $<HTMLButtonElement>("come-back").focus();
-    $("come-back").onclick = () => enter(me);
+    showLeft("You've left the café. The cats will remember you.");
   };
   cafe.start();
   stage.start();

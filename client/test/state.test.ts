@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
-import { afterWelcome, apply, fromWelcome, needsReload, pruneBubbles } from "../src/state";
+import { afterWelcome, apply, fromWelcome, needsReload, pruneBubbles, shouldPing } from "../src/state";
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 
@@ -89,6 +89,19 @@ describe("the client's copy of the café", () => {
     expect(needsReload("a", "b", null)).toBe(true);
     expect(needsReload("a", "b", "a")).toBe(false);
     expect(needsReload("c", "b", "a")).toBe(true);
+  });
+
+  it("passes on 'still there?', its end, and your own walk-out", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    expect(apply(s, { type: "stillThere", secs: 60 })).toEqual([{ kind: "stillThere", secs: 60 }]);
+    expect(apply(s, { type: "nudgeOver" })).toEqual([{ kind: "nudgeOver" }]);
+    expect(apply(s, { type: "personLeft", id: 1 })).toEqual([{ kind: "youLeft" }]);
+  });
+
+  it("says 'still here' at most every 30 seconds", () => {
+    expect(shouldPing(null, 1_000)).toBe(true);
+    expect(shouldPing(1_000, 30_999)).toBe(false);
+    expect(shouldPing(1_000, 31_000)).toBe(true);
   });
 
   it("asks you to refresh when a reload didn't bring the new client, or can't be noted", () => {

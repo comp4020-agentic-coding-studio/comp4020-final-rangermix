@@ -8,6 +8,9 @@ use std::path::Path;
 pub struct Tuning {
     pub cap: usize,
     pub grace_secs: u64,
+    pub quiet_hidden_secs: u64,
+    pub quiet_idle_secs: u64,
+    pub nudge_answer_secs: u64,
     pub bubble_max_chars: usize,
     pub bubble_base_ms: u32,
     pub bubble_per_char_ms: u32,

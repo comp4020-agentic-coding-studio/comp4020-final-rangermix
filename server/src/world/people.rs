@@ -17,7 +17,7 @@ pub(super) fn person_view(p: &Person, now: u64) -> PersonView {
 
 impl World {
     pub(super) fn inside(&self) -> usize {
-        self.people.iter().filter(|p| p.place == Place::Inside).count()
+        self.people.iter().filter(|p| p.place == Place::Inside && !p.leaving).count()
     }
 
     pub(super) fn person(&self, id: u32) -> Option<&Person> {
@@ -55,6 +55,10 @@ impl World {
                 joined: now,
                 away_since: None,
                 pending: None,
+                last_input: now,
+                hidden_since: None,
+                nudged: None,
+                leaving: false,
             });
             tracing::info!(target: "action", uid = id, who = %name, what = "arrive", place = ?place);
             let person = person_view(self.person(id).expect("just added"), now);
@@ -103,7 +107,7 @@ impl World {
     }
 
     /// While seats are free, the first in line at the window walks in.
-    fn promote(&mut self, now: u64, out: &mut Vec<Out>) {
+    pub(super) fn promote(&mut self, now: u64, out: &mut Vec<Out>) {
         while self.inside() < self.tuning.cap {
             let Some(i) = self
                 .people
@@ -203,7 +207,7 @@ impl World {
         true
     }
 
-    fn start_walk(&mut self, now: u64, id: u32, from: Tile, path: Vec<Tile>, then: Option<Pending>, out: &mut Vec<Out>) {
+    pub(super) fn start_walk(&mut self, now: u64, id: u32, from: Tile, path: Vec<Tile>, then: Option<Pending>, out: &mut Vec<Out>) {
         let walk = Walk {
             path,
             start: now,
@@ -281,6 +285,10 @@ impl World {
             .collect();
         for id in expired {
             self.remove(now, id, "timed out", out);
+        }
+        let out_the_door: Vec<u32> = self.people.iter().filter(|p| p.leaving && p.walk.is_none()).map(|p| p.id).collect();
+        for id in out_the_door {
+            self.remove(now, id, "walked out", out);
         }
         arrived
     }

@@ -3,6 +3,9 @@
 
 cap = 6                       # people inside
 grace_secs = 30               # seat kept after a dropped connection
+quiet_hidden_secs = 120       # gone quiet: tab hidden this long (ADR 0009)
+quiet_idle_secs = 600         # or no input this long
+nudge_answer_secs = 60        # time to answer "still there?"
 
 bubble_max_chars = 100
 bubble_base_ms = 3000         # a bubble shows for base + per-char, at most max

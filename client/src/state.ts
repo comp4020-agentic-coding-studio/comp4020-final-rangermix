@@ -44,6 +44,9 @@ export interface CafeState {
 
 export type Effect =
   | { kind: "replaced" }
+  | { kind: "stillThere"; secs: number }
+  | { kind: "nudgeOver" }
+  | { kind: "youLeft" }
   | { kind: "error"; code: ErrorCode; detail: string }
   | { kind: "announce"; text: string };
 
@@ -138,6 +141,8 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       return [{ kind: "announce", text: `${msg.person.name} ${where}` }];
     }
     case "personLeft": {
+      // Only a walk-out after an unanswered "still there?" tells you that you left.
+      if (msg.id === state.you) return [{ kind: "youLeft" }];
       const who = name(msg.id);
       state.people.delete(msg.id);
       return [{ kind: "announce", text: `${who} left.` }];
@@ -186,9 +191,20 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       if (msg.by === state.you) return [];
       return [{ kind: "announce", text: `${name(msg.by)} moved the ${pieceName(piece.kind)}.` }];
     }
+    case "stillThere":
+      return [{ kind: "stillThere", secs: msg.secs }];
+    case "nudgeOver":
+      return [{ kind: "nudgeOver" }];
     case "error":
       return [{ kind: "error", code: msg.code, detail: msg.detail }];
   }
+}
+
+const PING_EVERY_MS = 30_000;
+
+/** Whether touching the page now should tell the café you're still here (ADR 0009). */
+export function shouldPing(lastPing: number | null, now: number): boolean {
+  return lastPing === null || now - lastPing >= PING_EVERY_MS;
 }
 
 /** Drops bubbles whose time is up; "said this visit" keeps them. */
