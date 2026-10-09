@@ -13,6 +13,8 @@ export class Stage {
   readonly pointer: Pointer = { tile: null, visible: false, hover: null, ghost: null };
   /** Run after each frame is drawn (bubbles follow the people they belong to). */
   readonly frameHooks: (() => void)[] = [];
+  /** Run when the room is refitted or panned: anything placed over it is stale. */
+  readonly panHooks: (() => void)[] = [];
   scale = 1;
   layout: Layout = "a";
   private frame = 0;
@@ -79,6 +81,7 @@ export class Stage {
     this.canvas.height = h * TILE;
     this.canvas.style.width = `${w * TILE * this.scale}px`;
     this.canvas.style.height = `${h * TILE * this.scale}px`;
+    for (const hook of this.panHooks) hook();
   }
 
   private paint(): void {
@@ -90,17 +93,26 @@ export class Stage {
     if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, canberraHour());
   }
 
-  /** Keeps your avatar in the middle of the screen in layout B. */
+  /**
+   * Keeps your avatar in the middle of the screen in layout B, or the
+   * keyboard's pointer while it's out, so what Enter acts on is in view.
+   */
   private pan(state: NonNullable<Cafe["state"]>): void {
     const me = state.people.get(state.you);
-    const spot = me ? positionAt(me.walk, me.at, serverNow(state)) : { x: state.room.width / 2, y: state.room.height / 2 };
+    const pointer = this.pointer.visible ? this.pointer.tile : null;
+    const spot = pointer ?? (me ? positionAt(me.walk, me.at, serverNow(state)) : { x: state.room.width / 2, y: state.room.height / 2 });
     const px = TILE * this.scale;
     const offset = panOffset(
       { x: (spot.x + 0.5) * px, y: (spot.y + 0.5) * px },
       { w: this.box.clientWidth, h: this.box.clientHeight },
       { w: state.room.width * px, h: state.room.height * px },
     );
-    this.canvas.style.left = `${-offset.x}px`;
-    this.canvas.style.top = `${-offset.y}px`;
+    const left = `${-offset.x}px`;
+    const top = `${-offset.y}px`;
+    if (left !== this.canvas.style.left || top !== this.canvas.style.top) {
+      this.canvas.style.left = left;
+      this.canvas.style.top = top;
+      for (const hook of this.panHooks) hook();
+    }
   }
 }

@@ -157,6 +157,8 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       if (msg.id === state.you) return [{ kind: "youLeft" }];
       const who = name(msg.id);
       state.people.delete(msg.id);
+      state.emotes.delete(msg.id);
+      state.held.delete(msg.id);
       return [{ kind: "announce", text: `${who} left.` }];
     }
     case "personPlaced": {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseLayout, panOffset, ringPositions } from "../src/layout";
+import { chooseLayout, panOffset, ringPositions, ringRadius } from "../src/layout";
 
 describe("phone layout B", () => {
   it("is only for a phone, and only when chosen", () => {
@@ -17,6 +17,14 @@ describe("phone layout B", () => {
   it("stops at the room's edges", () => {
     expect(panOffset({ x: 10, y: 10 }, { w: 390, h: 300 }, { w: 576, h: 480 })).toEqual({ x: 0, y: 0 });
     expect(panOffset({ x: 570, y: 470 }, { w: 390, h: 300 }, { w: 576, h: 480 })).toEqual({ x: 186, y: 180 });
+  });
+
+  it("widens the ring so its buttons never overlap", () => {
+    for (const n of [1, 2, 3, 4, 5, 6, 8]) {
+      const r = ringRadius(n, 88);
+      expect(r).toBeGreaterThanOrEqual(72);
+      if (n > 1) expect(2 * r * Math.sin(Math.PI / n)).toBeGreaterThanOrEqual(88 + 8);
+    }
   });
 
   it("puts a ring of actions round what you tapped, on screen", () => {

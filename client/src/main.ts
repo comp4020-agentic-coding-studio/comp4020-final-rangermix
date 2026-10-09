@@ -114,6 +114,10 @@ function enter(me: ApiMe): void {
     $("drawer-toggle").setAttribute("aria-expanded", String(open));
   };
   phoneQuery.addEventListener("change", applyLayout);
+  // A ring sits round a tile on screen; once the room moves under it, it's stale.
+  stage.panHooks.push(() => {
+    if (ringLayout()) closeMenu();
+  });
   applyLayout();
   /** What you're carrying, if anything. */
   const carrying = () => (cafe.state ? (cafe.state.held.get(cafe.state.you) ?? null) : null);
@@ -160,8 +164,10 @@ function enter(me: ApiMe): void {
       if (held) {
         const what = pieceName(held.kind);
         $("carrying-text").textContent = `Carrying the ${what}. Choose where it goes.`;
-        // Arrows move on from the piece's old place, not from where you stand.
+        // Arrows move on from the piece's old place, not from where you stand;
+        // a keyboard user sees the pointer there straight away.
         stage.pointer.tile = { x: held.x, y: held.y };
+        if (document.activeElement === canvas) stage.pointer.visible = true;
         announce(`You're carrying the ${what}. Choose where it goes, or press Escape to put it back.`);
       }
     }

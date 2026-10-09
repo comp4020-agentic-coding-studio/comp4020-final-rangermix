@@ -137,6 +137,8 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
   // Where the mouse is, for the preview of something being placed.
   const onMove = (e: PointerEvent) => {
     pointer.hover = stage.cssToTile(e.clientX, e.clientY);
+    // The mouse is in use: the keyboard's pointer steps aside for it.
+    if (e.pointerType === "mouse") pointer.visible = false;
   };
   const onLeave = () => {
     pointer.hover = null;

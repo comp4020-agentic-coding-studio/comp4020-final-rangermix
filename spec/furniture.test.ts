@@ -38,12 +38,18 @@ function besideMe(v: Visitor): { x: number; y: number } {
     room.walkway.some((w: Msg) => w.x === x && w.y === y) ||
     v.messages.some((m) => (m.type === "furniturePlaced" || m.type === "furnitureHeld") && m.piece.x === x && m.piece.y === y) ||
     people(v).some((p) => p.x === x && p.y === y);
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [0, -1]]) {
-    const x = me.x + dx;
-    const y = me.y + dy;
-    if (y >= 1 && room.tiles[y]?.[x] === "." && !taken(x, y)) return { x, y };
+  // Nearest first: beside me if anything is free there, else a step or two away.
+  for (let reach = 1; reach <= 3; reach++) {
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) continue;
+        const x = me.x + dx;
+        const y = me.y + dy;
+        if (y >= 1 && room.tiles[y]?.[x] === "." && !taken(x, y)) return { x, y };
+      }
+    }
   }
-  throw new Error("nowhere free beside me");
+  throw new Error("nowhere free near me");
 }
 
 describe("rearranging the café", () => {
@@ -67,11 +73,15 @@ describe("rearranging the café", () => {
     await a.next((m) => m.type === "furnitureHeld");
     const to = besideMe(a);
     const from = b.messages.length;
-    const sent = Date.now();
     a.send({ type: "place", to });
+    // Placing may mean a step or two first; what's timed is the other page
+    // seeing it once it's down.
+    const mine = await a.next((m) => m.type === "furniturePlaced", 3000, a.messages.length);
+    const down = Date.now();
     const placed = await b.next((m) => m.type === "furniturePlaced", 1000, from);
     expect(placed).toMatchObject({ by: a.welcome.you, piece: { kind: "lamp", x: to.x, y: to.y } });
-    expect(Date.now() - sent).toBeLessThan(1000);
+    expect(placed.piece.id).toBe(mine.piece.id);
+    expect(Date.now() - down).toBeLessThan(1000);
     // Tidy up: carry it off again.
     a.send({ type: "grab", id: placed.piece.id });
     await a.next((m) => m.type === "furnitureHeld" && m.piece.id === placed.piece.id);

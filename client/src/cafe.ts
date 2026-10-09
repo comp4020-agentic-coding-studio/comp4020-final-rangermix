@@ -59,6 +59,7 @@ export class Cafe {
   private replaced = false;
   private outdated = false;
   private lastPing: number | null = null;
+  private leftOnPurpose = false;
 
   constructor(
     readonly me: ApiMe,
@@ -87,6 +88,8 @@ export class Cafe {
 
   /** Walks out at once, freeing the seat (design.md, "People"). */
   leave(): void {
+    // The café's word that you left is your own doing, not a walk-out.
+    this.leftOnPurpose = true;
     this.send({ type: "leave" });
     window.setTimeout(() => this.connection.stop(), 100);
   }
@@ -160,7 +163,7 @@ export class Cafe {
         break;
       case "youLeft":
         this.connection.stop();
-        this.hooks.onWalkedOut?.();
+        if (!this.leftOnPurpose) this.hooks.onWalkedOut?.();
         break;
     }
   }

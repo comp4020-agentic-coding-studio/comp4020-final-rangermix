@@ -44,6 +44,12 @@ export function panOffset(you: { x: number; y: number }, view: { w: number; h: n
   return { x: axis(you.x, view.w, room.w), y: axis(you.y, view.h, room.h) };
 }
 
+/** A ring wide enough that `n` buttons `size` pixels across never touch. */
+export function ringRadius(n: number, size: number): number {
+  const gap = 8;
+  return n < 2 ? 72 : Math.max(72, Math.ceil((size + gap) / (2 * Math.sin(Math.PI / n))));
+}
+
 /**
  * Centres for `n` buttons of `size` pixels on a circle of `radius` round
  * `centre`, starting at the top; the whole ring moves to stay within `free`,

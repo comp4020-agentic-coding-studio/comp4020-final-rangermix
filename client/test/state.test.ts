@@ -123,6 +123,16 @@ describe("the client's copy of the café", () => {
     expect(s.emotes.get(1)?.emote).toBe("laugh");
   });
 
+  it("forgets someone's emote and what they carried when they leave", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000);
+    s.held.set(2, { id: 9, kind: "lamp", x: 0, y: 0, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false });
+    apply(s, { type: "personLeft", id: 2 });
+    expect(s.emotes.has(2)).toBe(false);
+    expect(s.held.has(2)).toBe(false);
+  });
+
   it("keeps 'said this visit' across a reconnect's welcome", () => {
     const s = fromWelcome(welcome(), 10_000);
     apply(s, { type: "said", from: 1, text: "before the drop", to: null, ttlMs: 3000 }, 10_000);

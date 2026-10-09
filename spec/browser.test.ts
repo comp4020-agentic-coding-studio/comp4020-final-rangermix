@@ -113,12 +113,57 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await expect.poll(() => menu.getByRole("menuitem").count()).toBeGreaterThan(0);
   });
 
-  it("switches the phone to the bigger room, and remembers it", async () => {
-    const { page } = await visit({ width: 390, height: 844 }, true);
+  it("switches the phone to the bigger room, follows the pointer, opens rings, and remembers it", async () => {
+    const { page, frames } = await visit({ width: 390, height: 844 }, true);
     await page.locator("#layout-switch").tap();
     await page.waitForFunction(() => document.body.classList.contains("layout-b"));
     expect(await roomWidth(page)).toBe("576px");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    // The keyboard's pointer pulls the view along with it.
+    const leftOf = () => page.evaluate(() => document.getElementById("room")?.style.left);
+    await page.locator("#room").focus();
+    const before = await leftOf();
+    for (let i = 0; i < 6; i++) await page.keyboard.press(i === 0 ? "ArrowRight" : before === "0px" ? "ArrowRight" : "ArrowLeft");
+    await expect.poll(leftOf).not.toBe(before);
+    await page.keyboard.press("Escape");
+    // A tapped cat's actions open as a ring, every button on screen and clear
+    // of the bars. Cats wander, so it tries a few times with where they are now.
+    const ring = page.locator(".menu.ring");
+    let opened = false;
+    for (let attempt = 0; attempt < 5 && !opened; attempt++) {
+      const still = new Map<string, { x: number; y: number } | null>(
+        frames.find((f) => f.type === "welcome")!.snapshot.cats.map((c: Frame) => [c.id, c.pose === "walk" ? null : c.at]),
+      );
+      for (const f of frames) {
+        if (f.type === "catMoved") still.set(f.cat, null);
+        if (f.type === "catPosed") still.set(f.cat, f.at);
+      }
+      const box = (await page.locator("#room").boundingBox())!;
+      const bars = await page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
+      const visible = [...still.values()]
+        .filter((t): t is { x: number; y: number } => t !== null)
+        .map((t) => ({ x: box.x + (t.x + 0.5) * (box.width / 12), y: box.y + (t.y + 0.5) * (box.height / 10) }))
+        .find((p) => p.x > 10 && p.x < 380 && p.y > bars[0] + 10 && p.y < bars[1] - 10);
+      if (!visible) {
+        await page.waitForTimeout(1000);
+        continue;
+      }
+      await page.touchscreen.tap(visible.x, visible.y);
+      opened = await ring.waitFor({ timeout: 2000 }).then(
+        () => true,
+        () => false,
+      );
+      if (!opened) continue;
+      for (const b of await ring.getByRole("menuitem").all()) {
+        const r = (await b.boundingBox())!;
+        expect(r.x).toBeGreaterThanOrEqual(0);
+        expect(r.x + r.width).toBeLessThanOrEqual(390);
+        expect(r.y).toBeGreaterThanOrEqual(bars[0]);
+        expect(r.y + r.height).toBeLessThanOrEqual(bars[1]);
+      }
+      await page.keyboard.press("Escape");
+    }
+    expect(opened).toBe(true);
     await page.reload();
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(true);
