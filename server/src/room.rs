@@ -395,14 +395,15 @@ impl Room {
         }
     }
 
+    /// What stands on a tile: a piece on a rug before the rug.
     pub fn piece_at(&self, t: Tile) -> Option<&Piece> {
-        self.pieces.iter().find(|p| p.covers(t))
+        self.pieces.iter().filter(|p| p.covers(t)).min_by_key(|p| p.spec.under)
     }
 
     pub fn walkable(&self, t: Tile, who: Walker) -> bool {
         match self.ground(t) {
             Ground::Door => true,
-            Ground::Floor => who == Walker::Cat || self.piece_at(t).is_none_or(|p| !p.spec.blocks),
+            Ground::Floor => who == Walker::Cat || !self.pieces.iter().any(|p| p.covers(t) && p.spec.blocks),
             _ => false,
         }
     }
@@ -808,6 +809,25 @@ mod tests {
         assert!(r.place(id, t(255, 255)).is_err(), "far past the edge");
         assert!(r.place(id, t(1, 5)).is_err(), "the sofa");
         assert_eq!(r.place(id, t(5, 5)), Ok(()), "a cushion can go on the rug");
+    }
+
+    #[test]
+    fn a_blocking_piece_on_the_rug_still_blocks_and_is_what_stands_there() {
+        let mut r = room();
+        let chair = r.pieces.iter().find(|p| p.kind == "chair").unwrap().id;
+        r.place(chair, t(5, 5)).unwrap();
+        for r in [r.clone(), {
+            let mut fresh = room();
+            fresh.restore(&r.arrangement());
+            fresh
+        }] {
+            assert!(!r.walkable(t(5, 5), Walker::Person), "nobody walks through the chair");
+            assert!(r.walkable(t(5, 5), Walker::Cat));
+            assert_eq!(r.piece_at(t(5, 5)).map(|p| p.kind.as_str()), Some("chair"));
+            assert_eq!(r.piece_at(t(6, 5)).map(|p| p.kind.as_str()), Some("rug"));
+            let path = r.path(t(4, 5), t(6, 5), Walker::Person).unwrap();
+            assert!(!path.contains(&t(5, 5)), "the way goes round it");
+        }
     }
 
     #[test]
