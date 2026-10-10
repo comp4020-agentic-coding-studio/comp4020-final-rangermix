@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleOrder, targetsAt } from "../src/input";
+import { cycleOrder, targetsAt, tileOf } from "../src/input";
 import { fromWelcome } from "../src/state";
 
 function state() {
@@ -65,5 +65,17 @@ describe("pointing at things", () => {
     expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([]);
     expect(targetsAt(s, { x: 9, y: 5 }, 0)).toEqual([{ kind: "person", id: 2, tile: { x: 9, y: 5 } }]);
     expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual([2, "tora"]);
+  });
+
+  it("finds where a target is now, for a Tab cycle made a moment ago", () => {
+    // A cat that walked off since the cycle was made: Tab points where it is
+    // now, not where it was, and a cat picked up since isn't there at all.
+    const s = state();
+    const [mochi] = cycleOrder(s, { x: 5, y: 5 }, 0);
+    s.cats.set("mochi", { ...s.cats.get("mochi")!, at: { x: 2, y: 3 } });
+    expect(tileOf(s, mochi, 0)).toEqual({ x: 2, y: 3 });
+    s.cats.set("mochi", { ...s.cats.get("mochi")!, heldBy: 2, pose: "held" });
+    expect(tileOf(s, mochi, 0)).toBeNull();
+    expect(tileOf(s, { kind: "person", id: 2, tile: { x: 0, y: 0 } }, 0)).toEqual({ x: 9, y: 5 });
   });
 });

@@ -52,6 +52,12 @@ export function cycleOrder(state: CafeState, from: Tile, localNow: number): Targ
   return [...everyone(state, localNow), ...movable(state).map((m) => m.target)].sort((a, b) => distance(a) - distance(b));
 }
 
+/** Where a target is now, or null if it's no longer there to act on. */
+export function tileOf(state: CafeState, t: Target, localNow: number): Tile | null {
+  if (t.kind === "piece") return state.room.furniture.some((f) => f.id === t.id) ? t.tile : null;
+  return everyone(state, localNow).find((e) => e.kind === t.kind && e.id === t.id)?.tile ?? null;
+}
+
 function nameOf(state: CafeState, t: Target): string {
   if (t.kind === "cat") return state.cats.get(t.id)?.name ?? "a cat";
   if (t.kind === "person") return state.people.get(t.id)?.name ?? "someone";
@@ -119,9 +125,15 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
         index = -1;
       }
       if (cycle.length === 0) return;
-      index = (index + (e.shiftKey ? -1 : 1) + cycle.length) % cycle.length;
-      pointer.tile = cycle[index].tile;
-      announce(nameOf(state, cycle[index]));
+      // The cycle was made when Tab was first pressed; things have moved since.
+      for (let tries = 0; tries < cycle.length; tries++) {
+        index = (index + (e.shiftKey ? -1 : 1) + cycle.length) % cycle.length;
+        const now = tileOf(state, cycle[index], Date.now());
+        if (!now) continue;
+        pointer.tile = now;
+        announce(nameOf(state, cycle[index]));
+        return;
+      }
       return;
     }
     if (e.key === "Enter") {

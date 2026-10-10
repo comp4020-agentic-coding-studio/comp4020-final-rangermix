@@ -1,12 +1,13 @@
 import "./style.css";
 import { announce } from "./announce";
 import * as api from "./api";
+import { type ArmsBar, showArms } from "./arms";
 import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
 import { closeMenu, isMenuOpen, moveRing, openMenu } from "./menu";
-import { armsFull, catInArms, menuFor } from "./menus";
+import { catInArms, menuFor } from "./menus";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
 import { chooseLayout, saveLayout, savedLayout } from "./layout";
 import { guessPlace } from "./placing";
@@ -163,6 +164,14 @@ function enter(me: ApiMe): void {
   });
   // The carrying bar (a piece, or a cat, in your arms), and the preview of
   // where a piece would go.
+  const arms: ArmsBar = {
+    carrying: $("carrying"),
+    text: $("carrying-text"),
+    putBack: $("put-back"),
+    putAway: $("put-away"),
+    putDown: $("put-cat-down"),
+    add: $<HTMLButtonElement>("add-furniture"),
+  };
   let wasCarrying: string | null = null;
   stage.frameHooks.push(() => {
     const state = cafe.state;
@@ -171,22 +180,10 @@ function enter(me: ApiMe): void {
     const inArms = held ? `piece ${held.id}` : cat ? `cat ${cat.id}` : null;
     if (inArms !== wasCarrying) {
       wasCarrying = inArms;
-      $("carrying").hidden = !inArms;
+      if (state) showArms(arms, state);
       canvas.classList.toggle("placing", !!held);
-      $("put-back").hidden = !held;
-      $("put-away").hidden = !held;
-      $("put-cat-down").hidden = !cat;
-      // Arms full: nothing more comes from the catalogue until they're free.
-      const add = $<HTMLButtonElement>("add-furniture");
-      add.disabled = state ? armsFull(state) : false;
-      add.title = add.disabled ? "Your arms are full." : "";
-      if (cat) {
-        $("carrying-text").textContent = `Holding ${cat.name}.`;
-        $("put-cat-down").textContent = `Put ${cat.name} down`;
-      }
       if (held) {
         const what = pieceName(held.kind);
-        $("carrying-text").textContent = `Carrying the ${what}. Choose where it goes.`;
         // Arrows move on from the piece's old place, not from where you stand;
         // a keyboard user sees the pointer there straight away.
         stage.pointer.tile = { x: held.x, y: held.y };
