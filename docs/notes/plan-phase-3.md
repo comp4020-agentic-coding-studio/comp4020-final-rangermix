@@ -135,3 +135,43 @@ Where carrying out this plan departed from it, task by task, and why.
   cats busier in phase 3 none was found: the ring is now opened by
   keyboard on whatever the pointer settles on, and the touch check taps a
   chair.
+- **Task 9.** Done with Tasks 2 to 6 (`0a08fca`): design.md records
+  decisions 1 to 9 and the new numbers to tune. No new ADR: the decisions
+  sit inside ADR 0011's data-defined cats and ADR 0012's method.
+- **Task 10, the whole-phase review (2026-10-09 and 10).** Six reviewers by
+  dimension and two skeptics per finding kept 34 findings, 10 major
+  ([reviews/phase-3-findings.md](reviews/phase-3-findings.md)). The session
+  ran out of the course key's weekly budget during triage, with finding 4's
+  fix written but not committed, and the agent briefed with the client's
+  answers ([reviews/phase-3-client-brief.md](reviews/phase-3-client-brief.md))
+  stopped before it had changed anything. The next session (2026-10-10)
+  picked up from the transcript and answered all 34 itself, test first, in
+  seven commits; the findings file's "Answered" table says how. Where it
+  departed from this plan:
+  - Two rules changed, both in design.md: a pass follows the pick-up's bans
+    and anger (decision 7's reading, over design.md's narrower trust-20
+    line), and a cat bans only once it is already furious, so a scratch
+    comes before a ban, and a ban no longer wipes the anger. Tora's temper
+    went from 0.6 to 0.65 in `content/`, so "quick to swat" swats first.
+  - Decision 5's "or it's her prowling hour" never reached design.md,
+    which holds: cats knock things over in an empty café. The test now
+    shows Burakku is the one who does it most at night.
+  - Task 8's missing checks are in: a treat offered by keyboard in the
+    browser, and the log-line rules for real visitors as a CI step
+    (`scripts/check-logs.ts` over the container's output after the spec)
+    rather than a spec file, since only CI can read that output. Whether a
+    cat lets itself be picked up is the cat's to say: a browser check that
+    waited for one, retrying as fresh visitors for 200 seconds, failed in
+    CI with all three cats asleep for over three minutes (the app's own log
+    showed it), and its retries were spaced from the ask rather than from
+    the refusal, so one counted as pushing. Now the touch check proves the
+    way to "Pick {name} up" and that the café answers, putting the cat down
+    from the bar when it does agree, and the bar itself is a client test
+    (`client/test/arms.test.ts`).
+  - A fault found by the checks, not the review: Tab's cycle kept each
+    target's tile from the first press, so after a cat had moved, Tab named
+    it but pointed where it had been. Each Tab now looks up where its
+    target is (`25ff89d`).
+  - Closed with 250 Rust tests and 76 client tests green, and the spec's
+    47 (9 in a browser) green twice against the image on fresh containers,
+    each followed by the log check over the app's own lines.

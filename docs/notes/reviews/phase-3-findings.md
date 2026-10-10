@@ -253,3 +253,41 @@ Brief: phase-3-brief.md. Method: six reviewers by dimension, two skeptics per fi
 - Someone at the window is shown a "Put a treat down" button the server refuses: both refuted. The client never hides actions from the window and leaves them to the server's "From the window you can only talk.", which is the designed feedback. The same case survives as part of finding 32.
 - A tidy that arrives after someone else stood the piece up ends silently: both refuted. The broadcast already tells the second person what happened, and every arrival failure goes unlogged alike. Finding 8 keeps that wider logging gap.
 - How full the bowls are is hard-coded to three portions, and the drawing can't tell three from two: both refuted. bowl_portions is 3 in tuning and in design.md, and the plan asks the room only for full or empty. The coupling bites only after a retune.
+
+## Answered
+
+Triaged 2026-10-10, each confirmed by reading the code first; every
+behaviour fix went in test first, with the test seen failing for the
+reason the finding gave. The client brief's parallel agent stopped when the
+course key ran out of budget before it changed anything, so the client's
+answers were built in the main session.
+
+| # | Outcome |
+|---|---|
+| 1 | Fixed: a held cat that refuses or scratches its holder jumps down; a lap cat that scratches its person gets off; a welcome keeps either where it is (`52c5f0d`). |
+| 2 | Fixed: a held cat is where its holder is and not a target of its own; holding one shows the bar with "Put {name} down", and Escape puts it down (`151e04f`); the bar has its own client test. |
+| 3 | Fixed: the panel is built once and updated in place, so the button keeps its focus (`151e04f`). |
+| 4, 28 | Fixed: any blocking piece on a tile blocks people, rug or not, and `piece_at` answers with what stands on the rug (`30dc5ec`). |
+| 5 | Fixed, choosing the plan's reading and recording it in design.md: being passed to someone is being picked up by them, so a cat isn't passed to someone it's angry at or has banned picking it up (`52c5f0d`). |
+| 6 | Fixed: cats don't settle where someone stands or sits, except a lap cat on its person, and a cat lying on a seat claims it (`eba6bfc`). Phase 2's finding 11 ruled a nap beside or under a sitter fine before laps existed; laps changed that. |
+| 7 | Fixed: at Canberra midnight everyone in the café is sent their new day's treats (`eba6bfc`). |
+| 8 | Fixed: an action refused at the end of its walk gets its refused line, and a tidy someone else got to first says so (`ab8a31b`). |
+| 9 | Fixed: one pet line, then the ban line, and no false refusal after them (`52c5f0d`). |
+| 10, 16 | Fixed: the narrator has words for every line the server writes, naming the cat, person and piece, and runs from any path (`4ec799a`, `6e38723`). |
+| 11 | Fixed: every put back is logged, a new piece's included, and one done for someone who left, dropped or walked out says why (`ab8a31b`). |
+| 12 | Fixed: every account refusal is logged with its code and never the name typed, and a logout is logged (`ab8a31b`); the narrator no longer says "undefined" (`4ec799a`). |
+| 13, 14 | Fixed: refusal and walking lines name what they were about, and asking again on the way over is logged again (`ab8a31b`). |
+| 15 | Fixed: playing with someone is its own plan, logged with them and not "the toys" (`eba6bfc`); a cat carried to the door jumps down "door"; a lap ending is a jump_down line (`ab8a31b`). |
+| 17, 18 | Fixed: a cat bans only when already furious, so a scratch comes first, and a ban no longer wipes the anger. Tora's temper went from 0.6 to 0.65: her first refusal landed exactly on the scratch line, so a moment's cooling kept "quick to swat" from ever swatting first (`52c5f0d`). |
+| 19 | Fixed: picking a cat up gets you off your seat; nobody seated is passed a cat; a sit that arrives with a cat in your arms is refused (`52c5f0d`). |
+| 20 | Fixed: nothing is passed or given to someone walking out or dropped (`52c5f0d`). |
+| 21 | Fixed: the bowls take yesterday from the calendar (`eba6bfc`). |
+| 22 | Fixed: a cat under 0.2 hunger takes no treat from a hand (`52c5f0d`). |
+| 23, 24, 25, 26 | Fixed: a cat looks at each new piece once, only while it's there, from a tile someone can reach; plays only with toys still there; doesn't retell what it carries on doing; and targets avoid tiles another cat is on or heading for, one cat to a lap (`eba6bfc`). |
+| 27 | Fixed: picking up a knocked-over piece saves it standing (`eba6bfc`). |
+| 29 | Fixed: a lap takes the tuned third trust level (`eba6bfc`). |
+| 30 | By design: design.md gives Burakku "when the café is empty: prowls and knocks things over", and never adopted the plan's "or her prowling hour". Its test now counts a night's knocks by cat, and hers are the most (`eba6bfc`). |
+| 31 | Fixed: a cat asleep on someone's lap is drawn over them (`151e04f`). |
+| 32 | Fixed: with your arms full nothing offers to move or sit on furniture and Add furniture waits; a cat in someone else's arms offers nothing (`151e04f`). The window case stays by design, as its refuted twin says. |
+| 33 | Fixed: in layout B the room holds still while a ring is open (`151e04f`). |
+| 34 | Fixed: browser checks for a treat offered by keyboard, asking a cat by touch to be picked up (and putting it down from the bar when it agrees), the treat button's focus, and a ring opened by keyboard on a far cat; and CI checks the app's own log lines after the spec (`151e04f`). The touch check no longer waits for a cat to agree: in CI all three slept for minutes (`25ff89d`). The plan's log-line check is that CI step; bans stay with cargo test, as design.md's "Checks" says. |

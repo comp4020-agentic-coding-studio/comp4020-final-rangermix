@@ -780,3 +780,99 @@ spec's 26 (four in a browser) green twice, a minute apart, against the
 image.
 [`4595f6f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4595f6f)
 [`fc32dc5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/fc32dc5)
+
+*Sent 2026-10-09 19:15:06 AEDT*
+
+> /goal finish phase 3
+
+**Result.** Phase 3's plan
+([`bdfb1dd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bdfb1dd)),
+then its build: one log line for every action a visitor takes, refusals
+and walks over included, with `pnpm logs` turning the JSON into sentences
+for crit 10
+([`a086231`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a086231));
+and the cats' moods in one change to the protocol: hunger and play,
+bowls refilled on Canberra's clock, three treats a day to put down, offer
+or give, playing, picking up, carrying and passing a cat, laps, knocking
+things over and tidying, and anger that turns into scratches and stored
+bans
+([`0a08fca`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0a08fca)).
+The world's side of that was written before its tests, which the plan's
+execution log owns up to. A treat put down while walking in landed in the
+doorway; it now lands on the floor
+([`e730eb9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e730eb9)).
+The whole-phase review kept 34 findings, 10 major
+([`3bc886a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3bc886a)),
+and the client's answers were briefed for an agent working in parallel
+([`6e98a5e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6e98a5e)).
+The course key's weekly budget then ran out, at 20:30, during triage:
+finding 4's fix was written but not committed, and the client agent had
+only read code. Picked up in the next session.
+
+## 5. Finishing phase 3
+
+*Session `d554b4ba`, Claude Code (Opus 5.5).*
+
+*Sent 2026-10-10 16:41:08 AEDT*
+
+> continue on the last session which stopped due to used up all credit
+
+**Result.** Where the last session stopped was read from its transcript,
+not guessed: the goal "finish phase 3", in the `phase-1-2` worktree, with
+finding 4's fix passing its test but uncommitted and the client agent's
+worktree gone. All 34 findings were then answered in this session itself,
+no agents, each confirmed against the code first and fixed test first,
+with the test seen failing for the reason the finding gave. The
+"Answered" table in `docs/notes/reviews/phase-3-findings.md` says how for
+each.
+- **Rooms and handling.** A chair on the rug blocks again
+  ([`30dc5ec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/30dc5ec)).
+  A held cat that turns on its holder gets down; nobody holds a cat seated;
+  nothing is passed to someone walking out or dropped; a full cat takes no
+  treat from a hand. Two rules changed in design.md: a pass follows the
+  pick-up's bans and anger, and a cat bans only once already furious, so a
+  scratch comes first. That still left Tora's first refusal exactly on the
+  scratch line, so her temper went from 0.6 to 0.65
+  ([`52c5f0d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/52c5f0d)).
+- **The logs.** Refusals at the end of a walk, every put back, account
+  refusals with their code but never the name typed, logouts, and what each
+  refusal was about, are all logged now
+  ([`ab8a31b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ab8a31b));
+  the narrator has words for every line the server writes and runs from any
+  path
+  ([`4ec799a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4ec799a)),
+  with one phrasing corrected after reading the local café's own logs
+  through it
+  ([`6e38723`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6e38723)).
+- **The cats' lives.** No settling on a seated stranger, on another cat, or
+  two to a lap; each new piece looked at once, from where someone can reach;
+  no playing with toys that aren't there; midnight's new treats sent to
+  everyone; the bowls safe on the day the clocks go back; a picked-up
+  toppled piece saved standing; the lap threshold from tuning. Finding 30
+  was answered by design: design.md's empty café holds over the plan's
+  "prowling hour", and the test now counts Burakku's knocks
+  ([`eba6bfc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/eba6bfc)).
+- **The client and the checks.** A held cat goes with its holder, with
+  "Put {name} down" in the bar; the treat button keeps its focus; a lap cat
+  is drawn over its person; menus stop offering what full arms can't do;
+  layout B holds still under a ring. Four browser checks were added, and a
+  CI step that checks the app's own log lines after the spec
+  ([`151e04f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/151e04f)).
+- **A check that waited on the cats.** CI failed that push on one browser
+  check, which waited up to 200 seconds, as fresh visitors, for a cat to
+  let itself be picked up; nothing deployed. The app's own log, narrated,
+  showed why: all three cats curled up within half a minute and slept on
+  for three more, and one retry came 9 seconds after a refusal (the
+  spacing ran from the ask, not the answer), which counted as pushing. A
+  cat's consent isn't the test's to have, so the check now proves the touch
+  path to "Pick {name} up" and that the café answers, and puts the cat down
+  from the bar when it does agree; the bar became its own module with a
+  client test. Running the whole spec on a fresh container, as CI does,
+  then turned up a keyboard fault: Tab's list kept each target's tile from
+  the first press, so it could name a cat but point where the cat had
+  been. Each Tab now finds where its target is now
+  [`25ff89d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/25ff89d).
+- **Checked.** 250 Rust tests and 76 client tests green; the spec's 47
+  (9 in a browser) green twice against the image on fresh containers, as
+  CI runs it, each time followed by the new log check over the app's own
+  199 lines.
