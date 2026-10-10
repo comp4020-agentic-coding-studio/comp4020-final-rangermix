@@ -159,8 +159,10 @@ function action(l: Line): string | null {
       return `${who} put ${piece} down at (${String(l.x)}, ${String(l.y)})`;
     case "put_back": {
       if (l.outcome === "called_off") return `${who} stopped going for ${piece}`;
-      const where = l.outcome === "gone" ? "back to the catalogue" : "back";
-      return l.why ? `${piece} ${who} carried went ${where}, as they ${WENT[String(l.why)] ?? words(l.why)}` : `${who} put ${piece} ${where}`;
+      const gone = l.outcome === "gone";
+      if (!l.why) return `${who} put ${piece} back${gone ? " in the catalogue" : ""}`;
+      const as = `as they ${WENT[String(l.why)] ?? words(l.why)}`;
+      return `${piece} ${who} carried went back${gone ? " to the catalogue" : ""}, ${as}`;
     }
     case "put_away":
       return `${who} put ${piece} away`;
