@@ -12,6 +12,8 @@ mod protocol;
 mod readme;
 mod room;
 mod store;
+#[cfg(test)]
+mod test_logs;
 mod time;
 mod trust;
 mod tuning;

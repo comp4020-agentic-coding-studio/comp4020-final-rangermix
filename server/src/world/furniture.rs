@@ -273,6 +273,9 @@ impl World {
     /// The tidy's walk ended: stand it back up.
     pub(super) fn stand_up_piece(&mut self, _now: u64, id: u32, piece_id: u32, out: &mut Vec<Out>) {
         let Some(piece) = self.room.pieces.iter_mut().find(|p| p.id == piece_id && p.toppled) else {
+            // Someone else stood it up first: the broadcast told them, and this says so.
+            let kind = self.piece_kind(piece_id);
+            tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "tidy", outcome = "already_up", piece = kind.as_deref());
             return;
         };
         piece.toppled = false;
@@ -313,12 +316,25 @@ impl World {
     }
 
     /// Puts back what `id` carries: where it was if that still fits, else the
-    /// nearest spot that does; a new piece just goes.
-    pub(super) fn put_back(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
+    /// nearest spot that does; a new piece just goes. `why` is set when it's
+    /// not their doing: they left, dropped or walked out.
+    pub(super) fn put_back(&mut self, now: u64, id: u32, why: Option<&str>, out: &mut Vec<Out>) {
+        let grab = self.person(id).and_then(|p| match p.pending {
+            Some(Pending::Grab(piece)) => Some(piece),
+            _ => None,
+        });
         self.call_off(id);
-        let Some(i) = self.holding(id) else { return };
+        let who = self.name_of(id);
+        let Some(i) = self.holding(id) else {
+            if let Some(piece) = grab {
+                let kind = self.piece_kind(piece);
+                tracing::info!(target: "action", uid = id, who = %who, what = "put_back", outcome = "called_off", piece = kind.as_deref(), why);
+            }
+            return;
+        };
         let Held { piece, from, .. } = self.held.remove(i);
         let Some(from) = from else {
+            tracing::info!(target: "action", uid = id, who = %who, what = "put_back", outcome = "gone", piece = %piece.kind, why);
             out.push(Out {
                 to: To::All,
                 msg: ServerMsg::FurnitureRemoved { id: piece.id, by: id },
@@ -337,17 +353,21 @@ impl World {
         });
         match spot {
             Some(p) => {
-                tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "put_back", outcome = "ok", piece = %p.kind);
+                tracing::info!(target: "action", uid = id, who = %who, what = "put_back", outcome = "ok", piece = %p.kind, why);
                 out.push(Out {
                     to: To::All,
                     msg: ServerMsg::FurniturePlaced { piece: p.view(), by: id },
                 });
                 self.room.put(p);
             }
-            None => out.push(Out {
-                to: To::All,
-                msg: ServerMsg::FurnitureRemoved { id: piece.id, by: id },
-            }),
+            None => {
+                // Nowhere it fits any more: it goes, as a new piece would.
+                tracing::info!(target: "action", uid = id, who = %who, what = "put_back", outcome = "gone", piece = %piece.kind, why);
+                out.push(Out {
+                    to: To::All,
+                    msg: ServerMsg::FurnitureRemoved { id: piece.id, by: id },
+                });
+            }
         }
         self.save_arrangement();
     }

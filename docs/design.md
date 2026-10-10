@@ -366,7 +366,12 @@ renamed.
   Fly: who, what, when, and the outcome, so the logs can tell the story.
   A refused action is logged too, with its code, in one place in the world
   (and where the rate limit stops one first); an action that starts with a
-  walk over is logged when it starts, and again when it happens.
+  walk over is logged when it starts, and again when it happens or is
+  refused at the end of the walk. A refusal or walking line names the cat,
+  piece or person it was about. Something put back because its carrier left,
+  dropped or walked out says so. An account refusal is logged with its code
+  but not the name typed, since a password sometimes lands in the name field.
+  (Phase 3's review, findings 8 and 11 to 15.)
 - **Also logged:** arrivals, departures, the line and walk-outs; cats'
   behaviour changes (a `cat` line when a cat starts to nap, hide, eat, play,
   perch, investigate, knock something over, come to someone, greet, take a

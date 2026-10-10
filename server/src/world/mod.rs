@@ -102,6 +102,14 @@ pub enum SavedArrangement {
     Legacy(String),
 }
 
+/// What an action was about, for its line: the cat, the piece, or the person.
+#[derive(Debug, Default)]
+struct About {
+    cat: Option<String>,
+    piece: Option<String>,
+    to: Option<String>,
+}
+
 /// A bubble, held in memory until the next tick so the cats can hear it.
 #[derive(Debug, Clone)]
 struct Heard {
@@ -209,6 +217,7 @@ impl World {
                 }
                 self.heard_from(now, id, &msg, &mut out);
                 let what = action_name(&msg);
+                let about = self.about(id, &msg);
                 let before = out.len();
                 let pending_before = self.person(id).and_then(|p| p.pending.clone());
                 self.answered = false;
@@ -232,7 +241,7 @@ impl World {
                     ClientMsg::PutBack {} if self.held.iter().all(|h| h.by != id) && !matches!(pending_before, Some(Pending::Grab(_))) => {
                         error(&mut out, id, ErrorCode::NotHolding, "You aren't carrying anything.")
                     }
-                    ClientMsg::PutBack {} => self.put_back(now, id, &mut out),
+                    ClientMsg::PutBack {} => self.put_back(now, id, None, &mut out),
                     ClientMsg::PutAway {} => self.put_away(now, id, &mut out),
                     ClientMsg::Sit { id: piece } => self.sit(now, id, piece, &mut out),
                     ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
@@ -240,7 +249,7 @@ impl World {
                     ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
                 }
                 if let Some(what) = what {
-                    self.log_request(id, what, &out[before..], pending_before);
+                    self.log_request(id, what, &about, &out[before..], pending_before);
                 }
             }
         }
@@ -250,23 +259,112 @@ impl World {
     /// One line per action, whatever happened (crit 10): a refusal with its
     /// code, or the start of a walk over to do it. Handlers log what happens
     /// when it happens.
-    fn log_request(&self, id: u32, what: &str, outs: &[Out], pending_before: Option<Pending>) {
-        if self.answered {
+    fn log_request(&self, id: u32, what: &str, about: &About, outs: &[Out], pending_before: Option<Pending>) {
+        if self.answered || self.log_refusal(id, what, about, outs) {
             return;
         }
-        let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        // A new walk over, or the same one asked for again on the way.
+        let pending = self.person(id).and_then(|p| p.pending.clone());
+        let walked = outs
+            .iter()
+            .any(|o| matches!(o.msg, ServerMsg::PersonMoved { id: by, .. } if by == id));
+        if pending.is_some() && (pending != pending_before || walked) {
+            let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+            tracing::info!(target: "action", uid = id, who = %who, what, outcome = "walking",
+                cat = about.cat.as_deref(), piece = about.piece.as_deref(), to = about.to.as_deref());
+        }
+    }
+
+    /// The line for an action that `outs` refuse, with its code. False if
+    /// they don't refuse it.
+    fn log_refusal(&self, id: u32, what: &str, about: &About, outs: &[Out]) -> bool {
         let refusal = outs.iter().find_map(|o| match (&o.to, &o.msg) {
             (To::One(to), ServerMsg::Error { code, .. }) if *to == id => Some(*code),
             _ => None,
         });
-        if let Some(code) = refusal {
-            tracing::info!(target: "action", uid = id, who = %who, what, outcome = "refused", code = code_name(code));
-            return;
+        let Some(code) = refusal else { return false };
+        let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        tracing::info!(target: "action", uid = id, who = %who, what, outcome = "refused", code = code_name(code),
+            cat = about.cat.as_deref(), piece = about.piece.as_deref(), to = about.to.as_deref());
+        true
+    }
+
+    /// What a message is about: the cat, the piece (or the one in your arms),
+    /// or the person it's for.
+    fn about(&self, id: u32, msg: &ClientMsg) -> About {
+        let carried = || self.held.iter().find(|h| h.by == id).map(|h| h.piece.kind.clone());
+        match msg {
+            ClientMsg::Pet { cat }
+            | ClientMsg::Play { cat }
+            | ClientMsg::OfferTreat { cat }
+            | ClientMsg::PickUp { cat }
+            | ClientMsg::Call { cat } => About {
+                cat: Some(self.cat_name(cat)),
+                ..About::default()
+            },
+            ClientMsg::PutDown {} => About {
+                cat: self.holding_cat(id).map(|i| self.cats[i].def.name.clone()),
+                ..About::default()
+            },
+            ClientMsg::Grab { id: piece } | ClientMsg::Sit { id: piece } | ClientMsg::Tidy { id: piece } => About {
+                piece: self.piece_kind(*piece),
+                ..About::default()
+            },
+            ClientMsg::Take { kind } => About {
+                piece: Some(kind.clone()),
+                ..About::default()
+            },
+            ClientMsg::Place { .. } | ClientMsg::PutBack {} | ClientMsg::PutAway {} => About {
+                piece: carried(),
+                ..About::default()
+            },
+            ClientMsg::PassCat { to } | ClientMsg::GiveTreat { to } | ClientMsg::Say { to: Some(to), .. } => About {
+                to: self.person(*to).map(|p| p.name.clone()),
+                ..About::default()
+            },
+            _ => About::default(),
         }
-        let pending = self.person(id).and_then(|p| p.pending.clone());
-        if pending.is_some() && pending != pending_before {
-            tracing::info!(target: "action", uid = id, who = %who, what, outcome = "walking");
+    }
+
+    /// What a walk's errand is called, and what it's about.
+    fn about_pending(&self, id: u32, then: &Pending) -> (&'static str, About) {
+        let piece = |p: u32| About {
+            piece: self.piece_kind(p),
+            ..About::default()
+        };
+        match then {
+            Pending::Handle(cat, how) => (
+                how.name(),
+                About {
+                    cat: Some(self.cat_name(cat)),
+                    ..About::default()
+                },
+            ),
+            Pending::Tidy(p) => ("tidy", piece(*p)),
+            Pending::Grab(p) => ("grab", piece(*p)),
+            Pending::Sit(p) => ("sit", piece(*p)),
+            Pending::Place(_) => (
+                "place",
+                About {
+                    piece: self.held.iter().find(|h| h.by == id).map(|h| h.piece.kind.clone()),
+                    ..About::default()
+                },
+            ),
         }
+    }
+
+    fn cat_name(&self, cat: &str) -> String {
+        self.cats
+            .iter()
+            .find(|c| c.def.id == cat)
+            .map_or_else(|| cat.to_string(), |c| c.def.name.clone())
+    }
+
+    /// A piece's kind, on the floor or in someone's arms.
+    fn piece_kind(&self, piece: u32) -> Option<String> {
+        let on_floor = self.room.pieces.iter().find(|p| p.id == piece).map(|p| &p.kind);
+        let carried = self.held.iter().find(|h| h.piece.id == piece).map(|h| &h.piece.kind);
+        on_floor.or(carried).cloned()
     }
 
     /// Someone's walk ended with something to do.
@@ -290,7 +388,14 @@ impl World {
         self.last_tick = now;
         self.noise.retain(|&t| now.saturating_sub(t) < 60_000);
         for (id, then) in self.people_tick(now, &mut out) {
+            // Refused on arrival is still refused, and logged as one (crit 10).
+            let (what, about) = self.about_pending(id, &then);
+            let before = out.len();
+            self.answered = false;
             self.arrived_with(now, id, then, &mut out);
+            if !self.answered {
+                self.log_refusal(id, what, &about, &out[before..]);
+            }
         }
         self.quiet_tick(now, &mut out);
         self.bowls_tick(now, &mut out);

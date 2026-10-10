@@ -401,10 +401,17 @@ fn a_devoted_cat_naps_on_a_lap() {
     });
     assert!(on_lap, "twenty minutes and no lap");
     assert!(log.contains(r#""what":"lap""#));
-    // Standing up tips her off.
-    send(&mut w, 1, 2_000_000, ClientMsg::WalkTo { tile: T(4, 8) });
-    w.tick(2_000_100);
+    // Standing up tips her off, and that's in her story (finding 15 (c)).
+    let log = capture_logs(|| {
+        send(&mut w, 1, 2_000_000, ClientMsg::WalkTo { tile: T(4, 8) });
+        w.tick(2_000_100);
+    });
     assert!(!w.cats.iter().any(|c| c.lap.is_some()));
+    let line = lines(&log)
+        .into_iter()
+        .find(|v| v["what"] == "jump_down")
+        .expect("a jump_down line");
+    assert_eq!(line["why"], "got_up", "{line}");
 }
 
 // Phase 3's review (docs/notes/reviews/phase-3-findings.md), handling.
@@ -656,4 +663,23 @@ fn tora_is_quick_to_swat() {
         tora < first_scratch("mochi") && tora < first_scratch("burakku"),
         "Tora first scratches at try {tora}"
     );
+}
+
+#[test]
+fn a_cat_carried_to_the_door_jumps_down_because_of_the_door() {
+    // Finding 15 (b).
+    let mut w = world();
+    join(&mut w, 1, 0);
+    let i = carrying_mochi(&mut w, 1_000);
+    let door = w.room.door;
+    stand(&mut w, 1, door);
+    let log = capture_logs(|| {
+        w.tick(1_100);
+    });
+    assert_eq!(w.cats[i].held_by, None);
+    let line = lines(&log)
+        .into_iter()
+        .find(|v| v["what"] == "jump_down")
+        .expect("a jump_down line");
+    assert_eq!(line["why"], "door", "{line}");
 }

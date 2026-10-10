@@ -141,14 +141,14 @@ async fn readme_asset(State(state): State<AppState>, Path(path): Path<String>) -
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::Request;
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    fn app(dir: &std::path::Path) -> Router {
+    pub(crate) fn app(dir: &std::path::Path) -> Router {
         let config = Config::from_lookup(|k| match k {
             "CLIENT_DIR" => Some(dir.join("no-client-yet").display().to_string()),
             "DOCS_DIR" => Some(dir.display().to_string()),

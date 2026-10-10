@@ -142,3 +142,139 @@ fn a_line_for_talk_names_who_it_was_to_but_never_what_was_said() {
     let got = lines(&mut w, 1, 2_000, ClientMsg::Call { cat: "mochi".into() });
     assert!(got.iter().all(|v| v["what"] != "say"), "a call is a call: {got:?}");
 }
+
+// Phase 3's review (docs/notes/reviews/phase-3-findings.md), logging.
+
+/// Every line logged while the world ticks from `from` to `to`, 100 ms apart.
+fn ticking(w: &mut World, from: u64, to: u64) -> Vec<Value> {
+    let log = capture_logs(|| {
+        for now in (from..=to).step_by(100) {
+            w.tick(now);
+        }
+    });
+    log.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()).collect()
+}
+
+/// Keeps a cat still at `at` until a test moves it.
+fn still(w: &mut World, cat: &str, at: Tile) {
+    let c = w.cats.iter_mut().find(|c| c.def.id == cat).unwrap();
+    (c.at, c.walk, c.until) = (at, None, u64::MAX);
+}
+
+/// A floor tile at least `far` steps from `at`, off the door's walkway.
+fn away_from(w: &World, at: Tile, far: u32) -> Tile {
+    w.room
+        .floor(crate::room::Walker::Person)
+        .into_iter()
+        .find(|&t| crate::room::manhattan(t, at) >= far && !w.room.walkway.contains(&t))
+        .unwrap()
+}
+
+#[test]
+fn an_action_refused_when_the_walk_over_ends_is_logged_with_why() {
+    // Finding 8.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    stand(&mut w, 1, T(7, 1));
+    still(&mut w, "mochi", T(1, 8));
+    lines(&mut w, 1, 1_000, ClientMsg::Pet { cat: "mochi".into() });
+    still(&mut w, "mochi", T(10, 2));
+    let got = ticking(&mut w, 1_100, 20_000);
+    assert!(
+        got.iter().any(|v| v["uid"] == 1
+            && v["what"] == "pet"
+            && v["outcome"] == "refused"
+            && v["code"] == "movedAway"
+            && v["cat"] == "Mochi"),
+        "{got:?}"
+    );
+    // Two head for one chair, and the second finds it taken.
+    let chair = w.room.pieces.iter().find(|p| p.kind == "chair" && p.x == 9 && p.y == 4).unwrap().id;
+    stand(&mut w, 1, T(8, 6));
+    stand(&mut w, 2, T(3, 8));
+    lines(&mut w, 1, 30_000, ClientMsg::Sit { id: chair });
+    lines(&mut w, 2, 30_000, ClientMsg::Sit { id: chair });
+    let got = ticking(&mut w, 30_100, 60_000);
+    assert!(
+        got.iter()
+            .any(|v| v["uid"] == 2 && v["what"] == "sit" && v["outcome"] == "refused" && v["code"] == "taken"),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn a_tidy_someone_else_got_to_first_is_still_logged() {
+    // Finding 8 (e).
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    let plant = piece_of(&w, "plant");
+    let at = {
+        let p = w.room.pieces.iter_mut().find(|p| p.id == plant).unwrap();
+        p.toppled = true;
+        T(p.x, p.y)
+    };
+    let far = away_from(&w, at, 6);
+    stand(&mut w, 2, far);
+    lines(&mut w, 2, 1_000, ClientMsg::Tidy { id: plant });
+    let beside = w.room.around(at, crate::room::Walker::Person)[0];
+    stand(&mut w, 1, beside);
+    lines(&mut w, 1, 1_100, ClientMsg::Tidy { id: plant });
+    let got = ticking(&mut w, 1_200, 30_000);
+    assert!(got.iter().any(|v| v["uid"] == 2 && v["what"] == "tidy"), "{got:?}");
+}
+
+#[test]
+fn every_put_back_is_logged_and_one_for_a_dropped_connection_says_so() {
+    // Finding 11.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(3, 7));
+    lines(&mut w, 1, 1_000, ClientMsg::Take { kind: "lamp".into() });
+    let got = lines(&mut w, 1, 2_000, ClientMsg::PutBack {});
+    assert!(got.iter().any(|v| v["what"] == "put_back" && v["piece"] == "lamp"), "{got:?}");
+    let plant = piece_of(&w, "plant");
+    let at = w.room.pieces.iter().find(|p| p.id == plant).map(|p| T(p.x, p.y)).unwrap();
+    let beside = w.room.around(at, crate::room::Walker::Person)[0];
+    stand(&mut w, 1, beside);
+    lines(&mut w, 1, 30_000, ClientMsg::Grab { id: plant });
+    assert!(w.held.iter().any(|h| h.by == 1), "carrying the plant");
+    let log = capture_logs(|| {
+        w.handle(31_000, Input::Drop { id: 1 });
+    });
+    let got: Vec<Value> = log.lines().filter_map(|l| serde_json::from_str(l).ok()).collect();
+    let line = got.iter().find(|v| v["what"] == "put_back").expect("a put_back line");
+    assert_eq!(line["why"], "dropped", "{line}");
+}
+
+#[test]
+fn refusal_and_walking_lines_say_what_they_were_about() {
+    // Finding 13.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    stand(&mut w, 1, T(7, 1));
+    still(&mut w, "mochi", T(1, 8));
+    let got = lines(&mut w, 1, 1_000, ClientMsg::Pet { cat: "mochi".into() });
+    assert!(got.iter().any(|v| v["outcome"] == "walking" && v["cat"] == "Mochi"), "{got:?}");
+    stand(&mut w, 1, T(3, 7));
+    lines(&mut w, 1, 2_000, ClientMsg::Take { kind: "lamp".into() });
+    let plant = piece_of(&w, "plant");
+    let got = lines(&mut w, 1, 3_000, ClientMsg::Grab { id: plant });
+    assert!(got.iter().any(|v| v["outcome"] == "refused" && v["piece"] == "plant"), "{got:?}");
+    let got = lines(&mut w, 1, 4_000, ClientMsg::PassCat { to: 2 });
+    assert!(got.iter().any(|v| v["outcome"] == "refused" && v["to"] == "p2"), "{got:?}");
+}
+
+#[test]
+fn asking_again_on_the_way_over_is_logged_again() {
+    // Finding 14.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(7, 1));
+    still(&mut w, "mochi", T(1, 8));
+    lines(&mut w, 1, 1_000, ClientMsg::Pet { cat: "mochi".into() });
+    let got = lines(&mut w, 1, 1_300, ClientMsg::Pet { cat: "mochi".into() });
+    assert!(got.iter().any(|v| v["what"] == "pet" && v["outcome"] == "walking"), "{got:?}");
+}

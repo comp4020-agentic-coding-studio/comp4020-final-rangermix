@@ -216,10 +216,16 @@ impl World {
             let here = self
                 .person(holder)
                 .filter(|p| p.place == Place::Inside && !p.leaving && p.away_since.is_none());
-            match here.and_then(|_| self.person_tile(holder, now)) {
-                Some(t) if t != self.room.door && now < self.cats[i].held_until => self.cats[i].at = t,
-                _ => self.jump_down(i, now, "had_enough", out),
-            }
+            let why = match here.and_then(|_| self.person_tile(holder, now)) {
+                None => "holder_left",
+                Some(t) if t == self.room.door => "door",
+                Some(_) if now >= self.cats[i].held_until => "had_enough",
+                Some(t) => {
+                    self.cats[i].at = t;
+                    continue;
+                }
+            };
+            self.jump_down(i, now, why, out);
         }
     }
 
@@ -234,6 +240,8 @@ impl World {
                 let cat = &mut self.cats[i];
                 cat.lap = None;
                 cat.plan = Plan::Idle;
+                let why = if still { "had_enough" } else { "got_up" };
+                tracing::info!(target: "cat", cat = %cat.def.name, what = "jump_down", why);
                 self.settle(i, now, out);
             }
         }

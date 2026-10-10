@@ -101,7 +101,7 @@ impl World {
         if let Some(p) = self.person_mut(id) {
             p.away_since = Some(now);
         }
-        self.put_back(now, id, out);
+        self.put_back(now, id, Some("dropped"), out);
         self.let_go_of_cat(now, id, out);
     }
 
@@ -110,7 +110,7 @@ impl World {
             return;
         }
         // Whatever they carried goes back where it was.
-        self.put_back(now, id, out);
+        self.put_back(now, id, Some("left"), out);
         self.let_go_of_cat(now, id, out);
         let i = self.people.iter().position(|p| p.id == id).expect("checked above");
         let gone = self.people.remove(i);
@@ -679,27 +679,10 @@ pub(crate) mod tests {
 
     /// Runs `f` with JSON logging captured, and returns what was logged.
     pub(crate) fn capture_logs(f: impl FnOnce()) -> String {
-        use std::sync::{Arc, Mutex};
-        #[derive(Clone)]
-        struct Sink(Arc<Mutex<Vec<u8>>>);
-        impl std::io::Write for Sink {
-            fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
-                self.0.lock().unwrap().extend_from_slice(data);
-                Ok(data.len())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
-        let sink = Sink(Arc::new(Mutex::new(Vec::new())));
-        let writer = sink.clone();
-        let subscriber = tracing_subscriber::fmt()
-            .json()
-            .flatten_event(true)
-            .with_writer(move || writer.clone())
-            .finish();
-        tracing::subscriber::with_default(subscriber, f);
-        let bytes = sink.0.lock().unwrap().clone();
-        String::from_utf8(bytes).unwrap()
+        let sink = crate::test_logs::LogSink::default();
+        let guard = sink.capture();
+        f();
+        drop(guard);
+        sink.text()
     }
 }

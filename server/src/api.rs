@@ -48,6 +48,19 @@ fn bad_input(detail: &'static str) -> Failure {
     Failure(StatusCode::BAD_REQUEST, ApiErrorCode::BadInput, detail)
 }
 
+/// An account action's refusal gets one line, with its code (crit 10), but
+/// never the name typed, since a password sometimes lands in the name field.
+/// A server error has its own line already.
+fn logged(what: &'static str, answer: Answer) -> Answer {
+    if let Err(Failure(_, code, _)) = &answer
+        && *code != ApiErrorCode::Server
+    {
+        let code = serde_json::to_value(code).ok().and_then(|v| v.as_str().map(str::to_string));
+        tracing::info!(target: "action", what, outcome = "refused", code);
+    }
+    answer
+}
+
 fn me_of(user: &UserRow) -> ApiMe {
     ApiMe {
         id: user.id as u32,
@@ -156,6 +169,10 @@ pub async fn signup(
     headers: HeaderMap,
     Json(req): Json<SignUpRequest>,
 ) -> Answer {
+    logged("signup", signup_answer(app, peer, headers, req).await)
+}
+
+async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: SignUpRequest) -> Answer {
     guard(&app, &headers, peer, &req.name)?;
     if !auth::valid_username(&req.name) {
         return Err(bad_input("A name is 3 to 20 letters, digits, _ or -."));
@@ -196,6 +213,10 @@ pub async fn login(
     headers: HeaderMap,
     Json(req): Json<LogInRequest>,
 ) -> Answer {
+    logged("login", login_answer(app, peer, headers, req).await)
+}
+
+async fn login_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: LogInRequest) -> Answer {
     guard(&app, &headers, peer, &req.name)?;
     let name = req.name.clone();
     let user = app.store.call(move |c| store::user_by_name(c, &name)).await.map_err(server)?;
@@ -207,11 +228,9 @@ pub async fn login(
     let Some(user) = user else {
         // Spend the time a real check takes, so a missing name isn't quicker to find.
         let _ = hash(&app, req.password).await;
-        tracing::info!(target: "action", what = "login", outcome = "refused");
         return Err(refused);
     };
     if !verify(&app, req.password, user.password_hash.clone()).await? {
-        tracing::info!(target: "action", what = "login", outcome = "refused");
         return Err(refused);
     }
     tracing::info!(target: "action", uid = user.id, who = %user.name, what = "login");
@@ -219,12 +238,19 @@ pub async fn login(
 }
 
 pub async fn logout(State(app): State<AppState>, headers: HeaderMap) -> Answer {
+    logged("logout", logout_answer(app, headers).await)
+}
+
+async fn logout_answer(app: AppState, headers: HeaderMap) -> Answer {
     if !origin_ok(&headers) {
         return Err(Failure(
             StatusCode::FORBIDDEN,
             ApiErrorCode::Forbidden,
             "Requests must come from the café's own pages.",
         ));
+    }
+    if let Some(user) = current_user(&app, &headers).await? {
+        tracing::info!(target: "action", uid = user.id, who = %user.name, what = "logout");
     }
     if let Some(token) = session_token(&headers) {
         let token_hash = auth::token_hash(&token);
@@ -250,6 +276,10 @@ pub async fn recover(
     headers: HeaderMap,
     Json(req): Json<RecoverRequest>,
 ) -> Answer {
+    logged("recover", recover_answer(app, peer, headers, req).await)
+}
+
+async fn recover_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: RecoverRequest) -> Answer {
     guard(&app, &headers, peer, &req.name)?;
     if !auth::valid_password(&req.password) {
         return Err(bad_input("A password is 8 to 128 characters."));
@@ -266,7 +296,6 @@ pub async fn recover(
         return Err(refused);
     };
     if !verify(&app, auth::normalise_code(&req.code), user.recovery_hash.clone()).await? {
-        tracing::info!(target: "action", uid = user.id, what = "recover", outcome = "refused");
         return Err(refused);
     }
     let code = auth::new_recovery_code();
@@ -289,6 +318,76 @@ pub async fn recover(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::body::Body;
+    use axum::extract::connect_info::MockConnectInfo;
+    use axum::http::Request;
+    use serde_json::json;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn account_refusals_say_why_but_not_who_and_a_logout_is_logged() {
+        // Phase 3's review, finding 12.
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::http::tests::app(dir.path()).layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        let sink = crate::test_logs::LogSink::default();
+        let _logging = sink.capture();
+        let send = |path: &str, body: serde_json::Value, cookie: Option<&str>| {
+            let mut req = Request::post(path).header(header::CONTENT_TYPE, "application/json");
+            if let Some(cookie) = cookie {
+                req = req.header(header::COOKIE, cookie);
+            }
+            app.clone().oneshot(req.body(Body::from(body.to_string())).unwrap())
+        };
+        let look = json!({"avatar": 0, "colour": 0});
+        let res = send(
+            "/api/signup",
+            json!({"name": "sam", "password": "correct horse", "look": look}),
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(res.status().is_success(), "{}", res.status());
+        let cookie = res.headers()[header::SET_COOKIE]
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_string();
+        for (path, body) in [
+            ("/api/signup", json!({"name": "sam", "password": "correct horse", "look": look})),
+            ("/api/signup", json!({"name": "x", "password": "correct horse", "look": look})),
+            ("/api/login", json!({"name": "sam", "password": "wrong horse battery"})),
+            (
+                "/api/recover",
+                json!({"name": "nobody", "code": "abcd-efgh", "password": "correct horse"}),
+            ),
+        ] {
+            assert!(send(path, body, None).await.unwrap().status().is_client_error());
+        }
+        assert!(send("/api/logout", json!({}), Some(&cookie)).await.unwrap().status().is_success());
+        let lines = sink.lines();
+        let refused: Vec<&serde_json::Value> = lines.iter().filter(|v| v["outcome"] == "refused").collect();
+        let said: Vec<(&str, &str)> = refused
+            .iter()
+            .map(|v| (v["what"].as_str().unwrap_or("?"), v["code"].as_str().unwrap_or("?")))
+            .collect();
+        assert_eq!(
+            said,
+            [
+                ("signup", "nameTaken"),
+                ("signup", "badInput"),
+                ("login", "badLogin"),
+                ("recover", "badRecovery")
+            ],
+            "{lines:?}"
+        );
+        assert!(
+            refused.iter().all(|v| v["who"].is_null() && !v.to_string().contains("horse")),
+            "{refused:?}"
+        );
+        assert!(lines.iter().any(|v| v["what"] == "logout" && v["who"] == "sam"), "{lines:?}");
+    }
 
     #[test]
     fn a_name_too_long_to_exist_is_never_a_limit_key() {
