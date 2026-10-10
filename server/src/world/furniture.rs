@@ -409,6 +409,10 @@ impl World {
         let Some(piece) = self.room.pieces.iter().find(|p| p.id == piece_id).cloned() else {
             return error(out, id, ErrorCode::CantPlace, "That isn't here any more.");
         };
+        // A cat passed to them on the way fills their arms.
+        if self.holding(id).is_some() || self.holding_cat(id).is_some() {
+            return error(out, id, ErrorCode::HandsFull, "Your arms are full.");
+        }
         let here = self.person_tile(id, now).unwrap_or(self.room.entry);
         let Some(seat) = self.free_seat(&piece, id, here) else {
             return error(out, id, ErrorCode::Taken, "There's no room to sit.");

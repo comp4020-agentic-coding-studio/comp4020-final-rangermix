@@ -406,3 +406,254 @@ fn a_devoted_cat_naps_on_a_lap() {
     w.tick(2_000_100);
     assert!(!w.cats.iter().any(|c| c.lap.is_some()));
 }
+
+// Phase 3's review (docs/notes/reviews/phase-3-findings.md), handling.
+
+fn lines(log: &str) -> Vec<serde_json::Value> {
+    log.lines().filter_map(|l| serde_json::from_str(l).ok()).collect()
+}
+
+/// Sits `id` on the sofa from (1, 6); returns their seat.
+fn sit_on_sofa(w: &mut World, id: u32, now: u64) -> Tile {
+    let sofa = w.room.pieces.iter().find(|p| p.kind == "sofa").unwrap().id;
+    stand(w, id, T(1, 6));
+    send(w, id, now, ClientMsg::Sit { id: sofa });
+    let p = w.person(id).unwrap();
+    assert!(p.sitting.is_some(), "seated");
+    p.at
+}
+
+#[test]
+fn a_held_cat_that_scratches_its_holder_jumps_down_and_one_that_purrs_stays_held() {
+    // Finding 1.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    let i = carrying_mochi(&mut w, 1_000);
+    w.cats[i].refused = vec![(1, 1_500)];
+    w.anger.insert(("mochi".into(), 1), crate::anger::Anger { level: 0.9, at: 2_000 });
+    let outs = send(&mut w, 1, 2_000, ClientMsg::Pet { cat: "mochi".into() });
+    assert!(reactions(&outs).contains(&Reaction::Scratch { by: 1 }), "{:?}", reactions(&outs));
+    assert!(outs.iter().any(|o| matches!(o.msg, ServerMsg::CatHeld { by: None, .. })));
+    assert_eq!(w.cats[i].held_by, None);
+    assert_ne!(w.cats[i].pose, Pose::Walk, "she jumps down, she doesn't walk off in your arms");
+    for n in 0..30u64 {
+        let now = 10_000 + n * 1_000;
+        w.cats[i].held_by = None;
+        let i = carrying_mochi(&mut w, now);
+        let outs = send(&mut w, 1, now + 500, ClientMsg::Pet { cat: "mochi".into() });
+        if reactions(&outs).contains(&Reaction::Purr { by: 1 }) {
+            assert_eq!(
+                (w.cats[i].held_by, w.cats[i].pose),
+                (Some(1), Pose::Held),
+                "a purr keeps her in your arms"
+            );
+            return;
+        }
+    }
+    panic!("Mochi never purred in your arms");
+}
+
+#[test]
+fn a_lap_cat_that_scratches_its_person_gets_off_the_lap() {
+    // Finding 1, on a lap.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    let seat = sit_on_sofa(&mut w, 1, 1_000);
+    w.trust.apply("mochi", 1.0, 1, 5.0, "1970-01-01");
+    let i = hold(&mut w, "mochi", seat, Pose::Nap);
+    w.cats[i].lap = Some(1);
+    w.cats[i].refused = vec![(1, 1_500)];
+    w.anger.insert(("mochi".into(), 1), crate::anger::Anger { level: 0.9, at: 2_000 });
+    let outs = send(&mut w, 1, 2_000, ClientMsg::Pet { cat: "mochi".into() });
+    assert!(reactions(&outs).contains(&Reaction::Scratch { by: 1 }));
+    assert_eq!(w.cats[i].lap, None);
+}
+
+#[test]
+fn a_cat_isnt_passed_to_someone_it_has_banned_or_is_angry_at() {
+    // Finding 5.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    for d in 1..=3 {
+        w.trust.apply("mochi", 1.0, 2, 10.0, &format!("1970-01-0{d}"));
+    }
+    w.restore_bans(vec![BanRow {
+        cat_id: "mochi".into(),
+        user_id: 2,
+        action: "pick_up".into(),
+        until: 60 * MIN,
+    }]);
+    let i = carrying_mochi(&mut w, 1_000);
+    stand(&mut w, 2, T(4, 8));
+    send(&mut w, 1, 2_000, ClientMsg::PassCat { to: 2 });
+    assert_ne!(
+        w.cats[i].held_by,
+        Some(2),
+        "she won't be picked up by 2, so she won't be passed to 2"
+    );
+    w.restore_bans(Vec::new());
+    let i = carrying_mochi(&mut w, 3_000);
+    stand(&mut w, 2, T(4, 8));
+    w.anger.insert(("mochi".into(), 2), crate::anger::Anger { level: 0.7, at: 4_000 });
+    send(&mut w, 1, 4_000, ClientMsg::PassCat { to: 2 });
+    assert_ne!(w.cats[i].held_by, Some(2), "she's angry at 2");
+    w.anger.clear();
+    let i = carrying_mochi(&mut w, 5_000);
+    stand(&mut w, 2, T(4, 8));
+    send(&mut w, 1, 6_000, ClientMsg::PassCat { to: 2 });
+    assert_eq!(w.cats[i].held_by, Some(2), "and with neither, she goes");
+}
+
+#[test]
+fn a_pet_that_ends_in_a_ban_logs_one_pet_line_and_one_ban_line_in_that_order() {
+    // Finding 9.
+    let (mut w, _) = quarrel();
+    let mut tries = 0;
+    let log = capture_logs(|| {
+        for n in 0..6u64 {
+            tries += 1;
+            let outs = send(&mut w, 1, 1_000 + n * 2_000, ClientMsg::Pet { cat: "mochi".into() });
+            if errors(&outs).iter().any(|(_, c, _)| *c == ErrorCode::Banned) {
+                break;
+            }
+        }
+    });
+    let got = lines(&log);
+    let pets: Vec<&serde_json::Value> = got.iter().filter(|v| v["what"] == "pet").collect();
+    assert_eq!(pets.len(), tries, "one line a try: {pets:?}");
+    assert!(pets.iter().all(|v| v["outcome"] != "refused"), "every try was answered: {pets:?}");
+    let ban = got.iter().position(|v| v["what"] == "banned").expect("a ban line");
+    assert_eq!(
+        (got[ban]["cat"].as_str(), got[ban]["action"].as_str()),
+        (Some("Mochi"), Some("pet"))
+    );
+    let last_pet = got.iter().rposition(|v| v["what"] == "pet").unwrap();
+    assert!(last_pet < ban, "the pet, then the ban it ended in");
+}
+
+#[test]
+fn a_cat_scratches_before_it_bans_and_stays_angry_after() {
+    // Findings 17 and 18.
+    let (mut w, _) = quarrel();
+    let mut scratched_alone = false;
+    let mut banned_at = None;
+    for n in 0..6u64 {
+        let now = 1_000 + n * 2_000;
+        let outs = send(&mut w, 1, now, ClientMsg::Pet { cat: "mochi".into() });
+        let banned = errors(&outs).iter().any(|(_, c, _)| *c == ErrorCode::Banned);
+        if reactions(&outs).contains(&Reaction::Scratch { by: 1 }) && !banned {
+            scratched_alone = true;
+        }
+        if banned {
+            banned_at = Some(now);
+            break;
+        }
+    }
+    assert!(scratched_alone, "a scratch, before the ban");
+    let now = banned_at.expect("banned in the end");
+    let anger = w.anger.get(&("mochi".to_string(), 1)).copied().unwrap_or_default();
+    assert!(anger.at(now, 2.0) >= crate::anger::SCRATCH, "a ban doesn't calm her: {anger:?}");
+}
+
+#[test]
+fn nobody_ends_up_seated_with_a_cat_in_their_arms() {
+    // Finding 19.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    for d in 1..=9 {
+        w.trust.apply("mochi", 1.0, 1, 10.0, &format!("1970-01-0{d}"));
+        w.trust.apply("mochi", 1.0, 2, 10.0, &format!("1970-01-0{d}"));
+    }
+    // Picking up from a seat gets you up first.
+    let seat = sit_on_sofa(&mut w, 1, 1_000);
+    hold(&mut w, "mochi", T(seat.x, seat.y + 1), Pose::Idle);
+    send(&mut w, 1, 1_100, ClientMsg::PickUp { cat: "mochi".into() });
+    assert!(w.person(1).unwrap().sitting.is_none(), "up off the sofa to pick her up");
+    for step in 1..=50u64 {
+        w.tick(1_100 + step * 100);
+        let p = w.person(1).unwrap();
+        assert!(!(p.sitting.is_some() && w.holding_cat(1).is_some()));
+    }
+    // Nobody seated is passed a cat.
+    w.handle(
+        7_000,
+        Input::Msg {
+            id: 1,
+            msg: ClientMsg::PutDown {},
+        },
+    );
+    let i = carrying_mochi(&mut w, 8_000);
+    let seat = sit_on_sofa(&mut w, 2, 9_000);
+    stand(&mut w, 1, T(seat.x, seat.y + 1));
+    let outs = send(&mut w, 1, 9_100, ClientMsg::PassCat { to: 2 });
+    assert!(!errors(&outs).is_empty(), "refused: {outs:?}");
+    assert_eq!(w.cats[i].held_by, Some(1));
+    // Nor sits down holding one.
+    send(&mut w, 2, 9_200, ClientMsg::WalkTo { tile: T(5, 8) });
+    w.tick(20_000);
+    let sofa = w.room.pieces.iter().find(|p| p.kind == "sofa").unwrap().id;
+    send(&mut w, 2, 20_100, ClientMsg::Sit { id: sofa });
+    w.cats[i].held_by = Some(2);
+    w.cats[i].held_until = u64::MAX;
+    for step in 1..=100u64 {
+        w.tick(20_100 + step * 100);
+    }
+    let p = w.person(2).unwrap();
+    assert!(
+        !(p.sitting.is_some() && w.holding_cat(2).is_some()),
+        "seated with Mochi in their arms"
+    );
+}
+
+#[test]
+fn nothing_is_passed_or_given_to_someone_walking_out_or_gone_quiet() {
+    // Finding 20.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    for d in 1..=3 {
+        w.trust.apply("mochi", 1.0, 2, 10.0, &format!("1970-01-0{d}"));
+    }
+    let i = carrying_mochi(&mut w, 1_000);
+    stand(&mut w, 2, T(4, 8));
+    w.handle(1_500, Input::Drop { id: 2 });
+    let outs = send(&mut w, 1, 2_000, ClientMsg::PassCat { to: 2 });
+    assert_eq!(errors(&outs).first().map(|e| e.1), Some(ErrorCode::UnknownPerson));
+    assert_eq!(w.cats[i].held_by, Some(1));
+    let outs = send(&mut w, 1, 2_100, ClientMsg::GiveTreat { to: 2 });
+    assert_eq!(errors(&outs).first().map(|e| e.1), Some(ErrorCode::UnknownPerson));
+    join(&mut w, 2, 2_200);
+    stand(&mut w, 2, T(4, 8));
+    w.people.iter_mut().find(|p| p.id == 2).unwrap().leaving = true;
+    let outs = send(&mut w, 1, 2_300, ClientMsg::PassCat { to: 2 });
+    assert_eq!(errors(&outs).first().map(|e| e.1), Some(ErrorCode::UnknownPerson));
+    assert_eq!(w.cats[i].held_by, Some(1));
+}
+
+/// The try, in a run of refusals two seconds apart, at which `cat` first scratches.
+fn first_scratch(cat: &str) -> u64 {
+    let mut w = world();
+    join(&mut w, 1, 0);
+    w.trust.apply(cat, 1.0, 1, 5.0, "1970-01-01");
+    hold(&mut w, cat, T(5, 7), Pose::Nap);
+    stand(&mut w, 1, T(5, 8));
+    for n in 0..6u64 {
+        let outs = send(&mut w, 1, 1_000 + n * 2_000, ClientMsg::Pet { cat: cat.into() });
+        if reactions(&outs).contains(&Reaction::Scratch { by: 1 }) {
+            return n + 1;
+        }
+    }
+    panic!("{cat} never scratched");
+}
+
+#[test]
+fn tora_is_quick_to_swat() {
+    // Finding 18: design.md's character table.
+    let tora = first_scratch("tora");
+    assert!(
+        tora < first_scratch("mochi") && tora < first_scratch("burakku"),
+        "Tora first scratches at try {tora}"
+    );
+}

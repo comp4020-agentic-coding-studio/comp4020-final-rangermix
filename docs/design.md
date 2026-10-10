@@ -163,14 +163,22 @@ under [Numbers to tune](#numbers-to-tune).
   unwelcome handling by temper and cools by grudge. Bans are stored until they
   expire. Pet, play, offer and pick up answer by one rule; a refusal or
   pushing adds 0.3 plus half the cat's temper, most of it gone by the end of
-  the grudge. At 0.6 a cat scratches instead of pulling away (trust down 2);
-  at 1.0 it bans that action from that person for its grudge. A refused
-  treat is no quarrel: a cat that isn't hungry just doesn't take it.
+  the grudge. A cat already at 0.6 scratches instead of pulling away (trust
+  down 2); one already at 1.0 bans that action from that person for its
+  grudge, so a scratch comes before a ban. A ban doesn't spend the anger,
+  which cools as before. A cat in your arms that refuses you, or one on your
+  lap that scratches you, gets down. A refused treat is no quarrel: a cat
+  that isn't hungry (hunger under 0.2) just doesn't take it. (Phase 3's
+  review, findings 1, 17, 18 and 22.)
 - **Carrying:** a cat that agrees is held and moves with its holder, whose
-  arms are then full (no furniture); it jumps down when it has had enough (8
-  seconds, plus up to 52 more by trust and affection, halved if it only
-  tolerated being picked up), at the door, or when its holder leaves or
-  drops. Passed to someone beside you, it goes if it knows them (trust 20).
+  arms are then full (no furniture, and no sitting: picking a cat up gets you
+  off your seat); it jumps down when it has had enough (8 seconds, plus up to
+  52 more by trust and affection, halved if it only tolerated being picked
+  up), at the door, or when its holder leaves or drops. Passed to someone
+  standing beside you who is here (not walking out or dropped), it goes if it
+  knows them (trust 20), isn't angry at them, and hasn't banned them picking
+  it up: being passed to someone is being picked up by them. (Phase 3's
+  review, findings 5, 19 and 20.)
 - **Effects on the room:** a cat lying on furniture claims it; cats knock
   things over and scatter toys, leaving traces; notable moments become
   chalkboard lines; cats notice each other, napping together or keeping their
@@ -423,7 +431,8 @@ renamed.
 | Furniture on the floor | at most 30 movable pieces |
 | Treats | 3 per visitor per Canberra day |
 | Bowl refills | 7:00, 12:00 and 18:00 Canberra time, 3 portions each |
-| Anger | +0.3 + temper / 2 per unwelcome handling, cooling over the grudge; scratch at 0.6, ban at 1.0 |
+| Anger | +0.3 + temper / 2 per unwelcome handling, cooling over the grudge; a cat already at 0.6 scratches, one already at 1.0 bans |
+| Not hungry | under 0.2 hunger, a cat takes no treat from a hand |
 | Holding a cat | 8 seconds + up to 52 by trust and affection, halved if only tolerated |
 | New furniture | worth investigating for 2 minutes |
 | Day and night | morning from 6:00, afternoon from 12:00, evening from 17:00, night from 21:00 |

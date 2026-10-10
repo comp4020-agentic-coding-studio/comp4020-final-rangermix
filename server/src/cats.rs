@@ -291,6 +291,9 @@ pub fn handling_chance(def: &CatDef, how: Handling, trust: f32, need: f32) -> f3
     chance.clamp(0.05, 0.95)
 }
 
+/// Below this hunger a cat isn't hungry, and takes no treat from anyone's hand.
+pub const PECKISH: f32 = 0.2;
+
 /// How a cat answers being handled, given a roll in [0, 1). Asleep or hiding,
 /// it refuses; an angry cat scratches where it would otherwise pull away. A
 /// refused treat is only a refusal: there's no anger in not being hungry.
@@ -300,7 +303,7 @@ pub fn handling_outcome(def: &CatDef, how: Handling, pose: Pose, trust: f32, nee
     } else {
         Outcome::Refuse
     };
-    if matches!(pose, Pose::Nap | Pose::Hide) {
+    if matches!(pose, Pose::Nap | Pose::Hide) || (how == Handling::Offer && need < PECKISH) {
         return refuse;
     }
     let welcome = handling_chance(def, how, trust, need);
@@ -476,6 +479,22 @@ mod tests {
         );
         assert_eq!(
             handling_outcome(&m, Handling::Offer, Pose::Idle, 0.0, 1.0, false, 0.5),
+            Outcome::Welcome
+        );
+    }
+
+    #[test]
+    fn a_cat_that_isnt_hungry_doesnt_take_a_treat_from_anyone() {
+        // Review finding 22: not even from someone it adores, however the roll goes.
+        let m = cat("mochi");
+        for roll in [0.0, 0.2, 0.4, 0.6] {
+            assert_eq!(
+                handling_outcome(&m, Handling::Offer, Pose::Idle, 100.0, 0.0, false, roll),
+                Outcome::Refuse
+            );
+        }
+        assert_eq!(
+            handling_outcome(&m, Handling::Offer, Pose::Idle, 0.0, 0.6, false, 0.0),
             Outcome::Welcome
         );
     }

@@ -69,9 +69,12 @@ impl World {
             return error(out, id, ErrorCode::HandsFull, "Your arms are full.");
         }
         let here = self.person_tile(id, now).expect("checked above");
-        let walking = self.person(id).is_some_and(|p| p.walk.is_some());
+        // Picking up gets you off your seat first: nobody holds a cat seated.
+        let busy = self
+            .person(id)
+            .is_some_and(|p| p.walk.is_some() || (how == Handling::PickUp && p.sitting.is_some()));
         let cat_at = self.cats[i].tile(now);
-        if !walking && chebyshev(here, cat_at) <= 1 {
+        if !busy && chebyshev(here, cat_at) <= 1 {
             return self.answer(now, id, i, how, out);
         }
         let spot = self
@@ -96,8 +99,11 @@ impl World {
         self.handle_cat(now, id, cat, how, out);
     }
 
-    /// The cat's answer, and what follows from it.
+    /// The cat's answer, and what follows from it. A cat in your arms or on
+    /// your lap stays there through a welcome, and gets down if it turns on you.
     fn answer(&mut self, now: u64, id: u32, i: usize, how: Handling, out: &mut Vec<Out>) {
+        // The answer is this action's line, so a ban it ends in isn't a refusal.
+        self.answered = true;
         let cat_id = self.cats[i].def.id.clone();
         let cat_name = self.cats[i].def.name.clone();
         let (rate, temper, grudge) = {
@@ -122,6 +128,7 @@ impl World {
                 .any(|&(by, at)| by == id && now.saturating_sub(at) < PUSHING_MS);
         let anger = self.anger.get(&(cat_id.clone(), id)).copied().unwrap_or_default();
         let angry = anger.at(now, grudge) >= SCRATCH;
+        let mut furious = false;
         let trust = self.trust.value(&cat_id, id);
         let need = match how {
             Handling::Offer => self.cats[i].hunger,
@@ -213,12 +220,20 @@ impl World {
                 let cat = &mut self.cats[i];
                 cat.refused.retain(|&(_, at)| now.saturating_sub(at) < PUSHING_MS);
                 cat.refused.push((id, now));
-                let provoked = anger.provoked(now, temper, grudge);
-                self.anger.insert((cat_id.clone(), id), provoked);
-                if provoked.level >= FURIOUS {
-                    self.ban(now, id, i, how, out);
-                }
-                if !self.cats[i].resting() {
+                // Furious already, it bans; so a scratch comes before a ban.
+                furious = anger.at(now, grudge) >= FURIOUS;
+                self.anger.insert((cat_id.clone(), id), anger.provoked(now, temper, grudge));
+                if self.cats[i].held_by == Some(id) {
+                    self.jump_down(i, now, if scratch { "scratched" } else { "refused" }, out);
+                } else if self.cats[i].lap == Some(id) && scratch {
+                    let cat = &mut self.cats[i];
+                    (cat.lap, cat.pose) = (None, Pose::Idle);
+                    tracing::info!(target: "cat", cat = %cat.def.name, what = "jump_down", why = "scratched");
+                    self.walk_away(i, id, now, out);
+                    if self.cats[i].walk.is_none() {
+                        self.settle(i, now, out);
+                    }
+                } else if !self.cats[i].resting() {
                     self.walk_away(i, id, now, out);
                 }
             }
@@ -232,10 +247,17 @@ impl World {
             (false, Outcome::Scratch) => "scratch",
         };
         tracing::info!(target: "action", uid = id, who = %who, what = how.name(), cat = %cat_name, outcome = said);
+        if furious {
+            self.ban(now, id, i, how, out);
+        }
     }
 
-    /// The cat stays where it is, in the pose `plan` asks for.
+    /// The cat stays where it is, in the pose `plan` asks for; one in someone's
+    /// arms or on a lap stays there as it is.
     fn sit_still(&mut self, i: usize, now: u64, plan: Plan, out: &mut Vec<Out>) {
+        if self.cats[i].taken() {
+            return;
+        }
         let cat = &mut self.cats[i];
         cat.at = cat.tile(now);
         cat.walk = None;
@@ -256,8 +278,8 @@ impl World {
         };
         let words = format!("{} has had enough, and won't {} for {}.", def.name, how.refusal(), time_left(ms));
         let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        // Anger isn't spent by a ban: it cools over the grudge like any other.
         tracing::info!(target: "action", uid = id, who = %who, what = "banned", cat = %def.name, action = how.name(), hours = def.traits.grudge_hours);
-        self.anger.remove(&(def.id.clone(), id));
         self.bans
             .retain(|b| !(b.cat_id == row.cat_id && b.user_id == row.user_id && b.action == row.action));
         self.bans.push(row.clone());
@@ -286,11 +308,7 @@ impl World {
         let Some(i) = self.holding_cat(id) else {
             return error(out, id, ErrorCode::NotHolding, "You aren't holding a cat.");
         };
-        let Some(them) = self
-            .person(to)
-            .filter(|p| p.place == Place::Inside && p.id != id)
-            .map(|p| p.name.clone())
-        else {
+        let Some(them) = self.present(to, id).map(|p| p.name.clone()) else {
             return error(out, id, ErrorCode::UnknownPerson, "They aren't inside.");
         };
         let (Some(a), Some(b)) = (self.person_tile(id, now), self.person_tile(to, now)) else {
@@ -299,13 +317,21 @@ impl World {
         if chebyshev(a, b) > 1 {
             return error(out, id, ErrorCode::BadTile, &format!("Get closer to {them} first."));
         }
+        if self.person(to).is_some_and(|p| p.sitting.is_some()) {
+            return error(out, id, ErrorCode::BadTile, &format!("{them} can't take a cat sitting down."));
+        }
         if self.holding_cat(to).is_some() || self.held.iter().any(|h| h.by == to) {
             return error(out, id, ErrorCode::HandsFull, &format!("{them}'s arms are full."));
         }
         let cat_id = self.cats[i].def.id.clone();
         let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
         let trust = self.trust.value(&cat_id, to);
-        if trust >= self.tuning.trust_levels[0] {
+        // Being passed to someone is being picked up by them: it goes if it
+        // knows them, isn't angry at them, and hasn't banned them picking it up.
+        let grudge = self.cats[i].def.traits.grudge_hours;
+        let angry = self.anger.get(&(cat_id.clone(), to)).is_some_and(|a| a.at(now, grudge) >= SCRATCH);
+        let banned = self.banned_until(&cat_id, to, Handling::PickUp, now).is_some();
+        if trust >= self.tuning.trust_levels[0] && !angry && !banned {
             let ms = hold_ms(&self.cats[i].def, trust, false);
             let cat = &mut self.cats[i];
             cat.held_by = Some(to);
@@ -346,6 +372,13 @@ impl World {
             },
         });
         self.settle(i, now, out);
+    }
+
+    /// `to`, if they're inside and here to take something from `from`: not
+    /// walking out, and not gone quiet with their connection dropped.
+    pub(super) fn present(&self, to: u32, from: u32) -> Option<&super::Person> {
+        self.person(to)
+            .filter(|p| p.place == Place::Inside && p.id != from && !p.leaving && p.away_since.is_none())
     }
 
     /// Whoever leaves, or drops, lets go of the cat they hold.

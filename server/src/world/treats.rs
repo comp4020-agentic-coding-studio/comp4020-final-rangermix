@@ -4,7 +4,7 @@
 //! offer by hand, or give to someone else.
 use super::cat_life::Food;
 use super::{Out, To, World, error};
-use crate::protocol::{ErrorCode, Place, ServerMsg, Tile, TreatView};
+use crate::protocol::{ErrorCode, ServerMsg, Tile, TreatView};
 use crate::room::{Ground, Walker};
 use crate::store::TreatRow;
 use crate::time::{canberra_day, canberra_minute_of_day};
@@ -105,11 +105,7 @@ impl World {
         if !self.inside_or_refuse(id, out) {
             return;
         }
-        let Some(them) = self
-            .person(to)
-            .filter(|p| p.place == Place::Inside && p.id != id)
-            .map(|p| p.name.clone())
-        else {
+        let Some(them) = self.present(to, id).map(|p| p.name.clone()) else {
             return error(out, id, ErrorCode::UnknownPerson, "They aren't inside.");
         };
         if self.treats_left(id, now) == 0 {

@@ -137,6 +137,8 @@ pub struct World {
     bowls_key: String,
     /// Pieces put down lately, for curious cats: piece, where, when.
     new_pieces: Vec<(u32, Tile, u64)>,
+    /// A cat answered this action and its line is written.
+    answered: bool,
 }
 
 impl World {
@@ -176,6 +178,7 @@ impl World {
             bowls: 0,
             bowls_key: String::new(),
             new_pieces: Vec::new(),
+            answered: false,
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -208,6 +211,7 @@ impl World {
                 let what = action_name(&msg);
                 let before = out.len();
                 let pending_before = self.person(id).and_then(|p| p.pending.clone());
+                self.answered = false;
                 match msg {
                     ClientMsg::WalkTo { tile } => self.walk_to(now, id, tile, &mut out),
                     ClientMsg::Say { text, to } => self.say(now, id, text, to, &mut out),
@@ -247,6 +251,9 @@ impl World {
     /// code, or the start of a walk over to do it. Handlers log what happens
     /// when it happens.
     fn log_request(&self, id: u32, what: &str, outs: &[Out], pending_before: Option<Pending>) {
+        if self.answered {
+            return;
+        }
         let who = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
         let refusal = outs.iter().find_map(|o| match (&o.to, &o.msg) {
             (To::One(to), ServerMsg::Error { code, .. }) if *to == id => Some(*code),
