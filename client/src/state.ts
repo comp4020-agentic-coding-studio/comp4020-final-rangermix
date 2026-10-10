@@ -67,6 +67,18 @@ type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 const SAID_KEPT = 50;
 let nextBubble = 1;
 
+/**
+ * Whose lap a cat is on: someone sitting on the tile it naps on (the server
+ * lets only a lap cat nap where someone sits). Null for any other cat.
+ */
+export function lapOf(state: CafeState, cat: CatView): number | null {
+  if (cat.pose !== "nap" || cat.walk !== null || cat.heldBy !== null) return null;
+  for (const p of state.people.values()) {
+    if (p.place === "inside" && p.sitting && p.walk === null && p.at.x === cat.at.x && p.at.y === cat.at.y) return p.id;
+  }
+  return null;
+}
+
 export function serverNow(state: CafeState, localNow = Date.now()): number {
   return localNow + state.offset;
 }

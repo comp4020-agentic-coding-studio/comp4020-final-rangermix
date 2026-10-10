@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { menuFor } from "../src/menus";
+import { armsFull, menuFor } from "../src/menus";
 import { fromWelcome } from "../src/state";
 
 function state() {
@@ -101,5 +101,21 @@ describe("the menu for what's on a tile", () => {
 
   it("is empty when nothing is left there", () => {
     expect(menuFor(state(), [{ kind: "piece", id: 99, tile: { x: 0, y: 0 } }])).toBeNull();
+  });
+
+  it("offers no furniture to move or sit on with your arms full", () => {
+    // Phase 3's review, finding 32.
+    const s = state();
+    s.cats.set("mochi", { ...s.cats.get("mochi")!, heldBy: 1, pose: "held" });
+    expect(armsFull(s)).toBe(true);
+    expect(menuFor(s, [{ kind: "piece", id: 15, tile: { x: 2, y: 2 } }])).toBeNull();
+    expect(labels(menuFor(s, [{ kind: "piece", id: 14, tile: { x: 6, y: 5 } }]))).toBeUndefined();
+    expect(armsFull(state())).toBe(false);
+  });
+
+  it("offers nothing for a cat in someone else's arms", () => {
+    const s = state();
+    s.cats.set("mochi", { ...s.cats.get("mochi")!, heldBy: 2, pose: "held" });
+    expect(menuFor(s, [{ kind: "cat", id: "mochi", tile: { x: 6, y: 5 } }])).toBeNull();
   });
 });

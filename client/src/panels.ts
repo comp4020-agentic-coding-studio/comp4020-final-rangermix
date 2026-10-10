@@ -14,22 +14,33 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string | n
 
 const BOWL_WORDS = ["The bowls are empty.", "The bowls are nearly empty.", "The bowls are half full.", "The bowls are full."];
 
+/**
+ * Your cats, your treats and the bowls. Built once and then updated in place,
+ * since it holds a button: rebuilding it on every message would throw away
+ * the keyboard's focus each time a cat moved.
+ */
 export function renderYourCats(box: HTMLElement, state: CafeState, onPutTreat?: () => void): void {
-  const treats: Node[] = [];
-  if (state.yourTreats > 0) {
-    const put = el("button", null, "Put a treat down");
+  let rows = box.querySelector<HTMLElement>(".cat-rows");
+  let count = box.querySelector<HTMLElement>(".treats-left");
+  let put = box.querySelector<HTMLButtonElement>("button.put-treat");
+  let bowls = box.querySelector<HTMLElement>(".bowls");
+  if (!rows || !count || !put || !bowls) {
+    rows = el("div", "cat-rows");
+    count = el("span", "treats-left");
+    put = el("button", "put-treat", "Put a treat down");
     put.type = "button";
-    if (onPutTreat) put.onclick = onPutTreat;
-    treats.push(el("p", "treats", `Treats today: ${state.yourTreats} `, put));
-  } else {
-    treats.push(el("p", "treats", "No treats left today."));
+    bowls = el("p", "hint bowls");
+    box.replaceChildren(el("h2", null, "Your cats"), rows, el("p", "treats", count, put), bowls);
   }
-  treats.push(el("p", "hint", BOWL_WORDS[Math.max(0, Math.min(3, state.bowls))]));
-  renderCats(box, state, treats);
+  rows.replaceChildren(...catRows(state));
+  count.textContent = state.yourTreats > 0 ? `Treats today: ${state.yourTreats} ` : "No treats left today.";
+  put.hidden = state.yourTreats === 0;
+  put.onclick = onPutTreat ?? null;
+  bowls.textContent = BOWL_WORDS[Math.max(0, Math.min(3, state.bowls))];
 }
 
-function renderCats(box: HTMLElement, state: CafeState, after: Node[]): void {
-  const rows = [...state.cats.values()].map((cat) => {
+function catRows(state: CafeState): HTMLElement[] {
+  return [...state.cats.values()].map((cat) => {
     const trust = state.trust.get(cat.id);
     const value = trust?.value ?? 0;
     const fill = el("span", null);
@@ -39,7 +50,6 @@ function renderCats(box: HTMLElement, state: CafeState, after: Node[]): void {
     bar.setAttribute("aria-label", `${cat.name}'s trust in you: ${value} of 100`);
     return el("div", "cat-row", el("strong", null, cat.name), el("span", "hint", `${cat.name} ${LEVEL_WORDS[trust?.level ?? "stranger"]}.`), bar);
   });
-  box.replaceChildren(el("h2", null, "Your cats"), ...rows, ...after);
 }
 
 export function renderHere(box: HTMLElement, state: CafeState): void {

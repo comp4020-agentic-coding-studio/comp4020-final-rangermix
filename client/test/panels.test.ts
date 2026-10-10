@@ -48,7 +48,7 @@ describe("panels", () => {
     renderYourCats(box, s, () => put++);
     expect(box.textContent).toContain("No treats left today.");
     expect(box.textContent).toContain("The bowls are empty.");
-    expect(box.querySelector("button")).toBeNull();
+    expect([...box.querySelectorAll("button")].every((b) => b.hidden)).toBe(true);
   });
 
   it("show who's inside and who's at the window", () => {
@@ -57,5 +57,22 @@ describe("panels", () => {
     expect(box.textContent).toContain("Here (1/6)");
     expect(box.textContent).toContain("me (you)");
     expect(box.textContent).toContain("At the window (1)");
+  });
+
+  it("keeps the treat button, and its focus, through every update", () => {
+    // Phase 3's review, finding 3: a cat moving mustn't take your focus away.
+    const box = document.createElement("div");
+    document.body.append(box);
+    const now = { ...s, yourTreats: 3, bowls: 3 };
+    renderYourCats(box, now, () => {});
+    const button = box.querySelector("button")!;
+    button.focus();
+    const later = { ...now, cats: new Map(now.cats), yourTreats: 2 };
+    later.cats.set("mochi", { ...now.cats.get("mochi")!, at: { x: 7, y: 5 } });
+    renderYourCats(box, later, () => {});
+    expect(box.querySelector("button")).toBe(button);
+    expect(document.activeElement).toBe(button);
+    expect(box.textContent).toContain("Treats today: 2");
+    box.remove();
   });
 });

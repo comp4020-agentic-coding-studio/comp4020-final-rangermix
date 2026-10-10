@@ -57,4 +57,13 @@ describe("pointing at things", () => {
     expect(targetsAt(s, { x: 1, y: 5 }, 0)).toEqual([]);
     expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual(["mochi", 14, 2, "tora"]);
   });
+
+  it("counts a held cat as in its holder's arms, not a target of its own", () => {
+    // Phase 3's review, finding 2: not at the tile where it was picked up.
+    const s = state();
+    s.cats.set("mochi", { ...s.cats.get("mochi")!, heldBy: 2, pose: "held" });
+    expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([]);
+    expect(targetsAt(s, { x: 9, y: 5 }, 0)).toEqual([{ kind: "person", id: 2, tile: { x: 9, y: 5 } }]);
+    expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual([2, "tora"]);
+  });
 });

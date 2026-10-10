@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
-import { afterWelcome, apply, fromWelcome, needsReload, pruneBubbles, shouldPing } from "../src/state";
+import { afterWelcome, apply, fromWelcome, lapOf, needsReload, pruneBubbles, shouldPing } from "../src/state";
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 
@@ -199,5 +199,17 @@ describe("the client's copy of the café", () => {
     expect(afterWelcome("a", "b", "a", true)).toBe("tellToRefresh");
     expect(afterWelcome("a", "b", null, false)).toBe("tellToRefresh");
     expect(afterWelcome("c", "b", "a", true)).toBe("reload");
+  });
+
+  it("knows a cat asleep where someone sits is on their lap", () => {
+    // Phase 3's review, finding 31: the server lets only a lap cat nap there.
+    const s = fromWelcome(welcome(), 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 1, y: 5 }, walk: null, sitting: true });
+    const mochi = s.cats.get("mochi")!;
+    expect(lapOf(s, mochi)).toBe(2);
+    expect(lapOf(s, { ...mochi, pose: "sit" })).toBeNull();
+    expect(lapOf(s, { ...mochi, at: { x: 2, y: 5 } })).toBeNull();
+    s.people.set(2, { ...s.people.get(2)!, sitting: false });
+    expect(lapOf(s, mochi)).toBeNull();
   });
 });

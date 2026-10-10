@@ -5,8 +5,8 @@ import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
-import { closeMenu, moveRing, openMenu } from "./menu";
-import { menuFor } from "./menus";
+import { closeMenu, isMenuOpen, moveRing, openMenu } from "./menu";
+import { armsFull, catInArms, menuFor } from "./menus";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
 import { chooseLayout, saveLayout, savedLayout } from "./layout";
 import { guessPlace } from "./placing";
@@ -153,16 +153,37 @@ function enter(me: ApiMe): void {
       canvas,
       ringLayout(),
     );
+    // A ring opened by keyboard takes the focus from the room, which would
+    // send the view back to you and leave the ring round nothing: the room
+    // holds still until it closes.
+    stage.holdStill = ringLayout();
   };
-  // The carrying bar, and the preview of where the piece would go.
-  let wasCarrying: number | null = null;
+  stage.frameHooks.push(() => {
+    if (stage.holdStill && !isMenuOpen()) stage.holdStill = false;
+  });
+  // The carrying bar (a piece, or a cat, in your arms), and the preview of
+  // where a piece would go.
+  let wasCarrying: string | null = null;
   stage.frameHooks.push(() => {
     const state = cafe.state;
     const held = carrying();
-    if ((held?.id ?? null) !== wasCarrying) {
-      wasCarrying = held?.id ?? null;
-      $("carrying").hidden = !held;
+    const cat = state ? catInArms(state) : null;
+    const inArms = held ? `piece ${held.id}` : cat ? `cat ${cat.id}` : null;
+    if (inArms !== wasCarrying) {
+      wasCarrying = inArms;
+      $("carrying").hidden = !inArms;
       canvas.classList.toggle("placing", !!held);
+      $("put-back").hidden = !held;
+      $("put-away").hidden = !held;
+      $("put-cat-down").hidden = !cat;
+      // Arms full: nothing more comes from the catalogue until they're free.
+      const add = $<HTMLButtonElement>("add-furniture");
+      add.disabled = state ? armsFull(state) : false;
+      add.title = add.disabled ? "Your arms are full." : "";
+      if (cat) {
+        $("carrying-text").textContent = `Holding ${cat.name}.`;
+        $("put-cat-down").textContent = `Put ${cat.name} down`;
+      }
       if (held) {
         const what = pieceName(held.kind);
         $("carrying-text").textContent = `Carrying the ${what}. Choose where it goes.`;
@@ -187,6 +208,10 @@ function enter(me: ApiMe): void {
   };
   $("put-away").onclick = () => {
     cafe.send({ type: "putAway" });
+    canvas.focus();
+  };
+  $("put-cat-down").onclick = () => {
+    cafe.send({ type: "putDown" });
     canvas.focus();
   };
   $("add-furniture").onclick = () => {
@@ -214,6 +239,7 @@ function enter(me: ApiMe): void {
     close: () => {
       closeMenu();
       if (carrying()) cafe.send({ type: "putBack" });
+      else if (cafe.state && catInArms(cafe.state)) cafe.send({ type: "putDown" });
     },
   });
   const unsubscribe = cafe.onChange(() => {

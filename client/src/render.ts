@@ -6,7 +6,7 @@ import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
 import { TILE } from "./scale";
 import type { AvatarFrame, CatFrame, EmoteName, Sprites, TileName } from "./sprites";
-import { type CafeState, type Cat, serverNow } from "./state";
+import { type CafeState, type Cat, lapOf, serverNow } from "./state";
 
 // Draws the whole café at 1:1 into the canvas; CSS scales it by a whole number.
 
@@ -99,7 +99,9 @@ export function draw(ctx: CanvasRenderingContext2D, state: CafeState, sprites: S
       continue;
     }
     const spot = positionAt(cat.walk, cat.at, now);
-    items.push({ y: spot.y + 0.1, paint: () => drawCat(ctx, sprites, cat, spot, now) });
+    // A cat asleep on someone's lap is drawn over them, as a held cat is.
+    const onLap = lapOf(state, cat) !== null;
+    items.push({ y: spot.y + (onLap ? 0.3 : 0.1), paint: () => drawCat(ctx, sprites, cat, spot, now) });
   }
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;

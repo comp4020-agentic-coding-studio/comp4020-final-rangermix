@@ -14,10 +14,16 @@ function rounded(state: CafeState, walk: Parameters<typeof positionAt>[0], at: T
   return { x: Math.round(p.x), y: Math.round(p.y) };
 }
 
-/** Everything you can act on (cats, and other people inside), where each is now. */
+/**
+ * Everything you can act on (cats, and other people inside), where each is
+ * now. A cat in someone's arms is where they are, and isn't a target of its
+ * own: its holder is.
+ */
 function everyone(state: CafeState, localNow: number): Target[] {
   const out: Target[] = [];
-  for (const c of state.cats.values()) out.push({ kind: "cat", id: c.id, tile: rounded(state, c.walk, c.at, localNow) });
+  for (const c of state.cats.values()) {
+    if (c.heldBy === null) out.push({ kind: "cat", id: c.id, tile: rounded(state, c.walk, c.at, localNow) });
+  }
   for (const p of state.people.values()) {
     if (p.place === "inside" && p.id !== state.you) out.push({ kind: "person", id: p.id, tile: rounded(state, p.walk, p.at, localNow) });
   }

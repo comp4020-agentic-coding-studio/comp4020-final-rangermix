@@ -1,6 +1,6 @@
 import type { Target } from "./input";
 import type { ClientMsg } from "./protocol/ClientMsg";
-import { type CafeState, pieceName } from "./state";
+import { type CafeState, type Cat, pieceName } from "./state";
 
 // What you can do with everything on a tile, in one menu: a cat first, since
 // it's the point, then people, then the piece of furniture underneath (so a
@@ -20,18 +20,28 @@ export interface Menu {
   actions: MenuAction[];
 }
 
+/** The cat you're holding, if any. */
+export function catInArms(state: CafeState): Cat | null {
+  return [...state.cats.values()].find((c) => c.heldBy === state.you) ?? null;
+}
+
+/** Arms full: a piece of furniture, or a cat, already. */
+export function armsFull(state: CafeState): boolean {
+  return state.held.has(state.you) || catInArms(state) !== null;
+}
+
 export function menuFor(state: CafeState, targets: Target[]): Menu | null {
   let title: string | null = null;
   let note: string | null = null;
   const actions: MenuAction[] = [];
   const me = state.you;
-  // Arms full: a piece of furniture or a cat already.
-  const holdingCat = [...state.cats.values()].find((c) => c.heldBy === me) ?? null;
-  const armsFull = state.held.has(me) || holdingCat !== null;
+  const holdingCat = catInArms(state);
+  const full = armsFull(state);
   for (const target of targets) {
     if (target.kind === "cat") {
       const cat = state.cats.get(target.id);
-      if (!cat) continue;
+      // In someone else's arms: nothing to do with it but ask them.
+      if (!cat || (cat.heldBy !== null && cat.heldBy !== me)) continue;
       title ??= cat.name;
       const trust = state.trust.get(cat.id);
       if (trust) note ??= `${cat.name}'s trust in you: ${trust.value} of 100`;
@@ -43,7 +53,7 @@ export function menuFor(state: CafeState, targets: Target[]): Menu | null {
       actions.push({ label: `Call ${cat.name}`, msg: { type: "call", cat: cat.id } });
       if (state.yourTreats > 0) actions.push({ label: `Offer ${cat.name} a treat`, msg: { type: "offerTreat", cat: cat.id } });
       actions.push({ label: `Play with ${cat.name}`, msg: { type: "play", cat: cat.id } });
-      if (!armsFull && cat.heldBy === null) actions.push({ label: `Pick ${cat.name} up`, msg: { type: "pickUp", cat: cat.id } });
+      if (!full) actions.push({ label: `Pick ${cat.name} up`, msg: { type: "pickUp", cat: cat.id } });
     } else if (target.kind === "person") {
       const person = state.people.get(target.id);
       if (!person) continue;
@@ -60,6 +70,8 @@ export function menuFor(state: CafeState, targets: Target[]): Menu | null {
         actions.push({ label: `Stand the ${what} up`, msg: { type: "tidy", id: piece.id } });
         continue;
       }
+      // With your arms full you can neither carry it nor sit on it.
+      if (full) continue;
       if (piece.movable) actions.push({ label: `Move the ${what}`, msg: { type: "grab", id: piece.id } });
       if (piece.seats) actions.push({ label: `Sit on the ${what}`, msg: { type: "sit", id: piece.id } });
     }

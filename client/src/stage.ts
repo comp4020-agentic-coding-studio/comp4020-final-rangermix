@@ -17,6 +17,8 @@ export class Stage {
   readonly panHooks: (() => void)[] = [];
   scale = 1;
   layout: Layout = "a";
+  /** Layout B holds still while a ring is open, so the ring stays round its tile. */
+  holdStill = false;
   private frame = 0;
   private readonly resize = new ResizeObserver(() => this.fit());
 
@@ -98,6 +100,7 @@ export class Stage {
    * keyboard's pointer while it's out, so what Enter acts on is in view.
    */
   private pan(state: NonNullable<Cafe["state"]>): void {
+    if (this.holdStill) return;
     const me = state.people.get(state.you);
     const pointer = this.pointer.visible ? this.pointer.tile : null;
     const spot = pointer ?? (me ? positionAt(me.walk, me.at, serverNow(state)) : { x: state.room.width / 2, y: state.room.height / 2 });

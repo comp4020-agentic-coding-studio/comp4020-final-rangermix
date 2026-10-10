@@ -35,6 +35,8 @@ type Frame = { type: string; [key: string]: any };
 interface Visit {
   page: Page;
   frames: Frame[];
+  /** What the page sent the café. */
+  sent: Frame[];
 }
 
 /** Opens the café in a fresh browser and signs up through the page, by keyboard. */
@@ -43,7 +45,11 @@ async function visit(viewport: { width: number; height: number }, touch = false)
   contexts.push(context);
   const page = await context.newPage();
   const frames: Frame[] = [];
-  page.on("websocket", (ws) => ws.on("framereceived", (f) => frames.push(JSON.parse(String(f.payload)))));
+  const sent: Frame[] = [];
+  page.on("websocket", (ws) => {
+    ws.on("framereceived", (f) => frames.push(JSON.parse(String(f.payload))));
+    ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload))));
+  });
   await page.goto(baseUrl);
   await page.locator("#signup input[name=name]").focus();
   await page.keyboard.type(uniqueName("b"));
@@ -53,7 +59,61 @@ async function visit(viewport: { width: number; height: number }, touch = false)
   await page.locator("#code-done:focus").waitFor();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
-  return { page, frames };
+  return { page, frames, sent };
+}
+
+type Tile = { x: number; y: number };
+interface CatSeen {
+  id: string;
+  name: string;
+  at: Tile;
+  walking: boolean;
+  pose: string;
+  heldBy: number | null;
+}
+
+/** Where each cat is, by the frames so far. */
+function catsSeen(frames: Frame[]): Map<string, CatSeen> {
+  const out = new Map<string, CatSeen>();
+  for (const f of frames) {
+    if (f.type === "welcome") {
+      for (const c of f.snapshot.cats) out.set(c.id, { id: c.id, name: c.name, at: c.at, walking: c.walk !== null, pose: c.pose, heldBy: c.heldBy });
+      continue;
+    }
+    const c = out.get(f.cat);
+    if (!c) continue;
+    if (f.type === "catMoved") Object.assign(c, { walking: true, pose: "walk" });
+    if (f.type === "catPosed") Object.assign(c, { at: f.at, walking: false, pose: f.pose });
+    if (f.type === "catHeld") c.heldBy = f.by;
+  }
+  return out;
+}
+
+/** Your id, and where you are or are headed, by the frames so far. */
+function meSeen(frames: Frame[]): { id: number; at: Tile } {
+  const welcome = frames.find((f) => f.type === "welcome")!;
+  const id: number = welcome.you;
+  let at: Tile = welcome.snapshot.people.find((p: Frame) => p.id === id).at;
+  for (const f of frames) {
+    if ((f.type === "personMoved" || f.type === "personSat") && f.id === id) at = f.walk ? f.walk.path[f.walk.path.length - 1] : f.at;
+    if (f.type === "personJoined" && f.person.id === id) at = f.person.at;
+  }
+  return { id, at };
+}
+
+/** Tabs through the room's targets until the announcer names a still cat for which `ok` holds. */
+async function tabToCat(v: Visit, ok: (c: CatSeen) => boolean = () => true): Promise<CatSeen | null> {
+  await v.page.locator("#room").focus();
+  await v.page.keyboard.press("ArrowRight");
+  // Nearest first, through every cat, person and piece in the room.
+  for (let i = 0; i < 30; i++) {
+    await v.page.keyboard.press("Tab");
+    await v.page.waitForTimeout(80);
+    const said = await v.page.evaluate(() => document.getElementById("announcer")?.textContent ?? "");
+    const cat = [...catsSeen(v.frames).values()].find((c) => c.name === said);
+    if (cat && !cat.walking && cat.heldBy === null && ok(cat)) return cat;
+  }
+  return null;
 }
 
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
@@ -162,6 +222,145 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await a.page.getByRole("button", { name: "Put a treat down" }).click();
     await expect.poll(() => b.frames.slice(from).some((f) => f.type === "treatPlaced")).toBe(true);
     await expect.poll(() => a.page.locator(".treats").textContent()).toContain("Treats today: 2");
+  });
+
+  // Phase 3's review, finding 34: the browser checks plan Task 8 asked for,
+  // and those for findings 2, 3 and 33.
+
+  it("offers a cat a treat by keyboard, and the café answers", async () => {
+    const v = await visit({ width: 1920, height: 1080 });
+    let offered = -1;
+    for (let attempt = 0; attempt < 5 && offered < 0; attempt++) {
+      const cat = await tabToCat(v);
+      if (!cat) continue;
+      await v.page.keyboard.press("Enter");
+      const menu = v.page.locator(".menu");
+      if (!(await menu.isVisible().catch(() => false))) {
+        await v.page.keyboard.press("Escape");
+        continue;
+      }
+      // Down the menu's items to the offer, by keyboard only.
+      for (let i = 0; i < 6; i++) {
+        const label = await v.page.evaluate(() => document.activeElement?.textContent ?? "");
+        if (label === `Offer ${cat.name} a treat`) break;
+        await v.page.keyboard.press("ArrowDown");
+      }
+      expect(await v.page.evaluate(() => document.activeElement?.textContent)).toBe(`Offer ${cat.name} a treat`);
+      offered = v.frames.length;
+      await v.page.keyboard.press("Enter");
+    }
+    expect(offered, "never reached a still cat by keyboard").toBeGreaterThanOrEqual(0);
+    await expect.poll(() => v.sent.some((f) => f.type === "offerTreat")).toBe(true);
+    const me = meSeen(v.frames).id;
+    const answered = (f: Frame) =>
+      (f.type === "catReacted" && Object.values(f.reaction).includes(me)) ||
+      f.type === "yourTreats" ||
+      f.type === "error" ||
+      (f.type === "personMoved" && f.id === me);
+    await expect.poll(() => v.frames.slice(offered).some(answered), { timeout: 10_000 }).toBe(true);
+  });
+
+  it("keeps the focus on the treat button while the café changes, and Enter puts one down", async () => {
+    const v = await visit({ width: 1920, height: 1080 });
+    const put = v.page.getByRole("button", { name: "Put a treat down" });
+    await put.focus();
+    // Every message from the café used to rebuild the panel; someone arriving
+    // is one that comes for certain, where a cat may be asleep.
+    const from = v.frames.length;
+    await visit({ width: 1920, height: 1080 });
+    await expect.poll(() => v.frames.slice(from).some((f) => f.type === "personJoined")).toBe(true);
+    await v.page.waitForTimeout(100);
+    expect(await v.page.evaluate(() => document.activeElement?.textContent)).toBe("Put a treat down");
+    const pressed = v.frames.length;
+    await v.page.keyboard.press("Enter");
+    const me = meSeen(v.frames).id;
+    await expect.poll(() => v.frames.slice(pressed).some((f) => f.type === "treatPlaced" && f.by === me)).toBe(true);
+  });
+
+  it("picks a cat up by touch on a phone, and puts it down from the bar", { timeout: 240_000 }, async () => {
+    // A cat may refuse, or be asleep (all three can nap for minutes on end).
+    // Asking one again within ten seconds is pushing, and a third refusal can
+    // mean a ban, so each visitor asks each awake cat at most twice, eleven
+    // seconds apart, and a fresh visitor takes over every 35 seconds, for up
+    // to 200. It usually takes seconds. What this proves is the bar's
+    // button, once a cat has agreed.
+    let v: Visit | null = null;
+    let held: CatSeen | null = null;
+    const giveUp = Date.now() + 200_000;
+    while (!held && Date.now() < giveUp) {
+      v = await visit({ width: 390, height: 844 }, true);
+      const me = meSeen(v.frames).id;
+      const asked = new Map<string, number[]>();
+      const deadline = Math.min(Date.now() + 35_000, giveUp);
+      while (!held && Date.now() < deadline) {
+        const cat = [...catsSeen(v.frames).values()].find((c) => {
+          const times = asked.get(c.id) ?? [];
+          const awake = !c.walking && c.heldBy === null && !["nap", "hide"].includes(c.pose);
+          return awake && times.length < 2 && Date.now() - (times.at(-1) ?? 0) > 11_000;
+        });
+        if (!cat) {
+          await v.page.waitForTimeout(500);
+          continue;
+        }
+        asked.set(cat.id, [...(asked.get(cat.id) ?? []), Date.now()]);
+        const box = (await v.page.locator("#room").boundingBox())!;
+        await v.page.touchscreen.tap(box.x + (cat.at.x + 0.5) * (box.width / 12), box.y + (cat.at.y + 0.5) * (box.height / 10));
+        const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
+        if (!(await pick.isVisible({ timeout: 1000 }).catch(() => false))) {
+          await v.page.keyboard.press("Escape").catch(() => {});
+          continue;
+        }
+        const from = v.frames.length;
+        await pick.tap();
+        // Picked up (a purr or a shrug, then catHeld), or refused one way or another.
+        const answer = () =>
+          v!.frames.slice(from).find(
+            (f) =>
+              (f.type === "catHeld" && f.cat === cat.id) ||
+              f.type === "error" ||
+              (f.type === "catReacted" && f.cat === cat.id && ["refuse", "scratch"].includes(f.reaction.kind) && Object.values(f.reaction).includes(me)),
+          );
+        await expect.poll(answer, { timeout: 8_000 }).toBeTruthy();
+        if (answer()?.type === "catHeld" && answer()?.by === me) held = cat;
+      }
+      if (!held) await v.page.locator("#leave").click();
+    }
+    expect(held, "no cat let itself be picked up").not.toBeNull();
+    const down = v!.page.locator("#put-cat-down");
+    await down.waitFor();
+    expect(await down.textContent()).toBe(`Put ${held!.name} down`);
+    const from = v!.frames.length;
+    await down.tap();
+    await expect.poll(() => v!.sent.some((f) => f.type === "putDown")).toBe(true);
+    await expect.poll(() => v!.frames.slice(from).some((f) => f.type === "catHeld" && f.cat === held!.id && f.by === null)).toBe(true);
+    await v!.page.locator("#carrying").waitFor({ state: "hidden" });
+  });
+
+  it("in the bigger room, keeps a keyboard-opened ring round a cat well away from you", async () => {
+    const v = await visit({ width: 390, height: 844 }, true);
+    await v.page.locator("#layout-switch").tap();
+    await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    const ring = v.page.locator(".menu.ring");
+    let cat: CatSeen | null = null;
+    for (let attempt = 0; attempt < 6 && !cat; attempt++) {
+      const me = meSeen(v.frames).at;
+      cat = await tabToCat(v, (c) => Math.abs(c.at.x - me.x) + Math.abs(c.at.y - me.y) >= 4);
+      if (!cat) continue;
+      await v.page.keyboard.press("Enter");
+      if (!(await ring.isVisible({ timeout: 1000 }).catch(() => false))) {
+        cat = null;
+        await v.page.keyboard.press("Escape");
+      }
+    }
+    expect(cat, "no cat well away from you to open a ring on").not.toBeNull();
+    // Long enough for the view to have gone back to you, had it.
+    await v.page.waitForTimeout(500);
+    const room = (await v.page.locator("#room").boundingBox())!;
+    const px = room.width / 12;
+    const tile = { x: room.x + (cat!.at.x + 0.5) * px, y: room.y + (cat!.at.y + 0.5) * px };
+    const boxes = await Promise.all((await ring.getByRole("menuitem").all()).map((b) => b.boundingBox()));
+    const centre = boxes.reduce((c, b) => ({ x: c.x + (b!.x + b!.width / 2) / boxes.length, y: c.y + (b!.y + b!.height / 2) / boxes.length }), { x: 0, y: 0 });
+    expect(Math.hypot(centre.x - tile.x, centre.y - tile.y), "the ring is round its cat").toBeLessThanOrEqual(px * 1.5);
   });
 
   it("shows one visitor's new lamp in the other's café", async () => {

@@ -11,6 +11,10 @@ export interface Action {
 
 let open: HTMLElement | null = null;
 
+export function isMenuOpen(): boolean {
+  return open !== null;
+}
+
 export function closeMenu(): void {
   open?.remove();
   open = null;

@@ -42,6 +42,11 @@ jobs:
         run: pnpm check
         env:
           APP_URL: http://localhost:8080
+      - name: Check the app's own log lines
+        # after the spec's visitors have been and gone: every line says when,
+        # what and who, and none holds what the spec said in a bubble or its
+        # password (AGENTS.md: never log what anyone says)
+        run: docker logs app 2>&1 | node scripts/check-logs.ts "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse"
       - name: Show the app's output
         # what the container printed, so a crash or slow boot is visible
         if: ${{ failure() }}
