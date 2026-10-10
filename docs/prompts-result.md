@@ -875,4 +875,6 @@ each.
 - **Checked.** 250 Rust tests and 76 client tests green; the spec's 47
   (9 in a browser) green twice against the image on fresh containers, as
   CI runs it, each time followed by the new log check over the app's own
-  199 lines.
+  199 lines. CI then passed all three jobs on the closing push and
+  deployed it; the read-only live checks pass, and the live page's script
+  has the new carrying bar.
