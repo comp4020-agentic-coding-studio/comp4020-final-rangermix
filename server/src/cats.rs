@@ -168,6 +168,8 @@ pub struct Situation<'a> {
     pub knockable: bool,
     /// People sitting, with this cat's trust in each.
     pub laps: &'a [(u32, f32)],
+    /// The trust a lap takes: the third trust level.
+    pub lap_trust: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -185,9 +187,6 @@ pub enum Choice {
     Knock,
     Lap(u32),
 }
-
-/// The trust at which a cat naps on your lap (design.md, "Numbers to tune").
-pub const LAP_TRUST: f32 = 80.0;
 
 /// Every behaviour scores itself from character, needs, trust, noise and the hour.
 pub fn options(def: &CatDef, s: &Situation) -> Vec<(Choice, f32)> {
@@ -229,7 +228,7 @@ pub fn options(def: &CatDef, s: &Situation) -> Vec<(Choice, f32)> {
         out.push((Choice::Knock, 0.35 * t.curiosity * t.alone_activity));
     }
     for &(id, trust) in s.laps {
-        if trust >= LAP_TRUST {
+        if trust >= s.lap_trust {
             out.push((Choice::Lap(id), 1.5 * t.affection * (0.4 + s.tiredness)));
         }
     }
@@ -445,9 +444,22 @@ mod tests {
         let mut s = situation(&[(1, 0.0), (2, 0.0)]);
         let laps = [(1, 79.0), (2, 85.0)];
         s.laps = &laps;
+        s.lap_trust = 80.0;
         let o = options(&cat("mochi"), &s);
         assert_eq!(score(&o, Choice::Lap(1)), 0.0);
         assert!(score(&o, Choice::Lap(2)) > 0.0);
+    }
+
+    #[test]
+    fn a_lap_takes_the_trust_the_tuning_says() {
+        // Review finding 29: the third trust level, not a number of its own.
+        let mut s = situation(&[(1, 0.0)]);
+        let laps = [(1, 75.0)];
+        s.laps = &laps;
+        s.lap_trust = 70.0;
+        assert!(score(&options(&cat("mochi"), &s), Choice::Lap(1)) > 0.0);
+        s.lap_trust = 80.0;
+        assert_eq!(score(&options(&cat("mochi"), &s), Choice::Lap(1)), 0.0);
     }
 
     #[test]

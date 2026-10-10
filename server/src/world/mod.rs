@@ -147,6 +147,8 @@ pub struct World {
     new_pieces: Vec<(u32, Tile, u64)>,
     /// A cat answered this action and its line is written.
     answered: bool,
+    /// The Canberra day treats were last counted for.
+    treat_day: String,
 }
 
 impl World {
@@ -187,6 +189,7 @@ impl World {
             bowls_key: String::new(),
             new_pieces: Vec::new(),
             answered: false,
+            treat_day: crate::time::canberra_day(now),
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -399,6 +402,7 @@ impl World {
         }
         self.quiet_tick(now, &mut out);
         self.bowls_tick(now, &mut out);
+        self.treats_tick(now, &mut out);
         self.cats_tick(now, dt, &mut out);
         if now.saturating_sub(self.last_save) >= self.tuning.save_every_secs * 1000 {
             self.save(now);

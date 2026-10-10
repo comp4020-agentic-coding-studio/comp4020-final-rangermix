@@ -157,8 +157,8 @@ impl World {
             return error(out, id, ErrorCode::CantPlace, why);
         }
         let mut piece = self.room.lift(piece_id).expect("found above");
-        // Picked up, a knocked-over piece is upright again.
-        piece.toppled = false;
+        // Picked up, a knocked-over piece is upright again, and saved so.
+        let was_toppled = std::mem::replace(&mut piece.toppled, false);
         self.cats_jump_off(now, id, &piece.tiles(), out);
         tracing::info!(target: "action", uid = id, who = %self.name_of(id), what = "grab", outcome = "ok", piece = %piece.kind);
         out.push(Out {
@@ -173,6 +173,9 @@ impl World {
             from: Some(Tile { x: piece.x, y: piece.y }),
             piece,
         });
+        if was_toppled {
+            self.save_arrangement();
+        }
     }
 
     pub(super) fn take(&mut self, now: u64, id: u32, kind: &str, out: &mut Vec<Out>) {
@@ -250,6 +253,7 @@ impl World {
             },
         });
         // Something new where it stands: the curious cats come to look.
+        self.new_pieces.retain(|n| n.0 != piece.id);
         self.new_pieces.push((piece.id, Tile { x: piece.x, y: piece.y }, now));
         self.room.put(piece);
         self.save_arrangement();
@@ -415,12 +419,19 @@ impl World {
         }
     }
 
-    /// The seat on `piece` nearest `near` that nobody but `id` sits on.
+    /// The seat on `piece` nearest `near` that nobody but `id` sits on and no
+    /// cat lies on: a cat lying on furniture claims it (design.md, "The cats").
     fn free_seat(&self, piece: &Piece, id: u32, near: Tile) -> Option<Tile> {
         piece
             .tiles()
             .into_iter()
             .filter(|&t| !self.people.iter().any(|p| p.id != id && p.sitting.is_some() && p.at == t))
+            .filter(|&t| {
+                !self
+                    .cats
+                    .iter()
+                    .any(|c| c.walk.is_none() && c.held_by.is_none() && c.lap != Some(id) && c.at == t)
+            })
             .min_by_key(|&t| chebyshev(t, near))
     }
 

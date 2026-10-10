@@ -156,7 +156,7 @@ impl World {
                 };
                 self.react(i, Reaction::Play { with: id }, out);
                 self.change_trust(i, id, gain, &today, out);
-                self.sit_still(i, now, Plan::Play, out);
+                self.sit_still(i, now, Plan::PlayWith(id), out);
             }
             (Handling::Offer, Outcome::Welcome | Outcome::Tolerate) => {
                 self.use_treat(id, now, out);
@@ -356,7 +356,7 @@ impl World {
             .room
             .around(from, Walker::Cat)
             .into_iter()
-            .find(|&t| self.room.pettable(t) && !self.cat_on(t, i, now) && t != self.room.door)
+            .find(|&t| self.room.pettable(t) && self.free_for(i, t, now) && t != self.room.door)
             .unwrap_or(from);
         let cat = &mut self.cats[i];
         cat.held_by = None;

@@ -7,7 +7,7 @@ use super::{Out, To, World, error};
 use crate::protocol::{ErrorCode, ServerMsg, Tile, TreatView};
 use crate::room::{Ground, Walker};
 use crate::store::TreatRow;
-use crate::time::{canberra_day, canberra_minute_of_day};
+use crate::time::{canberra_day, canberra_day_before, canberra_minute_of_day};
 
 /// A treat on the floor, until a cat eats it.
 #[derive(Debug, Clone)]
@@ -155,6 +155,24 @@ impl World {
         true
     }
 
+    /// A new Canberra day: everyone's allowance is back, and each is told.
+    pub(super) fn treats_tick(&mut self, now: u64, out: &mut Vec<Out>) {
+        let today = canberra_day(now);
+        if today == self.treat_day {
+            return;
+        }
+        self.treat_day = today;
+        let people: Vec<u32> = self.people.iter().map(|p| p.id).collect();
+        for id in people {
+            out.push(Out {
+                to: To::One(id),
+                msg: ServerMsg::YourTreats {
+                    left: self.treats_left(id, now),
+                },
+            });
+        }
+    }
+
     /// The café's schedule: the bowls refill at each refill time, once.
     pub(super) fn bowls_tick(&mut self, now: u64, out: &mut Vec<Out>) {
         let key = refill_key(now, &self.tuning.bowl_refills);
@@ -195,9 +213,6 @@ pub(super) fn refill_key(now: u64, refills: &[u32]) -> String {
     let minute = canberra_minute_of_day(now);
     match refills.iter().rev().find(|&&r| r <= minute) {
         Some(r) => format!("{}@{r}", canberra_day(now)),
-        None => {
-            let yesterday = canberra_day(now.saturating_sub((minute as u64 + 1) * 60_000));
-            format!("{yesterday}@{}", refills.last().copied().unwrap_or(0))
-        }
+        None => format!("{}@{}", canberra_day_before(now), refills.last().copied().unwrap_or(0)),
     }
 }

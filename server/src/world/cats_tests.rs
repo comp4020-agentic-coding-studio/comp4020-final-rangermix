@@ -683,3 +683,291 @@ fn a_cat_carried_to_the_door_jumps_down_because_of_the_door() {
         .expect("a jump_down line");
     assert_eq!(line["why"], "door", "{line}");
 }
+
+// Phase 3's review, the cats' lives.
+
+/// Sits `id` on the first piece of `kind`, from `from`; returns their seat.
+fn sit_on(w: &mut World, id: u32, kind: &str, from: Tile, now: u64) -> Tile {
+    let piece = w.room.pieces.iter().find(|p| p.kind == kind).unwrap().id;
+    stand(w, id, from);
+    send(w, id, now, ClientMsg::Sit { id: piece });
+    let p = w.person(id).unwrap();
+    assert!(p.sitting.is_some(), "seated on the {kind}");
+    p.at
+}
+
+/// Cats at rest (not walking, not held), and where.
+fn resting_cats(w: &World) -> Vec<(String, Tile)> {
+    w.cats
+        .iter()
+        .filter(|c| c.walk.is_none() && c.held_by.is_none())
+        .map(|c| (c.def.id.clone(), c.at))
+        .collect()
+}
+
+#[test]
+fn no_cat_settles_on_a_seated_strangers_tile() {
+    // Finding 6: only a lap cat may, and only at trust 80.
+    let mut w = world();
+    for id in 1..=7 {
+        join(&mut w, id, 0);
+    }
+    let seats = [
+        sit_on(&mut w, 1, "sofa", T(1, 6), 1_000),
+        sit_on(&mut w, 2, "window_seat", T(2, 2), 1_000),
+        sit_on(&mut w, 3, "cushion", T(8, 7), 1_000),
+    ];
+    for c in &mut w.cats {
+        (c.tiredness, c.hunger, c.play) = (1.0, 0.0, 0.0);
+    }
+    for step in 1..=12_000u64 {
+        w.tick(1_000 + step * 100);
+        for (cat, at) in resting_cats(&w) {
+            assert!(!seats.contains(&at), "{cat} settled on a stranger's seat at {at:?}, step {step}");
+        }
+    }
+}
+
+#[test]
+fn cats_dont_share_a_tile_or_a_lap() {
+    // Finding 26.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    sit_on(&mut w, 1, "sofa", T(1, 6), 1_000);
+    for cat in ["mochi", "tora", "burakku"] {
+        for d in 1..=9 {
+            w.trust.apply(cat, 1.0, 1, 10.0, &format!("1970-01-0{d}"));
+        }
+    }
+    for c in &mut w.cats {
+        (c.tiredness, c.hunger, c.play) = (0.9, 1.0, 1.0);
+    }
+    for step in 1..=18_000u64 {
+        w.tick(1_000 + step * 100);
+        let rest = resting_cats(&w);
+        for (n, (a, at)) in rest.iter().enumerate() {
+            for (b, bt) in &rest[n + 1..] {
+                assert_ne!(at, bt, "{a} and {b} on one tile at step {step}");
+            }
+        }
+        assert!(w.cats.iter().filter(|c| c.lap == Some(1)).count() <= 1, "two cats on one lap");
+    }
+}
+
+#[test]
+fn a_cat_investigates_only_a_piece_still_there_from_a_tile_someone_can_reach() {
+    // Finding 23.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(5, 8));
+    for c in &mut w.cats {
+        (c.tiredness, c.hunger, c.play) = (0.0, 0.0, 0.0);
+    }
+    // A piece placed and then carried off: nothing to look at.
+    w.new_pieces = vec![(9_999, T(3, 3), 0)];
+    let log = capture_logs(|| {
+        for step in 1..=1_100u64 {
+            w.tick(step * 100);
+        }
+    });
+    assert!(!log.contains(r#""what":"investigate""#), "investigated a piece that's gone");
+    // The tower moved into the corner: look at it from where someone can pet you.
+    let tower = w.room.pieces.iter_mut().find(|p| p.kind == "cat_tower").unwrap();
+    (tower.x, tower.y) = (0, 1);
+    let id = tower.id;
+    w.new_pieces = vec![(id, T(0, 1), 110_000)];
+    let mut looked = false;
+    let log = capture_logs(|| {
+        for step in 1..=1_200u64 {
+            for o in w.tick(110_000 + step * 100) {
+                if let ServerMsg::CatPosed { pose: Pose::Sit, at, .. } = o.msg {
+                    assert!(w.room.pettable(at), "out of reach at {at:?}");
+                }
+            }
+        }
+    });
+    looked |= log.contains(r#""what":"investigate""#);
+    assert!(looked, "two minutes and nobody looked at the tower");
+}
+
+#[test]
+fn a_cat_doesnt_play_with_toys_carried_off_on_its_way() {
+    // Finding 24.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(2, 8));
+    let tora = w.cats.iter().position(|c| c.def.id == "tora").unwrap();
+    for c in &mut w.cats {
+        (c.tiredness, c.hunger, c.play) = (0.0, 0.0, 0.0);
+    }
+    let mut now = 0;
+    let mut heading = false;
+    for _ in 0..6_000 {
+        now += 100;
+        w.cats[tora].play = 1.0;
+        w.tick(now);
+        if w.cats[tora].walk.is_some() && w.cats[tora].plan == cat_life::Plan::Play {
+            heading = true;
+            break;
+        }
+    }
+    assert!(heading, "Tora never set off to play");
+    w.room.pieces.retain(|p| p.kind != "toys");
+    for _ in 0..300 {
+        now += 100;
+        w.tick(now);
+        if w.cats[tora].walk.is_none() {
+            break;
+        }
+    }
+    assert_ne!(w.cats[tora].pose, Pose::Play, "played with toys that aren't there");
+}
+
+#[test]
+fn playing_with_someone_isnt_logged_as_playing_with_the_toys() {
+    // Findings 15 (a) and 24.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(5, 8));
+    for d in 1..=4 {
+        w.trust.apply("tora", 1.0, 1, 10.0, &format!("1970-01-0{d}"));
+    }
+    let i = hold(&mut w, "tora", T(5, 7), Pose::Idle);
+    let log = capture_logs(|| {
+        for n in 0..30u64 {
+            w.cats[i].play = 1.0;
+            w.cats[i].refused.clear();
+            let outs = send(&mut w, 1, 1_000 + n * 20_000, ClientMsg::Play { cat: "tora".into() });
+            if reactions(&outs).contains(&Reaction::Play { with: 1 }) {
+                break;
+            }
+            hold(&mut w, "tora", T(5, 7), Pose::Idle);
+        }
+    });
+    let line = lines(&log)
+        .into_iter()
+        .find(|v| v["target"] == "cat" && v["what"] == "play")
+        .expect("a play line");
+    assert_ne!(line["on"], "toys", "{line}");
+    assert_eq!(line["with"], "p1", "{line}");
+}
+
+#[test]
+fn a_cat_looks_at_a_new_piece_once_and_doesnt_retell_what_it_carries_on_doing() {
+    // Finding 25.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    stand(&mut w, 1, T(5, 8));
+    let plant = w.room.pieces.iter().find(|p| p.kind == "plant").unwrap();
+    w.new_pieces = vec![(plant.id, T(plant.x, plant.y), 0)];
+    let mut told: std::collections::HashMap<String, (String, bool)> = Default::default();
+    let mut investigated: std::collections::HashMap<String, usize> = Default::default();
+    for step in 1..=1_200u64 {
+        let mut outs = Vec::new();
+        let log = capture_logs(|| outs = w.tick(step * 100));
+        for o in &outs {
+            if let ServerMsg::CatMoved { cat, .. } = &o.msg
+                && let Some(t) = told.get_mut(cat)
+            {
+                t.1 = true;
+            }
+        }
+        for v in lines(&log).into_iter().filter(|v| v["target"] == "cat") {
+            let id = w.cats.iter().find(|c| v["cat"] == c.def.name).unwrap().def.id.clone();
+            let line = format!("{} {}", v["what"], v["on"]);
+            if let Some((last, moved)) = told.get(&id) {
+                assert!(*moved || *last != line, "{id} told `{line}` twice without going anywhere");
+            }
+            if v["what"] == "investigate" {
+                *investigated.entry(id.clone()).or_default() += 1;
+            }
+            told.insert(id, (line, false));
+        }
+    }
+    assert!(investigated.values().all(|&n| n <= 1), "{investigated:?}");
+}
+
+#[test]
+fn burakku_is_the_one_who_knocks_things_over_at_night() {
+    // Finding 30: design.md's "when the café is empty: prowls and knocks
+    // things over", told apart from the others by count, not by luck.
+    let mut w = world();
+    let night = 13 * 60 * MIN; // 23:00 in Canberra.
+    w.tick(night);
+    let mut knocks: std::collections::HashMap<String, u32> = Default::default();
+    let log = capture_logs(|| {
+        for step in 1..=72_000u64 {
+            w.tick(night + step * 100);
+            for p in &mut w.room.pieces {
+                p.toppled = false;
+            }
+        }
+    });
+    for v in lines(&log).into_iter().filter(|v| v["what"] == "knock_over") {
+        *knocks.entry(v["cat"].as_str().unwrap().to_string()).or_default() += 1;
+    }
+    let burakku = knocks.get("Burakku").copied().unwrap_or(0);
+    assert!(knocks.iter().all(|(cat, &n)| cat == "Burakku" || n < burakku), "{knocks:?}");
+}
+
+#[test]
+fn at_canberra_midnight_everyone_hears_their_new_days_treats() {
+    // Finding 7. 1970-01-02 00:00 in Canberra is 14 hours after the epoch.
+    let mut w = world();
+    join(&mut w, 1, 0);
+    join(&mut w, 2, 0);
+    let before = 13 * 60 * MIN + 50 * MIN;
+    send(&mut w, 1, before, ClientMsg::PutTreat {});
+    let mut heard = Vec::new();
+    for step in 1..=200u64 {
+        for o in w.tick(before + step * 100 * 30) {
+            if let ServerMsg::YourTreats { left } = o.msg {
+                heard.push((o.to, left));
+            }
+        }
+    }
+    assert!(heard.contains(&(To::One(1), 3)), "{heard:?}");
+    assert!(heard.contains(&(To::One(2), 3)), "{heard:?}");
+}
+
+#[test]
+fn on_the_day_daylight_saving_ends_the_bowls_wait_for_seven() {
+    // Finding 21: 2027-04-04 02:30 AEST, after the clocks go back.
+    let at = chrono::DateTime::parse_from_rfc3339("2027-04-04T02:30:00+10:00")
+        .unwrap()
+        .timestamp_millis() as u64;
+    assert_eq!(super::treats::refill_key(at, &[420, 720, 1080]), "2027-04-03@1080");
+}
+
+#[tokio::test]
+async fn picking_up_a_knocked_over_piece_saves_it_standing() {
+    // Finding 27.
+    let dir = tempfile::tempdir().unwrap();
+    let store = crate::store::Store::open(&dir.path().join("cafe.db")).unwrap();
+    let content = crate::content::repo_content();
+    let trust = crate::trust::TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+    let mut w = World::new(
+        content,
+        trust,
+        Vec::new(),
+        SavedArrangement::Fresh,
+        5,
+        Some(store.clone()),
+        "test".into(),
+        0,
+    );
+    join(&mut w, 1, 0);
+    let plant = w.room.pieces.iter().find(|p| p.kind == "plant").unwrap();
+    let (id, at) = (plant.id, T(plant.x, plant.y));
+    assert!(w.knock_over(id, at, &mut Vec::new()));
+    let beside = w.room.around(at, crate::room::Walker::Person)[0];
+    stand(&mut w, 1, beside);
+    send(&mut w, 1, 1_000, ClientMsg::Grab { id });
+    assert!(w.held.iter().any(|h| h.by == 1), "carrying it");
+    let saved = store
+        .call(|c| crate::store::get_world(c, "arrangement"))
+        .await
+        .unwrap()
+        .expect("an arrangement");
+    assert!(!saved.contains(r#""toppled":true"#), "{saved}");
+}

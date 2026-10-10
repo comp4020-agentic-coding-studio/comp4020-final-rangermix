@@ -6,7 +6,7 @@
 use super::{Heard, Out, To, World, walk_end, walk_tile};
 use crate::cats::{CatDef, Choice, Saved, Situation, drift, options, pick};
 use crate::protocol::{CatView, Place, Pose, Reaction, ServerMsg, Tile, Walk};
-use crate::room::{FurnitureKind, Walker, chebyshev, manhattan};
+use crate::room::{FurnitureKind, Piece, Walker, chebyshev, manhattan};
 use crate::time::canberra_minute_of_day;
 use crate::trust::TrustBook;
 use rand::RngExt;
@@ -35,6 +35,10 @@ pub(super) struct Cat {
     pub held_until: u64,
     /// Asleep on someone's lap.
     pub lap: Option<u32>,
+    /// New pieces it has looked at: piece, and when it was put down.
+    pub investigated: Vec<(u32, u64)>,
+    /// Its last line, so carrying on with something isn't told twice.
+    pub told: Option<String>,
 }
 
 /// What a hungry cat is heading for.
@@ -54,10 +58,13 @@ pub(super) enum Plan {
     Hide,
     Greet(u32),
     Eat(Food),
+    /// Playing with the toys.
     Play,
+    /// Playing with someone who asked.
+    PlayWith(u32),
     Groom,
     Perch,
-    Investigate,
+    Investigate(u32),
     Knock(u32),
     Lap(u32),
 }
@@ -114,7 +121,8 @@ impl World {
     /// A cat comes back where it was saved, if a cat can still stand there and
     /// be reached; otherwise somewhere on the floor, rested.
     pub(super) fn place_cat(&mut self, def: CatDef, saved: Option<Saved>, now: u64) -> Cat {
-        let saved = saved.filter(|s| self.room.walkable(s.at, Walker::Cat) && self.room.pettable(s.at));
+        let saved =
+            saved.filter(|s| self.room.walkable(s.at, Walker::Cat) && self.room.pettable(s.at) && !self.cats.iter().any(|c| c.at == s.at));
         let (at, tiredness, company, hunger, play) = match saved {
             Some(s) => (
                 s.at,
@@ -141,6 +149,8 @@ impl World {
             held_by: None,
             held_until: 0,
             lap: None,
+            investigated: Vec::new(),
+            told: None,
         }
     }
 
@@ -150,7 +160,7 @@ impl World {
             .room
             .floor(Walker::Cat)
             .into_iter()
-            .filter(|&t| !self.room.walkway.contains(&t) && self.room.pettable(t))
+            .filter(|&t| !self.room.walkway.contains(&t) && self.room.pettable(t) && !self.cats.iter().any(|c| c.at == t))
             .collect();
         if tiles.is_empty() {
             return self.room.entry;
@@ -158,8 +168,49 @@ impl World {
         tiles[self.rng.random_range(0..tiles.len())]
     }
 
-    pub(super) fn cat_on(&self, t: Tile, except: usize, now: u64) -> bool {
-        self.cats.iter().enumerate().any(|(j, c)| j != except && c.tile(now) == t)
+    /// Another cat is on `t`, or on its way there.
+    pub(super) fn cat_bound(&self, t: Tile, except: usize, now: u64) -> bool {
+        self.cats
+            .iter()
+            .enumerate()
+            .any(|(j, c)| j != except && (c.tile(now) == t || c.walk.as_ref().is_some_and(|w| w.path.last() == Some(&t))))
+    }
+
+    /// Someone inside is on `t`, standing or sitting.
+    pub(super) fn person_on(&self, t: Tile, now: u64) -> bool {
+        self.people
+            .iter()
+            .any(|p| p.place == Place::Inside && self.person_tile(p.id, now) == Some(t))
+    }
+
+    /// Cat `i` can settle on `t`: no other cat is there or heading there, and
+    /// nobody is on it (only a lap cat lies where its person sits).
+    pub(super) fn free_for(&self, i: usize, t: Tile, now: u64) -> bool {
+        !self.cat_bound(t, i, now) && !self.person_on(t, now)
+    }
+
+    /// The tile on or beside `piece`, nearest `from`, that cat `i` can settle
+    /// on and someone could reach to pet it there.
+    fn spot_at(&self, i: usize, piece: u32, from: Tile, now: u64) -> Option<Tile> {
+        let piece = self.room.pieces.iter().find(|p| p.id == piece)?;
+        let mut tiles = piece.tiles();
+        for t in piece.tiles() {
+            tiles.extend(self.room.around(t, Walker::Cat));
+        }
+        tiles
+            .into_iter()
+            .filter(|&t| self.room.pettable(t) && self.free_for(i, t, now))
+            .min_by_key(|&t| manhattan(t, from))
+    }
+
+    /// The newest piece put down that this cat hasn't looked at, if it's
+    /// still on the floor.
+    fn to_investigate(&self, i: usize) -> Option<u32> {
+        self.new_pieces
+            .iter()
+            .rev()
+            .find(|&&(id, _, at)| !self.cats[i].investigated.contains(&(id, at)) && self.room.pieces.iter().any(|p| p.id == id))
+            .map(|&(id, _, _)| id)
     }
 
     pub(super) fn cats_tick(&mut self, now: u64, dt: u64, out: &mut Vec<Out>) {
@@ -195,6 +246,10 @@ impl World {
             self.hear(now, minute, heard, out);
         }
         self.new_pieces.retain(|&(_, _, at)| now.saturating_sub(at) < NEW_PIECE_MS);
+        for cat in &mut self.cats {
+            cat.investigated
+                .retain(|&(id, at)| self.new_pieces.iter().any(|n| (n.0, n.2) == (id, at)));
+        }
         for i in 0..self.cats.len() {
             if self.cats[i].taken() {
                 continue;
@@ -255,10 +310,12 @@ impl World {
             .filter(|p| p.place == Place::Inside)
             .map(|p| (p.id, self.trust.value(&id, p.id)))
             .collect();
+        // A lap no other cat is on, heading for, or sitting where it is.
         let laps: Vec<(u32, f32)> = self
             .people
             .iter()
-            .filter(|p| p.sitting.is_some() && !self.cats.iter().any(|c| c.lap == Some(p.id)))
+            .filter(|p| p.sitting.is_some() && !self.cat_bound(p.at, i, now))
+            .filter(|p| !self.cats.iter().any(|c| c.lap == Some(p.id) || c.plan == Plan::Lap(p.id)))
             .map(|p| (p.id, self.trust.value(&id, p.id)))
             .collect();
         let at_window = self.people.iter().any(|p| p.place == Place::Window && p.away_since.is_none());
@@ -273,9 +330,10 @@ impl World {
             food: self.bowls > 0 || !self.floor_treats.is_empty(),
             toys: self.upright("toys").is_some(),
             window: at_window && self.room.pieces.iter().any(|p| p.spec.perch),
-            new_piece: !self.new_pieces.is_empty(),
+            new_piece: self.to_investigate(i).is_some(),
             knockable: self.room.pieces.iter().any(|p| p.spec.knocks && !p.toppled),
             laps: &laps,
+            lap_trust: self.tuning.trust_levels[2],
         };
         let scored = options(&self.cats[i].def, &situation);
         let choice = pick(scored, &mut self.rng);
@@ -287,10 +345,16 @@ impl World {
             Choice::Hide => (self.free_spot(i, now, |k| k.hide), Plan::Hide),
             Choice::Approach(person) => (self.beside(i, person, now), Plan::Near(person)),
             Choice::Groom => (None, Plan::Groom),
-            Choice::Eat => self.food_for(from),
-            Choice::Play => (self.upright("toys").map(|p| Tile { x: p.x, y: p.y }), Plan::Play),
+            Choice::Eat => self.food_for(i, from, now),
+            Choice::Play => {
+                let toys = self.upright("toys").map(|p| p.id);
+                (toys.and_then(|p| self.spot_at(i, p, from, now)), Plan::Play)
+            }
             Choice::Perch => (self.free_spot(i, now, |k| k.perch), Plan::Perch),
-            Choice::Investigate => (self.new_pieces.last().map(|&(_, t, _)| t), Plan::Investigate),
+            Choice::Investigate => match self.to_investigate(i) {
+                Some(piece) => (self.spot_at(i, piece, from, now), Plan::Investigate(piece)),
+                None => (None, Plan::Idle),
+            },
             Choice::Knock => {
                 let knockable: Vec<(u32, Tile)> = self
                     .room
@@ -298,6 +362,7 @@ impl World {
                     .iter()
                     .filter(|p| p.spec.knocks && !p.toppled)
                     .map(|p| (p.id, Tile { x: p.x, y: p.y }))
+                    .filter(|&(_, t)| !self.cat_bound(t, i, now))
                     .collect();
                 match knockable.get(self.rng.random_range(0..knockable.len().max(1))) {
                     Some(&(piece, t)) => (Some(t), Plan::Knock(piece)),
@@ -326,13 +391,19 @@ impl World {
         self.room.pieces.iter().find(|p| p.kind == kind && !p.toppled)
     }
 
-    /// The nearest treat on the floor, else the bowls if they hold anything.
-    fn food_for(&self, from: Tile) -> (Option<Tile>, Plan) {
-        if let Some(t) = self.floor_treats.iter().min_by_key(|t| manhattan(t.at, from)) {
+    /// The nearest treat on the floor no other cat is after, else a free
+    /// place at the bowls if they hold anything.
+    fn food_for(&self, i: usize, from: Tile, now: u64) -> (Option<Tile>, Plan) {
+        let treat = self
+            .floor_treats
+            .iter()
+            .filter(|t| !self.cat_bound(t.at, i, now))
+            .min_by_key(|t| manhattan(t.at, from));
+        if let Some(t) = treat {
             return (Some(t.at), Plan::Eat(Food::Treat(t.id)));
         }
-        let bowls = self.room.pieces.iter().find(|p| p.kind == "bowls").map(|p| Tile { x: p.x, y: p.y });
-        match bowls {
+        let bowls = self.room.pieces.iter().find(|p| p.kind == "bowls").map(|p| p.id);
+        match bowls.and_then(|b| self.spot_at(i, b, from, now)) {
             Some(t) if self.bowls > 0 => (Some(t), Plan::Eat(Food::Bowls)),
             _ => (None, Plan::Idle),
         }
@@ -343,13 +414,13 @@ impl World {
             .room
             .floor(Walker::Cat)
             .into_iter()
-            .filter(|&t| t != from && manhattan(t, from) <= 6 && self.room.pettable(t) && !self.cat_on(t, i, now))
+            .filter(|&t| t != from && manhattan(t, from) <= 6 && self.room.pettable(t) && self.free_for(i, t, now))
             .collect();
         (!near.is_empty()).then(|| near[self.rng.random_range(0..near.len())])
     }
 
     fn free_spot(&mut self, i: usize, now: u64, keep: impl Fn(&FurnitureKind) -> bool) -> Option<Tile> {
-        let spots: Vec<Tile> = self.room.spots(keep).into_iter().filter(|&t| !self.cat_on(t, i, now)).collect();
+        let spots: Vec<Tile> = self.room.spots(keep).into_iter().filter(|&t| self.free_for(i, t, now)).collect();
         (!spots.is_empty()).then(|| spots[self.rng.random_range(0..spots.len())])
     }
 
@@ -360,7 +431,7 @@ impl World {
             .room
             .spots(|k| k.nap)
             .into_iter()
-            .filter(|&t| !self.cat_on(t, i, now))
+            .filter(|&t| self.free_for(i, t, now))
             .collect();
         let others: Vec<(Tile, bool)> = self
             .cats
@@ -395,7 +466,7 @@ impl World {
             .room
             .around(at, Walker::Cat)
             .into_iter()
-            .filter(|&t| !self.cat_on(t, i, now))
+            .filter(|&t| self.free_for(i, t, now))
             .collect();
         (!tiles.is_empty()).then(|| tiles[self.rng.random_range(0..tiles.len())])
     }
@@ -408,6 +479,7 @@ impl World {
                 let speed = self.tuning.cat_speed * self.cats[i].def.speed_factor(minute);
                 let walk = Walk { path, start: now, speed };
                 let cat = &mut self.cats[i];
+                cat.told = None;
                 cat.at = from;
                 cat.walk = Some(walk.clone());
                 cat.pose = Pose::Walk;
@@ -443,24 +515,43 @@ impl World {
             Plan::Perch => k.perch,
             _ => true,
         };
-        if matches!(plan, Plan::Nap | Plan::Hide | Plan::Perch) && !self.room.pieces.iter().any(|p| p.covers(end) && spot_kept(&p.spec)) {
+        // Or someone stood or sat down there; only a lap cat lies on its person.
+        if matches!(plan, Plan::Nap | Plan::Hide | Plan::Perch)
+            && (!self.room.pieces.iter().any(|p| p.covers(end) && spot_kept(&p.spec)) || self.person_on(end, now))
+        {
             plan = Plan::Idle;
         }
+        let by = |p: &Piece| p.tiles().into_iter().any(|t| chebyshev(t, end) <= 1);
         // What it came for: still there, still standing, still sitting.
         plan = match plan {
             Plan::Eat(food) if self.eat(i, food, out) => plan,
             Plan::Eat(_) => Plan::Idle,
             Plan::Knock(piece) if self.knock_over(piece, end, out) => plan,
             Plan::Knock(_) => Plan::Idle,
-            Plan::Lap(person) if self.person(person).is_some_and(|p| p.sitting.is_some() && p.at == end) => {
+            Plan::Lap(person)
+                if self.person(person).is_some_and(|p| p.sitting.is_some() && p.at == end)
+                    && !self.cats.iter().any(|c| c.lap == Some(person)) =>
+            {
                 self.cats[i].lap = Some(person);
                 plan
             }
             Plan::Lap(_) => Plan::Idle,
-            Plan::Play => {
+            Plan::Play if self.upright("toys").is_some_and(by) => {
                 self.cats[i].play = 0.0;
                 plan
             }
+            Plan::Play => Plan::Idle,
+            Plan::PlayWith(_) => {
+                self.cats[i].play = 0.0;
+                plan
+            }
+            Plan::Investigate(piece) if self.room.pieces.iter().any(|p| p.id == piece && by(p)) => {
+                if let Some(&(_, _, at)) = self.new_pieces.iter().rev().find(|n| n.0 == piece) {
+                    self.cats[i].investigated.push((piece, at));
+                }
+                plan
+            }
+            Plan::Investigate(_) => Plan::Idle,
             other => other,
         };
         let secs: u64 = match plan {
@@ -468,16 +559,16 @@ impl World {
             Plan::Lap(_) => self.rng.random_range(300..900),
             Plan::Sit | Plan::Near(_) | Plan::Perch => self.rng.random_range(20..60),
             Plan::Hide => 60,
-            Plan::Greet(_) | Plan::Groom | Plan::Investigate => 10,
-            Plan::Eat(_) | Plan::Play => 15,
+            Plan::Greet(_) | Plan::Groom | Plan::Investigate(_) => 10,
+            Plan::Eat(_) | Plan::Play | Plan::PlayWith(_) => 15,
             Plan::Idle | Plan::Knock(_) => self.rng.random_range(3..8),
         };
         let pose = match plan {
             Plan::Nap | Plan::Lap(_) => Pose::Nap,
             Plan::Hide => Pose::Hide,
-            Plan::Sit | Plan::Near(_) | Plan::Greet(_) | Plan::Perch | Plan::Investigate => Pose::Sit,
+            Plan::Sit | Plan::Near(_) | Plan::Greet(_) | Plan::Perch | Plan::Investigate(_) => Pose::Sit,
             Plan::Eat(_) => Pose::Eat,
-            Plan::Play => Pose::Play,
+            Plan::Play | Plan::PlayWith(_) => Pose::Play,
             Plan::Groom => Pose::Groom,
             Plan::Idle | Plan::Knock(_) => Pose::Idle,
         };
@@ -506,10 +597,12 @@ impl World {
     }
 
     /// A `cat` line when a cat settles into something worth narrating; never
-    /// wandering, idling or grooming, so the logs tell its story and not its steps.
-    pub(super) fn log_cat(&self, i: usize, plan: Plan) {
+    /// wandering, idling or grooming, and never again for carrying on with the
+    /// same thing in the same place, so the logs tell its story and not its steps.
+    fn log_cat(&mut self, i: usize, plan: Plan) {
         let cat = &self.cats[i];
         let name_of = |id: u32| self.person(id).map(|p| p.name.clone()).unwrap_or_default();
+        let kind_of = |id: u32| self.room.pieces.iter().find(|p| p.id == id).map(|p| p.kind.clone());
         let piece = self.room.piece_at(cat.at).map(|p| p.kind.clone()).unwrap_or_else(|| "floor".into());
         let (what, with, on) = match plan {
             Plan::Nap => ("nap", None, piece),
@@ -519,13 +612,19 @@ impl World {
             Plan::Eat(Food::Bowls) => ("eat", None, "bowls".into()),
             Plan::Eat(Food::Treat(_)) => ("eat", None, "treat".into()),
             Plan::Play => ("play", None, "toys".into()),
+            Plan::PlayWith(person) => ("play", Some(name_of(person)), piece),
             Plan::Perch => ("perch", None, piece),
-            Plan::Investigate => ("investigate", None, piece),
+            Plan::Investigate(id) => ("investigate", None, kind_of(id).unwrap_or(piece)),
             Plan::Knock(_) => ("knock_over", None, piece),
             Plan::Lap(person) => ("lap", Some(name_of(person)), piece),
             Plan::Idle | Plan::Sit | Plan::Groom => return,
         };
+        let line = format!("{what} {with:?} {on} {:?}", cat.at);
+        if cat.told.as_ref() == Some(&line) {
+            return;
+        }
         tracing::info!(target: "cat", cat = %cat.def.name, what, on = %on, with);
+        self.cats[i].told = Some(line);
     }
 
     /// Someone came inside: each awake cat that counts them a friend goes to the door.
@@ -539,7 +638,7 @@ impl World {
                 .room
                 .around(self.room.entry, Walker::Cat)
                 .into_iter()
-                .find(|t| !self.room.walkway.contains(t) && !self.cat_on(*t, i, now));
+                .find(|t| !self.room.walkway.contains(t) && self.free_for(i, *t, now));
             if let Some(spot) = spot {
                 self.walk_cat(i, now, minute, spot, Plan::Greet(person), out);
             }
@@ -636,7 +735,7 @@ impl World {
             .room
             .floor(Walker::Cat)
             .into_iter()
-            .filter(|&t| manhattan(t, them) >= 3 && manhattan(t, here) <= 6 && self.room.pettable(t) && !self.cat_on(t, i, now))
+            .filter(|&t| manhattan(t, them) >= 3 && manhattan(t, here) <= 6 && self.room.pettable(t) && self.free_for(i, t, now))
             .collect();
         if !away.is_empty() {
             let target = away[self.rng.random_range(0..away.len())];

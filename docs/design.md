@@ -105,7 +105,8 @@ under [Numbers to tune](#numbers-to-tune).
   handed to someone inside (it joins their day's treats); used and received
   treats are stored per Canberra day, treats on the floor are not. The bowls
   hold three portions; a hungry cat eats one, and the treat's giver gains a
-  little trust when a cat eats a treat they put down.
+  little trust when a cat eats a treat they put down. At Canberra midnight
+  everyone in the café is told their new day's treats.
 - **Controls: point, then act.** Click or tap a spot to walk there; click a
   cat, a person or a piece of furniture for a menu of what you can do. On the
   keyboard a pointer snaps to tiles: arrows move it, Tab and Shift+Tab cycle
@@ -182,7 +183,11 @@ under [Numbers to tune](#numbers-to-tune).
 - **Effects on the room:** a cat lying on furniture claims it; cats knock
   things over and scatter toys, leaving traces; notable moments become
   chalkboard lines; cats notice each other, napping together or keeping their
-  distance.
+  distance. A cat lying on a seat claims it, so nobody sits there. Cats never
+  settle on one tile together or where someone stands or sits (only a lap cat
+  lies on its person, and one cat to a lap), look at each new piece once from
+  where someone could pet them, and play only with toys that are still there.
+  (Phase 3's review, findings 6 and 23 to 26.)
 - **The same rules awake and asleep:** one seeded random generator drives the
   world, live and in fast-forward. With nobody there, behaviours that need
   people aren't on offer, and activity when alone takes over.

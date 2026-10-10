@@ -24,6 +24,13 @@ pub fn canberra_day(ms: u64) -> String {
     canberra(ms).format("%Y-%m-%d").to_string()
 }
 
+/// The Canberra calendar day before the one an instant falls on, as
+/// `YYYY-MM-DD`: by the calendar, so a day of 25 hours is still one day.
+pub fn canberra_day_before(ms: u64) -> String {
+    let day = canberra(ms).date_naive();
+    day.pred_opt().unwrap_or(day).format("%Y-%m-%d").to_string()
+}
+
 /// Minutes since midnight, Canberra time.
 pub fn canberra_minute_of_day(ms: u64) -> u32 {
     let t = canberra(ms);
