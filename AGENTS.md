@@ -91,13 +91,15 @@ words; it is not a draft of `PROCESS.md`.
   that asked for it.
 - Each session's first entry names the session id and the tool (Claude Code,
   Codex, ...).
-- **A line marks each course week.** Before the first entry sent in a new
-  week, put `---` and a heading `## Week N: D to D Month YYYY`, with the week
-  numbered as the course schedule numbers it (week 9 is 5 to 11 October 2026)
-  and its Monday-to-Sunday dates in Canberra time. Sessions are `###`
-  headings under it, numbered on from the week before. A session that runs
-  across the line is split there, and its heading is repeated after the line,
-  marked "(continued)".
+- **A line marks each crit.** A crit's section holds every entry sent after
+  the previous crit's cutoff, up to and including its own. Before the first
+  entry sent after a cutoff, put `---` and a heading
+  `## Crit N: "Name" (cutoff Day D Month YYYY, HH:MM AEDT)`, with the cutoff
+  for the author's crit group (Wednesday 13:30 for crits 8 and 9). Sessions
+  are `###` headings under it, numbered on from the section before. A session
+  that runs across a cutoff is split there, and its heading is repeated after
+  the line, marked "(continued)". Entries sent after crit 10's cutoff go under
+  `## Final submission (due Mon 9 November 2026, 12:00 AEDT)`.
 
 ## No time limit
 

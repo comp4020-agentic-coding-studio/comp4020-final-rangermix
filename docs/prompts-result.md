@@ -7,7 +7,7 @@ keeping it are in `AGENTS.md` under "The prompt log".
 
 ---
 
-## Week 9: 5 to 11 October 2026
+## Crit 8: "It's alive!" (cutoff Wed 7 October 2026, 13:30 AEDT)
 
 ### 1. Harness
 
@@ -688,6 +688,10 @@ came from that run; the page and its assets load, and the read-only live
 checks pass. The deployed commit is tagged `crit-8`.
 [`659952a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/659952a)
 
+---
+
+## Crit 9: "All at once" (cutoff Wed 14 October 2026, 13:30 AEDT)
+
 ### 4. Closing phase 1 and building phase 2
 
 *Session `94478ac0`, Claude Code (Opus 5.5, then Sonnet 5.5 as the session's
@@ -881,26 +885,24 @@ each.
   deployed it; the read-only live checks pass, and the live page's script
   has the new carrying bar.
 
----
+### 6. A line for each crit
 
-## Week 10: 12 to 18 October 2026
+*Session `6558300f`, Claude Code (Opus 5.5).*
 
-### 6. A line for each week
+*Sent 2026-10-12 21:38:29 AEDT*
 
-*Session `bef6b01b`, Claude Code (Opus 5.5).*
+> add separation line by crit 8, 9, 10 in @docs/prompts-result.md and save in harness.
 
-*Sent 2026-10-12 21:21:15 AEDT*
-
-> add weekly separation line in @docs/prompts-result.md and save in harness.
-
-**Result.** The log now runs by course week. Weeks are numbered as the course
-schedule numbers them, Monday to Sunday in Canberra time, with week 9 taken
-from crit 8's week in `docs/notes/brief-and-crits.md`. Everything logged
-before today falls in week 9 (5 to 11 October), so that marker goes at the
-top and this entry opens week 10. A first try used `#` for the week, which
-the editor's markdown lint flagged as a second title. So each week is a `---`
-and a `##` heading, and the five sessions moved down to `###`. No links point
-at their anchors, and a heading's level doesn't change its anchor anyway.
-`AGENTS.md` gained the rule under "The prompt log": where the line goes, how
-it is labelled, and that a session running across the line is split there,
-with its heading repeated and marked "(continued)".
+**Result.** Before this prompt, the user had undone the weekly lines from
+[`93a6aba`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/93a6aba)
+in the working tree, including that session's entry, so this replaces them.
+Each section now runs up to a crit's cutoff, the moment the crit's snapshot
+is taken: crit 8's holds everything sent up to Wed 7 October 13:30, and crit
+9's holds everything after that, up to Wed 14 October 13:30. That puts
+phase 3, built for crit 10, under crit 9, because it was done before crit 9's
+cutoff. Crit 10's line goes in with the first entry sent after crit 9's
+cutoff. As before, each crit is a `---` and a `##` heading, with the sessions
+under it as `###`. `AGENTS.md` has the rule under "The prompt log": where the
+line goes, how it is labelled, splitting a session that runs across a
+cutoff, and a last section for anything sent after crit 10, up to the final
+deadline.
