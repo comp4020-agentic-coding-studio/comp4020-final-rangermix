@@ -91,6 +91,13 @@ words; it is not a draft of `PROCESS.md`.
   that asked for it.
 - Each session's first entry names the session id and the tool (Claude Code,
   Codex, ...).
+- **A line marks each course week.** Before the first entry sent in a new
+  week, put `---` and a heading `## Week N: D to D Month YYYY`, with the week
+  numbered as the course schedule numbers it (week 9 is 5 to 11 October 2026)
+  and its Monday-to-Sunday dates in Canberra time. Sessions are `###`
+  headings under it, numbered on from the week before. A session that runs
+  across the line is split there, and its heading is repeated after the line,
+  marked "(continued)".
 
 ## No time limit
 

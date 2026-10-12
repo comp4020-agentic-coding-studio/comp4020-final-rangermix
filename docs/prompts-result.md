@@ -7,7 +7,9 @@ keeping it are in `AGENTS.md` under "The prompt log".
 
 ---
 
-## 1. Harness
+## Week 9: 5 to 11 October 2026
+
+### 1. Harness
 
 *Session `746c957e`, Claude Code (Opus 5.5).*
 
@@ -63,7 +65,7 @@ superseding instead of rewriting, and `Proposed` status until the user decides.
 
 ---
 
-## 2. Designing the cat café
+### 2. Designing the cat café
 
 *Session `2ae45b1d`, Claude Code (Opus 5.5).*
 
@@ -538,7 +540,7 @@ At that point 125 Rust tests, 11 client tests and 16 spec tests passed.
 
 ---
 
-## 3. Building phase 1 for crit 8
+### 3. Building phase 1 for crit 8
 
 *Session `308a67b6`, Claude Code (Opus 5.5).*
 
@@ -686,7 +688,7 @@ came from that run; the page and its assets load, and the read-only live
 checks pass. The deployed commit is tagged `crit-8`.
 [`659952a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/659952a)
 
-## 4. Closing phase 1 and building phase 2
+### 4. Closing phase 1 and building phase 2
 
 *Session `94478ac0`, Claude Code (Opus 5.5, then Sonnet 5.5 as the session's
 model changed).*
@@ -809,7 +811,7 @@ The course key's weekly budget then ran out, at 20:30, during triage:
 finding 4's fix was written but not committed, and the client agent had
 only read code. Picked up in the next session.
 
-## 5. Finishing phase 3
+### 5. Finishing phase 3
 
 *Session `d554b4ba`, Claude Code (Opus 5.5).*
 
@@ -878,3 +880,27 @@ each.
   199 lines. CI then passed all three jobs on the closing push and
   deployed it; the read-only live checks pass, and the live page's script
   has the new carrying bar.
+
+---
+
+## Week 10: 12 to 18 October 2026
+
+### 6. A line for each week
+
+*Session `bef6b01b`, Claude Code (Opus 5.5).*
+
+*Sent 2026-10-12 21:21:15 AEDT*
+
+> add weekly separation line in @docs/prompts-result.md and save in harness.
+
+**Result.** The log now runs by course week. Weeks are numbered as the course
+schedule numbers them, Monday to Sunday in Canberra time, with week 9 taken
+from crit 8's week in `docs/notes/brief-and-crits.md`. Everything logged
+before today falls in week 9 (5 to 11 October), so that marker goes at the
+top and this entry opens week 10. A first try used `#` for the week, which
+the editor's markdown lint flagged as a second title. So each week is a `---`
+and a `##` heading, and the five sessions moved down to `###`. No links point
+at their anchors, and a heading's level doesn't change its anchor anyway.
+`AGENTS.md` gained the rule under "The prompt log": where the line goes, how
+it is labelled, and that a session running across the line is split there,
+with its heading repeated and marked "(continued)".
