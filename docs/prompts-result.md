@@ -906,3 +906,44 @@ under it as `###`. `AGENTS.md` has the rule under "The prompt log": where the
 line goes, how it is labelled, splitting a session that runs across a
 cutoff, and a last section for anything sent after crit 10, up to the final
 deadline.
+
+### 7. Rewriting `PROCESS.md` for crit 9
+
+*Session `bef6b01b`, Claude Code (Opus 5.5). Its first prompt asked for the
+weekly lines that entry 6 replaced.*
+
+*Sent 2026-10-12 21:45:43 AEDT*
+
+> now base on @docs/prompts-result.md rewrite @PROCESS.md per assignment / crit requested.
+
+**Result.** The brief, the crit 9 page and the assessment page were read live
+first. `PROCESS.md` runs 900 to 1,100 words. It is rewritten, not appended to,
+at each crit, and it makes the case for the stack and the workflow, with ADRs
+linked rather than restated. Crit 9 adds real-time deployed, one recorded
+decision about several people at once with its options and cost, and an
+account of how the work was directed, grounded and corrected. Uncited claims
+don't count, and the top band wants fixes that land in the harness or the
+checks rather than retries.
+- **Kept, condensed:** the harness, the design and the stack, still in the
+  user's first person and built on their own prompts, quoted verbatim.
+- **Replaced:** crit 8's "From design to a small live version" gave way to
+  three sections:
+  - the workflow as it ran: phases, reviews keeping 17, 19 and 34 findings,
+    and two budget-outs carried over by files;
+  - crit 9's decision, ADR 0009, set against the README's "accompany,
+    warmness, relaxed time with friends";
+  - directing, grounding and correcting, with four corrections that changed
+    the code or a check (the reload loop, the shared spawn tile, spec files
+    run one at a time, and the browser check that waited on a cat's consent).
+- **Checked:** every claim was checked against `git log`, the review notes
+  and the plans.
+  - The skeptics were the reviews' practice, not ADR 0012's, so the text
+    credits them to the reviews.
+  - A claim about the crate API spike was dropped, since no commit records it.
+  - A sentence judging whether ADR 0012's revisit trigger had been met was
+    left out as the user's call.
+- **Numbers:** 1,099 words counting hashes, and the evidence check passes
+  with 20 cited commits.
+- **Flagged:** the brief advises drafting `PROCESS.md` yourself, and
+  `AGENTS.md` says the user writes it in their own words, so this is a draft
+  to rework.
