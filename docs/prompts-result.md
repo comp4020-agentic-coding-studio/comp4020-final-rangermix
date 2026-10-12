@@ -996,3 +996,25 @@ checks rather than retries.
   about prompts getting shorter because the direction lives in files.
 - **Not done:** `PROCESS.md` doesn't yet mention ADR 0013 or 0014. Under the
   new rule, the options for it go to the user first.
+
+*Sent 2026-10-13 00:03:32 AEDT*
+
+> A & B
+
+**Result.** Both of the options offered for `PROCESS.md` went in.
+- **A.** In "The case for the workflow", the paragraph about the budget
+  running out gave way to the switch to slices. It quotes the user's line on
+  tight coupling and cites ADR 0014 and
+  [`5196876`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5196876).
+- **B.** "The harness came first" gained one sentence: the agent writes the
+  file from the log and the user chooses what goes in, a harness the
+  convenor approved (ADR 0013).
+- **"Where it stands"** now says "the first three phases" rather than "three
+  of five", since there are no phases after the third.
+
+Making room took about 40 words out elsewhere. Most of that came from
+tightening phrasing, and one detail was cut: that the fresh run also caught
+Tab pointing where a cat had been. It still stands in the prompt log and in
+[`25ff89d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/25ff89d).
+The result is 1,100 words counting hashes, and the evidence check passes
+with 21 cited commits.
