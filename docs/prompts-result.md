@@ -907,7 +907,7 @@ line goes, how it is labelled, splitting a session that runs across a
 cutoff, and a last section for anything sent after crit 10, up to the final
 deadline.
 
-### 7. Rewriting `PROCESS.md` for crit 9
+### 7. `PROCESS.md` for crit 9, and building in slices
 
 *Session `bef6b01b`, Claude Code (Opus 5.5). Its first prompt asked for the
 weekly lines that entry 6 replaced.*
@@ -947,3 +947,52 @@ checks rather than retries.
 - **Flagged:** the brief advises drafting `PROCESS.md` yourself, and
   `AGENTS.md` says the user writes it in their own words, so this is a draft
   to rework.
+
+*Sent 2026-10-12 22:13:07 AEDT*
+
+> 1. The harness of documenting and writing PROCESS.md is approved by course convenor, and was promoted to others as a good practice. Correct @AGENTS.md on this. You will write PROCESS.md for me, however I will decide what's the content inside eventually. When there's a lot of contents to choose from, show me the options and let me choose.
+> 2. This is a rather small MVP project, not a full on one, so it's okay to stay tightly coupled as long as it won't affect speed too much. Instead of phases, create virtical slices of functionalities, then create spec for each of them. We'll have two level of plans: root-level plan for the project itself and all slices, and slice-level plans prepared just before implementation so it will be updated to the details of the project. Each slice will be build natively as you said in option 1. however I don't know what you mean by "no independent check until the end of the phase", you mean checked by myself?
+> 3. write a draft for crit 9 reflection
+
+**Result.**
+- **Who writes `PROCESS.md`.** This settles the previous entry's flag.
+  `AGENTS.md` no longer says the user writes it. A new "PROCESS.md" section
+  sets the rules:
+  - it is written from the record, with every claim cited;
+  - when there is more material than fits, the options come to the user
+    first;
+  - the user's edits win;
+  - it is rewritten at each crit;
+  - `README.md` and the reflections stay the user's, drafted only on request.
+
+  ADR 0013 records the decision, with the convenor's approval as the user
+  reported it, and `design.md`'s harness gained a line linking it.
+- **Slices instead of phases.** ADR 0014 supersedes ADR 0012.
+  - **The question.** "Independent check" meant a reviewer who didn't build
+    the work: a fresh agent, briefed through a file, reading it cold. It did
+    not mean the user, whose own checks are separate. Under phases that
+    review came only at a phase's end, which is how phase 3's 34 findings
+    arrived at once. Under slices it comes after every slice.
+  - **The root plan.** `docs/notes/plan.md` was rewritten. It holds the
+    project, phases 1 to 3 as built, the old phases 4 and 5 as six slices,
+    and who writes what.
+  - **The specs.** Each slice has a spec in `docs/slices/`, made from a
+    template: the story, what's in and out, a "done when" table naming how
+    each line is held, the rules it touches, its numbers, and open questions
+    with proposed defaults. The six slices are fast-forward on wake, the
+    chalkboard and night traces, mute with the blocklist and the admin ban,
+    the showcase load check, the art pass and the accessibility pass. All
+    six are `Proposed` until the user approves them.
+  - **The open questions:** what a visitor sees while the café wakes;
+    whether the chalkboard names people; where the blocklist's words come
+    from; whether to load-test the live café, which would leave forty
+    accounts that can't be deleted; the README's promise of music; and
+    axe-core as a test dependency.
+  - **The rules.** `AGENTS.md` gained "How the work is built" and an entry
+    for the two levels of plan.
+- **The crit 9 reflection.** A 290-word draft in `reflections/crit-9.md`.
+  The breakthrough is fresh reviews finding the several-people bugs the
+  tests missed, which led to the switch to slices. The second answer is
+  about prompts getting shorter because the direction lives in files.
+- **Not done:** `PROCESS.md` doesn't yet mention ADR 0013 or 0014. Under the
+  new rule, the options for it go to the user first.

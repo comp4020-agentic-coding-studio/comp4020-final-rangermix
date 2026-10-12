@@ -1,6 +1,6 @@
 # 0012. Plan in phases and build each phase natively
 
-- **Status:** Accepted
+- **Status:** Superseded by [0014](0014-build-the-rest-in-vertical-slices-each-with-a-spec.md)
 - **Date:** 2026-10-07
 
 ## Context

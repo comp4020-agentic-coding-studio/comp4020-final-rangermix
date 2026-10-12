@@ -1,34 +1,71 @@
-# Implementation roadmap
+# Plan
 
-The settled design is [`docs/design.md`](../design.md); this is the order it gets
-built in. Each phase leaves something usable, is lined up with a crit, gets its
-own plan file when it starts (so later phases are planned with what earlier
-ones taught), and ends with a whole-phase review. How the work is run is
+The settled design is [`docs/design.md`](../design.md). This is the root plan
+for building it: the project as a whole, and every slice in order. The work is
+built in vertical slices
+([ADR 0014](../adr/0014-build-the-rest-in-vertical-slices-each-with-a-spec.md)),
+which on 2026-10-12 replaced the phases of
 [ADR 0012](../adr/0012-plan-in-phases-and-build-each-phase-natively.md).
 
-| Phase | Crit | Delivers | Plan | Status |
-|---|---|---|---|---|
-| 1. It's alive | C8, week 9 | Accounts with recovery codes; the room, with six inside and a line at the window; walking by mouse, touch and keyboard; public, fleeting bubbles; Mochi, Burakku and Tora with a first set of behaviours (wander, nap, come over, hide from noise, look up at their name, greet a friend at the door); pet and call; trust that grows, persists and shows; `/readme/`; deployed. | [plan-phase-1.md](plan-phase-1.md) | done 2026-10-09: deployed 2026-10-07 (`659952a`, tag `crit-8`) as a deliberately cut version, then closed with Task 17 (README material), Task 19 (what the cut skipped; see [crit-8-mvp.md](crit-8-mvp.md)) and Task 18 (the review, answered in [reviews/phase-1-findings.md](reviews/phase-1-findings.md)) |
-| 2. All at once | C9, week 10 | The quiet-seat rule (nudge, walk-out); rearranging furniture (catalogue, grab and place, first grab wins, the walkway rule, the floor limit, cats jumping off); sitting on furniture; emotes; phone layout B and the switch; browser checks for the keyboard pass, both marking sizes and a resize mid-use. Rearranging also takes over the cushion's cut-down move and closes crit 8's items 16 to 24: every piece but the fixed ones moves, blocking pieces included (with the cut-off and standing-there checks); a catalogue to add and remove; carrying, seen by everyone, dropped back on a disconnect; cats jumping off (coming to look is phase 3's "investigating new furniture"); flat pieces on rugs; a piece under a cat still reachable by click; a preview while placing; an arrangement saved by something steadier than a piece's place in `room.toml`; and the phone checked by touch. | [plan-phase-2.md](plan-phase-2.md) | done 2026-10-09: built, reviewed (see [reviews/phase-2-findings.md](reviews/phase-2-findings.md)) and deployed through CI |
-| 3. Fly by instruments | C10, week 11 | Complete action logging and the narrating log tail; treats and bowls; giving treats and passing cats; picking up and carrying; the full character system (hunger, play, comfort, toys, perching at the window, knocking things over, investigating new furniture, cats noticing each other); anger and bans with grudges. | [plan-phase-3.md](plan-phase-3.md) | done 2026-10-10: built, reviewed (see [reviews/phase-3-findings.md](reviews/phase-3-findings.md)) and deployed through CI |
-| 4. Never stops | before the deadline | Fast-forward on wake with the saved random state; traces that stay until tidied; the chalkboard and its readable panel; mute; the slur blocklist; the admin ban; persistence hardening. | written when phase 3 is done | not started |
-| 5. The showcase | the deadline, 9 Nov | An art pass, an accessibility pass, a load check at forty connections, and whatever the crits and reviews turned up. | written when phase 4 is done | not started |
+## The project
 
-## What the user writes
+- **What:** a 2D pixel-art cat café, one shared room where up to six people
+  sit with three cats who each have a character and remember everyone they
+  meet. The brief's "multi-user, real-time website that's good".
+- **Dates:** crit 9 cutoff Wed 14 Oct, 13:30; crit 10 in week 11; final
+  submission Mon 9 Nov, 12:00; showcase Wed 11 Nov.
+- **Done means:** everything in `docs/design.md` is built, held by its
+  checks and live, and `README.md`, `PROCESS.md` and the three reflections
+  are in place.
 
-The brief asks for `README.md`, `PROCESS.md` and the crit reflections to be the
-user's own words, so no phase writes them. Each phase can gather material for
-them in `docs/notes/` (sources found, what was enforced and what was judged)
-and says when a crit needs one.
+## Built as phases
 
-For crit 9 (Wed 14 Oct, 13:30), the user's, as of 2026-10-09:
+Phases 1 to 3 were built under ADR 0012. Each phase's plan, execution log and
+review stay as the record.
 
-- `reflections/crit-9.md`.
-- `PROCESS.md` brought up to phase 2.
-- `README.md`: its first lines are still the template's (`# Your app` and
-  the "Replace everything" comment), it promises music the design doesn't
-  have, and it has no sources yet; [readme-material.md](readme-material.md)
-  gathers sources and lists what's enforced and what's judged.
-- The multi-user decision crit 9 asks for is ADR 0009 (the quiet seat),
-  built and linked; "first grab wins" (ADR 0004) is the other the pod may
-  argue with.
+| Phase | Crit | Delivered | Plan | Status |
+| --- | --- | --- | --- | --- |
+| 1. It's alive | C8 | Accounts with recovery codes; the room, with six inside and a line at the window; walking by mouse, touch and keyboard; public, fleeting bubbles; Mochi, Burakku and Tora with a first set of behaviours; pet and call; trust that grows, persists and shows; `/readme/`; deployed. | [plan-phase-1.md](plan-phase-1.md) | done 2026-10-09: deployed 2026-10-07 as a cut version (tag `crit-8`, see [crit-8-mvp.md](crit-8-mvp.md)), then closed and reviewed ([reviews/phase-1-findings.md](reviews/phase-1-findings.md)) |
+| 2. All at once | C9 | The quiet-seat rule; rearranging furniture together, first grab wins; sitting; emotes; phone layout B; browser checks at both sizes. | [plan-phase-2.md](plan-phase-2.md) | done 2026-10-09: built, reviewed ([reviews/phase-2-findings.md](reviews/phase-2-findings.md)), deployed through CI |
+| 3. Fly by instruments | C10 | Logging every action and the narrating log tail; treats and bowls; play, picking up, carrying and passing cats; laps; knocking things over and tidying; anger, scratches and bans. | [plan-phase-3.md](plan-phase-3.md) | done 2026-10-10: built, reviewed ([reviews/phase-3-findings.md](reviews/phase-3-findings.md)), deployed through CI |
+
+## Slices
+
+The rest of the old roadmap's phases 4 and 5, as slices. Each spec is
+`Proposed` until the user approves it. Its plan is written when the slice
+starts, from the code as it then stands, and it ends with a fresh review.
+
+| # | Slice | Delivers | Spec | Status |
+| --- | --- | --- | --- | --- |
+| 01 | The café keeps living while it sleeps | Fast-forward on wake, with the saved clock and random state; the schedule during a replay; loud failures | [01](../slices/01-the-cafe-keeps-living-while-it-sleeps.md) | spec proposed |
+| 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | spec proposed |
+| 03 | Keeping it kind | Mute, the slur blocklist, the admin ban | [03](../slices/03-keeping-it-kind.md) | spec proposed |
+| 04 | The showcase room | A load check at forty connections inside 256 MB; the window's count | [04](../slices/04-the-showcase-room.md) | spec proposed |
+| 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | spec proposed |
+| 06 | The accessibility pass | Every action by keyboard, touch and screen reader, held by browser checks | [06](../slices/06-the-accessibility-pass.md) | spec proposed |
+
+What the crits and reviews turn up becomes new slices here, each with a spec
+before its plan.
+
+## What the agent writes and what the user writes
+
+`PROCESS.md` is written by the agent, with the user choosing what goes in it
+([ADR 0013](../adr/0013-let-the-agent-write-process-md-and-the-user-choose-its-content.md)).
+`README.md` and the reflections are the user's; the agent drafts them only
+when asked.
+
+For crit 9 (Wed 14 Oct, 13:30), as of 2026-10-12:
+
+- `reflections/crit-9.md`: a draft is in place for the user to make their
+  own.
+- `PROCESS.md`: rewritten for crit 9. It doesn't yet mention the switch to
+  slices or ADR 0013, which is the user's choice.
+- `README.md`: the user's. It promises soothing music the design doesn't have
+  (slice 05's open question), and it has no sources yet;
+  [readme-material.md](readme-material.md) gathers them.
+- The multi-user decision crit 9 asks for is ADR 0009 (the quiet seat), built
+  and linked. "First grab wins" (ADR 0004) is the other one the pod may argue
+  with.
+
+For crit 10 (week 11): the logging and the live view (`pnpm logs`) were built
+in phase 3; `reflections/crit-10.md` and a rewritten `PROCESS.md` remain.

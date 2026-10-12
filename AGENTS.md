@@ -21,6 +21,10 @@ before planning or building anything.
   is in progress, what has been checked and what hasn't, and what is blocked
   and why. A check recorded only in a conversation looks exactly like a check
   nobody did.
+- **The plan has two levels.** The root plan, `docs/notes/plan.md`, covers the
+  project and lists every slice in order. Each slice's spec is in
+  `docs/slices/`, and its detailed plan is `docs/notes/plan-slice-NN-slug.md`.
+  See "How the work is built".
 - **Every interaction and its outcome goes in `docs/prompts-result.md`.** See
   below.
 
@@ -51,6 +55,32 @@ change that breaks one is wrong, whatever else it fixes.
 - **Generated TypeScript is never edited by hand.** `client/src/protocol/` is
   regenerated from the Rust types.
 
+## How the work is built
+
+In vertical slices
+([ADR 0014](docs/adr/0014-build-the-rest-in-vertical-slices-each-with-a-spec.md)).
+A slice is one thing a visitor, or the operator, can use, built through every
+layer it needs: Rust, the protocol, the client and the checks. Phases 1 to 3
+were built as phases before this, and their plans and reviews stay as they
+are.
+
+- **Spec before plan.** Copy `docs/slices/template.md` to the next number. It
+  says what the slice does, what it leaves out, and how each "done when" line
+  is held: `cargo test`, `spec/`, a browser check, or a judgement naming who
+  makes it and how. A spec the user hasn't approved is `Proposed`, and isn't
+  planned.
+- **Plan just before building.** The slice's plan is written when the slice
+  starts, from the code as it stands then: files, interfaces, tests first,
+  then code. It ends with an execution log of where the build departed from
+  it.
+- **Built natively, test first.** One agent builds the slice in one session,
+  committing and pushing per task, with each test seen failing before its
+  code.
+- **Reviewed fresh.** At the end of each slice a reviewer who didn't build it
+  reads it cold. Its brief and findings are files in `docs/notes/reviews/`.
+  Every finding is fixed test first or answered before the slice is done.
+- **Then deployed and checked live**, and the root plan's status updated.
+
 ## Architecture decision records
 
 [ADR 0001](docs/adr/0001-record-architecture-decisions.md) explains why these
@@ -72,8 +102,7 @@ store, auth, the app's shape and scope, and the agent workflow itself.
 ## The prompt log
 
 `docs/prompts-result.md` records every prompt the user sends and what came of
-it. It is source material for `PROCESS.md`, which the user writes in their own
-words; it is not a draft of `PROCESS.md`.
+it. It is the source material for `PROCESS.md`, not a draft of it.
 
 - **Append an entry at the end of every turn that did work**, before the final
   commit of that turn, so the entry ships with the commits it describes.
@@ -100,6 +129,26 @@ words; it is not a draft of `PROCESS.md`.
   that runs across a cutoff is split there, and its heading is repeated after
   the line, marked "(continued)". Entries sent after crit 10's cutoff go under
   `## Final submission (due Mon 9 November 2026, 12:00 AEDT)`.
+
+## PROCESS.md
+
+The agent writes `PROCESS.md`, and the user decides what goes in it
+([ADR 0013](docs/adr/0013-let-the-agent-write-process-md-and-the-user-choose-its-content.md)).
+The course convenor approved this harness, the prompt log with the agent
+writing `PROCESS.md` from it, and has pointed others to it as good practice.
+
+- **Written from the record**: the prompt log, `git log`, the ADRs and the
+  notes. Every claim is cited by a commit link, and ADRs are linked rather
+  than restated.
+- **The user chooses.** When there is more material than fits, set out the
+  options first, each with what it would say and what it cites, and let the
+  user pick before writing.
+- **The user's edits win.** Don't reword a passage the user has written or
+  changed without asking.
+- **Rewritten, not appended, at each crit**, at 900 to 1,100 words, as the
+  brief asks, so it always describes the project as it stands.
+- **`README.md` and the crit reflections are the user's.** The agent drafts
+  them only when asked, and the user decides the final text.
 
 ## No time limit
 

@@ -467,10 +467,19 @@ renamed.
   `docs/notes/`, and every prompt with its outcome in `docs/prompts-result.md`.
   The prompt log carries over from A2, where it was the source material for
   `PROCESS.md`.
+- **The agent writes `PROCESS.md`, and the user chooses what goes in it.** It
+  is written from the prompt log and the commits; where there's more to choose
+  from than fits, the user picks from the options first. The course convenor
+  approved this harness.
+  ([ADR 0013](adr/0013-let-the-agent-write-process-md-and-the-user-choose-its-content.md))
 - **Significant decisions get an ADR** in `docs/adr/`, and this file links to
   each one. ([ADR 0001](adr/0001-record-architecture-decisions.md))
-- **Built in phases.** A roadmap in `docs/notes/plan.md` splits the spec into
-  phases lined up with the crits; each phase gets a detailed plan when it
-  starts, is built natively in one session with tests written before code, and
-  ends with a fresh reviewer whose brief and findings are files.
-  ([ADR 0012](adr/0012-plan-in-phases-and-build-each-phase-natively.md))
+- **Built in vertical slices.** Phases 1 to 3 were built as phases lined up
+  with the crits ([ADR 0012](adr/0012-plan-in-phases-and-build-each-phase-natively.md)).
+  The rest is built as vertical slices, each one thing a visitor can use
+  through every layer it needs. The root plan, `docs/notes/plan.md`, lists
+  them in order. Each has a spec in `docs/slices/`, and gets a detailed plan
+  just before it's built. It is built natively in one session with tests
+  written before code, and ends with a fresh reviewer whose brief and findings
+  are files.
+  ([ADR 0014](adr/0014-build-the-rest-in-vertical-slices-each-with-a-spec.md))
