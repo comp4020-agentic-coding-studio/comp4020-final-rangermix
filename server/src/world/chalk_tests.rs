@@ -380,3 +380,47 @@ async fn a_line_is_stored_as_it_is_written_and_dropped_when_a_day_old() {
     store.flush().await.unwrap();
     assert!(store.call(|c| crate::store::all_chalk(c)).await.unwrap().is_empty());
 }
+
+#[test]
+fn a_tidied_trace_stays_tidied() {
+    let start = canberra(2026, 10, 14, 8, 0);
+    let mut w = world_at(1, start);
+    let toys = w.room.pieces.iter().find(|p| p.kind == "toys").unwrap();
+    let (toys, at) = (toys.id, T(toys.x, toys.y));
+    assert!(w.knock_over(toys, at, &mut Vec::new()), "the night scattered the toys");
+    join(&mut w, 1, start);
+    stand(&mut w, 1, T(at.x - 1, at.y));
+    w.handle(
+        start + 100,
+        Input::Msg {
+            id: 1,
+            msg: ClientMsg::Tidy { id: toys },
+        },
+    );
+    for step in 2..=40u64 {
+        w.tick(start + step * 100);
+    }
+    let piece = |w: &World| w.room.pieces.iter().find(|p| p.kind == "toys").unwrap().toppled;
+    assert!(!piece(&w), "sam gathered them up");
+    // As saved, as restored after a restart, and through a quiet replay.
+    let saved = w.arrangement_json();
+    assert!(!saved.contains("toppled"), "{saved}");
+    let content = crate::content::repo_content();
+    let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+    let mut restored = World::new(
+        content,
+        trust,
+        Vec::new(),
+        SavedArrangement::Current(saved),
+        ChaCha8Rng::seed_from_u64(1),
+        None,
+        "test".into(),
+        start + 4_000,
+    );
+    assert!(!piece(&restored));
+    for cat in ["mochi", "tora", "burakku"] {
+        hold(&mut restored, cat, T(2 + cat.len() as u8, 3));
+    }
+    restored.replay(start + 4_000 + 10 * MINUTE);
+    assert!(!piece(&restored), "nothing stood it back down");
+}

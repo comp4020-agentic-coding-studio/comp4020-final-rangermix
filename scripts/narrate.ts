@@ -99,9 +99,11 @@ function action(l: Line): string | null {
   const cat = l.cat ? String(l.cat) : "a cat";
   const piece = l.piece ? `the ${words(l.piece)}` : "something";
   const what = String(l.what);
+  // The toys aren't stood up but gathered: knocked over, they're scattered (slice 02).
+  const gather = what === "tidy" && l.piece === "toys";
   if (l.outcome === "refused" || l.outcome === "walking") {
     const object = l.cat ?? (l.piece ? piece : undefined) ?? l.to;
-    const doing = `${VERB[what] ?? words(what)}${object ? ` ${String(object)}` : ""}`;
+    const doing = gather ? "gather up the toys" : `${VERB[what] ?? words(what)}${object ? ` ${String(object)}` : ""}`;
     if (l.outcome === "walking") return `${who} is walking over to ${doing}`;
     return `${who} tried to ${doing}, refused${l.code ? `: ${String(l.code)}` : ""}`;
   }
@@ -148,6 +150,7 @@ function action(l: Line): string | null {
     case "give_treat":
       return `${who} gave ${String(l.to)} a treat`;
     case "tidy":
+      if (gather) return l.outcome === "already_up" ? `${who} went to gather up the toys, but someone already had` : `${who} gathered up the toys`;
       return l.outcome === "already_up"
         ? `${who} went to stand ${piece} up, but someone already had`
         : `${who} stood ${piece} back up`;
@@ -212,7 +215,7 @@ function cat(l: Line): string {
     case "investigate":
       return `${name} went to look at${on || " something new"}`;
     case "knock_over":
-      return `${name} knocked over${on || " something"}`;
+      return l.on === "toys" ? `${name} scattered the toys` : `${name} knocked over${on || " something"}`;
     case "lap":
       return `${name} curled up on ${withWho}'s lap`;
     case "jump_down":

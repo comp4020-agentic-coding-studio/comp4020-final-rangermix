@@ -113,6 +113,19 @@ describe("narrating the logs", () => {
     expect(narrate(line({ target: "cat", cat: "Burakku", what: "lap", on: "sofa", with: "sam" }))).toBe("19:42:07  Burakku curled up on sam's lap");
   });
 
+  it("says the toys were scattered, and gathered up", () => {
+    // Slice 02: the toys knocked over lie strewn about until someone gathers them up.
+    expect(narrate(line({ target: "cat", cat: "Tora", what: "knock_over", on: "toys" }))).toBe("19:42:07  Tora scattered the toys");
+    expect(narrate(line({ target: "action", uid: 3, who: "sam", what: "tidy", outcome: "ok", piece: "toys" }))).toBe("19:42:07  sam gathered up the toys");
+    expect(narrate(line({ target: "action", uid: 3, who: "sam", what: "tidy", outcome: "already_up", piece: "toys" }))).toBe(
+      "19:42:07  sam went to gather up the toys, but someone already had",
+    );
+    expect(narrate(line({ target: "action", uid: 3, who: "sam", what: "tidy", outcome: "walking", piece: "toys" }))).toBe(
+      "19:42:07  sam is walking over to gather up the toys",
+    );
+    expect(narrate(line({ target: "cat", cat: "Burakku", what: "knock_over", on: "plant" }))).toBe("19:42:07  Burakku knocked over the plant");
+  });
+
   it("says how the café woke, and what the cats did while it slept", () => {
     // Slice 01: one line per wake-up, after the replay of the gap.
     const woke = (f: Record<string, unknown>) =>
