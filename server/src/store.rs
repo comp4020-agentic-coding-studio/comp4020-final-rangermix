@@ -389,11 +389,23 @@ pub fn drop_chalk(conn: &Connection, before: u64) -> rusqlite::Result<()> {
     Ok(())
 }
 
-/// Every line kept, by when it was written.
+/// Every line kept, by when it was written. A row whose time isn't a whole
+/// number or whose line isn't text (a hand edit) is skipped, rather than
+/// stopping the café starting (slice 02's review, finding 4); `wake` says so.
 pub fn all_chalk(conn: &Connection) -> rusqlite::Result<Vec<(u64, String)>> {
+    use rusqlite::types::ValueRef;
     let mut stmt = conn.prepare("SELECT at, line FROM chalkboard ORDER BY at, id")?;
-    let rows = stmt.query_map([], |r| Ok((r.get::<_, i64>(0)? as u64, r.get(1)?)))?;
-    rows.collect()
+    let mut rows = stmt.query([])?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next()? {
+        if let (ValueRef::Integer(at), ValueRef::Text(line)) = (r.get_ref(0)?, r.get_ref(1)?)
+            && at >= 0
+            && let Ok(line) = std::str::from_utf8(line)
+        {
+            out.push((at as u64, line.to_string()));
+        }
+    }
+    Ok(out)
 }
 
 /// Puts these lines in place of every line kept: the end of a replay.

@@ -99,6 +99,13 @@ impl Kept {
         let treats = store.call(|c| store::all_treats(c)).await?;
         let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
         let chalk = store.call(|c| store::all_chalk(c)).await?;
+        let rows: i64 = store
+            .call(|c| c.query_row("SELECT COUNT(*) FROM chalkboard", [], |r| r.get(0)))
+            .await?;
+        if rows as usize > chalk.len() {
+            let skipped = rows as usize - chalk.len();
+            tracing::warn!(target: "sys", skipped, "chalkboard rows of the wrong type; skipping them");
+        }
         Ok(Kept {
             trust,
             cats,
@@ -500,6 +507,31 @@ mod tests {
             .collect();
         assert!(shown.iter().all(|l| rows.contains(l)), "the store holds what the board shows");
         assert!(!shown.contains(&old));
+    }
+
+    #[tokio::test]
+    async fn a_chalk_row_of_the_wrong_type_is_skipped_and_the_cafe_still_wakes() {
+        // Slice 02's review, finding 4: a hand edit leaving a BLOB, or text in
+        // the time, mustn't stop the café starting.
+        let (_dir, store) = store();
+        let now = canberra(2026, 10, 14, 9, 0);
+        let good = met(now - 1_000, "sam");
+        store
+            .call(move |c| {
+                c.execute("INSERT INTO chalkboard (at, line) VALUES (1, X'7B7D')", [])?;
+                c.execute("INSERT INTO chalkboard (at, line) VALUES ('', 'x')", [])?;
+                store::put_chalk(c, now - 1_000, &good)
+            })
+            .await
+            .unwrap();
+        let logs = LogSink::default();
+        let world = {
+            let _guard = logs.capture();
+            wake(&store, content(), "test".into(), now, 1).await.expect("the café wakes")
+        };
+        let skipped = logs.lines().into_iter().find(|l| l["level"] == "WARN" && l["skipped"].is_u64());
+        assert_eq!(skipped.map(|l| l["skipped"].clone()), Some(serde_json::json!(2)), "{}", logs.text());
+        assert_eq!(world.snapshot_for(0, now).chalkboard.len(), 1);
     }
 
     #[tokio::test]

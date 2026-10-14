@@ -40,8 +40,10 @@ pub(super) struct Cat {
     pub held_until: u64,
     /// Asleep on someone's lap.
     pub lap: Option<u32>,
-    /// When it settled on that lap.
+    /// When it settled on that lap, and whose it is, for the chalkboard's
+    /// line however the lap ends (slice 02's review, finding 3).
     pub lap_since: u64,
+    pub lap_with: Option<String>,
     /// New pieces it has looked at: piece, and when it was put down.
     pub investigated: Vec<(u32, u64)>,
     /// Its last line, so carrying on with something isn't told twice.
@@ -210,6 +212,7 @@ impl World {
             held_until: 0,
             lap: None,
             lap_since: 0,
+            lap_with: None,
             investigated: Vec::new(),
             told: None,
         }
@@ -354,7 +357,7 @@ impl World {
                 .is_some_and(|p| p.sitting.is_some() && p.at == self.cats[i].at && p.walk.is_none());
             if !still || now >= self.cats[i].until {
                 let minutes = (now.saturating_sub(self.cats[i].lap_since) / 60_000) as u32;
-                let with = self.person(person).map(|p| p.name.clone());
+                let with = self.cats[i].lap_with.take();
                 let cat = &mut self.cats[i];
                 cat.lap = None;
                 cat.plan = Plan::Idle;
@@ -602,6 +605,7 @@ impl World {
             {
                 self.cats[i].lap = Some(person);
                 self.cats[i].lap_since = now;
+                self.cats[i].lap_with = self.person(person).map(|p| p.name.clone());
                 plan
             }
             Plan::Lap(_) => Plan::Idle,

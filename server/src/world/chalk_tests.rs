@@ -121,6 +121,7 @@ fn lap(w: &mut World, since: u64, until: u64) -> usize {
     let i = hold(w, "mochi", T(0, 5));
     let c = &mut w.cats[i];
     (c.lap, c.pose, c.lap_since, c.until) = (Some(1), Pose::Nap, since, until);
+    c.lap_with = Some("p1".into());
     i
 }
 
@@ -423,4 +424,66 @@ fn a_tidied_trace_stays_tidied() {
     }
     restored.replay(start + 4_000 + 10 * MINUTE);
     assert!(!piece(&restored), "nothing stood it back down");
+}
+
+#[test]
+fn a_lap_that_ends_because_its_person_leaves_is_a_line() {
+    // Slice 02's review, finding 3: leaving with a cat on your lap is one of
+    // the commonest ways a lap ends.
+    let start = canberra(2026, 10, 14, 15, 0);
+    let mut w = world_at(1, start);
+    lap(&mut w, start, start + 15 * MINUTE);
+    w.last_tick = start + 10 * MINUTE;
+    let mut outs = w.handle(
+        start + 10 * MINUTE,
+        Input::Msg {
+            id: 1,
+            msg: ClientMsg::Leave {},
+        },
+    );
+    outs.extend(w.tick(start + 10 * MINUTE + 100));
+    assert_eq!(
+        chalked(&outs).iter().map(|l| &l.what).collect::<Vec<_>>(),
+        vec![&ChalkWhat::Lap {
+            with: "p1".into(),
+            minutes: 10
+        }]
+    );
+}
+
+#[tokio::test]
+async fn a_tidied_trace_stays_tidied_through_a_crash_and_a_wake() {
+    // Slice 02's review, finding 8: gathered up, saved at once, so a crash
+    // before the periodic save doesn't bring the toys back scattered.
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(&dir.path().join("cafe.db")).unwrap();
+    let start = canberra(2026, 10, 14, 8, 0);
+    let mut w = world_at(1, start);
+    w.store = Some(store.clone());
+    let toys = w.room.pieces.iter().find(|p| p.kind == "toys").unwrap();
+    let (toys, at) = (toys.id, T(toys.x, toys.y));
+    assert!(w.knock_over(toys, at, &mut Vec::new()));
+    join(&mut w, 1, start);
+    stand(&mut w, 1, T(at.x - 1, at.y));
+    w.handle(
+        start + 100,
+        Input::Msg {
+            id: 1,
+            msg: ClientMsg::Tidy { id: toys },
+        },
+    );
+    for step in 2..=40u64 {
+        w.tick(start + step * 100);
+    }
+    assert!(!w.room.pieces.iter().find(|p| p.kind == "toys").unwrap().toppled);
+    // No periodic save: the process dies here, and wakes from what's on disk.
+    store.flush().await.unwrap();
+    let woken = crate::wake::wake(&store, crate::content::repo_content(), "test".into(), start + 4_100, 1)
+        .await
+        .unwrap();
+    let after = woken.snapshot_for(0, start + 4_100);
+    assert!(
+        !after.room.furniture.iter().find(|f| f.kind == "toys").unwrap().toppled,
+        "the toys stayed gathered"
+    );
 }
