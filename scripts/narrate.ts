@@ -222,9 +222,52 @@ function cat(l: Line): string {
   }
 }
 
+/** A length of time in seconds, as "45s", "12m", "8h 2m" or "2 days 4h". */
+function duration(secs: number): string {
+  if (secs < 60) return `${secs}s`;
+  if (secs < 3_600) return `${Math.floor(secs / 60)}m`;
+  if (secs < 86_400) {
+    const m = Math.floor((secs % 3_600) / 60);
+    return `${Math.floor(secs / 3_600)}h${m ? ` ${m}m` : ""}`;
+  }
+  const days = Math.floor(secs / 86_400);
+  const h = Math.floor((secs % 86_400) / 3_600);
+  return `${days === 1 ? "1 day" : `${days} days`}${h ? ` ${h}h` : ""}`;
+}
+
+const TIMES = ["", "once", "twice"];
+
+/**
+ * A wake-up (slice 01): how long the café slept, how long it took to replay
+ * the gap, and what the cats and the café's schedule did in it.
+ */
+function woke(l: Line): string {
+  if (l.first) return "The café opened for the first time";
+  if (Number(l.steps) === 0) return "The café woke with nothing to catch up on";
+  const ms = Number(l.took_ms);
+  const took = ms < 1_000 ? `${ms} ms` : `${(ms / 1_000).toFixed(1)} s`;
+  let text = `The café woke after ${duration(Number(l.gap_secs))} asleep and caught up in ${took}${l.capped ? " (the last week of it)" : ""}`;
+  const walks = String(l.walks ?? "")
+    .split(" ")
+    .map((w) => w.split(":"))
+    .filter((w) => w.length === 2)
+    .map(([name, n]) => ({ name, n: Number(n) }));
+  const clauses: string[] = [];
+  if (walks.some((w) => w.n > 0)) {
+    const [first, ...rest] = walks;
+    const counts = [`${first.name} walked ${first.n === 1 ? "once" : `${first.n} times`}`, ...rest.map((w) => `${w.name} ${w.n}`)];
+    clauses.push(`meanwhile ${counts.length > 1 ? `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}` : counts[0]}`);
+  }
+  const refills = Number(l.refills ?? 0);
+  if (refills > 0) clauses.push(`the bowls were filled ${TIMES[refills] ?? `${refills} times`}`);
+  if (clauses.length > 0) text += `; ${clauses.join(", and ")}`;
+  return text;
+}
+
 /** What the café itself did. */
 function cafe(l: Line): string {
   if (l.what === "bowls_filled") return `The café filled the bowls (${String(l.portions)} portions)`;
+  if (l.what === "woke") return woke(l);
   return `${String(l.target ?? "server")}: ${String(l.message ?? l.what ?? "")}`;
 }
 

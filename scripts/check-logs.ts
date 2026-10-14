@@ -3,8 +3,9 @@
 // (design.md, "Logging"; plan-phase-3.md, Task 8): every line is one JSON
 // object with a time and a target; an action line says who did what (an
 // account refusal alone has no name, since a password sometimes lands in the
-// name field); a say line has its length; and no line holds anything someone
-// said. The words the spec said are given as arguments:
+// name field); a say line has its length; every start ("listening") follows
+// its own wake-up line, with numbers (slice 01); and no line holds anything
+// someone said. The words the spec said are given as arguments:
 //
 //   docker logs app 2>&1 | node scripts/check-logs.ts "hello there" ...
 import { createInterface } from "node:readline";
@@ -13,6 +14,8 @@ const said = process.argv.slice(2);
 const ACCOUNT = new Set(["signup", "login", "logout", "recover"]);
 const problems: string[] = [];
 let count = 0;
+/** A wake-up logged and not yet followed by the start it belongs to (slice 01). */
+let wokeUnclaimed = false;
 
 function check(raw: string, n: number): void {
   if (raw.trim() === "") return;
@@ -27,6 +30,17 @@ function check(raw: string, n: number): void {
   if (typeof l.timestamp !== "string" || typeof l.target !== "string") problems.push(`line ${n} has no time or target: ${raw}`);
   for (const words of said) {
     if (raw.includes(words)) problems.push(`line ${n} holds something said ("${words}")`);
+  }
+  // Every start replays the gap and logs its wake-up, with numbers, before it listens.
+  if (l.target === "cafe" && l.what === "woke") {
+    for (const key of ["gap_secs", "steps", "took_ms"]) {
+      if (typeof l[key] !== "number") problems.push(`line ${n} is a wake-up without its ${key}: ${raw}`);
+    }
+    wokeUnclaimed = true;
+  }
+  if (l.target === "sys" && l.message === "listening") {
+    if (!wokeUnclaimed) problems.push(`line ${n} is a start with no wake-up logged before it: ${raw}`);
+    wokeUnclaimed = false;
   }
   if (l.target !== "action") return;
   if (typeof l.what !== "string") problems.push(`line ${n} doesn't say what was done: ${raw}`);
