@@ -52,6 +52,8 @@ function enter(me: ApiMe): void {
       announce("The café was updated. Refresh to get the new version.");
     },
     onStillThere: () => {
+      // Out of the way of the nudge, which must be seen (slice 02's review, finding 2).
+      hideBoard();
       $("still-there").hidden = false;
       $("im-here").focus();
       announce("Still there? Someone's waiting for a seat.");
@@ -131,19 +133,27 @@ function enter(me: ApiMe): void {
   };
   // The chalkboard, read in a dialog by tapping, clicking or Tab-and-Enter on
   // its tile in the room (slice 02): the only way on a phone, and handy anywhere.
+  // It's modal: the café behind is inert while it's open, and a click beside
+  // it closes it without acting on the room (slice 02's review, finding 1).
   const board = $("board");
+  const backdrop = $("board-backdrop");
   const showBoard = () => {
     closeMenu();
     if (cafe.state) renderChalkboard($("board-lines"), cafe.state);
+    $("cafe").inert = true;
+    backdrop.hidden = false;
     board.hidden = false;
     $("board-close").focus();
   };
   const hideBoard = () => {
     if (board.hidden) return;
     board.hidden = true;
+    backdrop.hidden = true;
+    $("cafe").inert = false;
     canvas.focus();
   };
   $("board-close").onclick = hideBoard;
+  backdrop.onclick = hideBoard;
   board.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -289,7 +299,7 @@ function enter(me: ApiMe): void {
     unsubscribe();
     stage.stop();
     closeMenu();
-    board.hidden = true;
+    hideBoard();
     document.removeEventListener("pointerdown", touched);
     document.removeEventListener("keydown", touched);
     document.removeEventListener("visibilitychange", visibility);

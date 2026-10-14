@@ -61,6 +61,26 @@ async function placeACushion(v: Visitor): Promise<string> {
   throw new Error("nowhere to put a cushion down");
 }
 
+/**
+ * The café as it is, once a cat has left a trace (slice 02's review, finding
+ * 8): with nothing down, "what was down stays down" would hold of anything.
+ * Cats knock things over and scatter the toys only with nobody inside, so it
+ * looks in briefly every few seconds, for a minute at most. If none comes,
+ * the run says so, and `cargo test` holds traces through a restart anyway.
+ */
+async function withATrace(cookie: string): Promise<Msg> {
+  let welcome: Msg = { type: "welcome" };
+  for (let look = 0; look < 12; look++) {
+    const v = await Visitor.connect(cookie);
+    welcome = v.welcome;
+    await v.leave();
+    if (toppled(welcome).length > 0) return welcome;
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+  console.warn("no trace within a minute: this run's restart check holds lines and furniture, not traces");
+  return welcome;
+}
+
 /** The latest wake-up line the app wrote. */
 function lastWake(): Msg {
   const out = execSync(logs as string, { shell: "/bin/bash", encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 });
@@ -79,9 +99,7 @@ describe.skipIf(!restart || !logs)("a stop and a start of the app", () => {
     const { trust } = await meetACat(v);
     const cushion = await placeACushion(v);
     await v.leave();
-    const before = await Visitor.connect(account.cookie);
-    const welcome = before.welcome;
-    await before.leave();
+    const welcome = await withATrace(account.cookie);
     expect(places(welcome)).toContain(cushion);
 
     execSync(restart as string, { stdio: "inherit", shell: "/bin/bash" });

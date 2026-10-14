@@ -141,10 +141,23 @@ async function expectRingClear(page: Page): Promise<void> {
   }
 }
 
-/** The middle of the chalkboard's tile on the street wall, in CSS pixels. */
+/**
+ * The middle of the chalkboard's tile on the street wall, in CSS pixels, once
+ * the room has stopped moving (in the bigger room it pans to follow you).
+ */
 async function boardTile(page: Page): Promise<{ x: number; y: number }> {
-  const box = (await page.locator("#room").boundingBox())!;
-  return { x: box.x + 8.5 * (box.width / 12), y: box.y + 0.5 * (box.height / 10) };
+  const at = async () => {
+    const box = (await page.locator("#room").boundingBox())!;
+    return { x: box.x + 8.5 * (box.width / 12), y: box.y + 0.5 * (box.height / 10) };
+  };
+  let last = await at();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(200);
+    const now = await at();
+    if (now.x === last.x && now.y === last.y) return now;
+    last = now;
+  }
+  return last;
 }
 
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
@@ -436,7 +449,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.mouse.click(at.x, at.y);
     await board.waitFor();
     expect(await focused(v.page)).toBe("board-close");
-    expect(await v.page.locator("#board-lines li").count()).toBeGreaterThan(0);
+    // The dialog shows the panel's lines (slice 02's review, finding 7).
+    const texts = (list: string) => v.page.locator(`${list} li`).allTextContents();
+    expect(await texts("#board-lines")).toEqual(await texts("#chalk-lines"));
     await v.page.locator("#board-close").click();
     await board.waitFor({ state: "hidden" });
     expect(await focused(v.page)).toBe("room");
@@ -456,9 +471,80 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await focused(v.page)).toBe("room");
   });
 
-  it("opens the board by tapping the chalkboard on a phone, where the panel's copy is hidden", async () => {
+  it("keeps the room out of reach while the board is open, and the nudge above it", async () => {
+    // Slice 02's review, findings 1 and 2: a click beside the board closes it,
+    // and acts on nothing behind it.
+    const v = await visit({ width: 1920, height: 1080 });
+    const board = v.page.locator("#board");
+    const at = await boardTile(v.page);
+    await v.page.mouse.click(at.x, at.y);
+    await board.waitFor();
+    const box = (await v.page.locator("#room").boundingBox())!;
+    const seat = { x: box.x + 3.5 * (box.width / 12), y: box.y + 1.5 * (box.height / 10) };
+    expect(await v.page.evaluate(([x, y]) => document.getElementById("board")!.contains(document.elementFromPoint(x, y)), [seat.x, seat.y])).toBe(false);
+    await v.page.mouse.click(seat.x, seat.y);
+    await board.waitFor({ state: "hidden" });
+    expect(await v.page.locator(".menu").count(), "no menu opened behind the board").toBe(0);
+    expect(await focused(v.page)).toBe("room");
+    // Open again: Escape still closes it.
+    await v.page.mouse.click(at.x, at.y);
+    await board.waitFor();
+    await v.page.keyboard.press("Escape");
+    await board.waitFor({ state: "hidden" });
+    // "Still there?" shows above an open board.
+    await v.page.mouse.click(at.x, at.y);
+    await board.waitFor();
+    const nudge = await v.page.evaluate(() => {
+      document.getElementById("still-there")!.hidden = false;
+      const r = document.getElementById("im-here")!.getBoundingClientRect();
+      return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.id;
+    });
+    expect(nudge).toBe("im-here");
+    // Leave things as a visitor would find them, for the check that walks out.
+    await v.page.evaluate(() => {
+      document.getElementById("still-there")!.hidden = true;
+    });
+    await v.page.locator("#board-close").click();
+    await board.waitFor({ state: "hidden" });
+  });
+
+  it("reads the board on a phone by keyboard, in the bigger room, and through a resize", async () => {
     const v = await visit({ width: 390, height: 844 }, true);
-    expect(await v.page.locator("#chalkboard").isVisible()).toBe(false);
+    const board = v.page.locator("#board");
+    // By keyboard at 390×844.
+    await v.page.locator("#room").focus();
+    await v.page.keyboard.press("ArrowRight");
+    await v.page.keyboard.press("Shift+Tab");
+    await v.page.keyboard.press("Enter");
+    await board.waitFor();
+    expect(await focused(v.page)).toBe("board-close");
+    // Through a resize to the desktop and back, it stays on screen with the focus.
+    for (const size of [{ width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+      await v.page.setViewportSize(size);
+      await v.page.waitForTimeout(150);
+      const r = (await board.boundingBox())!;
+      expect(r.x).toBeGreaterThanOrEqual(0);
+      expect(r.x + r.width).toBeLessThanOrEqual(size.width);
+      expect(await focused(v.page)).toBe("board-close");
+    }
+    await v.page.keyboard.press("Escape");
+    await board.waitFor({ state: "hidden" });
+    // In the bigger room, by a tap.
+    await v.page.locator("#layout-switch").tap();
+    await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    const at = await boardTile(v.page);
+    await v.page.touchscreen.tap(at.x, at.y);
+    await board.waitFor();
+    await v.page.locator("#board-close").tap();
+    await board.waitFor({ state: "hidden" });
+  });
+
+  it("opens the board by tapping the chalkboard on a phone, where the panel's copy is out of sight but read", async () => {
+    const v = await visit({ width: 390, height: 844 }, true);
+    // Out of sight, but there for a screen reader (slice 02's review, noted for slice 06).
+    const panel = (await v.page.locator("#chalkboard").boundingBox())!;
+    expect(panel.width * panel.height).toBeLessThanOrEqual(1);
+    expect(await v.page.getByRole("heading", { name: "The chalkboard" }).count()).toBeGreaterThan(0);
     const at = await boardTile(v.page);
     await v.page.touchscreen.tap(at.x, at.y);
     const board = v.page.locator("#board");

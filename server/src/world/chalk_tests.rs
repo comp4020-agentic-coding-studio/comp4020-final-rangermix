@@ -487,3 +487,39 @@ async fn a_tidied_trace_stays_tidied_through_a_crash_and_a_wake() {
         "the toys stayed gathered"
     );
 }
+
+#[tokio::test]
+async fn a_trace_survives_a_stop_and_a_wake() {
+    // Slice 02's spec: lines and traces survive a restart. The spec's own
+    // check can only wait for a cat to leave one; this holds it every time.
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(&dir.path().join("cafe.db")).unwrap();
+    let start = canberra(2026, 10, 14, 23, 0);
+    let mut w = world_at(1, start);
+    w.store = Some(store.clone());
+    let plant = w.room.pieces.iter().find(|p| p.kind == "plant").unwrap();
+    let (plant, at) = (plant.id, T(plant.x, plant.y));
+    assert!(w.knock_over(plant, at, &mut Vec::new()));
+    let tora = cat_index(&w, "tora");
+    w.chalk(start, tora, ChalkWhat::KnockedOver { piece: "plant".into() }, &mut Vec::new());
+    w.save(start + 1_000);
+    store.flush().await.unwrap();
+    let woken = crate::wake::wake(&store, crate::content::repo_content(), "test".into(), start + 31_000, 1)
+        .await
+        .unwrap();
+    let after = woken.snapshot_for(0, start + 31_000);
+    assert!(
+        after
+            .room
+            .furniture
+            .iter()
+            .any(|f| f.kind == "plant" && f.x == at.x && f.y == at.y && f.toppled),
+        "still down"
+    );
+    assert!(
+        after
+            .chalkboard
+            .iter()
+            .any(|l| l.at == start && l.what == ChalkWhat::KnockedOver { piece: "plant".into() })
+    );
+}
