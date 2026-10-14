@@ -59,8 +59,19 @@ begun, isn't kept.
 
 ## Measured live
 
-- **After the deploy:** pending until slice 01's last push has deployed.
-  The redeploy's own wake-up is a gap of seconds.
+- **After the deploys, and the machine's own idle stops** (2026-10-14,
+  read with `flyctl logs` and narrated), with the review's fixes live from
+  `1a8745f`:
+
+  ```
+  20:57:41  The café woke after 51m asleep and caught up in 14 ms; meanwhile Burakku walked 20 times, Mochi 58 and Tora 293
+  21:10:45  The café woke after 7m asleep and caught up in 2 ms; meanwhile Burakku walked 31 times, Mochi 10 and Tora 11
+  21:15:42  The café woke after 5s asleep and caught up in 4 ms; meanwhile Burakku walked 0 times, Mochi 0 and Tora 1
+  ```
+
+  The machine stops itself when idle and wakes on the next request, so these
+  are real sleeps, not only redeploys. Earlier redeploys took 0 ms for gaps
+  of 3 to 5 seconds.
 - **After a real night:** pending. The machine stops itself when idle, so
   the first visit after a quiet night logs a wake-up with a gap of hours.
   Read it with `flyctl logs -a comp4020-final-rangermix | grep '"woke"'` (or
