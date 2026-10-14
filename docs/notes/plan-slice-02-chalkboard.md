@@ -471,3 +471,35 @@ impl World {
 ## Execution log
 
 Where carrying out this plan departed from it, task by task, and why.
+
+- **Task 1 (2026-10-14)** ([`11dbf30`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/11dbf30)). Departures from the plan:
+  - The store writes moved to Task 2, so each could be seen failing there.
+    Task 1's lines lived in memory only, which kept its tests on worlds
+    without a store.
+  - The plan's investigated line read "inspected"; it reads "looked over".
+  - A scattered-toys line comes from the scatter itself, and the play that
+    caused it writes no "played" line of its own.
+  - The welcome's snapshot is boxed, since clippy flagged the larger
+    `ServerMsg::Welcome` variant; the wire format is unchanged.
+  - The client's `chalked` case was a no-op until Task 4.
+- **Task 2** ([`857d7c8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/857d7c8)). As planned. (Slice 01's review,
+  finding 5, later folded `save_chalk` into the replay's one-job save as
+  `chalk_rows`.)
+- **Task 3** ([`8a893ed`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8a893ed)). The tidied-trace test passed at
+  once, as the plan expected, since tidying is phase 3's.
+- **Task 4** ([`53fa6af`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/53fa6af)). Checked by hand in the in-app
+  browser at the desktop size, by keyboard, and at 390×844 in both phone
+  layouts. In layout B at 390×844 the whole room fits the screen's height,
+  so the chalkboard isn't under the floating bar.
+- **Task 5** ([`b8a4800`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b8a4800)). The new checks failed against the
+  image from before the slice and passed against a fresh one, with the whole
+  `pnpm check` and the restart. Running them turned up two faults in the
+  client. The board hangs by the door, so nearest-first made it everyone's
+  first Tab, which broke two older browser checks; it now comes last in the
+  Tab cycle. And the first Shift+Tab of a fresh cycle landed on the
+  second-to-last thing; it now lands on the last, so one Shift+Tab reaches
+  the board, as the room's label says.
+- **Task 6.** design.md records it all: "The room", "The client",
+  "Persistence", "Checks", and three new rows in "Numbers to tune" (the
+  hourly rule, a lap worth a line, the scatter chance). Like "New furniture",
+  those are constants in the code, not in `tuning.toml`.

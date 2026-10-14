@@ -219,12 +219,24 @@ renamed.
   post and a lamp.
 - **Traces stay until someone tidies them.** Standing a toppled plant back up
   is just moving furniture, so tidying is a small thing regulars do for each
-  other.
+  other. Toys a cat knocks over, or scatters while playing with nobody inside
+  (a chance of half its playfulness), lie strewn about until someone picks
+  "Gather up the toys", and no cat plays with them till then. Traces are saved
+  with the furniture, through restarts and replays.
 - **The chalkboard** notes what the cats got up to, day and night ("3:12am,
   Burakku knocked over the fern"; "Mochi slept on Sam's lap for 20 minutes"),
   over a rolling 24 hours. It records cats' doings, never what people said.
   *Why rolling:* a morning wipe would erase the night before the first visitor
-  read it.
+  read it. The server writes a line when a cat knocks something over (the
+  toys read as scattered), first sniffs a newcomer's hand, sleeps five minutes
+  or more on a lap, greets someone at the door, plays with someone or with the
+  toys, looks over a new piece, or perches at the window. The softer doings
+  are written at most once an hour per cat; meetings, knock-overs and laps
+  every time. A line is fixed fields: when, the cat, what it did, and a
+  username or a piece's kind. So nothing anyone typed can reach it, and the
+  client puts it into words. People are named by username, only for what a
+  cat did with them. The latest 8 are shown.
+  ([Slice 02](slices/02-what-the-night-left-behind.md), [plan](notes/plan-slice-02-chalkboard.md).)
 
 ## Architecture
 
@@ -287,7 +299,9 @@ renamed.
   state (where it is, what it's doing and until when, a walk under way, how
   hungry and tired it is; a cat in someone's arms or on a lap comes back on
   its own feet, since nobody is inside when the café wakes); treats
-  used today; traces and chalkboard lines; the world clock and the random
+  used today; traces and chalkboard lines (a `chalkboard` table, one row per
+  line, written as it happens and deleted a day old; a replay's end rewrites
+  it); the world clock and the random
   generator's state.
 - **Not kept:** bubbles, emotes, cats' anger, and who is inside or in line
   (rebuilt as people reconnect).
@@ -368,7 +382,11 @@ renamed.
   tapped. While a ring is open the room holds still, and by the room's edges
   it moves over, past its edge if it must, so the ring stays round what it is
   for with every button on screen. Tapping the chalkboard opens its readable
-  copy. Wireframes are in
+  copy, a dialog that takes the focus and gives it back to the room on Escape
+  or Close; a click, or Tab and Enter, opens it at every size. On the
+  keyboard the chalkboard comes last in the Tab cycle, after the cats, people
+  and furniture, so it isn't everyone's first Tab by the door, and one
+  Shift+Tab reaches it. Wireframes are in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
 - **Drawing:** the canvas uses the largest whole-number scale that fits, so
   pixels stay crisp and a resize mid-use just refits; things are drawn back to
@@ -428,16 +446,18 @@ renamed.
   walks in when a seat frees); bubbles never replayed on reconnect; the
   100-character cap, burst limits and blocklist; first grab wins; sign-up's
   one-time recovery code, and recovery; the log-in card's link to `/readme/`;
-  a stop and a start of the container, which brings the cats back moved by
-  the gap with the furniture and trust as they were (CI keeps `/data` on a
-  Docker volume and gives the spec the command as `APP_RESTART`; elsewhere
-  it's skipped). After the spec, CI checks the app's own log lines: every
+  a new chalkboard line on another visitor's board within a second;
+  a stop and a start of the container, which replays the gap (by the
+  restart's own wake-up line) and keeps the furniture, trust and chalkboard
+  as they were (CI keeps `/data` on a Docker volume and gives the spec the
+  commands as `APP_RESTART` and `APP_LOGS`; elsewhere it's skipped). After the spec, CI checks the app's own log lines: every
   line has a time and a target, every start logs its wake-up, and none holds
   anything said.
 - **Browser checks** (Playwright, in `spec/browser.test.ts`): a keyboard-only
   pass at 390×844 and 1920×1080 with a resize mid-use, a tap on a cat by
-  touch, the phone layout switch, and one visitor's change reaching
-  another's page. CI installs Chromium for them, and spec files run one at a
+  touch, the phone layout switch, one visitor's change reaching
+  another's page, and the chalkboard read at both sizes by keyboard, touch
+  and mouse. CI installs Chromium for them, and spec files run one at a
   time, since they share one café that seats six.
 - **CI:** a Rust job (format, lint, `cargo test`, type drift) beside the
   existing check job, and the deploy waits for both.
@@ -476,6 +496,9 @@ renamed.
 | Trust gained per day | at most 10 points per cat per person, times the cat's trust rate |
 | Grudges | Mochi 2 hours, Tora 4 hours, Burakku 2 days |
 | Chalkboard | rolling 24 hours, latest 8 lines shown |
+| Chalkboard repeats | the same doing by the same cat at most once an hour; meetings, knock-overs and laps every time |
+| A lap worth a line | 5 minutes or more |
+| Scattering the toys | half the cat's playfulness, while it plays with nobody inside |
 | Simulation | 10 steps a second live; 1-second steps in fast-forward, at most 7 days |
 | Cat state saved | every 5 seconds, and on stop |
 | Session | 30 days from last use |
