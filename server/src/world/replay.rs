@@ -20,13 +20,10 @@ pub struct Replay {
 }
 
 impl Replay {
-    /// "Burakku:40 Mochi:3 Tora:12", for the log line.
+    /// `[["Burakku",40],["Mochi",3],["Tora",12]]`, for the log line: JSON,
+    /// so a cat's name with a space or a colon in it stays whole.
     pub fn walks_text(&self) -> String {
-        self.walks
-            .iter()
-            .map(|(name, n)| format!("{name}:{n}"))
-            .collect::<Vec<_>>()
-            .join(" ")
+        serde_json::to_string(&self.walks).expect("names and counts serialise")
     }
 }
 

@@ -25,7 +25,11 @@ pub async fn wake(store: &Store, content: Content, build: String, now: u64, fres
             None => SavedArrangement::Fresh,
         },
     };
-    let saved_at = match store.call(|c| store::get_world(c, "saved_at")).await? {
+    let clock = store.call(|c| store::get_world(c, "saved_at")).await?;
+    // A café that has saved before isn't opening for the first time, even if
+    // its clock can't be read (slice 01's review, finding 7).
+    let first = clock.is_none();
+    let saved_at = match clock {
         Some(text) => match text.parse::<u64>() {
             Ok(at) => Some(at),
             Err(e) => {
@@ -57,7 +61,7 @@ pub async fn wake(store: &Store, content: Content, build: String, now: u64, fres
     let took_ms = began.elapsed().as_millis() as u64;
     let gap_secs = now.saturating_sub(saved_at.unwrap_or(now)) / 1000;
     let capped = saved_at.is_some_and(|at| start > at);
-    tracing::info!(target: "cafe", what = "woke", first = saved_at.is_none(), gap_secs, steps = replay.steps,
+    tracing::info!(target: "cafe", what = "woke", first, gap_secs, steps = replay.steps,
         capped, took_ms, refills = replay.refills, walks = %replay.walks_text());
     Ok(world)
 }
@@ -176,7 +180,13 @@ mod tests {
         assert_eq!(line["capped"], false);
         assert!(line["took_ms"].is_u64());
         assert!(line["refills"].is_u64());
-        assert!(line["walks"].as_str().unwrap().contains("Burakku:"), "{line}");
+        // Each cat's walks, as JSON, so a name with a space in it stays whole.
+        let walks: Vec<(String, u32)> = serde_json::from_str(line["walks"].as_str().unwrap()).unwrap();
+        assert_eq!(
+            walks.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(),
+            ["Burakku", "Mochi", "Tora"]
+        );
+        assert!(walks.iter().any(|(_, n)| *n > 0), "{line}");
     }
 
     #[tokio::test]
@@ -347,6 +357,11 @@ mod tests {
             .any(|l| l["level"] == "WARN" && l["message"].as_str().is_some_and(|m| m.contains("clock")));
         assert!(warned, "{}", logs.text());
         assert_eq!(woke(&logs)["steps"], 0);
+        assert_eq!(
+            woke(&logs)["first"],
+            false,
+            "a café with a history isn't opening for the first time"
+        );
     }
 
     fn met(at: u64, with: &str) -> String {

@@ -83,7 +83,7 @@ describe("narrating the logs", () => {
     { target: "cat", cat: "Burakku", what: "knock_over", on: "plant" },
     { target: "cat", cat: "Burakku", what: "lap", on: "sofa", with: "sam" },
     { target: "cafe", what: "bowls_filled", portions: 3 },
-    { target: "cafe", what: "woke", first: false, gap_secs: 28_920, steps: 28_920, capped: false, took_ms: 412, refills: 1, walks: "Burakku:40 Mochi:3 Tora:12" },
+    { target: "cafe", what: "woke", first: false, gap_secs: 28_920, steps: 28_920, capped: false, took_ms: 412, refills: 1, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' },
   ];
   const jumps = ["put_down", "wont_go", "holder_left", "had_enough", "door", "scratched", "refused", "got_up"];
 
@@ -129,14 +129,14 @@ describe("narrating the logs", () => {
   it("says how the café woke, and what the cats did while it slept", () => {
     // Slice 01: one line per wake-up, after the replay of the gap.
     const woke = (f: Record<string, unknown>) =>
-      narrate(line({ target: "cafe", what: "woke", first: false, capped: false, refills: 0, walks: "Burakku:0 Mochi:0 Tora:0", took_ms: 0, ...f }));
+      narrate(line({ target: "cafe", what: "woke", first: false, capped: false, refills: 0, walks: '[["Burakku",0],["Mochi",0],["Tora",0]]', took_ms: 0, ...f }));
     expect(woke({ first: true, gap_secs: 0, steps: 0 })).toBe("19:42:07  The café opened for the first time");
     expect(woke({ gap_secs: 0, steps: 0 })).toBe("19:42:07  The café woke with nothing to catch up on");
     expect(woke({ gap_secs: 3, steps: 3, took_ms: 2 })).toBe("19:42:07  The café woke after 3s asleep and caught up in 2 ms");
-    expect(woke({ gap_secs: 28_920, steps: 28_920, took_ms: 412, refills: 1, walks: "Burakku:40 Mochi:3 Tora:12" })).toBe(
+    expect(woke({ gap_secs: 28_920, steps: 28_920, took_ms: 412, refills: 1, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' })).toBe(
       "19:42:07  The café woke after 8h 2m asleep and caught up in 412 ms; meanwhile Burakku walked 40 times, Mochi 3 and Tora 12, and the bowls were filled once",
     );
-    expect(woke({ gap_secs: 2_700, steps: 2_700, took_ms: 40, walks: "Burakku:1 Mochi:0 Tora:2" })).toBe(
+    expect(woke({ gap_secs: 2_700, steps: 2_700, took_ms: 40, walks: '[["Burakku",1],["Mochi",0],["Tora",2]]' })).toBe(
       "19:42:07  The café woke after 45m asleep and caught up in 40 ms; meanwhile Burakku walked once, Mochi 0 and Tora 2",
     );
     expect(woke({ gap_secs: 50_400, steps: 50_400, took_ms: 700, refills: 2 })).toBe(
@@ -147,6 +147,14 @@ describe("narrating the logs", () => {
     );
     expect(woke({ gap_secs: 2 * 86_400 + 4 * 3_600, steps: 187_200, took_ms: 1_000 })).toBe(
       "19:42:07  The café woke after 2 days 4h asleep and caught up in 1.0 s",
+    );
+    // A cat's name with a space in it stays whole (slice 01's review, finding 9).
+    expect(woke({ gap_secs: 60, steps: 60, took_ms: 1, walks: '[["Mr Whiskers",4],["Mochi",1]]' })).toBe(
+      "19:42:07  The café woke after 1m asleep and caught up in 1 ms; meanwhile Mr Whiskers walked 4 times and Mochi 1",
+    );
+    // The lines the first live deploys wrote, before the walks were JSON.
+    expect(woke({ gap_secs: 5, steps: 5, took_ms: 0, walks: "Burakku:1 Mochi:0 Tora:1" })).toBe(
+      "19:42:07  The café woke after 5s asleep and caught up in 0 ms; meanwhile Burakku walked once, Mochi 0 and Tora 1",
     );
   });
 

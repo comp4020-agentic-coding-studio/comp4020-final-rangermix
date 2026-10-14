@@ -241,6 +241,24 @@ function duration(secs: number): string {
 const TIMES = ["", "once", "twice"];
 
 /**
+ * Each cat's walks from a wake-up line: JSON pairs, `[["Burakku",40],…]`, or
+ * the "Burakku:40 Mochi:3" the first live deploys wrote.
+ */
+function walksOf(field: unknown): { name: string; n: number }[] {
+  try {
+    const pairs = JSON.parse(String(field)) as unknown;
+    if (Array.isArray(pairs)) return pairs.map((p) => ({ name: String((p as unknown[])[0]), n: Number((p as unknown[])[1]) }));
+  } catch {
+    // The older form, below.
+  }
+  return String(field ?? "")
+    .split(" ")
+    .map((w) => w.split(":"))
+    .filter((w) => w.length === 2)
+    .map(([name, n]) => ({ name, n: Number(n) }));
+}
+
+/**
  * A wake-up (slice 01): how long the café slept, how long it took to replay
  * the gap, and what the cats and the café's schedule did in it.
  */
@@ -250,11 +268,7 @@ function woke(l: Line): string {
   const ms = Number(l.took_ms);
   const took = ms < 1_000 ? `${ms} ms` : `${(ms / 1_000).toFixed(1)} s`;
   let text = `The café woke after ${duration(Number(l.gap_secs))} asleep and caught up in ${took}${l.capped ? " (the last week of it)" : ""}`;
-  const walks = String(l.walks ?? "")
-    .split(" ")
-    .map((w) => w.split(":"))
-    .filter((w) => w.length === 2)
-    .map(([name, n]) => ({ name, n: Number(n) }));
+  const walks = walksOf(l.walks);
   const clauses: string[] = [];
   if (walks.some((w) => w.n > 0)) {
     const [first, ...rest] = walks;
