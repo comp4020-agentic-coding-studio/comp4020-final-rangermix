@@ -754,7 +754,16 @@ mod tests {
     fn seeded(seed: u64) -> World {
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
-        World::new(content, trust, Vec::new(), SavedArrangement::Fresh, seed, None, "test".into(), 0)
+        World::new(
+            content,
+            trust,
+            Vec::new(),
+            SavedArrangement::Fresh,
+            ChaCha8Rng::seed_from_u64(seed),
+            None,
+            "test".into(),
+            0,
+        )
     }
 
     fn cat_index(w: &World, id: &str) -> usize {
@@ -1145,7 +1154,16 @@ mod tests {
                 r#"{"at":{"x":0,"y":0},"tiredness":0.1,"company":0.1}"#.to_string(),
             ),
         ];
-        let w = World::new(content, trust, saved, SavedArrangement::Fresh, 11, None, "test".into(), 0);
+        let w = World::new(
+            content,
+            trust,
+            saved,
+            SavedArrangement::Fresh,
+            ChaCha8Rng::seed_from_u64(11),
+            None,
+            "test".into(),
+            0,
+        );
         let mochi = &w.cats[cat_index(&w, "mochi")];
         assert_eq!((mochi.at, mochi.tiredness), (T(1, 5), 0.7));
         let tora = &w.cats[cat_index(&w, "tora")];
@@ -1153,7 +1171,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn saving_writes_each_cat_and_the_clock() {
+    async fn saving_writes_each_cat_the_clock_and_the_random_state() {
         let dir = tempfile::tempdir().unwrap();
         let store = Store::open(&dir.path().join("cafe.db")).unwrap();
         let content = crate::content::repo_content();
@@ -1163,15 +1181,25 @@ mod tests {
             trust,
             Vec::new(),
             SavedArrangement::Fresh,
-            13,
+            ChaCha8Rng::seed_from_u64(13),
             Some(store.clone()),
             "test".into(),
             0,
         );
+        for step in 1..=50u64 {
+            w.tick(step * 100);
+        }
         w.save(5_000);
         let states = store.call(|c| crate::store::all_cat_states(c)).await.unwrap();
         assert_eq!(states.len(), 3);
         let saved_at = store.call(|c| crate::store::get_world(c, "saved_at")).await.unwrap();
         assert_eq!(saved_at.as_deref(), Some("5000"));
+        let rng = store
+            .call(|c| crate::store::get_world(c, "rng"))
+            .await
+            .unwrap()
+            .expect("the random state is saved");
+        let back: ChaCha8Rng = serde_json::from_str(&rng).unwrap();
+        assert_eq!(back, w.rng, "it carries on where the world's generator is");
     }
 }

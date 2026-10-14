@@ -348,7 +348,16 @@ pub(crate) mod tests {
     pub(crate) fn world() -> World {
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
-        World::new(content, trust, Vec::new(), SavedArrangement::Fresh, 7, None, "test".into(), 0)
+        World::new(
+            content,
+            trust,
+            Vec::new(),
+            SavedArrangement::Fresh,
+            ChaCha8Rng::seed_from_u64(7),
+            None,
+            "test".into(),
+            0,
+        )
     }
 
     pub(crate) fn join(w: &mut World, id: u32, now: u64) -> Vec<Out> {

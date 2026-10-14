@@ -951,7 +951,7 @@ async fn picking_up_a_knocked_over_piece_saves_it_standing() {
         trust,
         Vec::new(),
         SavedArrangement::Fresh,
-        5,
+        ChaCha8Rng::seed_from_u64(5),
         Some(store.clone()),
         "test".into(),
         0,

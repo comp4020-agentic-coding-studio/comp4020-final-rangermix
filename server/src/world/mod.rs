@@ -23,6 +23,7 @@ use crate::store::Store;
 use crate::trust::TrustBook;
 use crate::tuning::Tuning;
 use cat_life::Cat;
+#[cfg(test)]
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use std::collections::VecDeque;
@@ -158,7 +159,7 @@ impl World {
         trust: TrustBook,
         saved_cats: Vec<(String, String)>,
         arrangement: SavedArrangement,
-        seed: u64,
+        rng: ChaCha8Rng,
         store: Option<Store>,
         build: String,
         now: u64,
@@ -173,7 +174,7 @@ impl World {
             noise: VecDeque::new(),
             heard: Vec::new(),
             arrivals: Vec::new(),
-            rng: ChaCha8Rng::seed_from_u64(seed),
+            rng,
             store,
             build,
             last_tick: now,
@@ -423,7 +424,9 @@ impl World {
         }
     }
 
-    /// Saves each cat's place and needs, and the world clock, through the store.
+    /// Saves each cat's place and needs, the world clock and the random
+    /// generator's state through the store, in one job, so a replay starts
+    /// from exactly where the café stopped (ADR 0006).
     pub fn save(&mut self, now: u64) {
         self.last_save = now;
         let Some(store) = &self.store else { return };
@@ -438,11 +441,13 @@ impl World {
             })
             .collect();
         let bowls = self.bowls_json();
+        let rng = serde_json::to_string(&self.rng).expect("the random state serialises");
         store.fire(move |conn| {
             for (id, json) in &cats {
                 crate::store::put_cat_state(conn, id, json, now)?;
             }
             crate::store::put_world(conn, "bowls", &bowls)?;
+            crate::store::put_world(conn, "rng", &rng)?;
             crate::store::put_world(conn, "saved_at", &now.to_string())
         });
     }

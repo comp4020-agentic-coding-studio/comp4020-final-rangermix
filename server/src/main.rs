@@ -20,6 +20,7 @@ mod tuning;
 mod world;
 mod ws;
 
+use rand::SeedableRng;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -50,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         trust,
         saved_cats,
         arrangement,
-        now,
+        rand_chacha::ChaCha8Rng::seed_from_u64(now),
         Some(store.clone()),
         build.clone(),
         now,
