@@ -1,4 +1,4 @@
-import { CHALK_SHOWN, chalkTime, chalkWords } from "./chalk";
+import { chalkTime, chalkWords } from "./chalk";
 import type { CatView } from "./protocol/CatView";
 import type { ChalkLine } from "./protocol/ChalkLine";
 import type { Emote } from "./protocol/Emote";
@@ -56,6 +56,9 @@ export interface CafeState {
   bowls: number;
   /** The chalkboard's latest lines, oldest first. */
   chalkboard: ChalkLine[];
+  /** How many hours of lines the board keeps, and how many it shows. */
+  chalkHours: number;
+  chalkShown: number;
 }
 
 export type Effect =
@@ -107,6 +110,8 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     yourTreats: s.yourTreats,
     bowls: s.bowls,
     chalkboard: s.chalkboard,
+    chalkHours: msg.chalkHours,
+    chalkShown: msg.chalkShown,
   };
 }
 
@@ -296,10 +301,15 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       if (msg.by === state.you || msg.by === null) return [];
       return [{ kind: "announce", text: toys ? `${name(msg.by)} gathered up the toys.` : `${name(msg.by)} stood the ${what} back up.` }];
     }
-    case "chalked":
+    case "chalked": {
       state.chalkboard.push(msg.line);
-      if (state.chalkboard.length > CHALK_SHOWN) state.chalkboard.splice(0, state.chalkboard.length - CHALK_SHOWN);
+      if (state.chalkboard.length > state.chalkShown) state.chalkboard.splice(0, state.chalkboard.length - state.chalkShown);
+      // Your own first meeting: the cat's sniff, sent with it, has told you,
+      // and reading this out would talk over it (slice 02's review, finding 6).
+      const what = msg.line.what;
+      if (what.kind === "met" && what.with === state.people.get(state.you)?.name) return [];
       return [{ kind: "announce", text: `On the chalkboard: ${chalkTime(msg.line.at)}, ${chalkWords(msg.line)}` }];
+    }
     case "stillThere":
       return [{ kind: "stillThere", secs: msg.secs }];
     case "nudgeOver":

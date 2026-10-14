@@ -12,6 +12,8 @@ function welcome(): Welcome {
     build: "b1",
     now: 10_000,
     cap: 6,
+    chalkHours: 24,
+    chalkShown: 8,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false }],
@@ -151,6 +153,10 @@ describe("the client's copy of the café", () => {
     const line = { at: 10_500, cat: "Mochi", what: { kind: "met" as const, with: "sam" } };
     expect(apply(s, { type: "chalked", line })).toEqual([{ kind: "announce", text: `On the chalkboard: ${chalkTime(10_500)}, Mochi met sam for the first time` }]);
     expect(s.chalkboard.at(-1)).toEqual(line);
+    // Your own first meeting: the cat's sniff has said it, and must be heard (slice 02's review, finding 6).
+    const mine = { at: 10_600, cat: "Mochi", what: { kind: "met" as const, with: "me" } };
+    expect(apply(s, { type: "chalked", line: mine })).toEqual([]);
+    expect(s.chalkboard.at(-1)).toEqual(mine);
     for (let n = 0; n < 10; n++) apply(s, { type: "chalked", line: { ...line, at: 11_000 + n } });
     expect(s.chalkboard).toHaveLength(8);
     expect(s.chalkboard[0].at).toBe(11_002);

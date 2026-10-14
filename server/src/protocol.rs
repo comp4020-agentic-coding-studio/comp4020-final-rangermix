@@ -390,6 +390,9 @@ pub enum ServerMsg {
         build: String,
         now: u64,
         cap: u32,
+        /// The chalkboard keeps this many hours of lines and shows this many.
+        chalk_hours: u32,
+        chalk_shown: u32,
         // Boxed: by far the largest message, and sent once per connection.
         snapshot: Box<Snapshot>,
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleOrder, nameOf, targetsAt, tileOf } from "../src/input";
+import { cycleOrder, nameOf, stepPointer, targetsAt, tileOf } from "../src/input";
 import { fromWelcome } from "../src/state";
 
 function state() {
@@ -10,6 +10,8 @@ function state() {
       build: "b",
       now: 0,
       cap: 6,
+      chalkHours: 24,
+      chalkShown: 8,
       snapshot: {
         room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
         people: [
@@ -34,6 +36,17 @@ function state() {
 }
 
 describe("pointing at things", () => {
+  it("lets the arrows onto the chalkboard, and nowhere else on the street wall", () => {
+    // Slice 02's review, finding 5: point, then act, for the board too.
+    const s = state();
+    expect(stepPointer(s, { x: 8, y: 1 }, [0, -1])).toEqual({ x: 8, y: 0 });
+    expect(stepPointer(s, { x: 7, y: 1 }, [0, -1])).toEqual({ x: 7, y: 1 });
+    expect(stepPointer(s, { x: 8, y: 0 }, [-1, 0])).toEqual({ x: 7, y: 1 });
+    expect(stepPointer(s, { x: 8, y: 0 }, [0, 1])).toEqual({ x: 8, y: 1 });
+    expect(stepPointer(s, { x: 11, y: 9 }, [1, 1])).toEqual({ x: 11, y: 9 });
+    expect(stepPointer(s, { x: 0, y: 1 }, [-1, 0])).toEqual({ x: 0, y: 1 });
+  });
+
   it("knows the chalkboard by its tile on the street wall, and Tab names it", () => {
     const s = state();
     const board = { kind: "board" as const, id: "board" as const, tile: { x: 8, y: 0 } };

@@ -9,6 +9,8 @@ const s = fromWelcome(
     build: "b",
     now: 0,
     cap: 6,
+    chalkHours: 24,
+    chalkShown: 8,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [
@@ -49,6 +51,10 @@ describe("panels", () => {
     expect(items[1].textContent).toMatch(/, Tora played with the toys$/);
     expect(list.querySelector("b"), "a name is text, never markup").toBeNull();
     expect(items[0].querySelector("time")?.getAttribute("datetime")).toBe(new Date(0).toISOString());
+    // Unchanged, the list isn't rebuilt, so a screen reader's place in it holds (slice 02's review, finding 9).
+    const again = { ...s, chalkboard: [{ at: 0, cat: "Mochi", what: { kind: "met" as const, with: "<b>jo</b>" } }, { at: 1, cat: "Tora", what: { kind: "played" as const } }] };
+    renderChalkboard(list, again, 1);
+    expect(list.querySelector("li")).toBe(items[0]);
   });
 
   it("show each cat's trust in you, in words and as a bar", () => {

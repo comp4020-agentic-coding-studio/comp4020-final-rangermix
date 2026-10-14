@@ -56,6 +56,11 @@ function catRows(state: CafeState): HTMLElement[] {
 /** The chalkboard's lines into a list: the panel's, or the board dialog's. */
 export function renderChalkboard(list: HTMLElement, state: CafeState, localNow = Date.now()): void {
   const lines = boardLines(state, localNow);
+  // Rebuilt only when a line comes or goes, so a screen reader's place in the
+  // list holds while the café goes on around it (slice 02's review, finding 9).
+  const key = JSON.stringify(lines);
+  if (list.dataset.lines === key) return;
+  list.dataset.lines = key;
   if (lines.length === 0) {
     list.replaceChildren(el("li", "empty", "Nothing on the board yet."));
     return;

@@ -5,10 +5,6 @@ import type { CafeState } from "./state";
 // cats did as fixed fields, and the client puts it into words, in Canberra
 // time. People never write on it.
 
-/** A rolling day, and the latest few: content/tuning.toml's chalk_hours and chalk_shown. */
-const DAY_MS = 24 * 3_600_000;
-export const CHALK_SHOWN = 8;
-
 const CLOCK = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", minute: "2-digit", hour12: true });
 
 const the = (kind: string) => `the ${kind.replaceAll("_", " ")}`;
@@ -43,8 +39,12 @@ export function chalkTime(at: number): string {
   return `${part("hour")}:${part("minute")}${part("dayPeriod").replace(/[\s.]/g, "").toLowerCase()}`;
 }
 
-/** The lines to show: the last day's by the server's clock, the latest few, oldest first. */
+/**
+ * The lines to show: the last day's by the server's clock, the latest few,
+ * oldest first, by the numbers the server sends (tuning.toml's chalk_hours
+ * and chalk_shown).
+ */
 export function boardLines(state: CafeState, localNow = Date.now()): ChalkLine[] {
   const now = localNow + state.offset;
-  return state.chalkboard.filter((l) => now - l.at < DAY_MS).slice(-CHALK_SHOWN);
+  return state.chalkboard.filter((l) => now - l.at < state.chalkHours * 3_600_000).slice(-state.chalkShown);
 }

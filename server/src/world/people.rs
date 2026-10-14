@@ -84,6 +84,8 @@ impl World {
             build: self.build.clone(),
             now,
             cap: self.tuning.cap as u32,
+            chalk_hours: self.tuning.chalk_hours as u32,
+            chalk_shown: self.tuning.chalk_shown as u32,
             snapshot,
         };
         out.insert(

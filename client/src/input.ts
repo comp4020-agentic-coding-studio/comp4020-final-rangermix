@@ -92,6 +92,17 @@ export interface InputHooks {
 
 const MOVES: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 
+/**
+ * Where an arrow moves the pointer: within the room, and onto the street
+ * wall only where the chalkboard hangs, so point-then-act reaches the board
+ * too (slice 02's review, finding 5).
+ */
+export function stepPointer(state: CafeState, from: Tile, [dx, dy]: [number, number]): Tile {
+  const x = Math.max(0, Math.min(state.room.width - 1, from.x + dx));
+  const y = Math.max(0, Math.min(state.room.height - 1, from.y + dy));
+  return y === 0 && state.room.tiles[0]?.[x] !== "C" ? { x, y: 1 } : { x, y };
+}
+
 export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => void {
   const canvas = stage.canvas;
   const pointer = stage.pointer;
@@ -127,11 +138,7 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
       e.preventDefault();
       // The first arrow shows the pointer where you stand; the next ones move it.
       const from = pointer.visible && pointer.tile ? pointer.tile : myTile();
-      const step = pointer.visible ? move : [0, 0];
-      pointer.tile = {
-        x: Math.max(0, Math.min(state.room.width - 1, from.x + step[0])),
-        y: Math.max(1, Math.min(state.room.height - 1, from.y + step[1])),
-      };
+      pointer.tile = stepPointer(state, from, pointer.visible ? move : [0, 0]);
       pointer.visible = true;
       cycle = [];
       return;

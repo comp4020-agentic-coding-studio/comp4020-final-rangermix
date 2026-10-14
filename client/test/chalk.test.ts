@@ -36,13 +36,15 @@ describe("the chalkboard's words", () => {
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 
-function welcomeAt(now: number, chalkboard: ChalkLine[]): Welcome {
+function welcomeAt(now: number, chalkboard: ChalkLine[], numbers: { chalkHours?: number; chalkShown?: number } = {}): Welcome {
   return {
     type: "welcome",
     you: 1,
     build: "b",
     now,
     cap: 6,
+    chalkHours: 24,
+    chalkShown: 8,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [],
@@ -54,6 +56,7 @@ function welcomeAt(now: number, chalkboard: ChalkLine[]): Welcome {
       bowls: 3,
       chalkboard,
     },
+    ...numbers,
   };
 }
 
@@ -68,6 +71,14 @@ describe("the board's lines", () => {
     const s = fromWelcome(welcomeAt(now, lines), localNow);
     expect(boardLines(s, localNow).map((l) => l.cat)).toEqual(["Mochi"]);
     expect(boardLines(s, localNow + DAY).map((l) => l.cat)).toEqual([]);
+  });
+
+  it("follow the server's numbers, not their own", () => {
+    // Slice 02's review: tuning.toml's chalk_hours and chalk_shown, sent with the welcome.
+    const lines = Array.from({ length: 14 }, (_, n) => line({ kind: "played" }, `c${n}`, at + n * 3_600_000));
+    const now = at + 13 * 3_600_000;
+    const s = fromWelcome(welcomeAt(now, lines, { chalkHours: 12, chalkShown: 12 }), now);
+    expect(boardLines(s, now).map((l) => l.cat)).toEqual(["c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10", "c11", "c12", "c13"]);
   });
 
   it("show the latest eight, oldest first", () => {

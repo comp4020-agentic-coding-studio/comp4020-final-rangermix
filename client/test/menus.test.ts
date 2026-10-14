@@ -10,6 +10,8 @@ function state() {
       build: "b",
       now: 0,
       cap: 6,
+      chalkHours: 24,
+      chalkShown: 8,
       snapshot: {
         room: {
           width: 12,

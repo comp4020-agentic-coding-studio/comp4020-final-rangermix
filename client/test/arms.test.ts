@@ -13,6 +13,8 @@ function state() {
       build: "b",
       now: 0,
       cap: 6,
+      chalkHours: 24,
+      chalkShown: 8,
       snapshot: {
         room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
         people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false }],
