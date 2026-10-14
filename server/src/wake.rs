@@ -273,6 +273,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn nine_days_asleep_replay_only_the_last_week() {
+        // Slice 01's review, finding 3: the cap where it runs, not only in replay_start.
+        let (_dir, store) = store();
+        let now = canberra(2026, 10, 14, 9, 0);
+        put(&store, "saved_at", (now - 9 * 24 * HOUR).to_string()).await;
+        let logs = LogSink::default();
+        {
+            let _guard = logs.capture();
+            wake(&store, content(), "test".into(), now, 1).await.unwrap();
+        }
+        let line = woke(&logs);
+        assert_eq!(line["steps"], 7 * 24 * 3_600);
+        assert_eq!(line["capped"], true);
+        assert_eq!(line["gap_secs"], 9 * 24 * 3_600);
+        assert_eq!(get(&store, "saved_at").await, Some(now.to_string()), "awake at now");
+    }
+
+    #[tokio::test]
     async fn a_clock_ahead_of_now_replays_nothing() {
         let (_dir, store) = store();
         let now = canberra(2026, 10, 14, 9, 0);

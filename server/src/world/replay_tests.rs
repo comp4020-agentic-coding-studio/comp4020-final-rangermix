@@ -102,11 +102,12 @@ fn a_gap_longer_than_a_week_replays_only_the_last_seven_days() {
 #[test]
 fn bowls_refill_and_treats_reset_during_a_replay_across_daylight_saving() {
     // Clocks go forward at 2:00 on Sunday 4 October 2026 and back at 3:00 on
-    // Sunday 4 April 2027; the refills stay at 7:00, 12:00 and 18:00 local time.
-    for (eve, evening, day) in [
-        (canberra(2026, 10, 3, 22, 0), canberra(2026, 10, 4, 19, 0), "2026-10-04"),
-        (canberra(2027, 4, 3, 22, 0), canberra(2027, 4, 4, 19, 0), "2027-04-04"),
-    ] {
+    // Sunday 4 April 2027; the refills stay at 7:00, 12:00 and 18:00 local
+    // time. Checked a minute either side of 7:00 and after 18:00, so a
+    // schedule an hour out either way fails (slice 01's review, finding 2).
+    for (y, mo, d) in [(2026, 10, 4), (2027, 4, 4)] {
+        let eve = canberra(y, mo, d - 1, 22, 0);
+        let day = format!("{y}-{mo:02}-{d:02}");
         let mut w = world_at(1, eve);
         let yesterday = crate::time::canberra_day(eve);
         w.restore_treats(
@@ -119,11 +120,18 @@ fn bowls_refill_and_treats_reset_during_a_replay_across_daylight_saving() {
             }],
         );
         assert_eq!(w.treats_left(5, eve), 0);
-        let r = w.replay(evening);
-        assert_eq!(r.refills, 3, "{day}: 7:00, 12:00 and 18:00");
+        assert_eq!(w.replay(canberra(y, mo, d, 6, 59)).refills, 0, "{day}: nothing before 7:00");
+        assert_eq!(w.treat_day, day, "{day}: the treats reset at midnight");
+        assert_eq!(w.treats_left(5, canberra(y, mo, d, 6, 59)), 3, "{day}: a new day's treats");
+        assert_eq!(w.replay(canberra(y, mo, d, 7, 1)).refills, 1, "{day}: the 7:00 refill");
+        assert_eq!(w.bowls_key, format!("{day}@420"));
+        assert_eq!(
+            w.replay(canberra(y, mo, d, 17, 59)).refills,
+            1,
+            "{day}: then 12:00's, and not yet 18:00's"
+        );
+        assert_eq!(w.replay(canberra(y, mo, d, 18, 1)).refills, 1, "{day}: then 18:00's");
         assert_eq!(w.bowls_key, format!("{day}@1080"));
-        assert_eq!(w.treat_day, day);
-        assert_eq!(w.treats_left(5, evening), 3, "{day}: a new day's treats");
     }
 }
 
