@@ -1,7 +1,7 @@
 # 01. The café keeps living while it sleeps
 
-- **Status:** Proposed
-- **Plan:** written when the slice starts, as `docs/notes/plan-slice-01-fast-forward.md`
+- **Status:** Planned (approved 2026-10-14 with the proposed default for its open question)
+- **Plan:** [`docs/notes/plan-slice-01-fast-forward.md`](../notes/plan-slice-01-fast-forward.md)
 - **Design:** "The world never stops" under The café; Persistence and
   fast-forward; Logging ("each wake-up's fast-forward summary");
   [ADR 0005](../adr/0005-keep-all-state-in-sqlite-on-the-volume.md),

@@ -1,6 +1,6 @@
 # 02. What the night left behind
 
-- **Status:** Proposed
+- **Status:** Approved 2026-10-14, with the proposed default for its open question (the board names people by username, only for what a cat did with them)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-02-chalkboard.md`
 - **Design:** The room ("Traces stay until someone tidies them", "The
   chalkboard"); The client (the readable chalkboard on desktop and phone);
