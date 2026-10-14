@@ -30,3 +30,16 @@ can judge; those are left to the crit and the marker.
 At a crit, a green `check` job is half the shipped mark, but it's never the
 judgement of the work: your tutor checks what you deployed against the published
 spec.
+
+## Stopping and starting the app
+
+`restart.test.ts` stops the app, lets it sleep and starts it again (slice 01),
+so it needs to be told how: CI sets `APP_RESTART` to
+`docker stop app && sleep 30 && docker start app`, with `/data` on a Docker
+volume so the database survives. Without `APP_RESTART` it's skipped. To run it
+locally, start the image the same way and give it the command:
+
+```bash
+docker run -d --init --name app -p 8080:8080 -e PORT=8080 -v app-data:/data app
+APP_RESTART="docker stop app && sleep 30 && docker start app" pnpm check
+```

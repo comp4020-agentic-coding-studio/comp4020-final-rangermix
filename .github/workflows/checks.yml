@@ -33,18 +33,23 @@ jobs:
       - name: Install Chromium for the spec's browser checks
         run: pnpm exec playwright install --with-deps chromium
       - name: Build and start the app
-        # the same image Fly deploys, with a throwaway /data in place of the
-        # volume; the spec runs against it
+        # the same image Fly deploys, with a fresh Docker volume at /data in
+        # place of Fly's; a volume, not a tmpfs, so the spec's stop and start
+        # of the container keeps the database, as Fly's volume does
         run: |
           docker build -t app .
-          docker run -d --init --name app -p 8080:8080 -e PORT=8080 --tmpfs /data app
+          docker run -d --init --name app -p 8080:8080 -e PORT=8080 -v app-data:/data app
       - name: Run the spec
         run: pnpm check
         env:
           APP_URL: http://localhost:8080
+          # spec/restart.test.ts stops the app, lets it sleep, and starts it
+          # again: the cats come back moved by the gap (slice 01)
+          APP_RESTART: docker stop app && sleep 30 && docker start app
       - name: Check the app's own log lines
-        # after the spec's visitors have been and gone: every line says when,
-        # what and who, and none holds what the spec said in a bubble or its
+        # after the spec's visitors have been and gone, across both of the
+        # app's starts: every line says when, what and who, every start logs
+        # its wake-up, and none holds what the spec said in a bubble or its
         # password (AGENTS.md: never log what anyone says)
         run: docker logs app 2>&1 | node scripts/check-logs.ts "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse"
       - name: Show the app's output
