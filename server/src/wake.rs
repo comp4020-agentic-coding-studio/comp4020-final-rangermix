@@ -179,6 +179,40 @@ mod tests {
         assert!(line["walks"].as_str().unwrap().contains("Burakku:"), "{line}");
     }
 
+    #[tokio::test]
+    async fn a_ten_second_stop_doesnt_get_a_napping_cat_up() {
+        // Slice 01's review, finding 1: a redeploy is the same thing as the
+        // café staying up, over a few seconds.
+        for seed in 1..=10 {
+            let (_dir, store) = store();
+            let t0 = canberra(2026, 10, 14, 15, 0);
+            put(&store, "saved_at", t0.to_string()).await;
+            put(&store, "rng", serde_json::to_string(&ChaCha8Rng::seed_from_u64(seed)).unwrap()).await;
+            let mut world = wake(&store, content(), "test".into(), t0, seed).await.unwrap();
+            // Live until a cat lies down for a nap, which lasts two minutes at least.
+            let mut napping = None;
+            let mut now = t0;
+            while napping.is_none() && now < t0 + 2 * HOUR {
+                now += 100;
+                napping = world.tick(now).into_iter().find_map(|o| match o.msg {
+                    crate::protocol::ServerMsg::CatPosed {
+                        cat,
+                        pose: crate::protocol::Pose::Nap,
+                        at,
+                    } => Some((cat, at)),
+                    _ => None,
+                });
+            }
+            let (cat, at) = napping.expect("someone naps within two hours");
+            world.save(now + 1_000);
+            store.flush().await.unwrap();
+            let woken = wake(&store, content(), "test".into(), now + 11_000, seed).await.unwrap();
+            let after = woken.snapshot_for(0, now + 11_000);
+            let c = after.cats.iter().find(|c| c.id == cat).unwrap();
+            assert_eq!((c.pose, c.at), (crate::protocol::Pose::Nap, at), "seed {seed}: {cat} slept on");
+        }
+    }
+
     /// What a save holds, written into `store`: the cats, the arrangement,
     /// the bowls and the clock at `at`, and the random state if `rng`.
     async fn saved(store: &Store, at: u64, rng: bool) {

@@ -1,7 +1,7 @@
 //! A cat's character, from its file in content/cats (ADR 0011), and the pure
 //! rules that turn character, needs and the room into choices: what to do
 //! next, and how to answer a pet. The world (world/cat_life.rs) applies them.
-use crate::protocol::{Pose, Tile};
+use crate::protocol::{Pose, Tile, Walk};
 use rand::{Rng, RngExt};
 use serde::{Deserialize, Serialize};
 
@@ -131,8 +131,9 @@ fn parse_hm(s: &str) -> Option<u32> {
     (h < 24 && m < 60).then_some(h * 60 + m)
 }
 
-/// What a cat keeps across restarts: where it is, and how tired and how
-/// lonely it is. Everything else starts afresh.
+/// What a cat keeps across restarts: where it is, its needs, and what it's
+/// doing (design.md, "Persistence"). Whom it refused and what it has looked
+/// at start afresh.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Saved {
     pub at: Tile,
@@ -142,6 +143,40 @@ pub struct Saved {
     pub hunger: f32,
     #[serde(default)]
     pub play: f32,
+    /// None in a save from before slice 01's review (finding 1), or for a cat
+    /// in someone's arms or on a lap: nobody is inside after a restart.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub doing: Option<Doing>,
+}
+
+/// What a cat is doing, and until when, so a restart doesn't show.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Doing {
+    pub pose: Pose,
+    pub until: u64,
+    /// A walk under way, from `Saved::at`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub walk: Option<Walk>,
+    /// What it's walking there for.
+    #[serde(default)]
+    pub then: SavedPlan,
+}
+
+/// The plans a restart can keep: none that name a person, a piece or a
+/// treat, since those don't survive it (people come back as they reconnect,
+/// pieces are numbered afresh, treats on the floor aren't kept).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SavedPlan {
+    #[default]
+    Idle,
+    Nap,
+    Sit,
+    Hide,
+    Groom,
+    Play,
+    Perch,
+    EatBowls,
 }
 
 /// The room as a cat deciding what to do sees it.

@@ -284,7 +284,9 @@ renamed.
 
 - **Kept across restarts and redeploys:** accounts and looks; each cat's trust
   in each person; bans until they expire; mutes; the furniture; each cat's
-  state (where it is, what it's doing, how hungry and tired it is); treats
+  state (where it is, what it's doing and until when, a walk under way, how
+  hungry and tired it is; a cat in someone's arms or on a lap comes back on
+  its own feet, since nobody is inside when the café wakes); treats
   used today; traces and chalkboard lines; the world clock and the random
   generator's state.
 - **Not kept:** bubbles, emotes, cats' anger, and who is inside or in line

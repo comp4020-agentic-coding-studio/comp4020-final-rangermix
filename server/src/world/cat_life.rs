@@ -4,7 +4,7 @@
 //! noisy room, their names, and a friend at the door. How they answer being
 //! handled is in handling.rs.
 use super::{Heard, Out, To, World, walk_end, walk_tile};
-use crate::cats::{CatDef, Choice, Saved, Situation, drift, options, pick};
+use crate::cats::{CatDef, Choice, Doing, Saved, SavedPlan, Situation, drift, options, pick};
 use crate::protocol::{CatView, ChalkWhat, Place, Pose, Reaction, ServerMsg, Tile, Walk};
 use crate::room::{FurnitureKind, Piece, Walker, chebyshev, manhattan};
 use crate::time::canberra_minute_of_day;
@@ -73,6 +73,21 @@ pub(super) enum Plan {
     Lap(u32),
 }
 
+impl From<SavedPlan> for Plan {
+    fn from(saved: SavedPlan) -> Plan {
+        match saved {
+            SavedPlan::Idle => Plan::Idle,
+            SavedPlan::Nap => Plan::Nap,
+            SavedPlan::Sit => Plan::Sit,
+            SavedPlan::Hide => Plan::Hide,
+            SavedPlan::Groom => Plan::Groom,
+            SavedPlan::Play => Plan::Play,
+            SavedPlan::Perch => Plan::Perch,
+            SavedPlan::EatBowls => Plan::Eat(Food::Bowls),
+        }
+    }
+}
+
 impl Cat {
     pub fn tile(&self, now: u64) -> Tile {
         self.walk.as_ref().map_or(self.at, |w| walk_tile(w, now))
@@ -100,12 +115,35 @@ impl Cat {
     }
 
     pub fn saved(&self, now: u64) -> Saved {
+        // In someone's arms or on a lap, it comes back on its own feet where
+        // it is: its person won't be inside when the café wakes.
+        let doing = (!self.taken()).then(|| Doing {
+            pose: self.pose,
+            until: self.until,
+            walk: self.walk.clone(),
+            then: match self.plan {
+                Plan::Nap => SavedPlan::Nap,
+                Plan::Sit => SavedPlan::Sit,
+                Plan::Hide => SavedPlan::Hide,
+                Plan::Groom => SavedPlan::Groom,
+                Plan::Play => SavedPlan::Play,
+                Plan::Perch => SavedPlan::Perch,
+                Plan::Eat(Food::Bowls) => SavedPlan::EatBowls,
+                _ => SavedPlan::Idle,
+            },
+        });
         Saved {
-            at: self.tile(now),
+            // A walk is kept from where it started; anything else is where it is.
+            at: if doing.as_ref().is_some_and(|d| d.walk.is_some()) {
+                self.at
+            } else {
+                self.tile(now)
+            },
             tiredness: self.tiredness,
             company: self.company,
             hunger: self.hunger,
             play: self.play,
+            doing,
         }
     }
 }
@@ -127,6 +165,16 @@ impl World {
     pub(super) fn place_cat(&mut self, def: CatDef, saved: Option<Saved>, now: u64) -> Cat {
         let saved =
             saved.filter(|s| self.room.walkable(s.at, Walker::Cat) && self.room.pettable(s.at) && !self.cats.iter().any(|c| c.at == s.at));
+        // What it was doing, if it still fits the room: a walk from where it
+        // stands to somewhere it can still go (slice 01's review, finding 1).
+        let doing = saved.as_ref().and_then(|s| s.doing.clone()).filter(|d| match &d.walk {
+            Some(w) => {
+                w.path.first() == saved.as_ref().map(|s| &s.at)
+                    && w.path.iter().all(|&t| self.room.walkable(t, Walker::Cat))
+                    && w.path.last().is_some_and(|&t| self.room.pettable(t))
+            }
+            None => !matches!(d.pose, Pose::Walk | Pose::Held),
+        });
         let (at, tiredness, company, hunger, play) = match saved {
             Some(s) => (
                 s.at,
@@ -137,14 +185,17 @@ impl World {
             ),
             None => (self.random_floor(), 0.2, 0.5, 0.3, 0.3),
         };
-        let until = now + self.rng.random_range(3_000..8_000u64);
+        let (pose, until, walk, plan) = match doing {
+            Some(d) => (d.pose, d.until, d.walk, Plan::from(d.then)),
+            None => (Pose::Idle, now + self.rng.random_range(3_000..8_000u64), None, Plan::Idle),
+        };
         Cat {
             def,
             at,
-            walk: None,
-            pose: Pose::Idle,
+            walk,
+            pose,
             until,
-            plan: Plan::Idle,
+            plan,
             tiredness,
             company,
             hunger,
@@ -1223,6 +1274,82 @@ mod tests {
         assert_eq!((mochi.at, mochi.tiredness), (T(1, 5), 0.7));
         let tora = &w.cats[cat_index(&w, "tora")];
         assert!(w.room.walkable(tora.at, Walker::Cat));
+    }
+
+    /// A world loaded from what `w`'s cats would save at `now`.
+    fn reloaded(w: &World, now: u64) -> World {
+        let saved: Vec<(String, String)> = w
+            .cats
+            .iter()
+            .map(|c| (c.def.id.clone(), serde_json::to_string(&c.saved(now)).unwrap()))
+            .collect();
+        let content = crate::content::repo_content();
+        let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+        World::new(
+            content,
+            trust,
+            saved,
+            SavedArrangement::Fresh,
+            ChaCha8Rng::seed_from_u64(99),
+            None,
+            "test".into(),
+            now,
+        )
+    }
+
+    #[test]
+    fn a_saved_cat_comes_back_doing_what_it_was_doing() {
+        // Slice 01's review, finding 1: a restart mustn't get a napping cat up.
+        let mut w = world();
+        let mochi = hold(&mut w, "mochi", T(1, 5));
+        (w.cats[mochi].pose, w.cats[mochi].until) = (Pose::Nap, 540_000);
+        let tora = hold(&mut w, "tora", T(10, 7));
+        w.walk_cat(tora, 1_000, 600, T(6, 8), Plan::Play, &mut Vec::new());
+        let walk = w.cats[tora].walk.clone().expect("tora sets off for the toys");
+        let back = reloaded(&w, 1_500);
+        let (m, t) = (&back.cats[cat_index(&back, "mochi")], &back.cats[cat_index(&back, "tora")]);
+        assert_eq!((m.at, m.pose, m.until), (T(1, 5), Pose::Nap, 540_000), "still asleep, for as long");
+        assert_eq!(
+            (t.at, t.pose, &t.walk, t.plan),
+            (T(10, 7), Pose::Walk, &Some(walk), Plan::Play),
+            "still on her way"
+        );
+    }
+
+    #[test]
+    fn a_cat_held_or_on_a_lap_comes_back_on_its_own_feet() {
+        // Nobody is inside after a restart, so nobody is holding it.
+        let mut w = world();
+        join(&mut w, 1, 0);
+        let mochi = hold(&mut w, "mochi", T(4, 4));
+        (w.cats[mochi].held_by, w.cats[mochi].pose, w.cats[mochi].until) = (Some(1), Pose::Held, 90_000);
+        let back = reloaded(&w, 1_000);
+        let m = &back.cats[cat_index(&back, "mochi")];
+        assert_eq!((m.at, m.pose, m.held_by, m.walk.is_none()), (T(4, 4), Pose::Idle, None, true));
+        assert!(m.until < 1_000 + 8_000, "it chooses what to do next soon");
+    }
+
+    #[test]
+    fn a_save_from_before_comes_back_idle() {
+        let content = crate::content::repo_content();
+        let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+        let saved = vec![(
+            "mochi".to_string(),
+            r#"{"at":{"x":1,"y":5},"tiredness":0.7,"company":0.1,"hunger":0.2,"play":0.3}"#.to_string(),
+        )];
+        let w = World::new(
+            content,
+            trust,
+            saved,
+            SavedArrangement::Fresh,
+            ChaCha8Rng::seed_from_u64(3),
+            None,
+            "test".into(),
+            0,
+        );
+        let m = &w.cats[cat_index(&w, "mochi")];
+        assert_eq!((m.at, m.pose, m.walk.is_none()), (T(1, 5), Pose::Idle, true));
+        assert!((3_000..8_000).contains(&m.until));
     }
 
     #[tokio::test]
