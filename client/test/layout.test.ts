@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseLayout, panOffset, ringPositions, ringRadius } from "../src/layout";
+import { chooseLayout, panOffset, ringCentre, ringPositions, ringRadius } from "../src/layout";
 
 describe("phone layout B", () => {
   it("is only for a phone, and only when chosen", () => {
@@ -40,5 +40,16 @@ describe("phone layout B", () => {
       expect(p.x).toBeGreaterThanOrEqual(22);
       expect(p.y).toBeGreaterThanOrEqual(120 + 22);
     }
+  });
+
+  it("says where a ring can sit: round its tile if it fits, or only as far in as it must", () => {
+    const free = { left: 0, top: 120, right: 390, bottom: 740 };
+    expect(ringCentre({ x: 200, y: 400 }, 72, free, 88)).toEqual({ x: 200, y: 400 });
+    // A tile against the left wall, and one by the talk bar: in by the
+    // radius and half a button, so the room can move over by the difference.
+    expect(ringCentre({ x: 24, y: 400 }, 72, free, 88)).toEqual({ x: 116, y: 400 });
+    expect(ringCentre({ x: 200, y: 700 }, 72, free, 88)).toEqual({ x: 200, y: 624 });
+    // The ring's buttons sit round that spot.
+    for (const p of ringPositions(2, { x: 24, y: 400 }, 72, free, 88)) expect(Math.hypot(p.x - 116, p.y - 400)).toBeCloseTo(72, 5);
   });
 });

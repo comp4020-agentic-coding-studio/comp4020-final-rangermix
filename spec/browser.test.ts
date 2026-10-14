@@ -116,6 +116,30 @@ async function tabToCat(v: Visit, ok: (c: CatSeen) => boolean = () => true): Pro
   return null;
 }
 
+/** How far the open ring's middle is from a tile's centre on screen, and how wide a tile is, in CSS pixels. */
+async function ringFromTile(page: Page, tile: Tile): Promise<{ off: number; px: number }> {
+  const room = (await page.locator("#room").boundingBox())!;
+  const px = room.width / 12;
+  const at = { x: room.x + (tile.x + 0.5) * px, y: room.y + (tile.y + 0.5) * px };
+  const boxes = await Promise.all((await page.locator(".menu.ring").getByRole("menuitem").all()).map((b) => b.boundingBox()));
+  const centre = boxes.reduce((c, b) => ({ x: c.x + (b!.x + b!.width / 2) / boxes.length, y: c.y + (b!.y + b!.height / 2) / boxes.length }), { x: 0, y: 0 });
+  return { off: Math.hypot(centre.x - at.x, centre.y - at.y), px };
+}
+
+/** Every button of the open ring is on a 390-wide screen and clear of the bars floating over the room. */
+async function expectRingClear(page: Page): Promise<void> {
+  const bars = await page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
+  const buttons = await page.locator(".menu.ring").getByRole("menuitem").all();
+  expect(buttons.length).toBeGreaterThan(0);
+  for (const b of buttons) {
+    const r = (await b.boundingBox())!;
+    expect(r.x).toBeGreaterThanOrEqual(0);
+    expect(r.x + r.width).toBeLessThanOrEqual(390);
+    expect(r.y).toBeGreaterThanOrEqual(bars[0]);
+    expect(r.y + r.height).toBeLessThanOrEqual(bars[1]);
+  }
+}
+
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
 const roomWidth = (page: Page) => page.evaluate(() => document.getElementById("room")?.style.width);
 
@@ -197,16 +221,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
     await ring.waitFor({ timeout: 3000 });
-    const bars = await page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
-    const buttons = await ring.getByRole("menuitem").all();
-    expect(buttons.length).toBeGreaterThan(0);
-    for (const b of buttons) {
-      const r = (await b.boundingBox())!;
-      expect(r.x).toBeGreaterThanOrEqual(0);
-      expect(r.x + r.width).toBeLessThanOrEqual(390);
-      expect(r.y).toBeGreaterThanOrEqual(bars[0]);
-      expect(r.y + r.height).toBeLessThanOrEqual(bars[1]);
-    }
+    await expectRingClear(page);
     await page.keyboard.press("Escape");
     await page.reload();
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
@@ -346,12 +361,35 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(cat, "no cat well away from you to open a ring on").not.toBeNull();
     // Long enough for the view to have gone back to you, had it.
     await v.page.waitForTimeout(500);
-    const room = (await v.page.locator("#room").boundingBox())!;
-    const px = room.width / 12;
-    const tile = { x: room.x + (cat!.at.x + 0.5) * px, y: room.y + (cat!.at.y + 0.5) * px };
-    const boxes = await Promise.all((await ring.getByRole("menuitem").all()).map((b) => b.boundingBox()));
-    const centre = boxes.reduce((c, b) => ({ x: c.x + (b!.x + b!.width / 2) / boxes.length, y: c.y + (b!.y + b!.height / 2) / boxes.length }), { x: 0, y: 0 });
-    expect(Math.hypot(centre.x - tile.x, centre.y - tile.y), "the ring is round its cat").toBeLessThanOrEqual(px * 1.5);
+    const { off, px } = await ringFromTile(v.page, cat!.at);
+    expect(off, "the ring is round its cat").toBeLessThanOrEqual(px * 1.5);
+  });
+
+  it("in the bigger room, moves the room over so a ring fits round something by its edge", async () => {
+    // The view stops at the room's edges, so the end of the sofa against the
+    // left wall sits at the screen's edge, where a ring round it would hang
+    // off the screen. The ring used to slide inwards off its tile, onto the
+    // thing it was for (CI caught it on a cat napping on the cat bed,
+    // 2026-10-13); the room moves over instead while the ring is open.
+    const v = await visit({ width: 390, height: 844 }, true);
+    await v.page.locator("#layout-switch").tap();
+    await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    const welcome = v.frames.find((f) => f.type === "welcome")!;
+    const sofa = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "sofa");
+    expect(sofa.x, "the sofa stands against the left wall").toBe(0);
+    // The pointer out, then left and up into the corner whatever the arrows
+    // are clamped to, then down to the sofa's end.
+    await v.page.locator("#room").focus();
+    await v.page.keyboard.press("ArrowRight");
+    for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
+    for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowUp");
+    for (let i = 1; i < sofa.y; i++) await v.page.keyboard.press("ArrowDown");
+    await v.page.keyboard.press("Enter");
+    await v.page.locator(".menu.ring").waitFor({ timeout: 3000 });
+    await v.page.waitForTimeout(500);
+    const { off, px } = await ringFromTile(v.page, { x: sofa.x, y: sofa.y });
+    expect(off, "the ring is round the sofa's end").toBeLessThanOrEqual(px * 1.5);
+    await expectRingClear(v.page);
   });
 
   it("shows one visitor's new lamp in the other's café", async () => {

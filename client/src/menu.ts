@@ -1,4 +1,4 @@
-import { ringPositions, ringRadius } from "./layout";
+import { ringCentre, ringPositions, ringRadius } from "./layout";
 
 // A small menu of what you can do: beside the thing on a desktop, a sheet from
 // the bottom on a phone, a ring round it in phone layout B. Real buttons, so
@@ -20,14 +20,18 @@ export function closeMenu(): void {
   open = null;
 }
 
-/** Lays a ring's buttons out round `anchor`, clear of the bars floating over the room. */
-function placeRing(menu: HTMLElement, overlay: HTMLElement, anchor: { left: number; top: number }): void {
-  const buttons = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+/** The part of `overlay` a ring may use: on screen, clear of the bars floating over the room. */
+function freeArea(overlay: HTMLElement): { left: number; top: number; right: number; bottom: number } {
   const box = overlay.getBoundingClientRect();
   const top = document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top;
   const bottom = document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom;
-  const free = { left: 0, top: top - box.top + 4, right: box.width, bottom: bottom - box.top - 4 };
-  const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, ringRadius(buttons.length, 88), free, 88);
+  return { left: 0, top: top - box.top + 4, right: box.width, bottom: bottom - box.top - 4 };
+}
+
+/** Lays a ring's buttons out round `anchor`, clear of the bars floating over the room. */
+function placeRing(menu: HTMLElement, overlay: HTMLElement, anchor: { left: number; top: number }): void {
+  const buttons = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+  const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, ringRadius(buttons.length, 88), freeArea(overlay), 88);
   buttons.forEach((b, i) => {
     b.style.left = `${spots[i].x}px`;
     b.style.top = `${spots[i].y}px`;
@@ -37,6 +41,17 @@ function placeRing(menu: HTMLElement, overlay: HTMLElement, anchor: { left: numb
 /** The room moved under an open ring: it follows its tile to `anchor`. */
 export function moveRing(anchor: { left: number; top: number }): void {
   if (open?.classList.contains("ring") && open.parentElement) placeRing(open, open.parentElement, anchor);
+}
+
+/**
+ * How far the open ring had to move off `anchor` to stay on screen and clear
+ * of the bars, as it does by the room's edges: nothing if it fits round it.
+ */
+export function ringSlide(anchor: { left: number; top: number }): { x: number; y: number } {
+  if (!open?.classList.contains("ring") || !open.parentElement) return { x: 0, y: 0 };
+  const n = open.querySelectorAll("button").length;
+  const at = ringCentre({ x: anchor.left, y: anchor.top }, ringRadius(n, 88), freeArea(open.parentElement), 88);
+  return { x: at.x - anchor.left, y: at.y - anchor.top };
 }
 
 export function openMenu(

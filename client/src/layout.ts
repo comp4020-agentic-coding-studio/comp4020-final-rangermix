@@ -50,21 +50,24 @@ export function ringRadius(n: number, size: number): number {
   return n < 2 ? 72 : Math.max(72, Math.ceil((size + gap) / (2 * Math.sin(Math.PI / n))));
 }
 
+type Free = { left: number; top: number; right: number; bottom: number };
+
+/**
+ * Where a ring of `radius`, with buttons `size` pixels across, can sit within
+ * `free`, the part of the screen the floating bars leave clear: round
+ * `centre` if it fits there, or the nearest spot where it does.
+ */
+export function ringCentre(centre: { x: number; y: number }, radius: number, free: Free, size: number): { x: number; y: number } {
+  const margin = radius + size / 2;
+  return { x: clamp(centre.x, free.left + margin, free.right - margin), y: clamp(centre.y, free.top + margin, free.bottom - margin) };
+}
+
 /**
  * Centres for `n` buttons of `size` pixels on a circle of `radius` round
- * `centre`, starting at the top; the whole ring moves to stay within `free`,
- * the part of the screen the floating bars leave clear.
+ * `centre`, starting at the top; the whole ring moves to stay within `free`.
  */
-export function ringPositions(
-  n: number,
-  centre: { x: number; y: number },
-  radius: number,
-  free: { left: number; top: number; right: number; bottom: number },
-  size: number,
-): { x: number; y: number }[] {
-  const margin = radius + size / 2;
-  const cx = clamp(centre.x, free.left + margin, free.right - margin);
-  const cy = clamp(centre.y, free.top + margin, free.bottom - margin);
+export function ringPositions(n: number, centre: { x: number; y: number }, radius: number, free: Free, size: number): { x: number; y: number }[] {
+  const { x: cx, y: cy } = ringCentre(centre, radius, free, size);
   return Array.from({ length: n }, (_, i) => {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / n;
     return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };

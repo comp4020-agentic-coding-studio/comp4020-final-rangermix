@@ -6,7 +6,7 @@ import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
-import { closeMenu, isMenuOpen, moveRing, openMenu } from "./menu";
+import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
 import { renderHere, renderSaid, renderYourCats } from "./panels";
 import { chooseLayout, saveLayout, savedLayout } from "./layout";
@@ -158,6 +158,10 @@ function enter(me: ApiMe): void {
     // send the view back to you and leave the ring round nothing: the room
     // holds still until it closes.
     stage.holdStill = ringLayout();
+    // By the room's edges the view can't centre the tile, and a ring round it
+    // would hang off the screen: the room moves over, past its edge if it
+    // must, until the ring fits round it.
+    if (stage.holdStill) stage.shiftBy(ringSlide(anchor(at)));
   };
   stage.frameHooks.push(() => {
     if (stage.holdStill && !isMenuOpen()) stage.holdStill = false;

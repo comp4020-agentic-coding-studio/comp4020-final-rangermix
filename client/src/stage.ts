@@ -59,6 +59,19 @@ export class Stage {
     return x >= 0 && y >= 0 && x < room.width && y < room.height ? { x, y } : null;
   }
 
+  /**
+   * Moves the room by `by` CSS pixels, past its edges if need be, to whole
+   * pixels so it stays crisp: in layout B, so a ring fits round its tile.
+   */
+  shiftBy(by: { x: number; y: number }): void {
+    const dx = Math.round(by.x);
+    const dy = Math.round(by.y);
+    if (dx === 0 && dy === 0) return;
+    this.canvas.style.left = `${(parseFloat(this.canvas.style.left) || 0) + dx}px`;
+    this.canvas.style.top = `${(parseFloat(this.canvas.style.top) || 0) + dy}px`;
+    for (const hook of this.panHooks) hook();
+  }
+
   /** Switches between the phone's layouts; A everywhere else. */
   setLayout(layout: Layout): void {
     this.layout = layout;

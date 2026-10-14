@@ -351,7 +351,10 @@ renamed.
   the visit's bubbles, treats, emotes and the talk box below, and actions in a
   sheet from the bottom. **B**: the room fills the screen at 3× and pans to
   follow you, with floating controls and actions in a ring around what you
-  tapped. Tapping the chalkboard opens its readable copy. Wireframes are in
+  tapped. While a ring is open the room holds still, and by the room's edges
+  it moves over, past its edge if it must, so the ring stays round what it is
+  for with every button on screen. Tapping the chalkboard opens its readable
+  copy. Wireframes are in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
 - **Drawing:** the canvas uses the largest whole-number scale that fits, so
   pixels stay crisp and a resize mid-use just refits; things are drawn back to
