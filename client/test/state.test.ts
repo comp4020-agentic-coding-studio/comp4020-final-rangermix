@@ -20,6 +20,7 @@ function welcome(): Welcome {
       treats: [],
       yourTreats: 3,
       bowls: 2,
+      chalkboard: [],
     },
   };
 }

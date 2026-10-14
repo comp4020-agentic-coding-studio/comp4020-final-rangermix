@@ -288,6 +288,8 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       if (msg.toppled) return [{ kind: "announce", text: `The ${what} got knocked over.` }];
       return msg.by === state.you || msg.by === null ? [] : [{ kind: "announce", text: `${name(msg.by)} stood the ${what} back up.` }];
     }
+    case "chalked":
+      return [];
     case "stillThere":
       return [{ kind: "stillThere", secs: msg.secs }];
     case "nudgeOver":

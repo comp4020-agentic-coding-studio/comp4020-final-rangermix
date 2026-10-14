@@ -35,3 +35,6 @@ session_days = 30
 
 auth_per_name_per_min = 5.0   # sign-up, log-in and recovery attempts
 auth_per_ip_per_min = 60.0    # generous: a whole venue can share one address
+
+chalk_hours = 24              # the chalkboard keeps a rolling day of lines
+chalk_shown = 8               # and shows the latest this many

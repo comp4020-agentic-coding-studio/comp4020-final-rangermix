@@ -78,7 +78,7 @@ impl World {
                 self.arrivals.push(id);
             }
         }
-        let snapshot = self.snapshot_for(id, now);
+        let snapshot = Box::new(self.snapshot_for(id, now));
         let welcome = ServerMsg::Welcome {
             you: id,
             build: self.build.clone(),

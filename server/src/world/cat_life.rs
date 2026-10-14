@@ -5,7 +5,7 @@
 //! handled is in handling.rs.
 use super::{Heard, Out, To, World, walk_end, walk_tile};
 use crate::cats::{CatDef, Choice, Saved, Situation, drift, options, pick};
-use crate::protocol::{CatView, Place, Pose, Reaction, ServerMsg, Tile, Walk};
+use crate::protocol::{CatView, ChalkWhat, Place, Pose, Reaction, ServerMsg, Tile, Walk};
 use crate::room::{FurnitureKind, Piece, Walker, chebyshev, manhattan};
 use crate::time::canberra_minute_of_day;
 use crate::trust::TrustBook;
@@ -13,6 +13,8 @@ use rand::RngExt;
 
 /// A piece placed this recently is new enough to investigate.
 const NEW_PIECE_MS: u64 = 120_000;
+/// A lap nap this long or longer goes on the chalkboard.
+const LAP_TOLD_MINUTES: u32 = 5;
 
 #[derive(Debug, Clone)]
 pub(super) struct Cat {
@@ -35,6 +37,8 @@ pub(super) struct Cat {
     pub held_until: u64,
     /// Asleep on someone's lap.
     pub lap: Option<u32>,
+    /// When it settled on that lap.
+    pub lap_since: u64,
     /// New pieces it has looked at: piece, and when it was put down.
     pub investigated: Vec<(u32, u64)>,
     /// Its last line, so carrying on with something isn't told twice.
@@ -149,6 +153,7 @@ impl World {
             held_by: None,
             held_until: 0,
             lap: None,
+            lap_since: 0,
             investigated: Vec::new(),
             told: None,
         }
@@ -292,11 +297,17 @@ impl World {
                 .person(person)
                 .is_some_and(|p| p.sitting.is_some() && p.at == self.cats[i].at && p.walk.is_none());
             if !still || now >= self.cats[i].until {
+                let minutes = (now.saturating_sub(self.cats[i].lap_since) / 60_000) as u32;
+                let with = self.person(person).map(|p| p.name.clone());
                 let cat = &mut self.cats[i];
                 cat.lap = None;
                 cat.plan = Plan::Idle;
                 let why = if still { "had_enough" } else { "got_up" };
                 tracing::info!(target: "cat", cat = %cat.def.name, what = "jump_down", why);
+                // A nap worth telling: the chalkboard's "slept on sam's lap for 20 minutes".
+                if let Some(with) = with.filter(|_| minutes >= LAP_TOLD_MINUTES) {
+                    self.chalk(now, i, ChalkWhat::Lap { with, minutes }, out);
+                }
                 self.settle(i, now, out);
             }
         }
@@ -522,6 +533,7 @@ impl World {
             plan = Plan::Idle;
         }
         let by = |p: &Piece| p.tiles().into_iter().any(|t| chebyshev(t, end) <= 1);
+        let mut scattered = false;
         // What it came for: still there, still standing, still sitting.
         plan = match plan {
             Plan::Eat(food) if self.eat(i, food, out) => plan,
@@ -533,11 +545,13 @@ impl World {
                     && !self.cats.iter().any(|c| c.lap == Some(person)) =>
             {
                 self.cats[i].lap = Some(person);
+                self.cats[i].lap_since = now;
                 plan
             }
             Plan::Lap(_) => Plan::Idle,
             Plan::Play if self.upright("toys").is_some_and(by) => {
                 self.cats[i].play = 0.0;
+                scattered = self.scatter_toys(i, out);
                 plan
             }
             Plan::Play => Plan::Idle,
@@ -581,6 +595,9 @@ impl World {
         cat.plan = Plan::Idle;
         let (id, at) = (cat.def.id.clone(), cat.at);
         self.log_cat(i, plan);
+        if let Some(what) = self.chalk_line(plan, scattered) {
+            self.chalk(now, i, what, out);
+        }
         out.push(Out {
             to: To::All,
             msg: ServerMsg::CatPosed { cat: id.clone(), pose, at },
@@ -593,6 +610,44 @@ impl World {
                     reaction: Reaction::Greet { to },
                 },
             });
+        }
+    }
+
+    /// A cat playing with the toys while nobody is inside may scatter them,
+    /// by half its playfulness: they stay strewn about until someone gathers
+    /// them up (slice 02). True if it did.
+    fn scatter_toys(&mut self, i: usize, out: &mut Vec<Out>) -> bool {
+        if self.people.iter().any(|p| p.place == Place::Inside) {
+            return false;
+        }
+        let chance = self.cats[i].def.traits.playfulness / 2.0;
+        if self.rng.random::<f32>() >= chance {
+            return false;
+        }
+        let Some((piece, at)) = self.upright("toys").map(|p| (p.id, Tile { x: p.x, y: p.y })) else {
+            return false;
+        };
+        if !self.knock_over(piece, at, out) {
+            return false;
+        }
+        tracing::info!(target: "cat", cat = %self.cats[i].def.name, what = "knock_over", on = "toys");
+        true
+    }
+
+    /// The chalkboard's line for what a cat settled into, if it's one worth
+    /// telling (slice 02's plan, decision 1).
+    fn chalk_line(&self, plan: Plan, scattered: bool) -> Option<ChalkWhat> {
+        let name_of = |id: u32| self.person(id).map(|p| p.name.clone());
+        let kind_of = |id: u32| self.room.pieces.iter().find(|p| p.id == id).map(|p| p.kind.clone());
+        match plan {
+            Plan::Knock(piece) => kind_of(piece).map(|piece| ChalkWhat::KnockedOver { piece }),
+            Plan::Play if scattered => Some(ChalkWhat::KnockedOver { piece: "toys".into() }),
+            Plan::Play => Some(ChalkWhat::Played {}),
+            Plan::PlayWith(person) => name_of(person).map(|with| ChalkWhat::PlayedWith { with }),
+            Plan::Greet(person) => name_of(person).map(|with| ChalkWhat::Greeted { with }),
+            Plan::Investigate(piece) => kind_of(piece).map(|piece| ChalkWhat::Investigated { piece }),
+            Plan::Perch => Some(ChalkWhat::Perched {}),
+            _ => None,
         }
     }
 

@@ -26,6 +26,7 @@ function state() {
         treats: [],
         yourTreats: 3,
         bowls: 3,
+        chalkboard: [],
       },
     },
     0,

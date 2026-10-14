@@ -5,6 +5,9 @@
 mod cat_life;
 #[cfg(test)]
 mod cats_tests;
+mod chalk;
+#[cfg(test)]
+mod chalk_tests;
 mod furniture;
 #[cfg(test)]
 mod furniture_tests;
@@ -22,7 +25,7 @@ pub use replay::replay_start;
 
 use crate::cats::{Handling, Saved};
 use crate::content::Content;
-use crate::protocol::{ClientMsg, ErrorCode, Look, Place, ServerMsg, Snapshot, Tile, Walk};
+use crate::protocol::{ChalkLine, ClientMsg, ErrorCode, Look, Place, ServerMsg, Snapshot, Tile, Walk};
 use crate::room::Room;
 use crate::store::Store;
 use crate::trust::TrustBook;
@@ -155,6 +158,8 @@ pub struct World {
     answered: bool,
     /// The Canberra day treats were last counted for.
     treat_day: String,
+    /// The chalkboard's lines of the last day, oldest first.
+    chalk: VecDeque<ChalkLine>,
 }
 
 impl World {
@@ -196,6 +201,7 @@ impl World {
             new_pieces: Vec::new(),
             answered: false,
             treat_day: crate::time::canberra_day(now),
+            chalk: VecDeque::new(),
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -410,6 +416,7 @@ impl World {
         self.bowls_tick(now, &mut out);
         self.treats_tick(now, &mut out);
         self.cats_tick(now, dt, &mut out);
+        self.chalk_tick(now);
         if now.saturating_sub(self.last_save) >= self.tuning.save_every_secs * 1000 {
             self.save(now);
         }
@@ -426,6 +433,7 @@ impl World {
             treats: self.treat_views(),
             your_treats: self.treats_left(id, now),
             bowls: self.bowls,
+            chalkboard: self.chalk_view(),
         }
     }
 

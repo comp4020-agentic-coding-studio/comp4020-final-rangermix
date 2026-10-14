@@ -119,6 +119,7 @@ impl World {
             self.react(i, Reaction::Sniff { by: id }, out);
             self.change_trust(i, id, rate, &today, out);
             tracing::info!(target: "action", uid = id, who = %who, what = "pet", cat = %cat_name, outcome = "sniff");
+            self.chalk(now, i, crate::protocol::ChalkWhat::Met { with: who }, out);
             return;
         }
         let pushing = how != Handling::Offer

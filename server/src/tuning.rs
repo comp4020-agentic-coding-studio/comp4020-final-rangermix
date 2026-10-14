@@ -34,6 +34,8 @@ pub struct Tuning {
     pub session_days: u64,
     pub auth_per_name_per_min: f64,
     pub auth_per_ip_per_min: f64,
+    pub chalk_hours: u64,
+    pub chalk_shown: usize,
 }
 
 impl Tuning {
@@ -62,6 +64,7 @@ mod tests {
         assert_eq!((t.cap, t.grace_secs, t.bubble_max_chars), (6, 30, 100));
         assert_eq!(t.trust_levels, [20.0, 50.0, 80.0]);
         assert_eq!((t.auth_per_name_per_min, t.auth_per_ip_per_min), (5.0, 60.0));
+        assert_eq!((t.chalk_hours, t.chalk_shown), (24, 8));
     }
 
     #[test]

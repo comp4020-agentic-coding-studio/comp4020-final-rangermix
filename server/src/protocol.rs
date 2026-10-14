@@ -213,6 +213,54 @@ pub struct RoomView {
     pub catalogue: Vec<KindView>,
 }
 
+/// A line on the chalkboard: what a cat did, and when (design.md, "The
+/// room"). Built from fixed fields, so no line can carry anything anyone
+/// said (AGENTS.md); the client puts it into words.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ChalkLine {
+    /// Server milliseconds.
+    pub at: u64,
+    /// The cat's name.
+    pub cat: String,
+    pub what: ChalkWhat,
+}
+
+/// What a cat did that's worth a line. `with` is a username, `piece` a
+/// furniture kind.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export)]
+pub enum ChalkWhat {
+    /// Knocked a piece over; the toys knocked over are scattered.
+    KnockedOver {
+        piece: String,
+    },
+    /// Sniffed the hand of someone it had never met.
+    Met {
+        with: String,
+    },
+    Greeted {
+        with: String,
+    },
+    /// Slept on someone's lap this long.
+    Lap {
+        with: String,
+        minutes: u32,
+    },
+    PlayedWith {
+        with: String,
+    },
+    /// Played with the toys.
+    Played {},
+    /// Looked over a piece just put down.
+    Investigated {
+        piece: String,
+    },
+    /// Watched the street from the window seat.
+    Perched {},
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -227,6 +275,8 @@ pub struct Snapshot {
     pub your_treats: u32,
     /// Portions in the bowls.
     pub bowls: u8,
+    /// The chalkboard's latest lines within the day, oldest first.
+    pub chalkboard: Vec<ChalkLine>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -340,7 +390,8 @@ pub enum ServerMsg {
         build: String,
         now: u64,
         cap: u32,
-        snapshot: Snapshot,
+        // Boxed: by far the largest message, and sent once per connection.
+        snapshot: Box<Snapshot>,
     },
     Replaced {},
     PersonJoined {
@@ -440,6 +491,10 @@ pub enum ServerMsg {
         id: u32,
         toppled: bool,
         by: Option<u32>,
+    },
+    /// A new line on the chalkboard.
+    Chalked {
+        line: ChalkLine,
     },
     Error {
         code: ErrorCode,
@@ -554,6 +609,20 @@ mod tests {
             serde_json::to_string(&reacted).unwrap(),
             r#"{"type":"catReacted","cat":"tora","reaction":{"kind":"purr","by":2}}"#
         );
+        let chalked = ServerMsg::Chalked {
+            line: ChalkLine {
+                at: 5,
+                cat: "Mochi".into(),
+                what: ChalkWhat::Lap {
+                    with: "sam".into(),
+                    minutes: 20,
+                },
+            },
+        };
+        assert_eq!(
+            serde_json::to_string(&chalked).unwrap(),
+            r#"{"type":"chalked","line":{"at":5,"cat":"Mochi","what":{"kind":"lap","with":"sam","minutes":20}}}"#
+        );
     }
 
     #[test]
@@ -575,6 +644,7 @@ mod tests {
             treats: vec![],
             your_treats: 3,
             bowls: 3,
+            chalkboard: vec![],
         };
         assert!(serde_json::to_string(&snapshot).unwrap().contains(r#""yourTrust":[]"#));
         let me = ApiMe {
