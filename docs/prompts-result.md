@@ -1130,7 +1130,24 @@ planned from the code as it stood, then built test first, task by task.
   browser checks ([`b8a4800`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b8a4800)) found two client faults, both
   fixed: the board was the first Tab, and the first Shift+Tab skipped the
   last thing.
-- **Not done:** the usage limit ran out.
-  [`notes/slices-01-02-status.md`](notes/slices-01-02-status.md) lists
-  what's left: slice 01's findings 4 and 8 and the live night; slice 02's
-  docs, review and live check.
+- **After the usage limit reset** (the prompts were only to continue):
+  - **Slice 01's findings 4 and 8.** The restart check now reads the
+    restart's own wake-up line and puts down a cushion only the store could
+    keep ([`b0e73ca`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b0e73ca)). Before the change, two CI runs had
+    failed on a working café whose cats were all napping.
+  - **Waking at Fly's baseline CPU.** An 8-hour wake takes 1.9 s, and the
+    week's cap 29.5 s. That run also showed cats frozen by timers from a
+    clock that had stepped back, guarded in [`a35beb1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a35beb1). All
+    nine answers are in the findings file ([`b1f1417`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b1f1417)).
+  - **Slice 02's docs and review.** Recorded in design.md
+    ([`33e742d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/33e742d)). A fresh reviewer found 1 major problem (the
+    board wasn't modal) and 8 minor. Fixed test first in
+    [`20c1810`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/20c1810), [`09ca527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09ca527) and
+    [`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01), and answered in [`5fc5e41`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5fc5e41).
+  - **Live.** Both slices are deployed, with CI green on
+    [`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01). Live idle stops of up to 51 minutes wake in
+    under 20 ms.
+- **Left:** two judged lines need a real night: slice 01's wake-up after
+  hours asleep, and the user's reading of the board.
+  [`notes/slices-01-02-status.md`](notes/slices-01-02-status.md) has these
+  and the decisions waiting on the user.
