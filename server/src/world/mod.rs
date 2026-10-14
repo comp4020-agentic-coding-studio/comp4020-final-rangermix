@@ -13,7 +13,12 @@ mod handling;
 mod log_tests;
 mod people;
 mod quiet;
+mod replay;
+#[cfg(test)]
+mod replay_tests;
 mod treats;
+
+pub use replay::{MAX_REPLAY_MS, Replay, replay_start};
 
 use crate::cats::{Handling, Saved};
 use crate::content::Content;

@@ -46,6 +46,17 @@ impl TrustBook {
         self.records.get(&(cat.to_string(), person)).map_or(0.0, |r| r.value)
     }
 
+    /// Every record as a row, by cat and then person.
+    pub fn rows(&self) -> Vec<TrustRow> {
+        let mut rows: Vec<TrustRow> = self
+            .records
+            .iter()
+            .map(|((cat, person), rec)| TrustBook::row(cat, *person, rec))
+            .collect();
+        rows.sort_by(|a, b| (&a.cat_id, a.user_id).cmp(&(&b.cat_id, b.user_id)));
+        rows
+    }
+
     pub fn has_met(&self, cat: &str, person: u32) -> bool {
         self.records.contains_key(&(cat.to_string(), person))
     }
