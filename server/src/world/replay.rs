@@ -70,9 +70,7 @@ impl World {
             }
         });
         self.store = store;
-        self.save(self.last_tick);
-        self.save_arrangement();
-        self.save_chalk();
+        self.save_with(self.last_tick, true);
         replay
     }
 }

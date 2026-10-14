@@ -61,6 +61,8 @@ pub async fn wake(store: &Store, content: Content, build: String, now: u64, fres
     let took_ms = began.elapsed().as_millis() as u64;
     let gap_secs = now.saturating_sub(saved_at.unwrap_or(now)) / 1000;
     let capped = saved_at.is_some_and(|at| start > at);
+    // What the replay changed is on disk before the doors open.
+    store.flush().await?;
     tracing::info!(target: "cafe", what = "woke", first, gap_secs, steps = replay.steps,
         capped, took_ms, refills = replay.refills, walks = %replay.walks_text());
     Ok(world)

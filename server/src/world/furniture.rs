@@ -500,7 +500,7 @@ impl World {
         }
     }
 
-    pub(super) fn save_arrangement(&self) {
+    fn save_arrangement(&self) {
         let Some(store) = &self.store else { return };
         let json = self.arrangement_json();
         store.fire(move |conn| crate::store::put_world(conn, "arrangement", &json));

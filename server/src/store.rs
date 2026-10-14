@@ -99,13 +99,27 @@ impl Store {
         Ok(answer.await.map_err(|_| anyhow::anyhow!("the store thread dropped a reply"))??)
     }
 
+    /// Sends a write it doesn't wait for. Each is all of it or none of it,
+    /// alone or batched with others (slice 01's review, finding 5).
     pub fn fire<F>(&self, f: F)
     where
         F: FnOnce(&mut Connection) -> rusqlite::Result<()> + Send + 'static,
     {
         let _ = self.tx.send(Box::new(move |conn| {
-            if let Err(e) = f(conn) {
-                tracing::error!(target: "store", error = %e, "a write failed");
+            if let Err(e) = conn.execute_batch("SAVEPOINT job") {
+                tracing::error!(target: "store", error = %e, "a write couldn't start");
+                return;
+            }
+            match f(conn) {
+                Ok(()) => {
+                    if let Err(e) = conn.execute_batch("RELEASE job") {
+                        tracing::error!(target: "store", error = %e, "a write couldn't finish");
+                    }
+                }
+                Err(e) => {
+                    let _ = conn.execute_batch("ROLLBACK TO job; RELEASE job");
+                    tracing::error!(target: "store", error = %e, "a write failed, and none of it was kept");
+                }
             }
         }));
     }
@@ -573,6 +587,33 @@ mod tests {
         std::fs::write(&path, "this is not a database, and never was. ".repeat(100)).unwrap();
         assert!(Store::open(&path).is_err());
         assert!(Store::open(dir.path()).is_err(), "nor is a directory");
+    }
+
+    #[tokio::test]
+    async fn a_job_that_fails_halfway_writes_nothing() {
+        // Slice 01's review, finding 5: a save is all of it or none of it.
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(&dir.path().join("cafe.db")).unwrap();
+        store.fire(|c| put_world(c, "before", "kept"));
+        store.fire(|c| {
+            put_world(c, "rng", "half")?;
+            put_world(c, "bowls", "half")?;
+            c.execute("INSERT INTO no_such_table VALUES (1)", [])?;
+            Ok(())
+        });
+        store.fire(|c| put_world(c, "after", "kept"));
+        let get = |key: &'static str| store.call(move |c| get_world(c, key));
+        assert_eq!(get("rng").await.unwrap(), None);
+        assert_eq!(get("bowls").await.unwrap(), None);
+        assert_eq!(get("before").await.unwrap().as_deref(), Some("kept"));
+        assert_eq!(get("after").await.unwrap().as_deref(), Some("kept"));
+        // And alone in the queue, with no transaction round it.
+        store.flush().await.unwrap();
+        store.fire(|c| {
+            put_world(c, "alone", "half")?;
+            Err(rusqlite::Error::InvalidQuery)
+        });
+        assert_eq!(get("alone").await.unwrap(), None);
     }
 
     #[tokio::test]

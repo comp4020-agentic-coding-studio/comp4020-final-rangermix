@@ -83,16 +83,13 @@ impl World {
         }
     }
 
-    /// Writes the board as it stands in place of what the store kept: a
-    /// replay's lines and drops, all at once.
-    pub(super) fn save_chalk(&self) {
-        let Some(store) = &self.store else { return };
-        let rows: Vec<(u64, String)> = self
-            .chalk
+    /// The board as it stands, as store rows: a replay's end writes them in
+    /// place of what the store kept.
+    pub(super) fn chalk_rows(&self) -> Vec<(u64, String)> {
+        self.chalk
             .iter()
             .map(|l| (l.at, serde_json::to_string(l).expect("a chalkboard line serialises")))
-            .collect();
-        store.fire(move |c| crate::store::replace_chalk(c, &rows));
+            .collect()
     }
 
     /// The latest lines, oldest first, for a snapshot.

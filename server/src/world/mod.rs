@@ -437,10 +437,17 @@ impl World {
         }
     }
 
-    /// Saves each cat's place and needs, the world clock and the random
-    /// generator's state through the store, in one job, so a replay starts
-    /// from exactly where the café stopped (ADR 0006).
+    /// Saves each cat's place, needs and doings, the bowls, the furniture,
+    /// the world clock and the random generator's state through the store,
+    /// in one job, so a replay starts from exactly where the café stopped
+    /// (ADR 0006), and a save cut short is no save at all.
     pub fn save(&mut self, now: u64) {
+        self.save_with(now, false);
+    }
+
+    /// `save`, and with `board` the whole chalkboard too, as a replay's end
+    /// does: everything it changed, in one job.
+    fn save_with(&mut self, now: u64, board: bool) {
         self.last_save = now;
         let Some(store) = &self.store else { return };
         let cats: Vec<(String, String)> = self
@@ -455,12 +462,18 @@ impl World {
             .collect();
         let bowls = self.bowls_json();
         let rng = serde_json::to_string(&self.rng).expect("the random state serialises");
+        let arrangement = self.arrangement_json();
+        let chalk = board.then(|| self.chalk_rows());
         store.fire(move |conn| {
             for (id, json) in &cats {
                 crate::store::put_cat_state(conn, id, json, now)?;
             }
             crate::store::put_world(conn, "bowls", &bowls)?;
             crate::store::put_world(conn, "rng", &rng)?;
+            crate::store::put_world(conn, "arrangement", &arrangement)?;
+            if let Some(rows) = &chalk {
+                crate::store::replace_chalk(conn, rows)?;
+            }
             crate::store::put_world(conn, "saved_at", &now.to_string())
         });
     }
