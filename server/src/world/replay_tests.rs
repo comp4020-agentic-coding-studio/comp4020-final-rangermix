@@ -1,5 +1,6 @@
 //! Fast-forward (ADR 0006; slice 01): a gap replayed in one-second steps by
 //! the rules the café runs awake, seeded so every run is the same.
+use super::replay::MAX_REPLAY_MS;
 use super::*;
 use chrono::TimeZone;
 use rand::SeedableRng;

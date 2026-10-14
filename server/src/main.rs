@@ -17,47 +17,35 @@ mod test_logs;
 mod time;
 mod trust;
 mod tuning;
+mod wake;
 mod world;
 mod ws;
 
-use rand::SeedableRng;
+use anyhow::Context;
 use std::net::SocketAddr;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
     tracing_subscriber::fmt().json().flatten_event(true).init();
+    // Failures are loud (design.md, "Persistence and fast-forward"), and in
+    // the café's own JSON lines, like everything else it says.
+    if let Err(e) = run().await {
+        tracing::error!(target: "sys", error = %format!("{e:#}"), "stopping: the café can't start");
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> anyhow::Result<()> {
     let config = config::Config::from_env();
     std::fs::create_dir_all(&config.data_dir)?;
-    let store = store::Store::open(&config.data_dir.join("cafe.db"))?;
+    let db = config.data_dir.join("cafe.db");
+    let store = store::Store::open(&db).with_context(|| format!("can't open the database at {}", db.display()))?;
     let content = content::load(&config.content_dir)?;
     let tuning = content.tuning.clone();
-    let mut trust = trust::TrustBook::new(tuning.trust_levels, tuning.trust_daily_cap);
-    trust.load(store.call(|c| store::all_trust(c)).await?);
-    let saved_cats = store.call(|c| store::all_cat_states(c)).await?;
     let build = config.build_id();
     let now = time::now_ms();
-    let arrangement = match store.call(|c| store::get_world(c, "arrangement")).await? {
-        Some(json) => world::SavedArrangement::Current(json),
-        None => match store.call(|c| store::get_world(c, "furniture")).await? {
-            Some(json) => world::SavedArrangement::Legacy(json),
-            None => world::SavedArrangement::Fresh,
-        },
-    };
-    let bans = store.call(move |c| store::live_bans(c, now)).await?;
-    let treats = store.call(|c| store::all_treats(c)).await?;
-    let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
-    let mut world = world::World::new(
-        content,
-        trust,
-        saved_cats,
-        arrangement,
-        rand_chacha::ChaCha8Rng::seed_from_u64(now),
-        Some(store.clone()),
-        build.clone(),
-        now,
-    );
-    world.restore_bans(bans);
-    world.restore_treats(bowls, treats);
+    // The doors open only once the café has caught up on its sleep (ADR 0006).
+    let world = wake::wake(&store, content, build.clone(), now, now).await?;
     let world_tx = ws::spawn_world(world);
     let readme = readme::render_page(&std::fs::read_to_string(&config.readme_path).unwrap_or_default());
     let port = config.port;

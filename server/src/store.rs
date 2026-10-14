@@ -515,6 +515,16 @@ mod tests {
         assert_eq!(version as usize, MIGRATIONS.len());
     }
 
+    #[test]
+    fn a_file_that_isnt_a_database_wont_open() {
+        // Slice 01: a café that can't read its database mustn't serve an empty one.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("cafe.db");
+        std::fs::write(&path, "this is not a database, and never was. ".repeat(100)).unwrap();
+        assert!(Store::open(&path).is_err());
+        assert!(Store::open(dir.path()).is_err(), "nor is a directory");
+    }
+
     #[tokio::test]
     async fn the_store_thread_runs_writes_in_order_before_a_later_call() {
         let dir = tempfile::tempdir().unwrap();

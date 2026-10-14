@@ -47,6 +47,7 @@ impl TrustBook {
     }
 
     /// Every record as a row, by cat and then person.
+    #[cfg(test)]
     pub fn rows(&self) -> Vec<TrustRow> {
         let mut rows: Vec<TrustRow> = self
             .records

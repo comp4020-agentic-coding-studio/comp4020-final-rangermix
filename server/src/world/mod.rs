@@ -18,7 +18,7 @@ mod replay;
 mod replay_tests;
 mod treats;
 
-pub use replay::{MAX_REPLAY_MS, Replay, replay_start};
+pub use replay::replay_start;
 
 use crate::cats::{Handling, Saved};
 use crate::content::Content;
