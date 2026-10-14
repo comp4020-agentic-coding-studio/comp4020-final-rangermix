@@ -37,7 +37,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 
 | # | Slice | Delivers | Spec | Status |
 | --- | --- | --- | --- | --- |
-| 01 | The café keeps living while it sleeps | Fast-forward on wake, with the saved clock and random state; the schedule during a replay; loud failures | [01](../slices/01-the-cafe-keeps-living-while-it-sleeps.md) | approved 2026-10-14; built ([plan](plan-slice-01-fast-forward.md)), in review |
+| 01 | The café keeps living while it sleeps | Fast-forward on wake, with the saved clock and random state; the schedule during a replay; loud failures | [01](../slices/01-the-cafe-keeps-living-while-it-sleeps.md) | reviewed and deployed ([plan](plan-slice-01-fast-forward.md), [findings](reviews/slice-01-findings.md)); live once a real night's wake is read |
 | 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | approved 2026-10-14; planned ([plan](plan-slice-02-chalkboard.md)), building |
 | 03 | Keeping it kind | Mute, the slur blocklist, the admin ban | [03](../slices/03-keeping-it-kind.md) | spec proposed |
 | 04 | The showcase room | A load check at forty connections inside 256 MB; the window's count | [04](../slices/04-the-showcase-room.md) | spec proposed |

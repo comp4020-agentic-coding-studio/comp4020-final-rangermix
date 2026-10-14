@@ -50,8 +50,8 @@ because the replay has saved by then. If that's not good enough, there are
 two ways out, both the user's to choose: a shorter cap (it's a tunable
 number), or a page served at once while the café wakes.
 
-The first try at this, before the review's fixes, showed every cat
-standing still for the whole week. The saved clock had been set back but
+The first try at this, after finding 1's fix and before its guard, showed
+every cat standing still for the whole week. The saved clock had been set back but
 the cats' saved timers hadn't, so finding 1's restored timers froze them.
 A normal save can't do that, but a clock that steps back can. It's guarded
 in `a35beb1`: a timer further ahead than any pose lasts, or a walk not yet

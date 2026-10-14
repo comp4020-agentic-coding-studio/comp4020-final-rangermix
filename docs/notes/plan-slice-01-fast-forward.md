@@ -734,3 +734,17 @@ Where carrying out this plan departed from it, task by task, and why.
   the end, after the course's text.
 - **Task 6.** Measured in a release build here: 8 hours in 54 ms, 7 days in
   708 ms ([slice-01-wake.md](slice-01-wake.md)).
+- **Task 7, the review** ([brief](reviews/slice-01-brief.md),
+  [findings](reviews/slice-01-findings.md)). One reviewer, a fresh agent
+  briefed by file: 1 major finding, 8 minor. Each is answered in the
+  findings file with its commit.
+  - The major one, cats getting up on waking, meant this plan's "cats
+    compared by tile only, since waking resets their poses" (Task 5) was
+    leaning on a bug.
+  - Once the cats keep what they're doing, a café whose cats all nap looks
+    the same after 30 seconds, and the spec check failed twice in CI. It now
+    reads the restart's own wake-up line instead (finding 4).
+  - Timing the week's cap at Fly's baseline CPU (finding 8) turned up one
+    more thing: a restored timer from a clock that stepped back froze the
+    cats. It's guarded in `a35beb1`.
+  - The spec check now needs `APP_LOGS` beside `APP_RESTART`.
