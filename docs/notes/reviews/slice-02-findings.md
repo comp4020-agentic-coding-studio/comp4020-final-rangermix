@@ -286,3 +286,54 @@ copy's `node_modules`.
   either in tuning.toml and the change only half applies. With
   `chalk_shown = 12` the snapshot sends 12 and the client shows 8. With
   `chalk_hours = 12` an open tab keeps a line the server has dropped.
+
+## Answers
+
+By the builder, 2026-10-14. Each fix was test first, and each new or
+strengthened check was seen failing before its fix or under the mutation
+the finding describes.
+
+1. **Fixed** in [`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01). The board is modal: a backdrop
+   takes a click beside it and closes it without acting on the room, and
+   the café is `inert` while it's open. A browser check clicks the window
+   seat beside the open board and finds the board closed, no menu, and the
+   focus on the room, and Escape still closes it when opened again.
+2. **Fixed** in [`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01). The nudge closes the board, and
+   sits above it (z-index 7). A browser check finds "I'm here" on top of an
+   open board.
+3. **Fixed** in [`20c1810`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/20c1810). A cat keeps its lap-person's name
+   from the lap's start. Test: sam leaves at ten minutes, and the line is
+   written.
+4. **Fixed** in [`20c1810`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/20c1810). `all_chalk` skips a row whose time
+   isn't a whole number or whose line isn't text, and `wake` warns with
+   how many. Test: a BLOB row and a text time beside a good row; the café
+   wakes with the good one.
+5. **Fixed** in [`09ca527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09ca527). `stepPointer` lets the arrows onto
+   the `C` tile and nowhere else on the street wall. A unit test holds it.
+6. **Fixed** in [`09ca527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09ca527). Your own first meeting's line
+   isn't read out, since the sniff sent with it has already told you. The
+   rest still are.
+7. **Fixed** in [`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01). The dialog's lines are compared
+   with the panel's. New checks cover the keyboard at 390×844, a tap in
+   layout B, and a resize with the dialog open. In layout B the check now
+   waits for the room to stop panning before it taps.
+8. **Fixed.** The tidied-trace test wakes a second world from a store
+   ([`20c1810`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/20c1810)), and failed with the save taken out of
+   `stand_up_piece`. The restart check waits up to a minute for a trace
+   before the stop, and says so if none comes. A Rust test holds a toppled
+   piece and its line through a stop and a wake every time
+   ([`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01)). In the local run of the whole spec a trace
+   was there.
+9. **Fixed** in [`09ca527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09ca527). The lists are rebuilt only when a
+   line comes or goes. A unit test holds the nodes' identity.
+
+On the notes:
+
+- **Two copies of the numbers:** fixed in [`09ca527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09ca527). The
+  welcome carries `chalkHours` and `chalkShown`.
+- **For slice 06:** fixed in [`be74a01`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/be74a01). The phone's panel
+  copy is visually hidden, not removed.
+- **For slice 05:** the strewn balls' placement is left to the art pass.
+- **For the judged line:** the repeated plants, times with no day, and
+  meetings crowding out the night are for the user to weigh when they read
+  the live board.

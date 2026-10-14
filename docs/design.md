@@ -382,11 +382,15 @@ renamed.
   tapped. While a ring is open the room holds still, and by the room's edges
   it moves over, past its edge if it must, so the ring stays round what it is
   for with every button on screen. Tapping the chalkboard opens its readable
-  copy, a dialog that takes the focus and gives it back to the room on Escape
-  or Close; a click, or Tab and Enter, opens it at every size. On the
-  keyboard the chalkboard comes last in the Tab cycle, after the cats, people
-  and furniture, so it isn't everyone's first Tab by the door, and one
-  Shift+Tab reaches it. Wireframes are in
+  copy, a modal dialog: it takes the focus and holds it, the café behind is
+  inert, and Escape, Close or a click beside it gives the room back. A click,
+  or Tab and Enter, opens it at every size, and the arrows can put the pointer
+  on it (the only spot on the street wall they reach). On the keyboard the
+  chalkboard comes last in the Tab cycle, after the cats, people and
+  furniture, so it isn't everyone's first Tab by the door, and one Shift+Tab
+  reaches it. On a phone the panel's copy is out of sight but still read by a
+  screen reader. The welcome carries the board's numbers, so the client keeps
+  the same day and the same eight as the server. Wireframes are in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
 - **Drawing:** the canvas uses the largest whole-number scale that fits, so
   pixels stay crisp and a resize mid-use just refits; things are drawn back to

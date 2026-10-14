@@ -503,3 +503,11 @@ Where carrying out this plan departed from it, task by task, and why.
   "Persistence", "Checks", and three new rows in "Numbers to tune" (the
   hourly rule, a lap worth a line, the scatter chance). Like "New furniture",
   those are constants in the code, not in `tuning.toml`.
+- **Task 7, the review** ([brief](reviews/slice-02-brief.md),
+  [findings](reviews/slice-02-findings.md)). One fresh reviewer: 1 major
+  finding (the board wasn't modal) and 8 minor. Each is answered in the
+  findings file with its commit. Two changes reach beyond the plan:
+  - The welcome now carries the board's numbers, a protocol change.
+  - The phone's panel copy is visually hidden rather than `display: none`,
+    so a phone screen reader can read the board, which the reviewer
+    noted for slice 06.
