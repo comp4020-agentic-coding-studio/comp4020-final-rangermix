@@ -15,6 +15,9 @@ use rand::RngExt;
 const NEW_PIECE_MS: u64 = 120_000;
 /// A lap nap this long or longer goes on the chalkboard.
 const LAP_TOLD_MINUTES: u32 = 5;
+/// No pose lasts longer than this (a lap nap, at most 15 minutes): a saved
+/// timer further ahead came from a clock that has since stepped back.
+const LONGEST_POSE_MS: u64 = 15 * 60_000;
 
 #[derive(Debug, Clone)]
 pub(super) struct Cat {
@@ -167,13 +170,15 @@ impl World {
             saved.filter(|s| self.room.walkable(s.at, Walker::Cat) && self.room.pettable(s.at) && !self.cats.iter().any(|c| c.at == s.at));
         // What it was doing, if it still fits the room: a walk from where it
         // stands to somewhere it can still go (slice 01's review, finding 1).
+        // A timer or a walk ahead of the clock it wakes to is kept by nobody.
         let doing = saved.as_ref().and_then(|s| s.doing.clone()).filter(|d| match &d.walk {
             Some(w) => {
-                w.path.first() == saved.as_ref().map(|s| &s.at)
+                w.start <= now
+                    && w.path.first() == saved.as_ref().map(|s| &s.at)
                     && w.path.iter().all(|&t| self.room.walkable(t, Walker::Cat))
                     && w.path.last().is_some_and(|&t| self.room.pettable(t))
             }
-            None => !matches!(d.pose, Pose::Walk | Pose::Held),
+            None => d.until <= now + LONGEST_POSE_MS && !matches!(d.pose, Pose::Walk | Pose::Held),
         });
         let (at, tiredness, company, hunger, play) = match saved {
             Some(s) => (
@@ -1327,6 +1332,22 @@ mod tests {
         let m = &back.cats[cat_index(&back, "mochi")];
         assert_eq!((m.at, m.pose, m.held_by, m.walk.is_none()), (T(4, 4), Pose::Idle, None, true));
         assert!(m.until < 1_000 + 8_000, "it chooses what to do next soon");
+    }
+
+    #[test]
+    fn a_doing_from_a_clock_ahead_isnt_kept() {
+        // A saved timer longer than any pose lasts, or a walk not yet begun,
+        // came from a clock that has since stepped back (or a hand edit): the
+        // cat would stand frozen till then, so it chooses afresh.
+        let mut w = world();
+        let mochi = hold(&mut w, "mochi", T(1, 5));
+        (w.cats[mochi].pose, w.cats[mochi].until) = (Pose::Nap, 2 * 3_600_000);
+        let tora = hold(&mut w, "tora", T(10, 7));
+        w.walk_cat(tora, 3_600_000, 600, T(6, 8), Plan::Play, &mut Vec::new());
+        let back = reloaded(&w, 1_000);
+        let (m, t) = (&back.cats[cat_index(&back, "mochi")], &back.cats[cat_index(&back, "tora")]);
+        assert_eq!((m.pose, m.until < 1_000 + 8_000), (Pose::Idle, true), "{:?}", (m.pose, m.until));
+        assert_eq!((t.pose, t.walk.is_none()), (Pose::Idle, true));
     }
 
     #[test]
