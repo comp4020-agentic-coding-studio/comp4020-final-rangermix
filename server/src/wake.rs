@@ -13,59 +13,124 @@ use rand_chacha::ChaCha8Rng;
 /// logs the wake-up's summary. A café never saved wakes at `now`, on a
 /// generator seeded with `fresh_seed`, as does one whose saved random state
 /// can't be read (with a warning: the replay is still the live rules, only
-/// not the same night it would have been).
+/// not the same night it would have been). A replay that panics is logged,
+/// and the café wakes at `now` from the save without it, so one bad night
+/// can't keep it shut start after start (slice 01's review, finding 6).
 pub async fn wake(store: &Store, content: Content, build: String, now: u64, fresh_seed: u64) -> anyhow::Result<World> {
-    let mut trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
-    trust.load(store.call(|c| store::all_trust(c)).await?);
-    let saved_cats = store.call(|c| store::all_cat_states(c)).await?;
-    let arrangement = match store.call(|c| store::get_world(c, "arrangement")).await? {
-        Some(json) => SavedArrangement::Current(json),
-        None => match store.call(|c| store::get_world(c, "furniture")).await? {
-            Some(json) => SavedArrangement::Legacy(json),
-            None => SavedArrangement::Fresh,
-        },
-    };
-    let clock = store.call(|c| store::get_world(c, "saved_at")).await?;
-    // A café that has saved before isn't opening for the first time, even if
-    // its clock can't be read (slice 01's review, finding 7).
-    let first = clock.is_none();
-    let saved_at = match clock {
-        Some(text) => match text.parse::<u64>() {
-            Ok(at) => Some(at),
-            Err(e) => {
-                tracing::warn!(target: "sys", error = %e, "the saved clock is unreadable; waking without a replay");
-                None
-            }
-        },
-        None => None,
-    };
-    let rng = match store.call(|c| store::get_world(c, "rng")).await? {
-        Some(json) => serde_json::from_str(&json).unwrap_or_else(|e| {
-            tracing::warn!(target: "sys", error = %e, "the saved random state is unreadable; replaying on a fresh one");
-            ChaCha8Rng::seed_from_u64(fresh_seed)
-        }),
-        None => ChaCha8Rng::seed_from_u64(fresh_seed),
-    };
-    // Bans are kept against the wall clock: nobody is inside during a replay.
-    let bans = store.call(move |c| store::live_bans(c, now)).await?;
-    let treats = store.call(|c| store::all_treats(c)).await?;
-    let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
-    let chalk = store.call(|c| store::all_chalk(c)).await?;
+    let kept = Kept::load(store, now, fresh_seed).await?;
+    let (first, saved_at) = (kept.first, kept.saved_at);
     let start = replay_start(saved_at, now);
-    let mut world = World::new(content, trust, saved_cats, arrangement, rng, Some(store.clone()), build, start);
-    world.restore_bans(bans);
-    world.restore_treats(bowls, treats);
-    world.restore_chalk(chalk);
+    let mut world = kept.into_world(content.clone(), build.clone(), store, start);
     let began = std::time::Instant::now();
-    let replay = world.replay(now);
+    let replayed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| world.replay(now)));
+    let (replay, failed) = match replayed {
+        Ok(replay) => (replay, false),
+        Err(panic) => {
+            let what = panic
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()))
+                .unwrap_or_default();
+            tracing::error!(target: "sys", error = %what, "the replay failed; waking at now without it");
+            // The replay wrote nothing, so the save is as it was: build again, at now.
+            world = Kept::load(store, now, fresh_seed).await?.into_world(content, build, store, now);
+            (world.replay(now), true)
+        }
+    };
     let took_ms = began.elapsed().as_millis() as u64;
     let gap_secs = now.saturating_sub(saved_at.unwrap_or(now)) / 1000;
     let capped = saved_at.is_some_and(|at| start > at);
     // What the replay changed is on disk before the doors open.
     store.flush().await?;
     tracing::info!(target: "cafe", what = "woke", first, gap_secs, steps = replay.steps,
-        capped, took_ms, refills = replay.refills, walks = %replay.walks_text());
+        capped, failed, took_ms, refills = replay.refills, walks = %replay.walks_text());
     Ok(world)
+}
+
+/// Everything the store keeps, read for a wake-up.
+struct Kept {
+    trust: Vec<store::TrustRow>,
+    cats: Vec<(String, String)>,
+    arrangement: SavedArrangement,
+    /// Nothing was ever saved.
+    first: bool,
+    saved_at: Option<u64>,
+    rng: ChaCha8Rng,
+    bans: Vec<store::BanRow>,
+    treats: Vec<store::TreatRow>,
+    bowls: Option<String>,
+    chalk: Vec<(u64, String)>,
+}
+
+impl Kept {
+    async fn load(store: &Store, now: u64, fresh_seed: u64) -> anyhow::Result<Kept> {
+        let trust = store.call(|c| store::all_trust(c)).await?;
+        let cats = store.call(|c| store::all_cat_states(c)).await?;
+        let arrangement = match store.call(|c| store::get_world(c, "arrangement")).await? {
+            Some(json) => SavedArrangement::Current(json),
+            None => match store.call(|c| store::get_world(c, "furniture")).await? {
+                Some(json) => SavedArrangement::Legacy(json),
+                None => SavedArrangement::Fresh,
+            },
+        };
+        let clock = store.call(|c| store::get_world(c, "saved_at")).await?;
+        // A café that has saved before isn't opening for the first time, even if
+        // its clock can't be read (slice 01's review, finding 7).
+        let first = clock.is_none();
+        let saved_at = match clock {
+            Some(text) => match text.parse::<u64>() {
+                Ok(at) => Some(at),
+                Err(e) => {
+                    tracing::warn!(target: "sys", error = %e, "the saved clock is unreadable; waking without a replay");
+                    None
+                }
+            },
+            None => None,
+        };
+        let rng = match store.call(|c| store::get_world(c, "rng")).await? {
+            Some(json) => serde_json::from_str(&json).unwrap_or_else(|e| {
+                tracing::warn!(target: "sys", error = %e, "the saved random state is unreadable; replaying on a fresh one");
+                ChaCha8Rng::seed_from_u64(fresh_seed)
+            }),
+            None => ChaCha8Rng::seed_from_u64(fresh_seed),
+        };
+        // Bans are kept against the wall clock: nobody is inside during a replay.
+        let bans = store.call(move |c| store::live_bans(c, now)).await?;
+        let treats = store.call(|c| store::all_treats(c)).await?;
+        let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
+        let chalk = store.call(|c| store::all_chalk(c)).await?;
+        Ok(Kept {
+            trust,
+            cats,
+            arrangement,
+            first,
+            saved_at,
+            rng,
+            bans,
+            treats,
+            bowls,
+            chalk,
+        })
+    }
+
+    fn into_world(self, content: Content, build: String, store: &Store, start: u64) -> World {
+        let mut trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+        trust.load(self.trust);
+        let mut world = World::new(
+            content,
+            trust,
+            self.cats,
+            self.arrangement,
+            self.rng,
+            Some(store.clone()),
+            build,
+            start,
+        );
+        world.restore_bans(self.bans);
+        world.restore_treats(self.bowls, self.treats);
+        world.restore_chalk(self.chalk);
+        world
+    }
 }
 
 #[cfg(test)]
@@ -300,6 +365,39 @@ mod tests {
         assert_eq!(line["capped"], true);
         assert_eq!(line["gap_secs"], 9 * 24 * 3_600);
         assert_eq!(get(&store, "saved_at").await, Some(now.to_string()), "awake at now");
+    }
+
+    #[tokio::test]
+    async fn a_replay_that_panics_still_wakes_the_cafe_and_says_so() {
+        // Slice 01's review, finding 6: one bad night mustn't keep the café
+        // shut, start after start at the same step.
+        let (_dir, store) = store();
+        let now = canberra(2026, 10, 14, 9, 0);
+        put(&store, "saved_at", (now - HOUR).to_string()).await;
+        crate::world::PANIC_AT_STEP.with(|p| p.set(Some(3)));
+        let logs = LogSink::default();
+        {
+            let _guard = logs.capture();
+            wake(&store, content(), "test".into(), now, 1).await.unwrap();
+        }
+        crate::world::PANIC_AT_STEP.with(|p| p.set(None));
+        let said = logs
+            .lines()
+            .into_iter()
+            .any(|l| l["level"] == "ERROR" && l["message"].as_str().is_some_and(|m| m.contains("replay")));
+        assert!(said, "{}", logs.text());
+        let line = woke(&logs);
+        assert_eq!((line["steps"].as_u64(), line["failed"].as_bool()), (Some(0), Some(true)));
+        assert_eq!(get(&store, "saved_at").await, Some(now.to_string()), "the next start begins at now");
+        let logs = LogSink::default();
+        {
+            let _guard = logs.capture();
+            wake(&store, content(), "test".into(), now + 10_000, 1).await.unwrap();
+        }
+        assert_eq!(
+            (woke(&logs)["steps"].as_u64(), woke(&logs)["failed"].as_bool()),
+            (Some(10), Some(false))
+        );
     }
 
     #[tokio::test]

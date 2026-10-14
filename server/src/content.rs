@@ -8,6 +8,7 @@ use anyhow::Context;
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
+#[derive(Clone)]
 pub struct Content {
     pub tuning: Tuning,
     pub room: Room,

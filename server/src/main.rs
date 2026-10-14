@@ -27,6 +27,10 @@ use std::net::SocketAddr;
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().json().flatten_event(true).init();
+    // A panic is one of the café's JSON lines too, not Rust's plain text.
+    std::panic::set_hook(Box::new(|info| {
+        tracing::error!(target: "sys", error = %info, "panicked");
+    }));
     // Failures are loud (design.md, "Persistence and fast-forward"), and in
     // the café's own JSON lines, like everything else it says.
     if let Err(e) = run().await {

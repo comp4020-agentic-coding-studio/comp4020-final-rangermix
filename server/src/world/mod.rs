@@ -21,6 +21,8 @@ mod replay;
 mod replay_tests;
 mod treats;
 
+#[cfg(test)]
+pub use replay::PANIC_AT_STEP;
 pub use replay::replay_start;
 
 use crate::cats::{Handling, Saved};

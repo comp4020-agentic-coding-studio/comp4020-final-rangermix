@@ -7,6 +7,12 @@ use crate::protocol::ServerMsg;
 pub const MAX_REPLAY_MS: u64 = 7 * 24 * 3_600_000;
 const STEP_MS: u64 = 1_000;
 
+#[cfg(test)]
+thread_local! {
+    /// A test's way to make a replay panic at a given step.
+    pub static PANIC_AT_STEP: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
 /// What a wake-up's replay did, for its log line.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Replay {
@@ -54,6 +60,10 @@ impl World {
         tracing::subscriber::with_default(tracing::subscriber::NoSubscriber::default(), || {
             let mut at = from + STEP_MS;
             while at <= to {
+                #[cfg(test)]
+                if PANIC_AT_STEP.with(|p| p.get()) == Some(replay.steps) {
+                    panic!("a test's panic at step {}", replay.steps);
+                }
                 let key = self.bowls_key.clone();
                 for out in self.tick(at) {
                     if let ServerMsg::CatMoved { cat, .. } = &out.msg
