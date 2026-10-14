@@ -1,4 +1,6 @@
+import { CHALK_SHOWN, chalkTime, chalkWords } from "./chalk";
 import type { CatView } from "./protocol/CatView";
+import type { ChalkLine } from "./protocol/ChalkLine";
 import type { Emote } from "./protocol/Emote";
 import type { FurnitureView } from "./protocol/FurnitureView";
 import type { ErrorCode } from "./protocol/ErrorCode";
@@ -52,6 +54,8 @@ export interface CafeState {
   yourTreats: number;
   /** Portions in the bowls. */
   bowls: number;
+  /** The chalkboard's latest lines, oldest first. */
+  chalkboard: ChalkLine[];
 }
 
 export type Effect =
@@ -102,6 +106,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     treats: new Map(s.treats.map((t) => [t.id, t.at])),
     yourTreats: s.yourTreats,
     bowls: s.bowls,
+    chalkboard: s.chalkboard,
   };
 }
 
@@ -285,11 +290,16 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       if (!piece) return [];
       piece.toppled = msg.toppled;
       const what = pieceName(piece.kind);
-      if (msg.toppled) return [{ kind: "announce", text: `The ${what} got knocked over.` }];
-      return msg.by === state.you || msg.by === null ? [] : [{ kind: "announce", text: `${name(msg.by)} stood the ${what} back up.` }];
+      // The toys knocked over are scattered, and gathered up again (slice 02).
+      const toys = piece.kind === "toys";
+      if (msg.toppled) return [{ kind: "announce", text: toys ? "The toys got scattered." : `The ${what} got knocked over.` }];
+      if (msg.by === state.you || msg.by === null) return [];
+      return [{ kind: "announce", text: toys ? `${name(msg.by)} gathered up the toys.` : `${name(msg.by)} stood the ${what} back up.` }];
     }
     case "chalked":
-      return [];
+      state.chalkboard.push(msg.line);
+      if (state.chalkboard.length > CHALK_SHOWN) state.chalkboard.splice(0, state.chalkboard.length - CHALK_SHOWN);
+      return [{ kind: "announce", text: `On the chalkboard: ${chalkTime(msg.line.at)}, ${chalkWords(msg.line)}` }];
     case "stillThere":
       return [{ kind: "stillThere", secs: msg.secs }];
     case "nudgeOver":

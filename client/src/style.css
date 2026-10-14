@@ -90,6 +90,15 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .said { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.95rem; overflow-wrap: anywhere; }
 .said .who { font-weight: 600; }
 .cat-row { display: grid; gap: 0.25rem; margin-bottom: 0.75rem; }
+/* The chalkboard (slice 02): in the left panel on a desktop, a dialog from the room's board anywhere */
+.chalkboard { margin-bottom: 1rem; }
+.chalk-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; font-size: 0.92rem; overflow-wrap: anywhere; }
+.chalk-lines time { font-variant-numeric: tabular-nums; color: var(--muted); }
+.chalk-lines .empty { color: var(--muted); }
+.board { position: fixed; left: 50%; top: 10%; transform: translateX(-50%); z-index: 6; background: #2f3b33; color: #f4f1e8; border: 6px solid #8a6a46; border-radius: 12px; padding: 1rem 1.25rem; display: grid; gap: 0.6rem; width: min(26rem, calc(100vw - 32px)); max-height: 75vh; overflow: auto; box-shadow: 0 10px 30px rgb(0 0 0 / 0.3); }
+.board h2 { margin: 0; font-size: 1.1rem; }
+.board .hint, .board .chalk-lines time, .board .chalk-lines .empty { color: #cfd8cc; }
+.board button { justify-self: end; }
 .trust-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .trust-bar > span { display: block; height: 100%; background: var(--accent); }
 
@@ -121,6 +130,8 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   .talk input { flex: 1 1 10rem; }
   .emotes { width: 100%; justify-content: center; }
   .menu.sheet { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding: 1rem; }
+  /* On a phone the board is read by tapping the chalkboard in the room. */
+  .chalkboard { display: none; }
 }
 
 /* The phone's layout switch, and layout B: the room fills the screen at 3x and

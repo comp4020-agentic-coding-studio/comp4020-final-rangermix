@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
+import { chalkTime } from "../src/chalk";
 import { afterWelcome, apply, fromWelcome, lapOf, needsReload, pruneBubbles, shouldPing } from "../src/state";
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
@@ -131,6 +132,28 @@ describe("the client's copy of the café", () => {
     expect(s.room.furniture[0].toppled).toBe(true);
     expect(apply(s, { type: "furnitureToppled", id: 7, toppled: false, by: 2 })).toEqual([{ kind: "announce", text: "sam stood the plant back up." }]);
     expect(s.room.furniture[0].toppled).toBe(false);
+  });
+
+  it("says the toys got scattered, and who gathered them up", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [{ id: 8, kind: "toys", x: 7, y: 8, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false }];
+    const s = fromWelcome(w, 10_000);
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    expect(apply(s, { type: "furnitureToppled", id: 8, toppled: true, by: null })).toEqual([{ kind: "announce", text: "The toys got scattered." }]);
+    expect(apply(s, { type: "furnitureToppled", id: 8, toppled: false, by: 2 })).toEqual([{ kind: "announce", text: "sam gathered up the toys." }]);
+  });
+
+  it("keeps the chalkboard's latest lines and reads a new one out", () => {
+    const w = welcome();
+    w.snapshot.chalkboard = [{ at: 9_000, cat: "Burakku", what: { kind: "knockedOver", piece: "plant" } }];
+    const s = fromWelcome(w, 10_000);
+    expect(s.chalkboard).toHaveLength(1);
+    const line = { at: 10_500, cat: "Mochi", what: { kind: "met" as const, with: "sam" } };
+    expect(apply(s, { type: "chalked", line })).toEqual([{ kind: "announce", text: `On the chalkboard: ${chalkTime(10_500)}, Mochi met sam for the first time` }]);
+    expect(s.chalkboard.at(-1)).toEqual(line);
+    for (let n = 0; n < 10; n++) apply(s, { type: "chalked", line: { ...line, at: 11_000 + n } });
+    expect(s.chalkboard).toHaveLength(8);
+    expect(s.chalkboard[0].at).toBe(11_002);
   });
 
   it("says when a cat scratches you, eats from your hand or plays", () => {

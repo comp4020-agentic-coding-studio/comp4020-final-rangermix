@@ -69,7 +69,13 @@
         <button type="button" id="layout-switch" class="phone-only" aria-pressed="false">Bigger room</button>
         <button type="button" id="leave">Leave</button>
       </header>
-      <aside id="your-cats" class="panel left" aria-label="Your cats"></aside>
+      <aside class="panel left" aria-label="The chalkboard and your cats">
+        <section id="chalkboard" class="chalkboard" aria-labelledby="chalkboard-heading">
+          <h2 id="chalkboard-heading">The chalkboard</h2>
+          <ol id="chalk-lines" class="chalk-lines"></ol>
+        </section>
+        <section id="your-cats" aria-label="Your cats"></section>
+      </aside>
       <div id="stage" class="stage">
         <canvas
           id="room"
@@ -98,6 +104,13 @@
           <button type="button" data-emote="yawn" aria-label="Yawn">🥱</button>
         </span>
       </form>
+    </div>
+
+    <div id="board" class="board" role="dialog" aria-modal="true" aria-labelledby="board-heading" aria-describedby="board-lines" hidden>
+      <h2 id="board-heading">The chalkboard</h2>
+      <p class="hint">What the cats got up to, over the last day.</p>
+      <ol id="board-lines" class="chalk-lines"></ol>
+      <button type="button" id="board-close" class="primary">Close</button>
     </div>
 
     <div id="still-there" class="still-there" role="alertdialog" aria-labelledby="still-there-text" hidden>

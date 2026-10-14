@@ -1,3 +1,4 @@
+import { boardLines, chalkTime, chalkWords } from "./chalk";
 import type { CafeState } from "./state";
 
 // The panels beside (or under) the room: your cats, who's here, and what was
@@ -50,6 +51,22 @@ function catRows(state: CafeState): HTMLElement[] {
     bar.setAttribute("aria-label", `${cat.name}'s trust in you: ${value} of 100`);
     return el("div", "cat-row", el("strong", null, cat.name), el("span", "hint", `${cat.name} ${LEVEL_WORDS[trust?.level ?? "stranger"]}.`), bar);
   });
+}
+
+/** The chalkboard's lines into a list: the panel's, or the board dialog's. */
+export function renderChalkboard(list: HTMLElement, state: CafeState, localNow = Date.now()): void {
+  const lines = boardLines(state, localNow);
+  if (lines.length === 0) {
+    list.replaceChildren(el("li", "empty", "Nothing on the board yet."));
+    return;
+  }
+  list.replaceChildren(
+    ...lines.map((line) => {
+      const time = el("time", null, chalkTime(line.at));
+      time.setAttribute("datetime", new Date(line.at).toISOString());
+      return el("li", null, time, `, ${chalkWords(line)}`);
+    }),
+  );
 }
 
 export function renderHere(box: HTMLElement, state: CafeState): void {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderHere, renderYourCats } from "../src/panels";
+import { renderChalkboard, renderHere, renderYourCats } from "../src/panels";
 import { fromWelcome } from "../src/state";
 
 const s = fromWelcome(
@@ -28,6 +28,29 @@ const s = fromWelcome(
 );
 
 describe("panels", () => {
+  it("show the chalkboard's lines as text, oldest first, and say when it's empty", () => {
+    const list = document.createElement("ol");
+    renderChalkboard(list, { ...s, chalkboard: [] }, 0);
+    expect(list.textContent).toBe("Nothing on the board yet.");
+    renderChalkboard(
+      list,
+      {
+        ...s,
+        chalkboard: [
+          { at: 0, cat: "Mochi", what: { kind: "met", with: "<b>jo</b>" } },
+          { at: 1, cat: "Tora", what: { kind: "played" } },
+        ],
+      },
+      1,
+    );
+    const items = [...list.querySelectorAll("li")];
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toMatch(/, Mochi met <b>jo<\/b> for the first time$/);
+    expect(items[1].textContent).toMatch(/, Tora played with the toys$/);
+    expect(list.querySelector("b"), "a name is text, never markup").toBeNull();
+    expect(items[0].querySelector("time")?.getAttribute("datetime")).toBe(new Date(0).toISOString());
+  });
+
   it("show each cat's trust in you, in words and as a bar", () => {
     const box = document.createElement("div");
     renderYourCats(box, s);

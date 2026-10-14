@@ -38,6 +38,8 @@ export function menuFor(state: CafeState, targets: Target[]): Menu | null {
   const holdingCat = catInArms(state);
   const full = armsFull(state);
   for (const target of targets) {
+    // The chalkboard opens the board itself, not a menu.
+    if (target.kind === "board") continue;
     if (target.kind === "cat") {
       const cat = state.cats.get(target.id);
       // In someone else's arms: nothing to do with it but ask them.
@@ -67,7 +69,9 @@ export function menuFor(state: CafeState, targets: Target[]): Menu | null {
       const what = pieceName(piece.kind);
       title ??= what[0].toUpperCase() + what.slice(1);
       if (piece.toppled) {
-        actions.push({ label: `Stand the ${what} up`, msg: { type: "tidy", id: piece.id } });
+        // The toys knocked over are scattered: they're gathered up, not stood up.
+        const label = piece.kind === "toys" ? "Gather up the toys" : `Stand the ${what} up`;
+        actions.push({ label, msg: { type: "tidy", id: piece.id } });
         continue;
       }
       // With your arms full you can neither carry it nor sit on it.

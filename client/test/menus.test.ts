@@ -89,6 +89,16 @@ describe("the menu for what's on a tile", () => {
     expect(labels(menuFor(s, [{ kind: "piece", id: 15, tile: { x: 2, y: 2 } }]))).toEqual(["Stand the plant up"]);
   });
 
+  it("gathers up scattered toys rather than standing them up", () => {
+    const s = state();
+    s.room.furniture[1] = { ...s.room.furniture[1], kind: "toys", toppled: true };
+    expect(labels(menuFor(s, [{ kind: "piece", id: 15, tile: { x: 2, y: 2 } }]))).toEqual(["Gather up the toys"]);
+  });
+
+  it("opens no menu for the chalkboard, which opens the board instead", () => {
+    expect(menuFor(state(), [{ kind: "board", id: "board", tile: { x: 8, y: 0 } }])).toBeNull();
+  });
+
   it("offers only moving for a piece you can't sit on", () => {
     expect(labels(menuFor(state(), [{ kind: "piece", id: 15, tile: { x: 2, y: 2 } }]))).toEqual(["Move the plant"]);
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleOrder, targetsAt, tileOf } from "../src/input";
+import { cycleOrder, nameOf, targetsAt, tileOf } from "../src/input";
 import { fromWelcome } from "../src/state";
 
 function state() {
@@ -34,6 +34,16 @@ function state() {
 }
 
 describe("pointing at things", () => {
+  it("knows the chalkboard by its tile on the street wall, and Tab names it", () => {
+    const s = state();
+    const board = { kind: "board" as const, id: "board" as const, tile: { x: 8, y: 0 } };
+    expect(targetsAt(s, { x: 8, y: 0 }, 0)).toEqual([board]);
+    expect(targetsAt(s, { x: 7, y: 0 }, 0)).toEqual([]);
+    expect(cycleOrder(s, { x: 8, y: 1 }, 0)[0]).toEqual(board);
+    expect(tileOf(s, board, 0)).toEqual({ x: 8, y: 0 });
+    expect(nameOf(s, board)).toBe("the chalkboard");
+  });
+
   it("finds the cat on a tile, and never you", () => {
     const s = state();
     expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([{ kind: "cat", id: "mochi", tile: { x: 6, y: 5 } }]);
@@ -42,7 +52,7 @@ describe("pointing at things", () => {
 
   it("steps through cats and people inside, nearest first", () => {
     const order = cycleOrder(state(), { x: 5, y: 5 }, 0).map((t) => t.id);
-    expect(order).toEqual(["mochi", 2, "tora"]);
+    expect(order).toEqual(["mochi", 2, "tora", "board"]);
   });
 
   it("finds a piece that moves, after any cat on it, and steps to it too", () => {
@@ -56,7 +66,7 @@ describe("pointing at things", () => {
       { kind: "piece", id: 14, tile: { x: 6, y: 5 } },
     ]);
     expect(targetsAt(s, { x: 1, y: 5 }, 0)).toEqual([]);
-    expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual(["mochi", 14, 2, "tora"]);
+    expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual(["mochi", 14, 2, "tora", "board"]);
   });
 
   it("counts a held cat as in its holder's arms, not a target of its own", () => {
@@ -65,7 +75,7 @@ describe("pointing at things", () => {
     s.cats.set("mochi", { ...s.cats.get("mochi")!, heldBy: 2, pose: "held" });
     expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([]);
     expect(targetsAt(s, { x: 9, y: 5 }, 0)).toEqual([{ kind: "person", id: 2, tile: { x: 9, y: 5 } }]);
-    expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual([2, "tora"]);
+    expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual([2, "tora", "board"]);
   });
 
   it("finds where a target is now, for a Tab cycle made a moment ago", () => {

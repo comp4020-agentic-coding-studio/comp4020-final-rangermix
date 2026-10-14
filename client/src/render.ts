@@ -194,7 +194,24 @@ function drawPiece(ctx: CanvasRenderingContext2D, sprites: Sprites, f: Furniture
   ctx.rotate(Math.PI / 2);
   ctx.drawImage(img, -(f.w * TILE) / 2, -(f.h * TILE) / 2);
   ctx.restore();
+  // Scattered toys (slice 02): a couple more balls of yarn strewn beside it,
+  // where a cat batted them, until someone gathers them up.
+  if (f.kind === "toys") {
+    for (const [dx, dy, colour] of SCATTERED) {
+      ctx.fillStyle = colour;
+      ctx.fillRect(f.x * TILE + dx, f.y * TILE + dy, 3, 3);
+      ctx.fillStyle = "#4a3426";
+      ctx.fillRect(f.x * TILE + dx + 1, f.y * TILE + dy + 1, 1, 1);
+    }
+  }
 }
+
+/** Where scattered toys lie, from the toys' own tile, in pixels, and their colours. */
+const SCATTERED: [number, number, string][] = [
+  [-6, 11, "#c96f6f"],
+  [18, 7, "#7a9cc6"],
+  [12, 17, "#c96f6f"],
+];
 
 /** A carried piece, held up over its carrier's head. */
 function drawCarried(ctx: CanvasRenderingContext2D, sprites: Sprites, piece: FurnitureView, spot: Spot): void {

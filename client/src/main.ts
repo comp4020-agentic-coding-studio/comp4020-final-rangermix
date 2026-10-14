@@ -8,7 +8,7 @@ import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
 import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
-import { renderHere, renderSaid, renderYourCats } from "./panels";
+import { renderChalkboard, renderHere, renderSaid, renderYourCats } from "./panels";
 import { chooseLayout, saveLayout, savedLayout } from "./layout";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
@@ -129,10 +129,39 @@ function enter(me: ApiMe): void {
     cafe.send({ type: "place", to: tile });
     return true;
   };
+  // The chalkboard, read in a dialog by tapping, clicking or Tab-and-Enter on
+  // its tile in the room (slice 02): the only way on a phone, and handy anywhere.
+  const board = $("board");
+  const showBoard = () => {
+    closeMenu();
+    if (cafe.state) renderChalkboard($("board-lines"), cafe.state);
+    board.hidden = false;
+    $("board-close").focus();
+  };
+  const hideBoard = () => {
+    if (board.hidden) return;
+    board.hidden = true;
+    canvas.focus();
+  };
+  $("board-close").onclick = hideBoard;
+  board.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      hideBoard();
+    } else if (e.key === "Tab") {
+      // A dialog holds the focus until it's closed; Close is all there is to reach.
+      e.preventDefault();
+      $("board-close").focus();
+    }
+  });
   const act = (targets: Target[], at: { x: number; y: number }) => {
     if (place(at)) return;
     const state = cafe.state;
     if (!state) return;
+    if (targets.some((t) => t.kind === "board")) {
+      showBoard();
+      return;
+    }
     ringTile = at;
     const menu = menuFor(state, targets);
     if (!menu) return;
@@ -251,6 +280,8 @@ function enter(me: ApiMe): void {
     talk.peopleChanged(new Set(s.people.keys()));
     renderSaid($("said"), s);
     renderYourCats($("your-cats"), s, () => cafe.send({ type: "putTreat" }));
+    renderChalkboard($("chalk-lines"), s);
+    if (!board.hidden) renderChalkboard($("board-lines"), s);
   });
   function stop(): void {
     detach();
@@ -258,6 +289,7 @@ function enter(me: ApiMe): void {
     unsubscribe();
     stage.stop();
     closeMenu();
+    board.hidden = true;
     document.removeEventListener("pointerdown", touched);
     document.removeEventListener("keydown", touched);
     document.removeEventListener("visibilitychange", visibility);
