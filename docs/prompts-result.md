@@ -1084,3 +1084,53 @@ notes folder outside the repo.*
   cutoff above assumes the author is in Liùrú. That is inferred from crits 8
   and 9's Wednesday 13:30 cutoffs, and `docs/notes/brief-and-crits.md` notes
   it as inferred.
+
+### 9. Slices 01 and 02
+
+*Session `efabe266`, Claude Code (Opus 5.5). It began before session 8,
+which it proposed; its entry follows that one's.*
+
+*Sent 2026-10-14 16:06:22 AEDT*
+
+> give me a summary of current project state
+
+**Result.** A read-only summary: phases 1 to 3 live, six slice specs all
+`Proposed`, crit 9's cutoff passed with no `crit-9` tag, and `main` red
+on CI from one flaky browser check on docs-only commits. That check became
+session 8's task, by a proposal the user started.
+
+*Sent 2026-10-14 16:10:49 AEDT*
+
+> slice 1&2 approved, finish them
+
+**Result.** Both specs approved with their proposed defaults. Each slice was
+planned from the code as it stood, then built test first, task by task.
+- **Slice 01, fast-forward on wake** ([plan](notes/plan-slice-01-fast-forward.md)).
+  The clock and random state are saved with the cats
+  ([`a36c0b5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a36c0b5)). A replay runs in one-second steps, quiet, and
+  saves once ([`c951efe`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c951efe)). `wake()` runs before the doors
+  open, and any startup failure is a JSON line and exit code 1
+  ([`1c1a1f3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c1a1f3)). The wake-up line is narrated and checked
+  ([`b116590`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b116590)). A stop and a start of the image in the spec,
+  with CI on a Docker volume ([`c85f704`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c85f704)). An 8-hour replay
+  takes 54 ms locally. Live redeploys log 3- to 5-second gaps, each taking
+  0 ms.
+- **Slice 01's review** (fresh agent, [findings](notes/reviews/slice-01-findings.md)):
+  1 major (waking got the cats up) and 8 minor. Answered test first:
+  findings 1 ([`96a6cca`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/96a6cca)), 2 and 3 ([`1e84f3d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1e84f3d)),
+  5 ([`afdc819`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/afdc819)), 6 ([`8866b2b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8866b2b)), and 7 and 9
+  ([`779fa45`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/779fa45)).
+- **Slice 02, the chalkboard and the night's traces**
+  ([plan](notes/plan-slice-02-chalkboard.md)). Lines are fixed fields, so
+  none can carry speech; first meetings name people
+  ([`11dbf30`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/11dbf30)). Lines are kept across restarts and replays
+  ([`857d7c8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/857d7c8)). Scattered toys are narrated and tidied
+  ([`8a893ed`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8a893ed)). The board is read in the desktop panel and
+  in a dialog opened from its tile ([`53fa6af`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/53fa6af)). Spec and
+  browser checks ([`b8a4800`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b8a4800)) found two client faults, both
+  fixed: the board was the first Tab, and the first Shift+Tab skipped the
+  last thing.
+- **Not done:** the usage limit ran out.
+  [`notes/slices-01-02-status.md`](notes/slices-01-02-status.md) lists
+  what's left: slice 01's findings 4 and 8 and the live night; slice 02's
+  docs, review and live check.
