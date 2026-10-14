@@ -43,9 +43,10 @@ jobs:
         run: pnpm check
         env:
           APP_URL: http://localhost:8080
-          # spec/restart.test.ts stops the app, lets it sleep, and starts it
-          # again: the cats come back moved by the gap (slice 01)
+          # spec/restart.test.ts stops the app, lets it sleep, starts it again,
+          # and reads the restart's own wake-up line (slice 01)
           APP_RESTART: docker stop app && sleep 30 && docker start app
+          APP_LOGS: docker logs app 2>&1
       - name: Check the app's own log lines
         # after the spec's visitors have been and gone, across both of the
         # app's starts: every line says when, what and who, every start logs

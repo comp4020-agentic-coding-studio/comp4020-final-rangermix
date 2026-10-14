@@ -33,13 +33,14 @@ spec.
 
 ## Stopping and starting the app
 
-`restart.test.ts` stops the app, lets it sleep and starts it again (slice 01),
-so it needs to be told how: CI sets `APP_RESTART` to
-`docker stop app && sleep 30 && docker start app`, with `/data` on a Docker
-volume so the database survives. Without `APP_RESTART` it's skipped. To run it
-locally, start the image the same way and give it the command:
+`restart.test.ts` stops the app, lets it sleep, starts it again, and reads the
+restart's own wake-up line (slice 01), so it needs to be told how: CI sets
+`APP_RESTART` to `docker stop app && sleep 30 && docker start app` and
+`APP_LOGS` to `docker logs app 2>&1`, with `/data` on a Docker volume so the
+database survives. Without both it's skipped. To run it locally, start the
+image the same way and give it the commands:
 
 ```bash
 docker run -d --init --name app -p 8080:8080 -e PORT=8080 -v app-data:/data app
-APP_RESTART="docker stop app && sleep 30 && docker start app" pnpm check
+APP_RESTART="docker stop app && sleep 30 && docker start app" APP_LOGS="docker logs app 2>&1" pnpm check
 ```
