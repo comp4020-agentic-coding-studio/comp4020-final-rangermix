@@ -82,7 +82,12 @@ Follow the links for the exact wording.
 - **Cutoffs** are two hours before the group's session. C8 moved for the Labour
   Day holiday: Shítāo Tue 6 Oct 12:00, Bādà Wed 7 Oct 13:30, and the Wednesday
   groups keep their usual Wed 7 Oct cutoffs (07:00, 08:30, 12:00, 13:30).
-  Which group this project's author is in isn't recorded here yet.
+  The prompt log puts crits 8 and 9 at Wednesday 13:30 (7 and 14 October),
+  and only Liùrú (Wed 15:30 to 17:00) has that cutoff in both weeks: Bādà's
+  moved to Wednesday for week 9 only. The crits page and the studio crit
+  model give week 11 no other time, so crit 10's cutoff is Wed 21 October
+  13:30 (read 14 October). The group itself is inferred, not confirmed by the
+  user.
 
 ## Not yet checked
 

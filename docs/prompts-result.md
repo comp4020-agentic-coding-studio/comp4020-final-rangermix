@@ -1018,3 +1018,69 @@ Tab pointing where a cat had been. It still stands in the prompt log and in
 [`25ff89d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/25ff89d).
 The result is 1,100 words counting hashes, and the evidence check passes
 with 21 cited commits.
+
+---
+
+## Crit 10: "Fly by instruments" (cutoff Wed 21 October 2026, 13:30 AEDT)
+
+### 8. The flaky ring check
+
+*Session `c232fad1`, Claude Code (Opus 5.5). The user started it from a
+proposal made in session `efabe266`, which began with their prompt for a
+summary of the project at 16:06:22 AEDT. Its prompt is the brief that
+session wrote, quoted below without the line the app adds naming a shared
+notes folder outside the repo.*
+
+*Sent 2026-10-14 16:09:02 AEDT*
+
+> Background (from the session that started this one):
+> Catppuccino is a COMP4020 final project: a real-time multi-user pixel-art cat café with a Rust server and a TypeScript canvas client, deployed on Fly at comp4020-final-rangermix.fly.dev, with CI in GitHub Actions running `cargo test` plus a vitest/Playwright spec in spec/. Phases 1–3 are built and live. The repo has strict harness rules in AGENTS.md: test first, commit and push per task directly on main, every prompt logged verbatim in docs/prompts-result.md with commit hashes taken from git log, working state kept in docs/notes/. On 14 Oct the user asked for a project summary, and that summary found this flaky browser check failing on docs-only commits; this session is the follow-up.
+>
+> Task:
+> The browser check "in the bigger room, keeps a keyboard-opened ring round a cat well away from you" in spec/browser.test.ts (around line 330) fails intermittently in CI and has turned `main` red. It failed on two commits that changed only docs: GitHub Actions run 38396585523 (13 Oct, "reflection & readme": "the ring is round its cat: expected 116.99 to be less than or equal to 72") and the run for "Mark each crit in the prompt log" (12 Oct, expected 130.99). CI's deploy job is skipped whenever this fails.
+>
+> Task:
+> 1. Read AGENTS.md (CLAUDE.md links to it) and docs/design.md first, and follow their rules.
+> 2. Find the root cause. Hypothesis, not confirmed: the test records `cat.at` when it tabs to the cat, then waits 500ms. During that wait the cat walks on and the ring follows it, so the test compares against a stale tile. The other possibility is a real client bug: in layout B (the bigger room that follows you), the ring doesn't track its cat, or the view snaps back to you. Reproduce it locally, running the spec repeatedly if needed, and decide which it is from evidence.
+> 3. If the bug is in the client, fix it test-first: get a check that fails reliably, then fix the code. If it's the test, make it deterministic, for example by reading the cat's position from the latest frames at the moment of measuring. Don't loosen the 1.5-tile tolerance, and don't wait on a cat's consent, which an earlier fix (commit 25ff89d) removed for the same reason.
+> 4. Run the whole spec and `cargo test` locally, then push to `main` and confirm CI goes green and the deploy runs.
+> 5. Log the prompt and result in docs/prompts-result.md as AGENTS.md describes. Crit 9's cutoff (Wed 14 Oct 2026, 13:30 AEDT) has passed, so this entry starts the crit 10 section; look up crit 10's cutoff for the author's group before writing its heading. Record what was found in docs/notes/.
+>
+> Done when: the cause is named with evidence, the fix is committed and pushed with a test seen failing before it (if it was a client bug), CI on main is green, and the prompt log and notes are updated.
+
+**Result.** The check was right and the client was wrong.
+- **The cause.** In layout B the view stops at the room's edges, so a cat
+  lying against a wall sits at the screen's edge. To keep every button on
+  screen and clear of the bars, the ring slid inwards off its tile, onto the
+  cat, by up to its radius plus half a button. The check failed whenever the
+  cat it picked was napping by a wall. Both failing runs were at night, with
+  cats on the cat bed at (0,7) and the sofa at (0,5).
+  - A local probe reproduced 116.99 px exactly, for a cat on the cat bed.
+  - The new check reproduced 130.99 px exactly, for the end of the sofa.
+- **Ruled out:** both of the brief's ideas. The ring is anchored to the tile
+  the check measures, not to the cat. And the room holds still from the
+  keypress that opens the ring.
+- **The fix,**
+  [`4e54ca4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4e54ca4).
+  While a ring is open, the room moves over, past its edge if it must, by
+  however far the ring would have slid. The ring stays round its tile, with
+  every button on screen. Touch rings had the same fault and get the same
+  fix. `design.md`'s line on layout B now says so.
+- **Test first.** A new browser check opens a ring by keyboard on the sofa's
+  end, against the left wall. It failed three times out of three before the
+  fix and passes after it. A new unit test for `ringCentre`, the clamp
+  factored out of `ringPositions`, also failed first. The original check
+  keeps its 1.5-tile tolerance and waits on no cat.
+- **Checked.**
+  - Locally, against a release build on a fresh database: the whole spec
+    (48 checks), the browser file five times in a row, the client's 77 tests
+    and all 250 Rust tests.
+  - CI: the fix's own run was cancelled in the queue by a newer push from
+    the slice 01 session, which shares this checkout. The next run, on
+    [`1c1a1f3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c1a1f3),
+    contains the fix and passed all three jobs, including the deploy. All
+    ten browser checks passed, and the live bundle has the fix.
+- **Recorded.** `docs/notes/ring-check-flake.md` holds the evidence. Crit 10's
+  cutoff above assumes the author is in Liùrú. That is inferred from crits 8
+  and 9's Wednesday 13:30 cutoffs, and `docs/notes/brief-and-crits.md` notes
+  it as inferred.
