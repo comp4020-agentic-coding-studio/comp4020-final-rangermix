@@ -299,7 +299,14 @@ renamed.
   rules (eight hours is about 29,000 steps), then open the doors. Gaps over a
   week replay only the last week. The café's schedule runs during the replay:
   bowls refill, treats reset at midnight Canberra time, and chalkboard lines
-  older than 24 hours drop off.
+  older than 24 hours drop off. The world is built at the saved clock with
+  the saved random generator (`world` keys `saved_at` and `rng`, written in
+  the cats' save job), so the same save and the same gap make the same night.
+  The replay writes nothing and logs nothing on the way; what it changed is
+  saved once, and the port opens only after that, so a visitor sees the
+  page's usual "Connecting…" meanwhile. A saved clock or random state that
+  can't be read wakes the café anyway, with a warning line: no replay, or a
+  fresh generator. (Slice 01, [plan](notes/plan-slice-01-fast-forward.md).)
 - **Redeploys** are short sleeps: the old machine saves on the stop signal, the
   new one loads and fast-forwards a few seconds, clients reconnect, and tabs on
   the old build reload.
@@ -307,6 +314,7 @@ renamed.
 - **Failures are loud:** a bad message gets an error, never a crash; a panic
   exits the process and Fly restarts it from the last save; a database that
   won't open stops the server rather than letting it serve an empty café.
+  Any failure to start is one JSON `error` line, then exit code 1.
   Fly's daily volume snapshots, kept 5 days, are the backup.
 
 ## Accounts and safety
@@ -384,7 +392,10 @@ renamed.
   behaviour changes (a `cat` line when a cat starts to nap, hide, eat, play,
   perch, investigate, knock something over, come to someone, greet, take a
   lap or jump down; never per step); bans; the bowls' refills; each
-  wake-up's fast-forward summary; errors.
+  wake-up's fast-forward summary (one `cafe` line, `what = "woke"`, before
+  every `listening`: whether it's the first start, the gap, the steps
+  replayed, whether the week's cap cut it, how long it took, the bowls'
+  refills and each cat's walks); errors.
 - **Never logged:** bubble text (a `said` line records who, the length and who
   it was addressed to), passwords, recovery codes, session tokens, IP
   addresses.
@@ -410,7 +421,13 @@ renamed.
   seventh person lands at the window and can only talk, and the first in line
   walks in when a seat frees); bubbles never replayed on reconnect; the
   100-character cap, burst limits and blocklist; first grab wins; sign-up's
-  one-time recovery code, and recovery; the log-in card's link to `/readme/`.
+  one-time recovery code, and recovery; the log-in card's link to `/readme/`;
+  a stop and a start of the container, which brings the cats back moved by
+  the gap with the furniture and trust as they were (CI keeps `/data` on a
+  Docker volume and gives the spec the command as `APP_RESTART`; elsewhere
+  it's skipped). After the spec, CI checks the app's own log lines: every
+  line has a time and a target, every start logs its wake-up, and none holds
+  anything said.
 - **Browser checks** (Playwright, in `spec/browser.test.ts`): a keyboard-only
   pass at 390×844 and 1920×1080 with a resize mid-use, a tap on a cat by
   touch, the phone layout switch, and one visitor's change reaching

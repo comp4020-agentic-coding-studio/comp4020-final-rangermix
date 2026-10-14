@@ -691,3 +691,46 @@ describe.skipIf(!restart)("a stop and a start", () => {
 ## Execution log
 
 Where carrying out this plan departed from it, task by task, and why.
+
+- **Task 1 (2026-10-14).** As planned
+  ([`a36c0b5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a36c0b5)).
+  `rand::SeedableRng` is imported into `world` for its tests only.
+- **Task 2.** As planned
+  ([`c951efe`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c951efe)),
+  except that only `replay_start` is re-exported; the tests import
+  `MAX_REPLAY_MS` from the module, and `TrustBook::rows` is test-only. The
+  margins are wide: over seeds 1 to 5, an empty night has Burakku walking
+  about 1,850 times, Tora about 600 and Mochi about 60. Seed 6 does knock
+  something over in the night, as the plan guessed. The 7-day replay takes
+  about 20 seconds in a debug build. The replay has no caller until Task 3,
+  so clippy's dead-code lints fail on its own; it was committed alone and
+  pushed with Task 3.
+- **Task 3.**
+  ([`1c1a1f3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c1a1f3))
+  Added `an_unreadable_clock_wakes_without_a_replay_and_says_so`, since
+  review focus 2 covers the clock as well as the random state. The
+  stop-and-start test gives Mochi a friend by a trust row in the store and
+  moves the cushion through the saved arrangement, rather than by petting
+  and carrying: the property is the same, with less to go wrong. The
+  store-level `a_file_that_isnt_a_database_wont_open` passed on its first
+  run, since `Store::open` already refused such a file. The test seen
+  failing was the binary's, which printed a bare `Error: file is not a
+  database` instead of a JSON line.
+- **Task 4.**
+  ([`b116590`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b116590))
+  The time taken reads "412 ms" under a second and "2.5 s" over it, rather
+  than "0.4s", since nearly every wake takes well under a second and "0.0s"
+  says nothing. Zero steps reads "woke with nothing to catch up on".
+- **Task 5.**
+  ([`c85f704`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c85f704))
+  `APP_RESTART` sleeps 30 seconds, not 20, so the replay is sure to move a
+  cat. The cats are compared by tile only, since waking resets their poses
+  and a changed pose alone proves nothing about a replay. The check also
+  holds that nothing toppled is stood up while nobody is inside. Run against
+  a locally built image: with `--tmpfs /data` it failed (the account itself
+  was gone: 401); with a volume it passed three times in a row, and the
+  whole `pnpm check` (51 spec checks, 77 client tests) passed with the
+  restart in the middle of it. The README's note went to its own section at
+  the end, after the course's text.
+- **Task 6.** Measured in a release build here: 8 hours in 54 ms, 7 days in
+  708 ms ([slice-01-wake.md](slice-01-wake.md)).

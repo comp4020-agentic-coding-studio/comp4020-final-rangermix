@@ -48,4 +48,10 @@ starts, using the same rules as live play.
   at midnight Canberra time, and chalkboard lines older than 24 hours drop off.
 - Gaps longer than a week replay only the last week, since by then the cats'
   needs have settled. Eight hours is about 29,000 steps.
-- The commits that carry it out will be linked here as they land.
+- The commits that carry it out, in slice 01
+  ([plan](../notes/plan-slice-01-fast-forward.md)):
+  [`a36c0b5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a36c0b5) the clock and the random state saved with the cats;
+  [`c951efe`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c951efe) the replay;
+  [`1c1a1f3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c1a1f3) waking on boot, and failing loudly;
+  [`b116590`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b116590) the wake-up's line, narrated and checked;
+  [`c85f704`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c85f704) a stop and a start of the image in the spec.

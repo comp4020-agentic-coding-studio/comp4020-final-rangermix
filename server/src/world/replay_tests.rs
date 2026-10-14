@@ -181,3 +181,17 @@ async fn a_replay_saves_what_it_changed_before_anyone_is_let_in() {
     let rng = store.call(|c| crate::store::get_world(c, "rng")).await.unwrap().unwrap();
     assert_eq!(serde_json::from_str::<ChaCha8Rng>(&rng).unwrap(), w.rng);
 }
+
+/// Not a check: how long a replay holds the doors, for docs/notes/slice-01-wake.md.
+/// `cargo test --release -p cafe measure_replay_times -- --ignored --nocapture`
+#[test]
+#[ignore]
+fn measure_replay_times() {
+    for (label, gap) in [("8 hours", 8 * HOUR), ("7 days", MAX_REPLAY_MS)] {
+        let now = canberra(2026, 10, 14, 7, 0);
+        let mut w = world_at(1, now - gap);
+        let began = std::time::Instant::now();
+        let r = w.replay(now);
+        println!("{label}: {} steps in {} ms ({:?})", r.steps, began.elapsed().as_millis(), r.walks);
+    }
+}

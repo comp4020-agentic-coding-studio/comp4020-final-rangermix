@@ -1,6 +1,6 @@
 # 01. The café keeps living while it sleeps
 
-- **Status:** Planned (approved 2026-10-14 with the proposed default for its open question)
+- **Status:** Built (approved 2026-10-14 with the proposed default for its open question); in review
 - **Plan:** [`docs/notes/plan-slice-01-fast-forward.md`](../notes/plan-slice-01-fast-forward.md)
 - **Design:** "The world never stops" under The café; Persistence and
   fast-forward; Logging ("each wake-up's fast-forward summary");
