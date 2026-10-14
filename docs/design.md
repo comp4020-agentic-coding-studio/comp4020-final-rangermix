@@ -305,8 +305,12 @@ renamed.
   the saved random generator (`world` keys `saved_at` and `rng`, written in
   the cats' save job), so the same save and the same gap make the same night.
   The replay writes nothing and logs nothing on the way; what it changed is
-  saved once, and the port opens only after that, so a visitor sees the
-  page's usual "Connecting…" meanwhile. A saved clock or random state that
+  saved once, and the port opens only after that. Meanwhile a tab already
+  open shows "Reconnecting…", and someone opening the café waits on the page
+  loading while Fly's proxy holds the request. At the machine's baseline CPU
+  that's about 2 seconds after eight hours asleep, and about 30 at the
+  week's cap ([slice-01-wake.md](notes/slice-01-wake.md)). A replay that
+  panics is logged, and the café wakes at now from the save without it. A saved clock or random state that
   can't be read wakes the café anyway, with a warning line: no replay, or a
   fresh generator. (Slice 01, [plan](notes/plan-slice-01-fast-forward.md).)
 - **Redeploys** are short sleeps: the old machine saves on the stop signal, the

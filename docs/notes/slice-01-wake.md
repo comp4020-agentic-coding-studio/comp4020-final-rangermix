@@ -29,6 +29,34 @@ The local Docker image (the one Fly runs, on this machine), stopped for 30
 seconds and started again by `spec/restart.test.ts`, logged
 `"gap_secs":30,"steps":30,"took_ms":0` each time.
 
+## Measured at Fly's baseline CPU
+
+Slice 01's review, finding 8. A `shared-cpu-1x` is guaranteed 1/16 of a core
+and bursts above it while it has credit, so the image was run here with
+`--cpus=0.0625`, with `/data` bind-mounted so the saved clock could be set
+back, then stopped and started (2026-10-14, after the review's fixes):
+
+| Asleep | Steps | Replay (`took_ms`) | Start to answering |
+| --- | --- | --- | --- |
+| 8 hours | 28,800 | 1,301 ms | 1.9 s |
+| 8 days (capped at 7) | 604,800 | 28,893 ms | 29.5 s |
+
+So the judged line, "waking after eight hours takes a few seconds at most
+on the live machine", holds even at the baseline. The week's cap costs
+about half a minute at the baseline, before the port opens. Whether Fly's
+proxy holds a first request that long, or shows its own error first, isn't
+verified. If it errors, the visitor's next try finds the café awake,
+because the replay has saved by then. If that's not good enough, there are
+two ways out, both the user's to choose: a shorter cap (it's a tunable
+number), or a page served at once while the café wakes.
+
+The first try at this, before the review's fixes, showed every cat
+standing still for the whole week. The saved clock had been set back but
+the cats' saved timers hadn't, so finding 1's restored timers froze them.
+A normal save can't do that, but a clock that steps back can. It's guarded
+in `a35beb1`: a timer further ahead than any pose lasts, or a walk not yet
+begun, isn't kept.
+
 ## Measured live
 
 - **After the deploy:** pending until slice 01's last push has deployed.

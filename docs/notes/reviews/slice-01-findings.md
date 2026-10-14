@@ -296,3 +296,48 @@ skipped, 30.9 s) and the log check, and both passed.
 - A panic in the live world task, spawned with `tokio::spawn`, doesn't exit
   the process, though design.md:314-315 says it does. The server stays up
   with a dead world. This is phase 3's; finding 6 is the replay's version.
+
+## Answers
+
+By the builder, 2026-10-14. Each fix was test first. A test that only
+strengthened a check was seen failing under the mutation the finding
+describes. Commits:
+
+1. **Fixed** in [`96a6cca`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/96a6cca).
+   A cat's save keeps its pose and timer, and a walk under way with what
+   it's for. Plans naming a person, a piece or a treat aren't kept, and a
+   held or lap cat comes back on its own feet. Test: over ten seeds, a cat
+   that lay down to nap still naps on the same tile after a ten-second stop
+   and its replay. Measuring finding 8 then turned up a follow-on, guarded
+   in [`a35beb1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a35beb1):
+   a timer further ahead than any pose lasts, or a walk not yet begun,
+   isn't kept, since it can only come from a clock that stepped back.
+2. **Fixed** in [`1e84f3d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1e84f3d):
+   a minute either side of 7:00 and 18:00 on both changeover days. Seen
+   failing under a fixed UTC+10 and a fixed UTC+11 schedule.
+3. **Fixed** in [`1e84f3d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1e84f3d):
+   a nine-day wake test. Seen failing with the cap taken out of `wake`.
+4. **Fixed** in [`b0e73ca`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b0e73ca).
+   The check reads the restart's own `woke` line through `APP_LOGS`, and
+   puts a new cushion down before the stop. The cats' tile comparison is
+   gone. After finding 1 it failed twice in CI on a correct café whose cats
+   were all napping, so whether the replay moves the cats in character is
+   left to `cargo test`. It passed three times in a row against the image.
+5. **Fixed** in [`afdc819`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/afdc819).
+   Each fired job runs under a savepoint, the periodic save carries the
+   arrangement, a replay's end is one job (the chalkboard too), and `wake`
+   flushes before the doors open.
+6. **Fixed** in [`8866b2b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8866b2b).
+   `catch_unwind` round the replay: on a panic, one JSON error line, and
+   the café wakes at now from the save, with `failed` on the woke line. A
+   JSON panic hook covers other panics. The live world task's panic (noted,
+   out of scope) is left as a follow-up.
+7. **Fixed** in [`779fa45`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/779fa45):
+   `first` means nothing was ever saved.
+8. **Measured and corrected.** At 1/16 of a CPU, the 8-hour wake takes
+   1.9 s from start to answering and the capped one 29.5 s
+   ([slice-01-wake.md](../slice-01-wake.md)). design.md now says what a
+   visitor sees meanwhile. Whether Fly's proxy waits 30 s is unverified,
+   and the options are set out for the user.
+9. **Fixed** in [`779fa45`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/779fa45):
+   the walks are JSON pairs, and the narrator reads both forms.
