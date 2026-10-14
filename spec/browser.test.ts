@@ -1,10 +1,11 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { baseUrl, uniqueName } from "./helpers";
+import { baseUrl, meetACat, signUp, uniqueName, Visitor } from "./helpers";
 
 // Browser checks (design.md, "Checks"): the keyboard-only pass at both
 // marking sizes with a resize mid-use, the phone by touch, the layout switch,
-// and something one visitor does reaching another's page.
+// something one visitor does reaching another's page, and the chalkboard read
+// at both sizes by keyboard, touch and mouse.
 
 let browser: Browser;
 const contexts: BrowserContext[] = [];
@@ -138,6 +139,12 @@ async function expectRingClear(page: Page): Promise<void> {
     expect(r.y).toBeGreaterThanOrEqual(bars[0]);
     expect(r.y + r.height).toBeLessThanOrEqual(bars[1]);
   }
+}
+
+/** The middle of the chalkboard's tile on the street wall, in CSS pixels. */
+async function boardTile(page: Page): Promise<{ x: number; y: number }> {
+  const box = (await page.locator("#room").boundingBox())!;
+  return { x: box.x + 8.5 * (box.width / 12), y: box.y + 0.5 * (box.height / 10) };
 }
 
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
@@ -403,5 +410,64 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await a.page.locator("#carrying").waitFor();
     await a.page.locator("#put-back").click();
     await a.page.locator("#carrying").waitFor({ state: "hidden" });
+  });
+
+  it("shows the chalkboard in the desktop's panel, with someone's new line within a second", async () => {
+    const v = await visit({ width: 1920, height: 1080 });
+    await expect.poll(() => v.page.locator("#chalkboard h2").textContent()).toBe("The chalkboard");
+    expect(await v.page.locator("#chalkboard").isVisible()).toBe(true);
+    // Someone else meets a cat, over the WebSocket: a line on everyone's board.
+    const account = await signUp();
+    const other = await Visitor.connect(account.cookie);
+    try {
+      await meetACat(other);
+      const sniffed = Date.now();
+      await v.page.locator("#chalk-lines li", { hasText: `met ${account.name} for the first time` }).waitFor({ timeout: 1000 });
+      expect(Date.now() - sniffed).toBeLessThan(1000);
+    } finally {
+      await other.leave();
+    }
+  });
+
+  it("opens the board from its tile in the room, by mouse and by keyboard", async () => {
+    const v = await visit({ width: 1920, height: 1080 });
+    const board = v.page.locator("#board");
+    const at = await boardTile(v.page);
+    await v.page.mouse.click(at.x, at.y);
+    await board.waitFor();
+    expect(await focused(v.page)).toBe("board-close");
+    expect(await v.page.locator("#board-lines li").count()).toBeGreaterThan(0);
+    await v.page.locator("#board-close").click();
+    await board.waitFor({ state: "hidden" });
+    expect(await focused(v.page)).toBe("room");
+    // By keyboard: the pointer out, and the chalkboard is last in the Tab
+    // cycle, so one Shift+Tab reaches it; Enter opens it, Escape gives the room back.
+    await v.page.keyboard.press("ArrowRight");
+    await v.page.keyboard.press("Shift+Tab");
+    await v.page.waitForTimeout(100);
+    expect(await v.page.evaluate(() => document.getElementById("announcer")?.textContent ?? "")).toBe("the chalkboard");
+    await v.page.keyboard.press("Enter");
+    await board.waitFor();
+    expect(await focused(v.page)).toBe("board-close");
+    await v.page.keyboard.press("Tab");
+    expect(await focused(v.page), "the dialog holds the focus").toBe("board-close");
+    await v.page.keyboard.press("Escape");
+    await board.waitFor({ state: "hidden" });
+    expect(await focused(v.page)).toBe("room");
+  });
+
+  it("opens the board by tapping the chalkboard on a phone, where the panel's copy is hidden", async () => {
+    const v = await visit({ width: 390, height: 844 }, true);
+    expect(await v.page.locator("#chalkboard").isVisible()).toBe(false);
+    const at = await boardTile(v.page);
+    await v.page.touchscreen.tap(at.x, at.y);
+    const board = v.page.locator("#board");
+    await board.waitFor();
+    const r = (await board.boundingBox())!;
+    expect(r.x).toBeGreaterThanOrEqual(0);
+    expect(r.x + r.width).toBeLessThanOrEqual(390);
+    expect(await v.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await v.page.locator("#board-close").tap();
+    await board.waitFor({ state: "hidden" });
   });
 });

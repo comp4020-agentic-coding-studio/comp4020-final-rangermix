@@ -120,3 +120,32 @@ export function catPoses(v: Visitor): { id: string; pose: string }[] {
   }
   return [...poses].map(([id, pose]) => ({ id, pose }));
 }
+
+/**
+ * Pets the cats in turn until one sniffs your hand: a first meeting, which
+ * leaves trust and a chalkboard line (slice 02). Returns the cat, your trust
+ * in it, and when the sniff arrived.
+ */
+export async function meetACat(v: Visitor): Promise<{ cat: string; trust: { cat: string; value: number; level: string }; sniffedAt: number }> {
+  const you = v.welcome.you as number;
+  for (let round = 0; round < 3; round++) {
+    for (const cat of v.welcome.snapshot.cats as Msg[]) {
+      const from = v.messages.length;
+      v.send({ type: "pet", cat: cat.id });
+      try {
+        const m = await v.next(
+          (m) => (m.type === "catReacted" && m.cat === cat.id && m.reaction.kind === "sniff" && m.reaction.by === you) || m.type === "error",
+          10_000,
+          from,
+        );
+        if (m.type === "error") continue;
+        const sniffedAt = Date.now();
+        const trust = (await v.next((m) => m.type === "yourTrust" && m.trust.cat === cat.id, 3_000, from)).trust;
+        return { cat: cat.id, trust, sniffedAt };
+      } catch {
+        // Hiding, or it walked off: try the next one.
+      }
+    }
+  }
+  throw new Error("no cat let itself be met");
+}

@@ -56,10 +56,15 @@ export function targetsAt(state: CafeState, tile: Tile, localNow: number): Targe
   return [...living, ...movable(state).filter((m) => m.covers(tile)).map((m) => m.target), ...boards(state).filter((b) => at(b.tile))];
 }
 
-/** What Tab steps through: nearest first. */
+/**
+ * What Tab steps through: the cats, people and furniture, nearest first, then
+ * the chalkboard. It hangs by the door where everyone comes in, so nearest
+ * first would make it the first Tab; last, Shift+Tab reaches it at once.
+ */
 export function cycleOrder(state: CafeState, from: Tile, localNow: number): Target[] {
   const distance = (t: Target) => Math.abs(t.tile.x - from.x) + Math.abs(t.tile.y - from.y);
-  return [...everyone(state, localNow), ...movable(state).map((m) => m.target), ...boards(state)].sort((a, b) => distance(a) - distance(b));
+  const things = [...everyone(state, localNow), ...movable(state).map((m) => m.target)].sort((a, b) => distance(a) - distance(b));
+  return [...things, ...boards(state)];
 }
 
 /** Where a target is now, or null if it's no longer there to act on. */
@@ -139,8 +144,10 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
       }
       if (cycle.length === 0) return;
       // The cycle was made when Tab was first pressed; things have moved since.
+      const step = e.shiftKey ? -1 : 1;
       for (let tries = 0; tries < cycle.length; tries++) {
-        index = (index + (e.shiftKey ? -1 : 1) + cycle.length) % cycle.length;
+        // A fresh cycle starts before the first; going back from there is the last.
+        index = index < 0 && step < 0 ? cycle.length - 1 : (index + step + cycle.length) % cycle.length;
         const now = tileOf(state, cycle[index], Date.now());
         if (!now) continue;
         pointer.tile = now;

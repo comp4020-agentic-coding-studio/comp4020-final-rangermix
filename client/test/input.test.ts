@@ -39,7 +39,10 @@ describe("pointing at things", () => {
     const board = { kind: "board" as const, id: "board" as const, tile: { x: 8, y: 0 } };
     expect(targetsAt(s, { x: 8, y: 0 }, 0)).toEqual([board]);
     expect(targetsAt(s, { x: 7, y: 0 }, 0)).toEqual([]);
-    expect(cycleOrder(s, { x: 8, y: 1 }, 0)[0]).toEqual(board);
+    // Last in the cycle however near: the first Tab is still a cat, a person or
+    // a piece to act on, and Shift+Tab reaches the board at once.
+    expect(cycleOrder(s, { x: 8, y: 1 }, 0).at(-1)).toEqual(board);
+    expect(cycleOrder(s, { x: 8, y: 1 }, 0)[0].kind).not.toBe("board");
     expect(tileOf(s, board, 0)).toEqual({ x: 8, y: 0 });
     expect(nameOf(s, board)).toBe("the chalkboard");
   });
