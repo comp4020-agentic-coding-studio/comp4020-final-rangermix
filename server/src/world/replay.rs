@@ -75,6 +75,7 @@ impl World {
         self.store = store;
         self.save(self.last_tick);
         self.save_arrangement();
+        self.save_chalk();
         replay
     }
 }

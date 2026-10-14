@@ -63,6 +63,13 @@ const MIGRATIONS: &[&str] = &[
         used INTEGER NOT NULL,
         received INTEGER NOT NULL
     );",
+    // Slice 02: the chalkboard's lines of the last day, each as its JSON.
+    "CREATE TABLE chalkboard (
+        id INTEGER PRIMARY KEY,
+        at INTEGER NOT NULL,
+        line TEXT NOT NULL
+    );
+    CREATE INDEX chalkboard_at ON chalkboard (at);",
 ];
 
 impl Store {
@@ -357,6 +364,33 @@ pub fn put_treats(conn: &Connection, row: &TreatRow) -> rusqlite::Result<()> {
     Ok(())
 }
 
+pub fn put_chalk(conn: &Connection, at: u64, line: &str) -> rusqlite::Result<()> {
+    conn.execute("INSERT INTO chalkboard (at, line) VALUES (?1, ?2)", params![at as i64, line])?;
+    Ok(())
+}
+
+/// Deletes the lines written at or before `before`.
+pub fn drop_chalk(conn: &Connection, before: u64) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM chalkboard WHERE at <= ?1", params![before as i64])?;
+    Ok(())
+}
+
+/// Every line kept, by when it was written.
+pub fn all_chalk(conn: &Connection) -> rusqlite::Result<Vec<(u64, String)>> {
+    let mut stmt = conn.prepare("SELECT at, line FROM chalkboard ORDER BY at, id")?;
+    let rows = stmt.query_map([], |r| Ok((r.get::<_, i64>(0)? as u64, r.get(1)?)))?;
+    rows.collect()
+}
+
+/// Puts these lines in place of every line kept: the end of a replay.
+pub fn replace_chalk(conn: &Connection, lines: &[(u64, String)]) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM chalkboard", [])?;
+    for (at, line) in lines {
+        put_chalk(conn, *at, line)?;
+    }
+    Ok(())
+}
+
 pub fn put_world(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT INTO world (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -513,6 +547,22 @@ mod tests {
         assert!(user_by_name(&c, "sam").unwrap().is_some());
         let version: i64 = c.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
         assert_eq!(version as usize, MIGRATIONS.len());
+    }
+
+    #[test]
+    fn chalk_rows_are_kept_in_order_and_dropped_by_age() {
+        let (_d, c) = db();
+        put_chalk(&c, 5, "five").unwrap();
+        put_chalk(&c, 3, "three").unwrap();
+        put_chalk(&c, 9, "nine").unwrap();
+        assert_eq!(
+            all_chalk(&c).unwrap(),
+            vec![(3, "three".to_string()), (5, "five".to_string()), (9, "nine".to_string())]
+        );
+        drop_chalk(&c, 5).unwrap();
+        assert_eq!(all_chalk(&c).unwrap(), vec![(9, "nine".to_string())]);
+        replace_chalk(&c, &[(1, "one".to_string()), (2, "two".to_string())]).unwrap();
+        assert_eq!(all_chalk(&c).unwrap(), vec![(1, "one".to_string()), (2, "two".to_string())]);
     }
 
     #[test]

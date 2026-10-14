@@ -39,6 +39,10 @@ impl World {
             return;
         }
         let line = ChalkLine { at: now, cat, what };
+        if let Some(store) = &self.store {
+            let json = serde_json::to_string(&line).expect("a chalkboard line serialises");
+            store.fire(move |c| crate::store::put_chalk(c, now, &json));
+        }
         out.push(Out {
             to: To::All,
             msg: ServerMsg::Chalked { line: line.clone() },
@@ -49,12 +53,46 @@ impl World {
         }
     }
 
-    /// Drops the lines a day old.
+    /// Drops the lines a day old, here and in the store.
     pub(super) fn chalk_tick(&mut self, now: u64) {
         let day = self.tuning.chalk_hours * 3_600_000;
+        let before = self.chalk.len();
         while self.chalk.front().is_some_and(|l| now.saturating_sub(l.at) >= day) {
             self.chalk.pop_front();
         }
+        if self.chalk.len() < before
+            && let Some(store) = &self.store
+        {
+            let cutoff = now.saturating_sub(day);
+            store.fire(move |c| crate::store::drop_chalk(c, cutoff));
+        }
+    }
+
+    /// Puts back the lines the store kept; one that can't be read is
+    /// skipped, and said.
+    pub fn restore_chalk(&mut self, rows: Vec<(u64, String)>) {
+        for (at, json) in rows {
+            match serde_json::from_str::<ChalkLine>(&json) {
+                Ok(line) => self.chalk.push_back(line),
+                Err(e) => tracing::warn!(target: "sys", at, error = %e, "a chalkboard line is unreadable; skipping it"),
+            }
+        }
+        self.chalk.make_contiguous().sort_by_key(|l| l.at);
+        while self.chalk.len() > KEPT {
+            self.chalk.pop_front();
+        }
+    }
+
+    /// Writes the board as it stands in place of what the store kept: a
+    /// replay's lines and drops, all at once.
+    pub(super) fn save_chalk(&self) {
+        let Some(store) = &self.store else { return };
+        let rows: Vec<(u64, String)> = self
+            .chalk
+            .iter()
+            .map(|l| (l.at, serde_json::to_string(l).expect("a chalkboard line serialises")))
+            .collect();
+        store.fire(move |c| crate::store::replace_chalk(c, &rows));
     }
 
     /// The latest lines, oldest first, for a snapshot.

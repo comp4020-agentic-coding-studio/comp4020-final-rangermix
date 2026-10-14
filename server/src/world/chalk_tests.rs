@@ -363,3 +363,20 @@ fn the_cats_doings_with_people_and_new_furniture_are_lines() {
         ]
     );
 }
+
+#[tokio::test]
+async fn a_line_is_stored_as_it_is_written_and_dropped_when_a_day_old() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(&dir.path().join("cafe.db")).unwrap();
+    let t = canberra(2026, 10, 14, 15, 0);
+    let mut w = world_at(1, t);
+    w.store = Some(store.clone());
+    let mochi = cat_index(&w, "mochi");
+    w.chalk(t, mochi, ChalkWhat::Met { with: "sam".into() }, &mut Vec::new());
+    store.flush().await.unwrap();
+    let rows = store.call(|c| crate::store::all_chalk(c)).await.unwrap();
+    assert_eq!(rows, vec![(t, serde_json::to_string(&w.chalk[0]).unwrap())]);
+    w.chalk_tick(t + 24 * HOUR);
+    store.flush().await.unwrap();
+    assert!(store.call(|c| crate::store::all_chalk(c)).await.unwrap().is_empty());
+}

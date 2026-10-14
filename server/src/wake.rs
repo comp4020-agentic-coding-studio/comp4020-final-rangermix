@@ -46,10 +46,12 @@ pub async fn wake(store: &Store, content: Content, build: String, now: u64, fres
     let bans = store.call(move |c| store::live_bans(c, now)).await?;
     let treats = store.call(|c| store::all_treats(c)).await?;
     let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
+    let chalk = store.call(|c| store::all_chalk(c)).await?;
     let start = replay_start(saved_at, now);
     let mut world = World::new(content, trust, saved_cats, arrangement, rng, Some(store.clone()), build, start);
     world.restore_bans(bans);
     world.restore_treats(bowls, treats);
+    world.restore_chalk(chalk);
     let began = std::time::Instant::now();
     let replay = world.replay(now);
     let took_ms = began.elapsed().as_millis() as u64;
@@ -293,6 +295,63 @@ mod tests {
             .any(|l| l["level"] == "WARN" && l["message"].as_str().is_some_and(|m| m.contains("clock")));
         assert!(warned, "{}", logs.text());
         assert_eq!(woke(&logs)["steps"], 0);
+    }
+
+    fn met(at: u64, with: &str) -> String {
+        serde_json::to_string(&crate::protocol::ChalkLine {
+            at,
+            cat: "Mochi".into(),
+            what: crate::protocol::ChalkWhat::Met { with: with.into() },
+        })
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_board_survives_a_stop_and_a_start_and_a_replay_drops_what_turned_a_day_old() {
+        let (_dir, store) = store();
+        let t0 = canberra(2026, 10, 14, 9, 0);
+        let (old, recent) = (met(t0, "early"), met(t0 + 20 * HOUR, "late"));
+        let rows = vec![(t0, old.clone()), (t0 + 20 * HOUR, recent.clone())];
+        store.call(move |c| store::replace_chalk(c, &rows)).await.unwrap();
+        put(&store, "saved_at", (t0 + 20 * HOUR).to_string()).await;
+        let world = wake(&store, content(), "test".into(), t0 + 25 * HOUR, 1).await.unwrap();
+        store.flush().await.unwrap();
+        let rows: Vec<String> = store
+            .call(|c| store::all_chalk(c))
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|(_, l)| l)
+            .collect();
+        assert!(rows.contains(&recent), "the line from 5 hours ago is kept: {rows:?}");
+        assert!(!rows.contains(&old), "the line from 25 hours ago dropped off in the replay");
+        let shown: Vec<String> = world
+            .snapshot_for(0, t0 + 25 * HOUR)
+            .chalkboard
+            .iter()
+            .map(|l| serde_json::to_string(l).unwrap())
+            .collect();
+        assert!(shown.iter().all(|l| rows.contains(l)), "the store holds what the board shows");
+        assert!(!shown.contains(&old));
+    }
+
+    #[tokio::test]
+    async fn an_unreadable_chalk_row_is_skipped_and_said() {
+        let (_dir, store) = store();
+        let now = canberra(2026, 10, 14, 9, 0);
+        let rows = vec![(now - HOUR, "not a line".to_string()), (now - 1_000, met(now - 1_000, "sam"))];
+        store.call(move |c| store::replace_chalk(c, &rows)).await.unwrap();
+        let logs = LogSink::default();
+        let world = {
+            let _guard = logs.capture();
+            wake(&store, content(), "test".into(), now, 1).await.unwrap()
+        };
+        let warned = logs
+            .lines()
+            .into_iter()
+            .any(|l| l["level"] == "WARN" && l["message"].as_str().is_some_and(|m| m.contains("chalkboard")));
+        assert!(warned, "{}", logs.text());
+        assert_eq!(world.snapshot_for(0, now).chalkboard.len(), 1);
     }
 
     #[tokio::test]
