@@ -19,7 +19,7 @@ use rand_chacha::ChaCha8Rng;
 pub async fn wake(store: &Store, content: Content, build: String, now: u64, fresh_seed: u64) -> anyhow::Result<World> {
     let kept = Kept::load(store, now, fresh_seed).await?;
     let (first, saved_at) = (kept.first, kept.saved_at);
-    let start = replay_start(saved_at, now);
+    let start = replay_start(saved_at, now, content.tuning.replay_max_days * 24 * 3_600_000);
     let mut world = kept.into_world(content.clone(), build.clone(), store, start);
     let began = std::time::Instant::now();
     let replayed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| world.replay(now)));
@@ -357,7 +357,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn nine_days_asleep_replay_only_the_last_week() {
+    async fn nine_days_asleep_replay_only_the_last_three() {
         // Slice 01's review, finding 3: the cap where it runs, not only in replay_start.
         let (_dir, store) = store();
         let now = canberra(2026, 10, 14, 9, 0);
@@ -368,7 +368,7 @@ mod tests {
             wake(&store, content(), "test".into(), now, 1).await.unwrap();
         }
         let line = woke(&logs);
-        assert_eq!(line["steps"], 7 * 24 * 3_600);
+        assert_eq!(line["steps"], 3 * 24 * 3_600, "tuning.toml's replay_max_days");
         assert_eq!(line["capped"], true);
         assert_eq!(line["gap_secs"], 9 * 24 * 3_600);
         assert_eq!(get(&store, "saved_at").await, Some(now.to_string()), "awake at now");

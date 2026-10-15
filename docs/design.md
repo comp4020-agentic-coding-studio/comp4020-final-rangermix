@@ -312,8 +312,9 @@ renamed.
   and waits a best-effort 5 seconds, so the periodic save is the real safety
   net.
 - **Waking:** load everything, replay the gap in one-second steps with the same
-  rules (eight hours is about 29,000 steps), then open the doors. Gaps over a
-  week replay only the last week. The café's schedule runs during the replay:
+  rules (eight hours is about 29,000 steps), then open the doors. Gaps over
+  3 days replay only the last 3 days (`replay_max_days`, cut from a week on
+  2026-10-15). The café's schedule runs during the replay:
   bowls refill, treats reset at midnight Canberra time, and chalkboard lines
   older than 24 hours drop off. The world is built at the saved clock with
   the saved random generator (`world` keys `saved_at` and `rng`, written in
@@ -322,8 +323,8 @@ renamed.
   saved once, and the port opens only after that. Meanwhile a tab already
   open shows "Reconnecting…", and someone opening the café waits on the page
   loading while Fly's proxy holds the request. At the machine's baseline CPU
-  that's about 2 seconds after eight hours asleep, and about 30 at the
-  week's cap ([slice-01-wake.md](notes/slice-01-wake.md)). A replay that
+  that's about 2 seconds after eight hours asleep, and was about 30 at the
+  old week's cap ([slice-01-wake.md](notes/slice-01-wake.md)). A replay that
   panics is logged, and the café wakes at now from the save without it. A saved clock or random state that
   can't be read wakes the café anyway, with a warning line: no replay, or a
   fresh generator. (Slice 01, [plan](notes/plan-slice-01-fast-forward.md).)
@@ -422,7 +423,7 @@ renamed.
   lap or jump down; never per step); bans; the bowls' refills; each
   wake-up's fast-forward summary (one `cafe` line, `what = "woke"`, before
   every `listening`: whether it's the first start, the gap, the steps
-  replayed, whether the week's cap cut it, how long it took, the bowls'
+  replayed, whether the cap cut it, how long it took, the bowls'
   refills and each cat's walks); errors.
 - **Never logged:** bubble text (a `said` line records who, the length and who
   it was addressed to), passwords, recovery codes, session tokens, IP
@@ -503,7 +504,7 @@ renamed.
 | Chalkboard repeats | the same doing by the same cat at most once an hour; meetings, knock-overs and laps every time |
 | A lap worth a line | 5 minutes or more |
 | Scattering the toys | half the cat's playfulness, while it plays with nobody inside |
-| Simulation | 10 steps a second live; 1-second steps in fast-forward, at most 7 days |
+| Simulation | 10 steps a second live; 1-second steps in fast-forward, at most 3 days (`replay_max_days`) |
 | Cat state saved | every 5 seconds, and on stop |
 | Session | 30 days from last use |
 | Sign-up, log-in and recovery attempts | 5 a minute per name from one address, so nobody elsewhere can lock a name out; 60 a minute per IP address, since a whole venue can share one |

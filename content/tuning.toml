@@ -30,6 +30,7 @@ person_speed = 3.0            # tiles per second
 cat_speed = 2.0
 
 save_every_secs = 5           # the cats' state is saved this often, and on stop
+replay_max_days = 3           # a longer sleep replays only its last days (ADR 0006)
 outbound_queue = 256          # unsent messages before a slow connection is dropped
 session_days = 30
 

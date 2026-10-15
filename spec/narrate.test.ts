@@ -142,8 +142,8 @@ describe("narrating the logs", () => {
     expect(woke({ gap_secs: 50_400, steps: 50_400, took_ms: 700, refills: 2 })).toBe(
       "19:42:07  The café woke after 14h asleep and caught up in 700 ms; the bowls were filled twice",
     );
-    expect(woke({ gap_secs: 9 * 86_400, steps: 604_800, took_ms: 2_500, capped: true })).toBe(
-      "19:42:07  The café woke after 9 days asleep and caught up in 2.5 s (the last week of it)",
+    expect(woke({ gap_secs: 9 * 86_400, steps: 259_200, took_ms: 2_500, capped: true })).toBe(
+      "19:42:07  The café woke after 9 days asleep and caught up in 2.5 s (only the last 3 days of it)",
     );
     expect(woke({ gap_secs: 2 * 86_400 + 4 * 3_600, steps: 187_200, took_ms: 1_000 })).toBe(
       "19:42:07  The café woke after 2 days 4h asleep and caught up in 1.0 s",

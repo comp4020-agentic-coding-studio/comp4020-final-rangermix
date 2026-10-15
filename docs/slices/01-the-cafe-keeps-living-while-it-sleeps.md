@@ -59,7 +59,8 @@ a few seconds.
 ## Numbers
 
 - Simulation: 10 steps a second live; 1-second steps in fast-forward, at most
-  7 days.
+  7 days. (Tuned to 3 days on 2026-10-15, as `replay_max_days` in
+  `content/tuning.toml`.)
 - Cat state saved every 5 seconds, and on stop.
 - Bowl refills at 7:00, 12:00 and 18:00 Canberra time; 3 treats per visitor
   per Canberra day.

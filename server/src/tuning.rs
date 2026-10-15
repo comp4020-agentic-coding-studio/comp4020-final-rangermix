@@ -36,6 +36,7 @@ pub struct Tuning {
     pub auth_per_ip_per_min: f64,
     pub chalk_hours: u64,
     pub chalk_shown: usize,
+    pub replay_max_days: u64,
 }
 
 impl Tuning {
@@ -65,6 +66,7 @@ mod tests {
         assert_eq!(t.trust_levels, [20.0, 50.0, 80.0]);
         assert_eq!((t.auth_per_name_per_min, t.auth_per_ip_per_min), (5.0, 60.0));
         assert_eq!((t.chalk_hours, t.chalk_shown), (24, 8));
+        assert_eq!(t.replay_max_days, 3);
     }
 
     #[test]

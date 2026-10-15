@@ -1,6 +1,5 @@
 //! Fast-forward (ADR 0006; slice 01): a gap replayed in one-second steps by
 //! the rules the café runs awake, seeded so every run is the same.
-use super::replay::MAX_REPLAY_MS;
 use super::*;
 use chrono::TimeZone;
 use rand::SeedableRng;
@@ -88,15 +87,24 @@ fn an_empty_night_moves_the_cats_in_character() {
     }
 }
 
+/// The cap, as tuning.toml sets it: three days since 2026-10-15.
+const CAP: u64 = 3 * 24 * HOUR;
+
 #[test]
-fn a_gap_longer_than_a_week_replays_only_the_last_seven_days() {
+fn a_gap_longer_than_the_cap_replays_only_its_last_three_days() {
+    let tuning = crate::content::repo_content().tuning;
+    assert_eq!(tuning.replay_max_days * 24 * HOUR, CAP);
     let now = canberra(2026, 10, 14, 9, 0);
-    assert_eq!(replay_start(Some(now - 9 * 24 * HOUR), now), now - MAX_REPLAY_MS);
-    assert_eq!(replay_start(Some(now - 8 * HOUR), now), now - 8 * HOUR);
-    assert_eq!(replay_start(None, now), now);
-    assert_eq!(replay_start(Some(now + HOUR), now), now, "a clock ahead of now replays nothing");
-    let mut w = world_at(1, replay_start(Some(now - 9 * 24 * HOUR), now));
-    assert_eq!(w.replay(now).steps, MAX_REPLAY_MS / 1000);
+    assert_eq!(replay_start(Some(now - 9 * 24 * HOUR), now, CAP), now - CAP);
+    assert_eq!(replay_start(Some(now - 8 * HOUR), now, CAP), now - 8 * HOUR);
+    assert_eq!(replay_start(None, now, CAP), now);
+    assert_eq!(
+        replay_start(Some(now + HOUR), now, CAP),
+        now,
+        "a clock ahead of now replays nothing"
+    );
+    let mut w = world_at(1, replay_start(Some(now - 9 * 24 * HOUR), now, CAP));
+    assert_eq!(w.replay(now).steps, CAP / 1000);
 }
 
 #[test]
@@ -195,7 +203,7 @@ async fn a_replay_saves_what_it_changed_before_anyone_is_let_in() {
 #[test]
 #[ignore]
 fn measure_replay_times() {
-    for (label, gap) in [("8 hours", 8 * HOUR), ("7 days", MAX_REPLAY_MS)] {
+    for (label, gap) in [("8 hours", 8 * HOUR), ("3 days, the cap", CAP)] {
         let now = canberra(2026, 10, 14, 7, 0);
         let mut w = world_at(1, now - gap);
         let began = std::time::Instant::now();

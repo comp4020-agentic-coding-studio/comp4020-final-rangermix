@@ -267,7 +267,7 @@ function woke(l: Line): string {
   if (Number(l.steps) === 0) return "The café woke with nothing to catch up on";
   const ms = Number(l.took_ms);
   const took = ms < 1_000 ? `${ms} ms` : `${(ms / 1_000).toFixed(1)} s`;
-  let text = `The café woke after ${duration(Number(l.gap_secs))} asleep and caught up in ${took}${l.capped ? " (the last week of it)" : ""}`;
+  let text = `The café woke after ${duration(Number(l.gap_secs))} asleep and caught up in ${took}${l.capped ? ` (only the last ${duration(Number(l.steps))} of it)` : ""}`;
   const walks = walksOf(l.walks);
   const clauses: string[] = [];
   if (walks.some((w) => w.n > 0)) {

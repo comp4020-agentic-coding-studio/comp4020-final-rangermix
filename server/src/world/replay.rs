@@ -3,8 +3,6 @@
 use super::World;
 use crate::protocol::ServerMsg;
 
-/// At most this much of a gap is replayed: by then the cats' needs have settled.
-pub const MAX_REPLAY_MS: u64 = 7 * 24 * 3_600_000;
 const STEP_MS: u64 = 1_000;
 
 #[cfg(test)]
@@ -33,11 +31,12 @@ impl Replay {
     }
 }
 
-/// Where a replay starts: the saved clock, or a week before `now` if the
-/// café slept longer; `now` itself with no clock, or one that isn't behind.
-pub fn replay_start(saved_at: Option<u64>, now: u64) -> u64 {
+/// Where a replay starts: the saved clock, or `cap` before `now` if the café
+/// slept longer (tuning.toml's `replay_max_days`: by then the cats' needs
+/// have settled); `now` itself with no clock, or one that isn't behind.
+pub fn replay_start(saved_at: Option<u64>, now: u64, cap: u64) -> u64 {
     match saved_at {
-        Some(at) if at < now => at.max(now.saturating_sub(MAX_REPLAY_MS)),
+        Some(at) if at < now => at.max(now.saturating_sub(cap)),
         _ => now,
     }
 }
