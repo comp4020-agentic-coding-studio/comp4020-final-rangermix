@@ -284,8 +284,18 @@ function enter(me: ApiMe): void {
   });
   const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
+    $("waking").hidden = !cafe.waking;
     const s = cafe.state;
-    if (!s) return;
+    if (!s) {
+      // Waking: nothing of the café until its welcome (slice 07).
+      if (cafe.waking) {
+        for (const id of ["here", "your-cats", "chalk-lines", "board-lines"]) {
+          $(id).replaceChildren();
+          delete $(id).dataset.lines;
+        }
+      }
+      return;
+    }
     renderHere($("here"), s);
     talk.peopleChanged(new Set(s.people.keys()));
     renderSaid($("said"), s);

@@ -54,6 +54,10 @@ export interface CafeHooks {
 /** The live café: one connection, the state it keeps up to date, and who's listening. */
 export class Cafe {
   state: CafeState | null = null;
+  /** The café is still replaying its sleep; its welcome is on the way (slice 07). */
+  waking = false;
+  /** A café shown before a reconnect landed on a waking server, for "said this visit". */
+  private parked: CafeState | null = null;
   private readonly listeners = new Set<() => void>();
   private readonly connection: Connection;
   private replaced = false;
@@ -114,6 +118,7 @@ export class Cafe {
 
   statusLine(): string {
     if (this.replaced) return "You opened the café in another tab.";
+    if (this.waking && !this.state) return "Dusting off the café…";
     const s = this.state;
     if (!s || !this.connection.isOpen()) return "Reconnecting to the café…";
     const people = [...s.people.values()];
@@ -124,7 +129,14 @@ export class Cafe {
   }
 
   private receive(msg: ServerMsg): void {
-    if (msg.type === "welcome") {
+    if (msg.type === "waking") {
+      // Nothing of the café until it's awake: not even a stale copy from
+      // before a reconnect (slice 07).
+      if (!this.waking) announce("Dusting off the café…");
+      this.waking = true;
+      this.parked = this.state ?? this.parked;
+      this.state = null;
+    } else if (msg.type === "welcome") {
       const next = afterWelcome(msg.build, __BUILD_ID__, reloadedFor(), canNote());
       if (next === "reload" && rememberReload(msg.build)) {
         location.reload();
@@ -134,7 +146,9 @@ export class Cafe {
         this.outdated = true;
         this.hooks.onOutdated?.();
       }
-      this.state = fromWelcome(msg, Date.now(), this.state);
+      this.state = fromWelcome(msg, Date.now(), this.state ?? this.parked);
+      this.waking = false;
+      this.parked = null;
       if (document.hidden) this.send({ type: "presence", hidden: true });
     } else if (this.state) {
       for (const effect of apply(this.state, msg)) this.handle(effect);

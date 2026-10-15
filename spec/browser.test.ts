@@ -40,11 +40,20 @@ interface Visit {
   sent: Frame[];
 }
 
+interface VisitOptions {
+  /** Done to the page before it opens the café, such as routing its socket. */
+  prepare?: (page: Page) => Promise<void>;
+  /** Wait for the café's welcome before returning (the default). */
+  waitInside?: boolean;
+  reducedMotion?: "reduce" | "no-preference";
+}
+
 /** Opens the café in a fresh browser and signs up through the page, by keyboard. */
-async function visit(viewport: { width: number; height: number }, touch = false): Promise<Visit> {
-  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+async function visit(viewport: { width: number; height: number }, touch = false, opts: VisitOptions = {}): Promise<Visit> {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, reducedMotion: opts.reducedMotion });
   contexts.push(context);
   const page = await context.newPage();
+  if (opts.prepare) await opts.prepare(page);
   const frames: Frame[] = [];
   const sent: Frame[] = [];
   page.on("websocket", (ws) => {
@@ -59,8 +68,28 @@ async function visit(viewport: { width: number; height: number }, touch = false)
   await page.keyboard.press("Enter");
   await page.locator("#code-done:focus").waitFor();
   await page.keyboard.press("Enter");
-  await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+  if (opts.waitInside ?? true) await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   return { page, frames, sent };
+}
+
+/**
+ * Has the café's socket say it's waking, and hold back the real welcome and
+ * everything after it for `ms`, as a café still replaying its sleep does
+ * (slice 07).
+ */
+function stillWaking(ms: number): (page: Page) => Promise<void> {
+  return (page) =>
+    page.routeWebSocket(/\/ws$/, (ws) => {
+      const server = ws.connectToServer();
+      ws.send(JSON.stringify({ type: "waking" }));
+      const held: (string | Buffer)[] = [];
+      let holding = true;
+      setTimeout(() => {
+        holding = false;
+        for (const m of held.splice(0)) ws.send(m);
+      }, ms);
+      server.onMessage((m) => (holding ? held.push(m) : ws.send(m)));
+    });
 }
 
 type Tile = { x: number; y: number };
@@ -555,5 +584,38 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await v.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await v.page.locator("#board-close").tap();
     await board.waitFor({ state: "hidden" });
+  });
+
+  it("dusts off the café while it wakes, with nothing of the café yet, then opens it", async () => {
+    // Slice 07: logged in during a replay, the café page opens at once.
+    const v = await visit({ width: 1920, height: 1080 }, false, { prepare: stillWaking(3000), waitInside: false });
+    const waking = v.page.locator("#waking");
+    await waking.waitFor();
+    expect(await waking.textContent()).toContain("Dusting off the café…");
+    expect(await v.page.locator("#status-text").textContent()).toBe("Dusting off the café…");
+    expect(await waking.getAttribute("role")).toBe("status");
+    expect(await v.page.locator("#here").textContent(), "nobody shown before the welcome").toBe("");
+    expect(await v.page.locator("#your-cats").textContent(), "no cats before the welcome").toBe("");
+    expect(await v.page.evaluate(() => document.getAnimations().length), "it moves").toBeGreaterThan(0);
+    await waking.waitFor({ state: "hidden", timeout: 10_000 });
+    await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    expect(await v.page.locator("#your-cats .cat-row").count()).toBeGreaterThan(0);
+  });
+
+  it("dusts off the café on a phone, by touch, through a resize, and holds still for reduced motion", async () => {
+    const v = await visit({ width: 390, height: 844 }, true, { prepare: stillWaking(4000), waitInside: false, reducedMotion: "reduce" });
+    const waking = v.page.locator("#waking");
+    await waking.waitFor();
+    for (const size of [{ width: 390, height: 844 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+      await v.page.setViewportSize(size);
+      await v.page.waitForTimeout(100);
+      const r = (await waking.boundingBox())!;
+      expect(r.x).toBeGreaterThanOrEqual(0);
+      expect(r.x + r.width).toBeLessThanOrEqual(size.width);
+      expect(await v.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
+    }
+    expect(await v.page.evaluate(() => document.getAnimations().length), "still, for reduced motion").toBe(0);
+    await waking.waitFor({ state: "hidden", timeout: 10_000 });
+    await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   });
 });

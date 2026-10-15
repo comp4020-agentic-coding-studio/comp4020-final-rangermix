@@ -101,7 +101,11 @@ export class Stage {
 
   private paint(): void {
     const state = this.cafe.state;
-    if (!state) return;
+    if (!state) {
+      // Waking, or not yet welcomed: no room to show, and no old one either.
+      this.canvas.getContext("2d")?.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      return;
+    }
     if (this.canvas.width !== state.room.width * TILE) this.fit();
     if (this.layout === "b") this.pan(state);
     const ctx = this.canvas.getContext("2d");
