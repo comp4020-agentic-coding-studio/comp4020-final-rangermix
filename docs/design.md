@@ -527,6 +527,9 @@ renamed.
   ([ADR 0013](adr/0013-let-the-agent-write-process-md-and-the-user-choose-its-content.md))
 - **Significant decisions get an ADR** in `docs/adr/`, and this file links to
   each one. ([ADR 0001](adr/0001-record-architecture-decisions.md))
+- **Agents test on the live café.** With accounts of their own, named
+  `agent_…`, and on the Fly app as testing needs, within the course's fixed
+  shape. ([ADR 0015](adr/0015-let-agents-test-on-the-live-cafe-and-its-fly-app.md))
 - **Built in vertical slices.** Phases 1 to 3 were built as phases lined up
   with the crits ([ADR 0012](adr/0012-plan-in-phases-and-build-each-phase-natively.md)).
   The rest is built as vertical slices, each one thing a visitor can use

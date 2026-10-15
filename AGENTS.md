@@ -81,6 +81,26 @@ are.
   Every finding is fixed test first or answered before the slice is done.
 - **Then deployed and checked live**, and the root plan's status updated.
 
+## Testing on the live café
+
+The user lets agents test on the deployed café and its Fly app
+([ADR 0015](docs/adr/0015-let-agents-test-on-the-live-cafe-and-its-fly-app.md)).
+
+- **Accounts:** sign up whatever accounts a check needs on the live café,
+  and do with them anything a visitor can. Name each `agent_` and something
+  short, never a real person's name. Give it a fresh test password that's
+  never written down, since the repo goes public. Accounts can't be deleted
+  and real visitors see a test visit while it lasts (who's here, and a
+  cat's "met agent_… for the first time" on the board), so keep visits
+  short and few.
+- **Fly:** read the logs, stop, start or restart the machine, open a
+  console on it, or deploy a build to it, as testing needs. Never change
+  the course's fixed shape in `fly.toml` (one machine, 256 MB, the volume,
+  auto-stop), never destroy the volume or the app, and leave the machine
+  serving `main`'s build when done.
+- **Record it:** what was done live, and what it showed, goes in the
+  slice's notes in `docs/notes/`.
+
 ## Architecture decision records
 
 [ADR 0001](docs/adr/0001-record-architecture-decisions.md) explains why these
