@@ -43,5 +43,7 @@ describe("the chalkboard", () => {
     expect(line.line.cat.toLowerCase()).toBe(met.cat);
     // And the one who made it sees it too.
     await a.v.next((m) => m.type === "chalked" && m.line.what.with === a.name, 1_000);
-  });
+    // Meeting a cat means walking over to it first: the second is timed from
+    // the sniff, and the test has as long as the walk takes.
+  }, 60_000);
 });
