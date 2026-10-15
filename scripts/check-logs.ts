@@ -38,6 +38,9 @@ function check(raw: string, n: number): void {
     if (waking !== null) problems.push(`line ${waking} is a start that never logged its wake-up`);
     waking = n;
   }
+  // A start stopped while it woke ends there: its last save stands, and the
+  // next start replays the same gap (slice 07's review, finding 8).
+  if (l.target === "sys" && String(l.message ?? "").startsWith("stopping while the café wakes")) waking = null;
   if (l.target === "cafe" && l.what === "woke") {
     for (const key of ["gap_secs", "steps", "took_ms"]) {
       if (typeof l[key] !== "number") problems.push(`line ${n} is a wake-up without its ${key}: ${raw}`);

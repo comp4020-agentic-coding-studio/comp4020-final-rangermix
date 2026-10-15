@@ -53,6 +53,12 @@ describe("checking the app's own log lines", () => {
     expect(check([woke, listening]).status, "a wake-up before its start").not.toBe(0);
     expect(check([listening, { ...woke, steps: "20" }]).status).not.toBe(0);
     expect(check([listening, { ...woke, took_ms: undefined }]).status).not.toBe(0);
+    // A start stopped while it woke ends there, by design (slice 07's review, finding 8).
+    const stoppedWaking = { timestamp: at, level: "INFO", target: "sys", message: "stopping while the café wakes: its last save stands" };
+    expect(check([listening, stoppedWaking, listening, woke]).status).toBe(0);
+    expect(check([listening, stoppedWaking]).status).toBe(0);
+    const stoppedAwake = { timestamp: at, level: "INFO", target: "sys", message: "stopping: saving the café" };
+    expect(check([listening, stoppedAwake, listening, woke]).status, "only a stop while waking excuses a missing wake-up").not.toBe(0);
   });
 
   it("fails what isn't one JSON line with a time and a target", () => {
