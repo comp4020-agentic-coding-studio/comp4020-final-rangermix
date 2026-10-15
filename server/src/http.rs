@@ -29,9 +29,11 @@ pub struct AppState {
     /// machine has 256 MB.
     pub hashing: Arc<Semaphore>,
     pub auth_limits: Arc<Mutex<AuthLimits>>,
-    /// The world task's inbox.
+    /// The world task's inbox. While the café wakes, what's sent here waits.
     pub world: tokio::sync::mpsc::Sender<crate::ws::Command>,
     pub conn_ids: Arc<std::sync::atomic::AtomicU64>,
+    /// The café has replayed its sleep and the world task is running (slice 07).
+    pub awake: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl AppState {
@@ -56,6 +58,7 @@ impl AppState {
             auth_limits: Arc::new(Mutex::new(auth_limits)),
             world,
             conn_ids: Arc::new(std::sync::atomic::AtomicU64::new(1)),
+            awake: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 }

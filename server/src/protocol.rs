@@ -397,6 +397,9 @@ pub enum ServerMsg {
         snapshot: Box<Snapshot>,
     },
     Replaced {},
+    /// Sent at once to a connection made while the café replays its sleep:
+    /// the welcome follows when it's awake (slice 07).
+    Waking {},
     PersonJoined {
         person: PersonView,
     },

@@ -183,6 +183,8 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       return [];
     case "replaced":
       return [{ kind: "replaced" }];
+    case "waking":
+      return [];
     case "personJoined": {
       const isNew = !state.people.has(msg.person.id);
       state.people.set(msg.person.id, msg.person);

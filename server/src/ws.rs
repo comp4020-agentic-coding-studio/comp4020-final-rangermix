@@ -44,13 +44,10 @@ pub enum Command {
 /// Each person's current connection: its id, and where to send its messages.
 type Conns = HashMap<u32, (u64, mpsc::Sender<Arc<str>>)>;
 
-pub fn spawn_world(world: World) -> mpsc::Sender<Command> {
-    let (tx, rx) = mpsc::channel(1024);
-    tokio::spawn(world_task(world, rx));
-    tx
-}
-
-async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
+/// The world task: what connections send it, one at a time, and ten ticks a
+/// second. `main` makes its inbox before the café wakes, so a connection made
+/// meanwhile waits there (slice 07).
+pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
     let mut conns: Conns = HashMap::new();
     let mut ticker = tokio::time::interval(Duration::from_millis(100));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -173,6 +170,11 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
         avatar: user.avatar,
         colour: user.colour,
     };
+    // Still replaying its sleep: say so at once; the join waits its turn, and
+    // the welcome comes when the café is awake (slice 07).
+    if !app.awake.load(Ordering::SeqCst) && sink.send(Message::Text(text(&ServerMsg::Waking {}).as_ref().into())).await.is_err() {
+        return;
+    }
     if app
         .world
         .send(Command::Join {
