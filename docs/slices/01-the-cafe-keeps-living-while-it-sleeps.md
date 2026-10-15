@@ -2,6 +2,9 @@
 
 - **Status:** Reviewed, every finding answered, and deployed (approved 2026-10-14 with the proposed default for its open question). `Live` once the judged line is read after a real night ([slice-01-wake.md](../notes/slice-01-wake.md))
 - **Plan:** [`docs/notes/plan-slice-01-fast-forward.md`](../notes/plan-slice-01-fast-forward.md)
+- **Superseded in part** by [slice 07](07-getting-in-while-the-cafe-wakes.md)
+  (2026-10-15): the doors now open at once, and only the café itself waits
+  for the replay.
 - **Design:** "The world never stops" under The café; Persistence and
   fast-forward; Logging ("each wake-up's fast-forward summary");
   [ADR 0005](../adr/0005-keep-all-state-in-sqlite-on-the-volume.md),

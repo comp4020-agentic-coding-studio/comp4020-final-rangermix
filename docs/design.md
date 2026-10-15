@@ -311,8 +311,9 @@ renamed.
   of cat wandering, never a trust gain or a moved sofa. Fly's stop sends SIGINT
   and waits a best-effort 5 seconds, so the periodic save is the real safety
   net.
-- **Waking:** load everything, replay the gap in one-second steps with the same
-  rules (eight hours is about 29,000 steps), then open the doors. Gaps over
+- **Waking:** open the doors at once, load everything, and replay the gap
+  behind them in one-second steps with the same rules (eight hours is about
+  29,000 steps), on a thread of its own. Gaps over
   3 days replay only the last 3 days (`replay_max_days`, cut from a week on
   2026-10-15). The café's schedule runs during the replay:
   bowls refill, treats reset at midnight Canberra time, and chalkboard lines
@@ -320,12 +321,17 @@ renamed.
   the saved random generator (`world` keys `saved_at` and `rng`, written in
   the cats' save job), so the same save and the same gap make the same night.
   The replay writes nothing and logs nothing on the way; what it changed is
-  saved once, and the port opens only after that. Meanwhile a tab already
-  open shows "Reconnecting…", and someone opening the café waits on the page
-  loading while Fly's proxy holds the request. At the machine's baseline CPU
-  that's about 2 seconds after eight hours asleep, and was about 30 at the
-  old week's cap ([slice-01-wake.md](notes/slice-01-wake.md)). A replay that
-  panics is logged, and the café wakes at now from the save without it. A saved clock or random state that
+  saved once, before the café counts as awake. Meanwhile the page, the
+  README and sign-up, log-in and recovery work as usual. A café page opened,
+  or a tab reconnecting, meanwhile is told `waking`, and shows "Dusting off
+  the café…" (a broom sweeping and dust rising, still under reduced motion)
+  with nothing of the café, until its welcome. At the machine's baseline CPU
+  that's about 1.3 seconds after eight hours asleep and about 13 to 15 at
+  the 3-day cap ([slice-01-wake.md](notes/slice-01-wake.md),
+  [slice-07-waking.md](notes/slice-07-waking.md)). A stop during the replay
+  doesn't wait for it: the save it started from still stands. A replay that
+  panics is logged, and the café wakes at now from the save without it.
+  (Slice 07, [plan](notes/plan-slice-07-waking.md).) A saved clock or random state that
   can't be read wakes the café anyway, with a warning line: no replay, or a
   fresh generator. (Slice 01, [plan](notes/plan-slice-01-fast-forward.md).)
 - **Redeploys** are short sleeps: the old machine saves on the stop signal, the
@@ -333,9 +339,11 @@ renamed.
   the old build reload.
 - **Migrations** are numbered and compiled into the binary.
 - **Failures are loud:** a bad message gets an error, never a crash; a panic
-  exits the process and Fly restarts it from the last save; a database that
-  won't open stops the server rather than letting it serve an empty café.
-  Any failure to start is one JSON `error` line, then exit code 1.
+  is one JSON `error` line; a world task that dies, or can't wake, ends the
+  process, and Fly restarts it from the last save, rather than the server
+  serving pages with no café behind them (slice 07); a database that won't
+  open stops the server rather than letting it serve an empty café. Any
+  failure to start is one JSON `error` line, then exit code 1.
   Fly's daily volume snapshots, kept 5 days, are the backup.
 
 ## Accounts and safety
@@ -421,10 +429,11 @@ renamed.
   behaviour changes (a `cat` line when a cat starts to nap, hide, eat, play,
   perch, investigate, knock something over, come to someone, greet, take a
   lap or jump down; never per step); bans; the bowls' refills; each
-  wake-up's fast-forward summary (one `cafe` line, `what = "woke"`, before
-  every `listening`: whether it's the first start, the gap, the steps
-  replayed, whether the cap cut it, how long it took, the bowls'
-  refills and each cat's walks); errors.
+  wake-up's fast-forward summary (one `cafe` line, `what = "woke"`, after
+  each `listening` and before the next: whether it's the first start, the
+  gap, the steps replayed, whether the cap cut it, whether the replay
+  failed, how long it took, the bowls' refills and each cat's walks);
+  errors.
 - **Never logged:** bubble text (a `said` line records who, the length and who
   it was addressed to), passwords, recovery codes, session tokens, IP
   addresses.
