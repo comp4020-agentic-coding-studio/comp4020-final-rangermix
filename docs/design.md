@@ -325,7 +325,10 @@ renamed.
   README and sign-up, log-in and recovery work as usual. A café page opened,
   or a tab reconnecting, meanwhile is told `waking`, and shows "Dusting off
   the café…" (a broom sweeping and dust rising, still under reduced motion)
-  with nothing of the café, until its welcome. At the machine's baseline CPU
+  with nothing of the café, until its welcome. Nothing can be done
+  meanwhile: only presence, "still here" and leaving go out, the talk box
+  keeps your words and says why, and a Leave sent meanwhile frees the seat
+  as the café wakes. A socket lost while waking says "Reconnecting…". At the machine's baseline CPU
   that's about 1.3 seconds after eight hours asleep and about 13 to 15 at
   the 3-day cap ([slice-01-wake.md](notes/slice-01-wake.md),
   [slice-07-waking.md](notes/slice-07-waking.md)). A stop during the replay

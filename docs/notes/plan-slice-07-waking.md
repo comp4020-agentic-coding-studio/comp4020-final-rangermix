@@ -138,3 +138,27 @@ the machine stopped shows the page at once.
 ## Execution log
 
 Where carrying out this plan departed from it, task by task, and why.
+
+- **Task 1 (2026-10-15)** ([`3e83d1d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3e83d1d)). The integration test
+  wakes the binary from a week, with `replay_max_days` raised to 7 in a copy
+  of `content/`, so a sign-up and a socket fit inside the replay on a slow
+  machine. The panic line is held by unit tests on `supervise`, not on the
+  binary. That `run` wires the world task through it is checked by
+  reading, and by the reviewer's patched build.
+- **Task 2** ([`af4e548`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/af4e548)). As planned. Playwright's
+  `routeWebSocket` stands in for a slow replay in the browser checks.
+- **Task 3** ([`bc72005`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bc72005)). As planned. It shipped in the same
+  push as Task 1, since the new order would otherwise fail the log check.
+- **Task 5** ([`4e8b1b4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4e8b1b4)). The first try missed the overlay:
+  sign-up took longer than the 14.8-second replay. A reload during the
+  second try's replay showed it.
+- **Task 6, the review** ([findings](reviews/slice-07-findings.md)): 1 major
+  finding (a Leave sent while waking was lost) and 10 minor. Answered in
+  [`0f416e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0f416e9), [`30bd6e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/30bd6e9) and
+  [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c).
+  - The reconnect check first failed on a local artifact: the server had
+    read its build id before the client was rebuilt, so the page reloaded
+    once by design. With the server restarted it failed on the real fault
+    against the old client, and passes with the fix.
+- **Also, from the user's prompt:** the board's within-a-second check got a
+  minute for the walk ([`bed8d9e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bed8d9e)).

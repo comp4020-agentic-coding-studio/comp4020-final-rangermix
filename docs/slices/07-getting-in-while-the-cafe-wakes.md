@@ -1,6 +1,6 @@
 # 07. Getting in while the café wakes
 
-- **Status:** Approved 2026-10-15 (asked for by the user)
+- **Status:** Reviewed, every finding answered, and deployed (approved 2026-10-15, asked for by the user)
 - **Plan:** [`docs/notes/plan-slice-07-waking.md`](../notes/plan-slice-07-waking.md)
 - **Design:** Persistence and fast-forward ("Waking"); The client; Logging;
   [ADR 0006](../adr/0006-fast-forward-the-world-when-the-server-wakes.md).
@@ -45,10 +45,10 @@ where those days took them, and the café carries on.
 
 | What must be true | Held by |
 | --- | --- |
-| `/` and sign-up answer while a replay of days runs | `cargo test`, the built binary woken from a three-day gap |
-| A visitor connecting during the replay gets `waking` first, then the welcome once the café is ready | `cargo test`, the same binary |
-| A stop during the replay leaves the save as it was | `cargo test`, the same binary |
-| A panic in the world task ends the process with a JSON error line | `cargo test` |
+| `/` and sign-up answer while a replay of days runs | `cargo test`, the built binary woken from a week asleep (the test raises the cap in a copy of `content/`, so the replay outlasts what it checks on a slow machine) |
+| A visitor connecting during the replay gets `waking` first, then the welcome once the café is ready; a Leave sent meanwhile frees the seat when it wakes | `cargo test`, the same binary |
+| A stop during the replay leaves the save as it was, and exits cleanly within Fly's five seconds even with a request in flight | `cargo test`, the same binary |
+| A panic in the world task ends the process with a JSON error line | `cargo test`, on `supervise` with tasks that panic or fail; that `run` hands the world task to `supervise` is checked by reading, and by the reviewer's patched build |
 | The café page shows "Dusting off the café…", animated, with no café state, until the welcome, then the café | browser check, with the welcome held back, at 390×844 and 1920×1080, through a resize |
 | Under reduced motion the animation is still | browser check |
 | Every start logs `listening` and then `woke` | `spec/` (the log check) |

@@ -346,3 +346,46 @@ server.
   waking log the action name, and a queued `say` logs its length only. The
   server decides everything, and nothing is decided before the world runs.
   Generated `ServerMsg.ts` matches the Rust type.
+
+## Answers
+
+By the builder, 2026-10-15. Each new or strengthened check was seen
+failing before its fix, or under the fault it holds.
+
+1. **Fixed** in [`0f416e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0f416e9). A Leave from a page whose welcome
+   never reached it still walks its person out, unless another tab holds
+   their seat. Test: the leaver sends `leave` during the replay and closes,
+   and the next welcome after waking lists only the watcher.
+2. **Fixed** in [`0f416e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0f416e9). A stop sets a flag, so a replay
+   that ends after it doesn't start the café. What's in flight gets three
+   seconds, then the process exits, inside Fly's five. The stop test has a
+   sign-up in flight, and checks exit code 0 and the save untouched. (The
+   reviewer's four slow sign-ups at baseline CPU aren't re-run here. The
+   bound cuts them at three seconds.)
+3. **Fixed** in [`0f416e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0f416e9). `run` flushes the store after
+   `supervise` returns, on every path, before any exit. Not tested: the
+   window is a millisecond.
+4. **Fixed** in [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c). The carrying bar is redrawn from
+   the welcome after a wait. A browser check takes a lamp, loses the socket,
+   and reconnects to a waking café. It failed against the old client.
+5. **Fixed** in [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c). While waking, `Cafe.send` lets
+   only presence, "still here" and leave through. The talk box keeps your
+   words and says why, the emotes and Add furniture are disabled, and an
+   open menu or board is closed. Checked in the browser.
+6. **Fixed** in [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c). A closed socket ends waking. A
+   browser check has the server go away while waking, and the page says
+   "Reconnecting…".
+7. **Fixed** in [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c). "You're walking into the café." is
+   said at the welcome, the first one or one after waking. `#waking` is no
+   longer a status region, so the announcer says it once. The check records
+   the announcer's order. The focus stays on the room under the overlay;
+   there's nothing else to focus while it wakes.
+8. **Fixed** in [`30bd6e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/30bd6e9). "stopping while the café wakes"
+   closes a start in the log check, and only that.
+9. **Fixed** in [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c). The overlay's own animations are
+   counted while it shows. The phone check taps it and looks at the panels.
+10. **Fixed** in [`0f416e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0f416e9): a connection that ends sends a
+    close frame. The reviewer's flood script was outside the repo and isn't
+    re-run here.
+11. **Fixed:** the spec's "held by" lines and the plan's execution log now
+    say how the build holds them.
