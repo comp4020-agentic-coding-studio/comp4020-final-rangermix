@@ -73,7 +73,13 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
                         }
                     }
                     Command::Msg { id, conn, msg } => {
-                        if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
+                        // A Leave from a page whose welcome never reached it (it
+                        // gave up while the café woke) still walks its person out,
+                        // unless another tab of theirs holds the seat now (slice
+                        // 07's review, finding 1).
+                        let current = conns.get(&id).is_some_and(|(c, _)| *c == conn);
+                        let gave_up = matches!(msg, ClientMsg::Leave {}) && !conns.contains_key(&id);
+                        if current || gave_up {
                             let leaving = matches!(msg, ClientMsg::Leave {});
                             let outs = world.handle(now, Input::Msg { id, msg });
                             deliver(&mut world, &mut conns, outs, now);
@@ -245,6 +251,9 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
             }
         }
     }
+    // A close frame, so the page reads what it was sent before the socket goes
+    // (slice 07's review, finding 10).
+    let _ = sink.send(Message::Close(None)).await;
     let _ = app.world.send(Command::Leave { id, conn }).await;
 }
 

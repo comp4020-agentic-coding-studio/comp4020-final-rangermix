@@ -86,12 +86,12 @@ impl Cafe {
     }
 
     /// Sends SIGINT, as Fly's stop does, and waits up to `within` for the exit.
-    fn stop(mut self, within: Duration) -> Duration {
+    fn stop(mut self, within: Duration) -> (Duration, std::process::ExitStatus) {
         let began = Instant::now();
         Command::new("kill").args(["-INT", &self.child.id().to_string()]).status().unwrap();
         loop {
-            if self.child.try_wait().unwrap().is_some() {
-                return began.elapsed();
+            if let Some(status) = self.child.try_wait().unwrap() {
+                return (began.elapsed(), status);
             }
             if began.elapsed() > within {
                 let _ = self.child.kill();
@@ -171,6 +171,17 @@ impl Socket {
         Socket(s)
     }
 
+    /// A text frame from the client, masked as a client's must be.
+    fn send_text(&mut self, text: &str) {
+        let mask = [0x12u8, 0x34, 0x56, 0x78];
+        let bytes = text.as_bytes();
+        assert!(bytes.len() < 126);
+        let mut frame = vec![0x81, 0x80 | bytes.len() as u8];
+        frame.extend_from_slice(&mask);
+        frame.extend(bytes.iter().enumerate().map(|(i, b)| b ^ mask[i % 4]));
+        self.0.write_all(&frame).unwrap();
+    }
+
     fn next_text(&mut self) -> String {
         loop {
             let mut h = [0u8; 2];
@@ -246,6 +257,45 @@ fn the_doors_open_at_once_and_the_cafe_follows_its_replay() {
 }
 
 #[test]
+fn a_leave_sent_while_waking_frees_the_seat_when_it_wakes() {
+    // Slice 07's review, finding 1: a visitor who gives up on "Dusting off the
+    // café…" and leaves mustn't hold a seat for the grace period after it wakes.
+    let data = tempfile::tempdir().unwrap();
+    let first = Cafe::start(data.path());
+    first.wait_for(r#""what":"woke""#, Duration::from_secs(30));
+    first.wait_for("listening", Duration::from_secs(30));
+    let (_, leaver) = signup(&first, "leaver");
+    let (_, watcher) = signup(&first, "watcher");
+    first.stop(Duration::from_secs(10));
+    set_saved_at(data.path(), now_ms() - ASLEEP_DAYS * DAY);
+    let cafe = Cafe::start(data.path());
+    cafe.wait_for("listening", Duration::from_secs(30));
+    let mut socket = Socket::open(&cafe, &leaver);
+    assert_eq!(socket.next_text(), r#"{"type":"waking"}"#);
+    socket.send_text(r#"{"type":"leave"}"#);
+    std::thread::sleep(Duration::from_millis(100));
+    drop(socket);
+    assert!(!cafe.logged(r#""what":"woke""#), "the leave was sent while it woke");
+    cafe.wait_for(r#""what":"woke""#, Duration::from_secs(120));
+    let mut watching = Socket::open(&cafe, &watcher);
+    let welcome = loop {
+        let frame = watching.next_text();
+        if frame.starts_with(r#"{"type":"welcome""#) {
+            break frame;
+        }
+    };
+    let welcome: serde_json::Value = serde_json::from_str(&welcome).unwrap();
+    let inside: Vec<&str> = welcome["snapshot"]["people"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|p| p["name"].as_str())
+        .collect();
+    assert_eq!(inside, ["watcher"], "the leaver walked out when the café woke");
+    cafe.stop(Duration::from_secs(10));
+}
+
+#[test]
 fn a_stop_during_the_replay_leaves_the_save_as_it_was() {
     let data = tempfile::tempdir().unwrap();
     let first = Cafe::start(data.path());
@@ -257,7 +307,23 @@ fn a_stop_during_the_replay_leaves_the_save_as_it_was() {
     let cafe = Cafe::start(data.path());
     cafe.wait_for("listening", Duration::from_secs(30));
     assert!(!cafe.logged(r#""what":"woke""#));
-    let took = cafe.stop(Duration::from_secs(5));
+    // A sign-up in flight doesn't hold the stop past Fly's five seconds
+    // (slice 07's review, finding 2).
+    let port = cafe.port;
+    std::thread::spawn(move || {
+        let body = r#"{"name":"latecomer","password":"correct horse","look":{"avatar":1,"colour":2}}"#;
+        if let Ok(mut s) = TcpStream::connect(("127.0.0.1", port)) {
+            let _ = write!(
+                s,
+                "POST /api/signup HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = s.read_to_end(&mut Vec::new());
+        }
+    });
+    std::thread::sleep(Duration::from_millis(50));
+    let (took, status) = cafe.stop(Duration::from_secs(5));
     assert!(took < Duration::from_secs(5), "{took:?}");
+    assert!(status.success(), "a stop is a clean exit: {status:?}");
     assert_eq!(saved_at(data.path()), asleep.to_string(), "the next start replays the same gap");
 }

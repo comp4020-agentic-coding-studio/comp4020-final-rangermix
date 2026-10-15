@@ -24,7 +24,8 @@ mod ws;
 use anyhow::Context;
 use std::future::IntoFuture;
 use std::net::SocketAddr;
-use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[tokio::main]
 async fn main() {
@@ -64,34 +65,56 @@ async fn run() -> anyhow::Result<()> {
     // the café replays its sleep, and a café page opened meanwhile is told so.
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!(target: "sys", port, build = %build, "listening");
+    // Set by the stop signal: a replay that ends after it doesn't start a café
+    // that's about to exit (slice 07's review, finding 2).
+    let stopping = Arc::new(AtomicBool::new(false));
     let waking = {
-        let (store, awake) = (store.clone(), awake.clone());
+        let (store, awake, stopping) = (store.clone(), awake.clone(), stopping.clone());
         tokio::spawn(async move {
             // The replay is CPU work: on a thread of its own, off the runtime's.
             let handle = tokio::runtime::Handle::current();
             let world = tokio::task::spawn_blocking(move || handle.block_on(wake::wake(&store, content, build, now, now))).await??;
+            if stopping.load(Ordering::SeqCst) {
+                return anyhow::Ok(());
+            }
             awake.store(true, Ordering::SeqCst);
             ws::world_task(world, world_rx).await;
             anyhow::Ok(())
         })
     };
-    let save_on_stop = async move {
-        shutdown_signal().await;
-        if awake.load(Ordering::SeqCst) {
-            tracing::info!(target: "sys", "stopping: saving the café");
-            let (done, saved) = tokio::sync::oneshot::channel();
-            if world_tx.send(ws::Command::Shutdown { done }).await.is_ok() {
-                let _ = saved.await;
+    let save_on_stop = {
+        let store = store.clone();
+        async move {
+            shutdown_signal().await;
+            stopping.store(true, Ordering::SeqCst);
+            // Fly waits about five seconds before it kills the machine:
+            // whatever's in flight gets three, then the café goes anyway.
+            let last = store.clone();
+            tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                let _ = last.flush().await;
+                std::process::exit(0);
+            });
+            if awake.load(Ordering::SeqCst) {
+                tracing::info!(target: "sys", "stopping: saving the café");
+                let (done, saved) = tokio::sync::oneshot::channel();
+                if world_tx.send(ws::Command::Shutdown { done }).await.is_ok() {
+                    let _ = saved.await;
+                }
+            } else {
+                tracing::info!(target: "sys", "stopping while the café wakes: its last save stands");
             }
-        } else {
-            tracing::info!(target: "sys", "stopping while the café wakes: its last save stands");
+            let _ = store.flush().await;
         }
-        let _ = store.flush().await;
     };
     let server = axum::serve(listener, http::router(state).into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(save_on_stop)
         .into_future();
-    supervise(async { server.await.map_err(anyhow::Error::from) }, waking).await
+    let result = supervise(async { server.await.map_err(anyhow::Error::from) }, waking).await;
+    // Whatever the world queued before it stopped, or died, is written first
+    // (slice 07's review, finding 3).
+    let _ = store.flush().await;
+    result
 }
 
 /// Runs the server until it has stopped, watching the café's world beside it.
