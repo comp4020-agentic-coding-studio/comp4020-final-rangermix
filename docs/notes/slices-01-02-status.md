@@ -22,5 +22,10 @@ For the user to decide:
 - What the slice 02 reviewer noted for the judged line: repeated plants,
   times with no day, and meetings crowding out the night.
 
-Proposed follow-up, out of scope: a panic in the live world task doesn't
-exit the process (phase 3's; noted by slice 01's reviewer).
+Slice 07 (getting in while the café wakes) is built, reviewed and live
+([notes](slice-07-waking.md)). It also made a dead world task end the
+process, so Fly restarts it, which was slice 01's reviewer's open note.
+
+For the judged line on the board: since the live café was tidied, the cats
+knock everything over within about ten minutes of it emptying, so a night's
+lines come in a cluster at its start ([slice-02-board.md](slice-02-board.md)).

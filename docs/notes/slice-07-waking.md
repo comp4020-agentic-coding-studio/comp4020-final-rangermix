@@ -52,3 +52,7 @@ Seeing "Dusting off the café…" live would need the live save set back by
 days. The image has no tool to edit it, and nothing untrusted was installed
 to do so. So the image under `--cpus=0.0625` above is the evidence for the
 long sleep, on the same binary and client.
+
+After slice 07's review went live (`715951a`), a second cold start: the page
+answered 200 in 1.08 s and carries the waking overlay, `listening` came
+before the 30-second gap's `woke`, and `agent_0c7e80` was welcomed in 142 ms.

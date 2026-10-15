@@ -32,6 +32,18 @@ with `agent_…` accounts.
 - So tonight the cats have things to knock over and scatter again, and the
   board something to tell. That's what the judged line below needs.
 
+- **About an hour later** (`agent_0c7e80`, after slice 07's review went
+  live), the board held the cats' own lines from replays of the idle stops:
+
+  ```
+  Thu 2:47 pm  Tora  knockedOver toys    ("Tora scattered the toys")
+  Thu 2:57 pm  Tora  knockedOver plant   ("Tora knocked over the plant")
+  Thu 2:57 pm  Tora  knockedOver plant
+  ```
+
+  Everything knockable was down again within about ten minutes of an
+  empty café. The two plants read as a repeat, as the reviewer noted.
+
 An empty board on a café nobody tidies is worth weighing in the judged line:
 the board tells what the cats did, and once everything is down, a quiet
 café's cats do nothing it counts.
