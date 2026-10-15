@@ -3,9 +3,10 @@
 // (design.md, "Logging"; plan-phase-3.md, Task 8): every line is one JSON
 // object with a time and a target; an action line says who did what (an
 // account refusal alone has no name, since a password sometimes lands in the
-// name field); a say line has its length; every start ("listening") follows
-// its own wake-up line, with numbers (slice 01); and no line holds anything
-// someone said. The words the spec said are given as arguments:
+// name field); a say line has its length; every start ("listening") is
+// followed by its own wake-up line, with numbers, before the next start or
+// the log's end (slices 01 and 07); and no line holds anything someone said.
+// The words the spec said are given as arguments:
 //
 //   docker logs app 2>&1 | node scripts/check-logs.ts "hello there" ...
 import { createInterface } from "node:readline";
@@ -14,8 +15,8 @@ const said = process.argv.slice(2);
 const ACCOUNT = new Set(["signup", "login", "logout", "recover"]);
 const problems: string[] = [];
 let count = 0;
-/** A wake-up logged and not yet followed by the start it belongs to (slice 01). */
-let wokeUnclaimed = false;
+/** A start whose wake-up hasn't been logged yet, by its line number (slices 01 and 07). */
+let waking: number | null = null;
 
 function check(raw: string, n: number): void {
   if (raw.trim() === "") return;
@@ -31,16 +32,18 @@ function check(raw: string, n: number): void {
   for (const words of said) {
     if (raw.includes(words)) problems.push(`line ${n} holds something said ("${words}")`);
   }
-  // Every start replays the gap and logs its wake-up, with numbers, before it listens.
+  // Every start listens at once, replays the gap behind open doors, and then
+  // logs its wake-up, with numbers.
+  if (l.target === "sys" && l.message === "listening") {
+    if (waking !== null) problems.push(`line ${waking} is a start that never logged its wake-up`);
+    waking = n;
+  }
   if (l.target === "cafe" && l.what === "woke") {
     for (const key of ["gap_secs", "steps", "took_ms"]) {
       if (typeof l[key] !== "number") problems.push(`line ${n} is a wake-up without its ${key}: ${raw}`);
     }
-    wokeUnclaimed = true;
-  }
-  if (l.target === "sys" && l.message === "listening") {
-    if (!wokeUnclaimed) problems.push(`line ${n} is a start with no wake-up logged before it: ${raw}`);
-    wokeUnclaimed = false;
+    if (waking === null) problems.push(`line ${n} is a wake-up with no start before it: ${raw}`);
+    waking = null;
   }
   if (l.target !== "action") return;
   if (typeof l.what !== "string") problems.push(`line ${n} doesn't say what was done: ${raw}`);
@@ -53,6 +56,7 @@ let n = 0;
 const lines = createInterface({ input: process.stdin });
 lines.on("line", (raw) => check(raw, ++n));
 lines.on("close", () => {
+  if (waking !== null) problems.push(`line ${waking} is a start that never logged its wake-up`);
   if (problems.length > 0) {
     for (const p of problems) console.error(p);
     process.exit(1);
