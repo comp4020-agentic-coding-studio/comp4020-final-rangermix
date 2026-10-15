@@ -15,8 +15,26 @@ check). Checked read-only on 2026-10-14 at 22:00 AEDT:
   between 2 seconds and 9 minutes each time. The cats' knock-overs and games
   in those replays are written to the board but, by design, not to the log.
 
-Nothing was signed up on the live café to read the board: an account made
-there can't be deleted, and reading the board is the judged line below.
+Nothing was signed up on the live café to read the board then: an account
+made there can't be deleted. Since ADR 0015 (2026-10-15) agents test there
+with `agent_…` accounts.
+
+## Read and tidied with agent accounts (2026-10-15, about 14:50 AEDT)
+
+- **`agent_320aca` read the board: it was empty.** Both plants (11,1) and
+  (3,8), and the toys (7,8), were down, and all three cats were napping.
+  Those traces dated from before slice 02 went live, when a knock-over wrote
+  no line. Nobody had tidied since, so there was nothing left for a cat to
+  knock over or play with, and so no line to write. The board would have
+  stayed empty however many nights passed.
+- **`agent_659b4d` tidied all three**, by the `tidy` a visitor sends: each
+  answered "stood up". A second read found nothing toppled.
+- So tonight the cats have things to knock over and scatter again, and the
+  board something to tell. That's what the judged line below needs.
+
+An empty board on a café nobody tidies is worth weighing in the judged line:
+the board tells what the cats did, and once everything is down, a quiet
+café's cats do nothing it counts.
 
 ## The judged line
 
