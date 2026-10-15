@@ -215,9 +215,16 @@ function enter(me: ApiMe): void {
     putDown: $("put-cat-down"),
     add: $<HTMLButtonElement>("add-furniture"),
   };
-  let wasCarrying: string | null = null;
+  // Undefined while there's no café to know it from, so the bar is redrawn from
+  // the welcome after a wait (slice 07's review, finding 4).
+  let wasCarrying: string | null | undefined;
   stage.frameHooks.push(() => {
     const state = cafe.state;
+    if (!state) {
+      wasCarrying = undefined;
+      stage.pointer.ghost = null;
+      return;
+    }
     const held = carrying();
     const cat = state ? catInArms(state) : null;
     const inArms = held ? `piece ${held.id}` : cat ? `cat ${cat.id}` : null;
@@ -285,10 +292,17 @@ function enter(me: ApiMe): void {
   const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
     $("waking").hidden = !cafe.waking;
+    // Nothing to act on while it wakes (slice 07's review, finding 5).
+    for (const button of document.querySelectorAll<HTMLButtonElement>("#emotes button")) button.disabled = cafe.waking;
     const s = cafe.state;
     if (!s) {
-      // Waking: nothing of the café until its welcome (slice 07).
+      // Waking: nothing of the café until its welcome (slice 07), and nothing
+      // left over from before it either.
       if (cafe.waking) {
+        closeMenu();
+        hideBoard();
+        $("carrying").hidden = true;
+        $<HTMLButtonElement>("add-furniture").disabled = true;
         for (const id of ["here", "your-cats", "chalk-lines", "board-lines"]) {
           $(id).replaceChildren();
           delete $(id).dataset.lines;
@@ -329,7 +343,6 @@ function enter(me: ApiMe): void {
   cafe.start();
   stage.start();
   canvas.focus();
-  announce("You're walking into the café.");
 }
 
 void start();

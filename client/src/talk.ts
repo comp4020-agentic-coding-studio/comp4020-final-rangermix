@@ -4,6 +4,8 @@ import type { ClientMsg } from "./protocol/ClientMsg";
 export interface Speaker {
   send(msg: ClientMsg): void;
   isOpen(): boolean;
+  /** Still replaying its sleep: nobody to talk to yet (slice 07). */
+  waking?: boolean;
 }
 
 /** The server's limit, counted as it counts: one per character, emoji included. */
@@ -59,6 +61,7 @@ export class Talk {
     if (!text) return;
     if ([...text].length > MAX_CHARS) return this.refuse(`A bubble holds ${MAX_CHARS} characters.`);
     if (!this.cafe.isOpen()) return this.refuse("Not connected. Your words are still here; try again in a moment.");
+    if (this.cafe.waking) return this.refuse("The café is still waking. Your words are still here; try again in a moment.");
     this.cafe.send({ type: "say", text, to: this.to?.id ?? null });
     this.input.value = "";
   }

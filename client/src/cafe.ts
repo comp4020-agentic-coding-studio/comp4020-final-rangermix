@@ -58,6 +58,8 @@ export class Cafe {
   waking = false;
   /** A café shown before a reconnect landed on a waking server, for "said this visit". */
   private parked: CafeState | null = null;
+  /** Whether a welcome has come yet, to say "You're walking into the café" once. */
+  private welcomed = false;
   private readonly listeners = new Set<() => void>();
   private readonly connection: Connection;
   private replaced = false;
@@ -72,6 +74,9 @@ export class Cafe {
     this.connection = new Connection(
       (msg) => this.receive(msg),
       (status) => {
+        // Whatever the café was doing, nobody's there now: reconnecting, not
+        // dusting off (slice 07's review, finding 6).
+        if (status === "closed") this.waking = false;
         if (status === "closed" && !this.replaced) void this.checkSignedIn();
         this.notify();
       },
@@ -83,6 +88,9 @@ export class Cafe {
   }
 
   send(msg: ClientMsg): void {
+    // While the café wakes there's nothing to act on: only being here, and
+    // leaving, go through (slice 07's review, finding 5).
+    if (this.waking && !["presence", "here", "leave"].includes(msg.type)) return;
     this.connection.send(msg);
   }
 
@@ -147,6 +155,10 @@ export class Cafe {
         this.hooks.onOutdated?.();
       }
       this.state = fromWelcome(msg, Date.now(), this.state ?? this.parked);
+      // Said when the café is really there: on the first welcome, and on one
+      // after waking (slice 07's review, finding 7).
+      if (!this.welcomed || this.waking) announce("You're walking into the café.");
+      this.welcomed = true;
       this.waking = false;
       this.parked = null;
       if (document.hidden) this.send({ type: "presence", hidden: true });

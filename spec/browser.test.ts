@@ -1,4 +1,4 @@
-import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
+import { type Browser, type BrowserContext, type Page, type WebSocketRoute, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { baseUrl, meetACat, signUp, uniqueName, Visitor } from "./helpers";
 
@@ -70,6 +70,23 @@ async function visit(viewport: { width: number; height: number }, touch = false,
   await page.keyboard.press("Enter");
   if (opts.waitInside ?? true) await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   return { page, frames, sent };
+}
+
+/** How many animations the waking overlay is running. */
+const wakingAnimations = (page: Page) => page.evaluate(() => document.getElementById("waking")!.getAnimations({ subtree: true }).length);
+
+/** Keeps everything the announcer says, in `window.said`, from the start. */
+async function hearAnnouncer(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const said: string[] = [];
+    (window as unknown as { said: string[] }).said = said;
+    document.addEventListener("DOMContentLoaded", () => {
+      const region = document.getElementById("announcer")!;
+      new MutationObserver(() => {
+        if (region.textContent) said.push(region.textContent);
+      }).observe(region, { childList: true, characterData: true, subtree: true });
+    });
+  });
 }
 
 /**
@@ -588,24 +605,103 @@ describe("in a browser", { timeout: 30_000 }, () => {
 
   it("dusts off the café while it wakes, with nothing of the café yet, then opens it", async () => {
     // Slice 07: logged in during a replay, the café page opens at once.
-    const v = await visit({ width: 1920, height: 1080 }, false, { prepare: stillWaking(3000), waitInside: false });
+    const v = await visit({ width: 1920, height: 1080 }, false, { prepare: async (page) => (await hearAnnouncer(page), await stillWaking(3000)(page)), waitInside: false });
     const waking = v.page.locator("#waking");
     await waking.waitFor();
     expect(await waking.textContent()).toContain("Dusting off the café…");
     expect(await v.page.locator("#status-text").textContent()).toBe("Dusting off the café…");
-    expect(await waking.getAttribute("role")).toBe("status");
     expect(await v.page.locator("#here").textContent(), "nobody shown before the welcome").toBe("");
     expect(await v.page.locator("#your-cats").textContent(), "no cats before the welcome").toBe("");
-    expect(await v.page.evaluate(() => document.getAnimations().length), "it moves").toBeGreaterThan(0);
+    expect(await wakingAnimations(v.page), "it moves").toBeGreaterThan(0);
+    // Nothing to do while it wakes (slice 07's review, finding 5).
+    expect(await v.page.locator("#add-furniture").isDisabled()).toBe(true);
+    expect(await v.page.locator("#emotes button").first().isDisabled()).toBe(true);
+    await v.page.locator("#talk-input").fill("typed while dusting");
+    await v.page.locator("#talk-input").press("Enter");
+    expect(await v.page.locator("#talk-input").inputValue(), "the words are kept").toBe("typed while dusting");
+    expect(v.sent.filter((m) => !["presence", "here"].includes(m.type)), "nothing sent but presence").toEqual([]);
     await waking.waitFor({ state: "hidden", timeout: 10_000 });
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     expect(await v.page.locator("#your-cats .cat-row").count()).toBeGreaterThan(0);
+    expect(await v.page.locator("#add-furniture").isDisabled()).toBe(false);
+    // Heard once while it wakes, and told when the café opens (slice 07's review, finding 7).
+    const said = await v.page.evaluate(() => (window as unknown as { said: string[] }).said);
+    expect(said.filter((s) => s === "Dusting off the café…")).toHaveLength(1);
+    expect(said.indexOf("You're walking into the café.")).toBeGreaterThan(said.indexOf("Dusting off the café…"));
+  });
+
+  it("puts away what was on screen when a reconnect lands on a waking café", async () => {
+    // Slice 07's review, findings 4 and 5: no stale carrying bar or menu.
+    const route: { first?: WebSocketRoute } = {};
+    let connections = 0;
+    const v = await visit({ width: 1920, height: 1080 }, false, {
+      prepare: (page) =>
+        page.routeWebSocket(/\/ws$/, (ws) => {
+          connections++;
+          if (connections === 1) {
+            ws.connectToServer();
+            route.first = ws;
+            return;
+          }
+          const server = ws.connectToServer();
+          ws.send(JSON.stringify({ type: "waking" }));
+          const held: (string | Buffer)[] = [];
+          let holding = true;
+          setTimeout(() => {
+            holding = false;
+            for (const m of held.splice(0)) ws.send(m);
+          }, 2500);
+          server.onMessage((m) => (holding ? held.push(m) : ws.send(m)));
+        }),
+    });
+    await v.page.locator("#add-furniture").click();
+    await v.page.locator(".menu").getByRole("menuitem", { name: "A lamp" }).click();
+    await v.page.locator("#carrying").waitFor();
+    const box = (await v.page.locator("#room").boundingBox())!;
+    await v.page.mouse.click(box.x + 9.5 * (box.width / 12), box.y + 4.5 * (box.height / 10));
+    await route.first!.close();
+    await v.page.locator("#waking").waitFor();
+    expect(await v.page.locator(".menu").count(), "no menu left open over it").toBe(0);
+    expect(await v.page.locator("#carrying").isHidden()).toBe(true);
+    await v.page.locator("#waking").waitFor({ state: "hidden", timeout: 10_000 });
+    await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    expect(await v.page.locator("#carrying").isHidden(), "the server put the lamp back").toBe(true);
+    expect(await v.page.locator("#add-furniture").isDisabled()).toBe(false);
+  });
+
+  it("says it's reconnecting, not dusting, when the server goes away while waking", async () => {
+    // Slice 07's review, finding 6.
+    let connections = 0;
+    const v = await visit({ width: 1920, height: 1080 }, false, {
+      waitInside: false,
+      prepare: (page) =>
+        page.routeWebSocket(/\/ws$/, (ws) => {
+          connections++;
+          if (connections === 1) {
+            ws.send(JSON.stringify({ type: "waking" }));
+            setTimeout(() => ws.close(), 1000);
+          } else {
+            ws.close();
+          }
+        }),
+    });
+    await v.page.locator("#waking").waitFor();
+    await v.page.waitForFunction(() => /Reconnecting/.test(document.getElementById("status-text")?.textContent ?? ""), null, { timeout: 8000 });
+    expect(await v.page.locator("#waking").isHidden()).toBe(true);
   });
 
   it("dusts off the café on a phone, by touch, through a resize, and holds still for reduced motion", async () => {
-    const v = await visit({ width: 390, height: 844 }, true, { prepare: stillWaking(4000), waitInside: false, reducedMotion: "reduce" });
+    const v = await visit({ width: 390, height: 844 }, true, { prepare: stillWaking(6000), waitInside: false, reducedMotion: "reduce" });
     const waking = v.page.locator("#waking");
     await waking.waitFor();
+    // Still, for reduced motion, counted while it shows (slice 07's review, finding 9).
+    expect(await wakingAnimations(v.page)).toBe(0);
+    expect(await waking.isVisible()).toBe(true);
+    expect(await v.page.locator("#here").textContent()).toBe("");
+    // A tap does nothing while it wakes.
+    const r0 = (await waking.boundingBox())!;
+    await v.page.touchscreen.tap(r0.x + r0.width / 2, r0.y + r0.height / 2);
+    expect(v.sent.filter((m) => !["presence", "here"].includes(m.type))).toEqual([]);
     for (const size of [{ width: 390, height: 844 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
       await v.page.setViewportSize(size);
       await v.page.waitForTimeout(100);
@@ -614,7 +710,6 @@ describe("in a browser", { timeout: 30_000 }, () => {
       expect(r.x + r.width).toBeLessThanOrEqual(size.width);
       expect(await v.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
     }
-    expect(await v.page.evaluate(() => document.getAnimations().length), "still, for reduced motion").toBe(0);
     await waking.waitFor({ state: "hidden", timeout: 10_000 });
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   });
