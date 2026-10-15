@@ -1151,3 +1151,52 @@ planned from the code as it stood, then built test first, task by task.
   hours asleep, and the user's reading of the board.
   [`notes/slices-01-02-status.md`](notes/slices-01-02-status.md) has these
   and the decisions waiting on the user.
+
+*Sent 2026-10-15 14:23:06 AEDT*
+
+> 1. you can create accounts for testing and do whatever you need to with the cafe with those accounts for testing.
+> 2. same with the fly.io deployment, do whatever you need to for testing.
+> 3. add 1&2 to harness
+> 4. tune the gap cap to 3 days
+> 5. while the server do the replays, serve the signup / login page normally. if when they login the replay is still ongoing, serve the cafe page right away with no state, and show "dusting off the cafe..." or something similar, with animation.
+> 6. "I’ve put up a card for a follow-up from slice 01’s review: a crash in the café’s live game loop currently leaves the server up with a dead café instead of restarting it." explain why the crash and why not fixed, or just a possible edge case
+
+**Result.**
+- **1 to 3, testing live.** [ADR 0015](adr/0015-let-agents-test-on-the-live-cafe-and-its-fly-app.md)
+  and a new section in `AGENTS.md` ([`e60dc05`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e60dc05)) cover both:
+  - agents test with accounts of their own, named `agent_…`, whose
+    passwords are never written down, and keep visits short;
+  - on Fly they do whatever testing needs, without changing the course's
+    fixed shape or destroying the volume, and leave `main`'s build
+    serving.
+  Used at once:
+  - an agent read the live board and found it empty, because traces from
+    before slice 02 had never been tidied, so the cats had nothing left to
+    knock over;
+  - another agent tidied them ([`dc1c9ef`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dc1c9ef));
+  - slice 07's live check stopped and started the machine.
+- **4.** The cap is `replay_max_days = 3` in `tuning.toml`
+  ([`fc086c6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/fc086c6)), a tunable number, so no new ADR.
+- **5, slice 07** ([spec](slices/07-getting-in-while-the-cafe-wakes.md),
+  [plan](notes/plan-slice-07-waking.md)).
+  - **The server.** The port opens at once and the replay runs behind it.
+    A socket opened meanwhile is told `waking` and gets its welcome when
+    the café is awake ([`3e83d1d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3e83d1d)). The log check now
+    expects `listening` before `woke` ([`bc72005`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bc72005)).
+  - **The page.** It shows "Dusting off the café…" with a broom sweeping
+    and dust rising, still under reduced motion ([`af4e548`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/af4e548)).
+  - **Seen on the image** at Fly's baseline CPU, with the save set back
+    three days: the page in 0.4 s, a sign-up during the replay, the
+    overlay, then the café after 13 to 15 s ([`4e8b1b4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4e8b1b4)).
+  - **The review.** A fresh agent found 1 major problem (a Leave sent
+    while waking was lost) and 10 minor. Fixed test first in
+    [`0f416e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0f416e9), [`30bd6e9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/30bd6e9) and
+    [`a4e986c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4e986c), and answered in [`8278fa8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8278fa8).
+- **6.** The crash was never observed. It's a gap: if any future bug
+  panicked inside the world task, tokio would end only that task, and the
+  server would go on serving pages with no café behind them, so Fly would
+  never restart it. It was out of slice 01's scope. Slice 07 had to watch
+  its new background task anyway, so it now watches the world task too: if
+  it dies, the process exits with a JSON line and Fly restarts it. The
+  separate card was withdrawn.
+
