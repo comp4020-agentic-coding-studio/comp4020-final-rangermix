@@ -33,3 +33,22 @@ burst.
 An empty board after three days asleep is right, not a fault. Everything
 knockable fell in the first night and stayed down, and the lines from it
 are over a day old by the end of the replay.
+
+## Live (2026-10-15, with an agent account and Fly, as ADR 0015 allows)
+
+Slice 07 went live with `d9e4adc` (CI green: the waking integration tests
+in the Rust job, the browser checks and the log check in the other).
+
+- **A cold start.** `flyctl machine stop` saved the café ("stopping: saving
+  the café"). A minute later a request woke the machine: the page answered
+  200 in 0.98 s, machine start included.
+- **The order.** `listening` at 03:57:03.257, then the 60-second gap's
+  `woke` line 3 ms later, as the log check now expects.
+- **A visitor.** `agent_dde6f0` signed up and went straight in (welcome in
+  139 ms, no `waking`): a replay of a minute is over before anyone can
+  connect.
+
+Seeing "Dusting off the café…" live would need the live save set back by
+days. The image has no tool to edit it, and nothing untrusted was installed
+to do so. So the image under `--cpus=0.0625` above is the evidence for the
+long sleep, on the same binary and client.
