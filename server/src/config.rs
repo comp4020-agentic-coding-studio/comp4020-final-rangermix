@@ -12,6 +12,8 @@ pub struct Config {
     pub docs_dir: PathBuf,
     /// On Fly, its proxy sets `fly-client-ip`; anywhere else anyone could.
     pub behind_fly: bool,
+    /// Where a test starts the café's clock (slice 08); never set on Fly.
+    pub clock_start: Option<String>,
 }
 
 impl Config {
@@ -29,6 +31,7 @@ impl Config {
             readme_path: path("README_PATH", "README.md"),
             docs_dir: path("DOCS_DIR", "docs"),
             behind_fly: get("FLY_APP_NAME").is_some(),
+            clock_start: get("CAFE_CLOCK_START"),
         }
     }
 
@@ -65,6 +68,13 @@ mod tests {
         });
         assert_eq!(c.port, 9000);
         assert_eq!(c.data_dir, PathBuf::from("/data"));
+    }
+
+    #[test]
+    fn the_clocks_start_comes_from_the_environment_or_not_at_all() {
+        assert_eq!(Config::from_lookup(|_| None).clock_start, None);
+        let c = Config::from_lookup(|k| (k == "CAFE_CLOCK_START").then(|| "2026-10-16T23:00:00+11:00".into()));
+        assert_eq!(c.clock_start.as_deref(), Some("2026-10-16T23:00:00+11:00"));
     }
 
     #[test]

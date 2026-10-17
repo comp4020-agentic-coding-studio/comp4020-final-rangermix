@@ -49,6 +49,8 @@ async fn main() {
 
 async fn run() -> anyhow::Result<()> {
     let config = config::Config::from_env();
+    // Before anything reads the time, or the store is touched (slice 08).
+    let clock = start_clock(&config)?;
     std::fs::create_dir_all(&config.data_dir)?;
     let db = config.data_dir.join("cafe.db");
     let store = store::Store::open(&db).with_context(|| format!("can't open the database at {}", db.display()))?;
@@ -64,7 +66,7 @@ async fn run() -> anyhow::Result<()> {
     // The doors open at once (slice 07): the page and the accounts work while
     // the café replays its sleep, and a café page opened meanwhile is told so.
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
-    tracing::info!(target: "sys", port, build = %build, "listening");
+    tracing::info!(target: "sys", port, build = %build, clock = %clock, "listening");
     // Set by the stop signal: a replay that ends after it doesn't start a café
     // that's about to exit (slice 07's review, finding 2).
     let stopping = Arc::new(AtomicBool::new(false));
@@ -115,6 +117,21 @@ async fn run() -> anyhow::Result<()> {
     // (slice 07's review, finding 3).
     let _ = store.flush().await;
     result
+}
+
+/// Starts the café's clock where a test asked (`CAFE_CLOCK_START`), and says
+/// which clock it's on for the `listening` line: `wall`, or that start. The
+/// live café is always on the wall clock, so on Fly the variable is refused
+/// (slice 08, ADR 0016).
+fn start_clock(config: &config::Config) -> anyhow::Result<String> {
+    let Some(start) = &config.clock_start else {
+        return Ok("wall".to_string());
+    };
+    if config.behind_fly {
+        anyhow::bail!("CAFE_CLOCK_START is for tests: the café on Fly keeps the wall clock");
+    }
+    time::start_at(time::parse_start(start)?);
+    Ok(start.clone())
 }
 
 /// Runs the server until it has stopped, watching the café's world beside it.

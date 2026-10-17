@@ -3,9 +3,10 @@
 // (design.md, "Logging"; plan-phase-3.md, Task 8): every line is one JSON
 // object with a time and a target; an action line says who did what (an
 // account refusal alone has no name, since a password sometimes lands in the
-// name field); a say line has its length; every start ("listening") is
-// followed by its own wake-up line, with numbers, before the next start or
-// the log's end (slices 01 and 07); and no line holds anything someone said.
+// name field); a say line has its length; every start ("listening") says
+// which clock it's on (slice 08) and is followed by its own wake-up line,
+// with numbers, before the next start or the log's end (slices 01 and 07);
+// and no line holds anything someone said.
 // The words the spec said are given as arguments:
 //
 //   docker logs app 2>&1 | node scripts/check-logs.ts "hello there" ...
@@ -36,6 +37,8 @@ function check(raw: string, n: number): void {
   // logs its wake-up, with numbers.
   if (l.target === "sys" && l.message === "listening") {
     if (waking !== null) problems.push(`line ${waking} is a start that never logged its wake-up`);
+    // Slice 08: "wall", or the instant a test started the clock at.
+    if (typeof l.clock !== "string") problems.push(`line ${n} is a start that doesn't say its clock: ${raw}`);
     waking = n;
   }
   // A start stopped while it woke ends there: its last save stands, and the

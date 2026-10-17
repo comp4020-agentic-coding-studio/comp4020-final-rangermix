@@ -13,7 +13,7 @@ const check = (lines: object[], ...said: string[]) =>
 
 const at = "2026-10-09T08:42:07.123Z";
 const woke = { timestamp: at, level: "INFO", target: "cafe", what: "woke", first: true, gap_secs: 0, steps: 0, capped: false, took_ms: 0, refills: 0, walks: "" };
-const listening = { timestamp: at, level: "INFO", target: "sys", port: 8080, message: "listening" };
+const listening = { timestamp: at, level: "INFO", target: "sys", port: 8080, clock: "wall", message: "listening" };
 const good = [
   listening,
   woke,
@@ -53,6 +53,12 @@ describe("checking the app's own log lines", () => {
     expect(check([woke, listening]).status, "a wake-up before its start").not.toBe(0);
     expect(check([listening, { ...woke, steps: "20" }]).status).not.toBe(0);
     expect(check([listening, { ...woke, took_ms: undefined }]).status).not.toBe(0);
+    // Slice 08: every start says which clock it's on, so a café on mocked
+    // time is never mistaken for the live one.
+    const unclocked = check([{ ...listening, clock: undefined }, woke]);
+    expect(unclocked.status, "a start that doesn't say its clock").not.toBe(0);
+    expect(unclocked.stderr).toContain("clock");
+    expect(check([{ ...listening, clock: "2026-10-16T23:00:00+11:00" }, woke]).status).toBe(0);
     // A start stopped while it woke ends there, by design (slice 07's review, finding 8).
     const stoppedWaking = { timestamp: at, level: "INFO", target: "sys", message: "stopping while the café wakes: its last save stands" };
     expect(check([listening, stoppedWaking, listening, woke]).status).toBe(0);
