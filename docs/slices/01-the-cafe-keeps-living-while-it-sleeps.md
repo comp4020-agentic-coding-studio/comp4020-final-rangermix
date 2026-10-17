@@ -57,7 +57,7 @@ a few seconds.
 | Stopping the image and starting it again after a pause brings the cats back moved by the gap, with furniture and trust as they were | `spec/`, a stop and start of the container |
 | A database that won't open stops the server instead of serving an empty café | `cargo test` |
 | Every wake-up logs its summary, and the narrator has words for it | `spec/` (the log check), narrator tests |
-| Waking after a night takes a few seconds at most | `cargo test`, the built binary started at 23:00 and again at 07:30 on mocked time, its replay bounded at 20 s in a debug build (0.6 s on the development machine) (slice 08). Until 2026-10-17 this was judged from the live summary line after a real night; the baseline-CPU numbers stay in [slice-01-wake.md](../notes/slice-01-wake.md) |
+| Waking after a night takes a few seconds at most | `cargo test`, the built binary started at 23:00 and again at 07:30 on mocked time, its replay bounded at 5 s in a debug build (0.6 s on the development machine, about 0.4 s in release at the bound) (slice 08). That holds the replay's speed on every push, not on the live machine's CPU: at Fly's baseline share the same night took 1.3 s, measured once ([slice-01-wake.md](../notes/slice-01-wake.md)). Until 2026-10-17 this was judged from the live summary line after a real night |
 
 ## Rules it touches
 

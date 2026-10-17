@@ -59,6 +59,12 @@ describe("checking the app's own log lines", () => {
     expect(unclocked.status, "a start that doesn't say its clock").not.toBe(0);
     expect(unclocked.stderr).toContain("clock");
     expect(check([{ ...listening, clock: "2026-10-16T23:00:00+11:00" }, woke]).status).toBe(0);
+    // With --wall, as CI runs it on the image Fly deploys, a mocked clock is
+    // a problem (slice 08's review, finding 10).
+    const mocked = check([{ ...listening, clock: "2026-10-16T23:00:00+11:00" }, woke], "--wall");
+    expect(mocked.status, "the image on a mocked clock").not.toBe(0);
+    expect(mocked.stderr).toContain("wall");
+    expect(check([listening, woke], "--wall").status).toBe(0);
     // A start stopped while it woke ends there, by design (slice 07's review, finding 8).
     const stoppedWaking = { timestamp: at, level: "INFO", target: "sys", message: "stopping while the café wakes: its last save stands" };
     expect(check([listening, stoppedWaking, listening, woke]).status).toBe(0);

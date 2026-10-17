@@ -105,7 +105,8 @@ starts the built binary at 23:00 on Friday 16 October 2026 (Canberra) with
 `CAFE_CLOCK_START`, lets a visitor meet a cat and leave, stops it, and starts
 it at 07:30 on Saturday with the save the café wrote. It requires the
 wake-up line's gap to be within a minute of 30,600 s (the evening's
-seconds), the steps to match, one refill, and `took_ms` under 20,000. The
+seconds), the steps to match, one refill, and `took_ms` under 5,000 (20,000
+until the review's finding 4). The
 test prints its wake-up line. On the development machine (Apple M4, debug
 build, 2026-10-17):
 

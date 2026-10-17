@@ -132,7 +132,7 @@ fn start_clock(config: &config::Config) -> anyhow::Result<String> {
     if config.behind_fly {
         anyhow::bail!("CAFE_CLOCK_START is for tests: the café on Fly keeps the wall clock");
     }
-    time::start_at(time::parse_start(start)?);
+    time::start_at(time::parse_start(start)?)?;
     Ok(start.clone())
 }
 

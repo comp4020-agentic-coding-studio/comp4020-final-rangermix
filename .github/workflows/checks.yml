@@ -50,9 +50,10 @@ jobs:
       - name: Check the app's own log lines
         # after the spec's visitors have been and gone, across both of the
         # app's starts: every line says when, what and who, every start logs
-        # its wake-up, and none holds what the spec said in a bubble or its
-        # password (AGENTS.md: never log what anyone says)
-        run: docker logs app 2>&1 | node scripts/check-logs.ts "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse"
+        # its wake-up on the wall clock as Fly runs it (slice 08), and none
+        # holds what the spec said in a bubble or its password (AGENTS.md:
+        # never log what anyone says)
+        run: docker logs app 2>&1 | node scripts/check-logs.ts --wall "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse"
       - name: Show the app's output
         # what the container printed, so a crash or slow boot is visible
         if: ${{ failure() }}

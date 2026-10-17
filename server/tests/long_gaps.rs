@@ -12,6 +12,8 @@ use std::time::Duration;
 
 /// 23:00 on Friday 16 October 2026, Canberra time (AEDT).
 const FRIDAY_NIGHT: &str = "2026-10-16T23:00:00+11:00";
+/// Half an hour later, before midnight.
+const FRIDAY_HALF_ELEVEN: &str = "2026-10-16T23:30:00+11:00";
 /// 07:30 the next morning, after the bowls' 7:00 refill.
 const SATURDAY_MORNING: &str = "2026-10-17T07:30:00+11:00";
 /// The same as ms since the epoch.
@@ -21,8 +23,10 @@ const NINE_DAYS_ON: &str = "2026-10-25T23:00:00+11:00";
 /// A night's 8½ hours, in seconds.
 const NIGHT_SECS: u64 = 30_600;
 /// How long a replay of the night may take in a debug build: 0.6 s here,
-/// with room for CI's shared runners (slice 08, Numbers).
-const BOUND_MS: u64 = 20_000;
+/// with about eight times that for CI's shared runners. A replay that slow
+/// would be about 0.4 s in a release build here (slice 08's review,
+/// finding 4).
+const BOUND_MS: u64 = 5_000;
 
 fn repo_content(data: &std::path::Path) -> std::path::PathBuf {
     content_with(data, &[])
@@ -82,13 +86,55 @@ fn toppled(welcome: &Value) -> Vec<String> {
         .collect()
 }
 
-/// A board line as a person would read it, for the judged line: the time in
-/// Canberra, the cat, and what it did.
+/// The furniture kinds a cat can knock over, from `content/furniture.toml`.
+fn knockable_kinds(content: &std::path::Path) -> Vec<String> {
+    let kinds: toml::Table = std::fs::read_to_string(content.join("furniture.toml")).unwrap().parse().unwrap();
+    kinds["kinds"]
+        .as_table()
+        .unwrap()
+        .iter()
+        .filter(|(_, k)| k.get("knocks").and_then(|v| v.as_bool()) == Some(true))
+        .map(|(name, _)| name.clone())
+        .collect()
+}
+
+/// Every cat's name, from `content/cats/`, sorted: a new cat is a data file.
+fn cat_names(content: &std::path::Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(content.join("cats"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .map(|p| {
+            let cat: toml::Table = std::fs::read_to_string(p).unwrap().parse().unwrap();
+            cat["name"].as_str().unwrap().to_string()
+        })
+        .collect();
+    names.sort();
+    names
+}
+
+/// A board line as a visitor reads it, for the judged line: the time in
+/// Canberra and the words `client/src/chalk.ts` puts on the board (slice
+/// 08's review, finding 9).
 fn told(line: &Value) -> String {
     let at = chrono::DateTime::from_timestamp_millis(line["at"].as_i64().unwrap())
         .unwrap()
         .with_timezone(&chrono_tz::Australia::Sydney);
-    format!("{}  {}  {}", at.format("%a %-I:%M%P"), line["cat"].as_str().unwrap(), line["what"])
+    let (cat, w) = (line["cat"].as_str().unwrap(), &line["what"]);
+    let s = |k: &str| w[k].as_str().unwrap_or_default().replace('_', " ");
+    let words = match w["kind"].as_str().unwrap() {
+        "knockedOver" if s("piece") == "toys" => format!("{cat} scattered the toys"),
+        "knockedOver" => format!("{cat} knocked over the {}", s("piece")),
+        "met" => format!("{cat} met {} for the first time", s("with")),
+        "greeted" => format!("{cat} greeted {} at the door", s("with")),
+        "lap" => format!("{cat} slept on {}'s lap for {} minutes", s("with"), w["minutes"]),
+        "playedWith" => format!("{cat} played with {}", s("with")),
+        "played" => format!("{cat} played with the toys"),
+        "investigated" => format!("{cat} looked over the new {}", s("piece")),
+        "perched" => format!("{cat} watched the street from the window seat"),
+        other => format!("{cat} {other}"),
+    };
+    format!("{}  {words}", at.format("%a %-I:%M%P"))
 }
 
 #[test]
@@ -96,18 +142,32 @@ fn a_night_from_eleven_to_half_past_seven() {
     let data = tempfile::tempdir().unwrap();
     let content = repo_content(data.path());
 
-    // Friday, 23:00: a regular comes in, says goodnight to a cat, and goes.
+    // Friday, 23:00: a regular comes in, says goodnight to a cat, moves a
+    // cushion, and goes. A night owl stays in until the machine stops, so the
+    // cats, who knock things over only when alone, leave everything standing
+    // for the night (slice 08's review, finding 3).
     let evening = Cafe::start(data.path(), &content, Some(FRIDAY_NIGHT));
     evening.wait_for(r#""what":"woke""#, Duration::from_secs(30));
+    let (_, owl) = signup(&evening, "night_owl");
+    let mut owl = Socket::open(&evening, &owl);
+    owl.welcome();
     let (_, cookie) = signup(&evening, "regular");
     let mut socket = Socket::open(&evening, &cookie);
     let before = socket.welcome();
     let (cat, trust) = meet_a_cat(&mut socket, &before);
+    let cushion = socket.place_a_cushion(&before);
     leave(socket);
-    // What the visitor left, as they'd see it if they looked back in.
+    // The café as the night begins: what the regular left, owl inside.
     let last_look = Socket::open(&evening, &cookie).welcome();
+    assert!(places(&last_look).contains(&cushion), "{cushion} is down");
+    assert!(
+        toppled(&last_look).is_empty(),
+        "nothing fell with the owl in: {:?}",
+        places(&last_look)
+    );
     std::thread::sleep(Duration::from_secs(6));
     evening.stop(Duration::from_secs(10));
+    drop(owl);
     let stopped: u64 = saved_at(data.path()).parse().unwrap();
 
     // Saturday, 07:30: the machine starts for the morning's first visitor.
@@ -126,11 +186,10 @@ fn a_night_from_eleven_to_half_past_seven() {
     assert_eq!(woke["failed"], false, "{woke}");
     assert!(woke["took_ms"].as_u64().unwrap() < BOUND_MS, "{woke}");
     let walks: Vec<(String, u32)> = serde_json::from_str(woke["walks"].as_str().unwrap()).unwrap();
-    assert_eq!(
-        walks.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(),
-        ["Burakku", "Mochi", "Tora"],
-        "{woke}"
-    );
+    // Every cat in content/, whichever cats those are (slice 08's review, finding 7).
+    let mut walked: Vec<String> = walks.iter().map(|(n, _)| n.clone()).collect();
+    walked.sort();
+    assert_eq!(walked, cat_names(&content), "{woke}");
     assert!(walks.iter().any(|(_, n)| *n > 0), "the night moved somebody: {woke}");
 
     // What the regular finds when they come back.
@@ -158,9 +217,9 @@ fn a_night_from_eleven_to_half_past_seven() {
         .collect();
     assert!(!night.is_empty(), "the night left lines on the board: {board:?}");
     assert!(!toppled(&after).is_empty(), "the night left a trace: {:?}", places(&after));
-    for down in toppled(&last_look) {
-        assert!(toppled(&after).contains(&down), "{down} was down, and nobody stood it up");
-    }
+    // The cushion is where the regular put it, which only the store knows,
+    // and everything else stands where it stood (slice 08's review, finding 2).
+    assert!(places(&after).contains(&cushion), "{cushion} came back: {:?}", places(&after));
     assert_eq!(places(&after), places(&last_look), "a night knocks things over, but moves nothing");
 
     // For the judged line: the board as the morning's first visitor reads it.
@@ -171,6 +230,48 @@ fn a_night_from_eleven_to_half_past_seven() {
     }
     socket.send_text(r#"{"type":"leave"}"#);
     morning.stop(Duration::from_secs(10));
+}
+
+#[test]
+fn a_trace_left_at_the_stop_is_down_after_the_restart() {
+    // Slice 08's review, finding 2: a trace the evening left, kept across the
+    // stop by the store. The next start is at the very instant the stop
+    // saved, so its replay has no steps: nothing the café does after waking
+    // can knock the piece over again, and only the store can have kept it.
+    let data = tempfile::tempdir().unwrap();
+    let content = repo_content(data.path());
+    let evening = Cafe::start(data.path(), &content, Some(FRIDAY_NIGHT));
+    evening.wait_for(r#""what":"woke""#, Duration::from_secs(30));
+    let (_, cookie) = signup(&evening, "night_owl");
+    std::thread::sleep(Duration::from_secs(6));
+    evening.stop(Duration::from_secs(10));
+    // A trace in the save the café wrote: the first piece a cat could knock
+    // over, put down here. How it came to be down isn't what's checked, and
+    // waiting for a cat to do it took minutes on a seed whose cats all
+    // napped (slice 08's review, finding 2).
+    let mut saved: Vec<Value> = serde_json::from_str(&common::world_value(data.path(), "arrangement")).unwrap();
+    let knockable = knockable_kinds(&content);
+    let piece = saved
+        .iter_mut()
+        .find(|p| knockable.contains(&p["kind"].as_str().unwrap().to_string()) && p["toppled"] != true)
+        .expect("a piece a cat could knock over");
+    piece["toppled"] = Value::Bool(true);
+    let down = vec![format!("{}@{},{}", piece["kind"].as_str().unwrap(), piece["x"], piece["y"])];
+    common::set_world_value(data.path(), "arrangement", &serde_json::to_string(&saved).unwrap());
+
+    let stopped: i64 = saved_at(data.path()).parse().unwrap();
+    let at = chrono::DateTime::from_timestamp_millis(stopped).unwrap().to_rfc3339();
+    let again = Cafe::start(data.path(), &content, Some(&at));
+    again.wait_for(r#""what":"woke""#, Duration::from_secs(30));
+    assert_eq!(again.line(r#""what":"woke""#)["steps"], 0, "no replay to knock anything over");
+    let after = Socket::open(&again, &cookie).welcome();
+    for piece in &down {
+        assert!(
+            toppled(&after).contains(piece),
+            "{piece} was down at the stop, and nobody stood it up"
+        );
+    }
+    again.stop(Duration::from_secs(10));
 }
 
 #[test]
@@ -189,6 +290,14 @@ fn treats_used_before_midnight_come_back_in_the_morning() {
     }
     leave(socket);
     evening.stop(Duration::from_secs(10));
+
+    // Before midnight a restart remembers what was used: without this, a café
+    // that forgot every visitor's treats on each start would pass the morning
+    // (slice 08's review, finding 1).
+    let later = Cafe::start(data.path(), &content, Some(FRIDAY_HALF_ELEVEN));
+    let welcome = Socket::open(&later, &cookie).welcome();
+    assert_eq!(welcome["snapshot"]["yourTreats"], 0, "the same Canberra day, still used up");
+    later.stop(Duration::from_secs(10));
 
     let morning = Cafe::start(data.path(), &content, Some(SATURDAY_MORNING));
     let welcome = Socket::open(&morning, &cookie).welcome();

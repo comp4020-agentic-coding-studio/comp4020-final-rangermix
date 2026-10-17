@@ -7,12 +7,16 @@
 // which clock it's on (slice 08) and is followed by its own wake-up line,
 // with numbers, before the next start or the log's end (slices 01 and 07);
 // and no line holds anything someone said.
-// The words the spec said are given as arguments:
+// The words the spec said are given as arguments, and --wall to require
+// every start on the wall clock:
 //
-//   docker logs app 2>&1 | node scripts/check-logs.ts "hello there" ...
+//   docker logs app 2>&1 | node scripts/check-logs.ts --wall "hello there" ...
 import { createInterface } from "node:readline";
 
-const said = process.argv.slice(2);
+// --wall: every start must be on the wall clock, as the image Fly deploys
+// is (slice 08's review, finding 10). The other arguments are what was said.
+const wall = process.argv.includes("--wall");
+const said = process.argv.slice(2).filter((a) => a !== "--wall");
 const ACCOUNT = new Set(["signup", "login", "logout", "recover"]);
 const problems: string[] = [];
 let count = 0;
@@ -39,6 +43,7 @@ function check(raw: string, n: number): void {
     if (waking !== null) problems.push(`line ${waking} is a start that never logged its wake-up`);
     // Slice 08: "wall", or the instant a test started the clock at.
     if (typeof l.clock !== "string") problems.push(`line ${n} is a start that doesn't say its clock: ${raw}`);
+    else if (wall && l.clock !== "wall") problems.push(`line ${n} is a start on a mocked clock, not the wall's: ${raw}`);
     waking = n;
   }
   // A start stopped while it woke ends there: its last save stands, and the

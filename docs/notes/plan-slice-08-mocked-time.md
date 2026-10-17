@@ -267,6 +267,21 @@ Where carrying out this plan departed from it, task by task, and why.
   `pnpm check` passed against it (the client's 89 checks, the spec's 63,
   the browser checks and the restart among them), and the log check passed
   over its 291 lines across both starts.
+- **Task 5, the review** ([findings](reviews/slice-08-findings.md)): 2 major
+  findings and 8 minor, all answered there. Both majors were checks that
+  could pass without the behaviour, and each fix was seen failing under the
+  fault it holds: a café that forgets treat rows, and one whose
+  `restore_arrangement` does nothing.
+- **A first answer to finding 2 was itself flaky**, caught by the
+  concurrent stress run before it was pushed. It waited for an empty café's
+  cats to knock something over live, which usually took under a minute.
+  On one seed all three cats ate and lay down to nap, and nothing fell in
+  300 s. It also first restarted at 07:30, and under the faulty
+  `restore_arrangement` it still passed, because the night's replay knocked
+  the same pieces over again. The test now puts a trace in the save the
+  café wrote (the first piece of a kind `furniture.toml` says a cat can
+  knock over) and restarts at the instant it stopped, so the replay has no
+  steps and only the store can keep the piece down. It runs in 7 s.
 - **What the night test's board shows**, for slice 02's judged line: 4 lines
   from 8½ hours, the visitor's first meeting at 23:00 and three knock-overs
   by 23:05 (the toys, then both plants), and nothing after. Once everything

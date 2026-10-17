@@ -27,9 +27,27 @@ pub fn now_ms() -> u64 {
 
 /// Starts the café's clock at `at`; it runs on at the wall's speed. Once
 /// only, before anything reads the time: a clock that moved mid-run would
-/// break every timer the café keeps.
-pub fn start_at(at: u64) {
-    OFFSET.set(offset_for(at, wall_ms())).expect("the café's clock is started once");
+/// break every timer the café keeps. A start more than a year from the wall
+/// clock is refused.
+pub fn start_at(at: u64) -> anyhow::Result<()> {
+    let wall = wall_ms();
+    check_near(at, wall)?;
+    OFFSET.set(offset_for(at, wall)).expect("the café's clock is started once");
+    Ok(())
+}
+
+/// How far from the wall clock a test may start the café's clock.
+const NEAR_MS: u64 = 365 * 86_400_000;
+
+/// A start within a year of the wall clock either way. Further off, what the
+/// café stores (board lines, sessions, bans, its saved clock) would be dated
+/// so far out that the same data run later on the wall clock never lets them
+/// go (slice 08's review, finding 6).
+fn check_near(at: u64, wall: u64) -> anyhow::Result<()> {
+    if at.abs_diff(wall) > NEAR_MS {
+        anyhow::bail!("CAFE_CLOCK_START is more than a year from the wall clock");
+    }
+    Ok(())
 }
 
 /// An RFC 3339 instant with its offset (`2026-10-16T23:00:00+11:00`), as
@@ -105,6 +123,58 @@ mod tests {
         for bad in ["tomorrow", "2026-10-16T23:00:00", "2026-10-16", ""] {
             assert!(parse_start(bad).is_err(), "{bad:?} has no offset, or isn't a time");
         }
+    }
+
+    #[test]
+    fn only_this_file_reads_the_wall_clock() {
+        // Slice 08's review, finding 8: an instant read anywhere else would
+        // mix two clocks on a mocked one. Durations (`Instant`, tokio's
+        // intervals) are fine; SQLite's own clock is never used.
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut files = vec![src.clone()];
+        let mut found = Vec::new();
+        while let Some(dir) = files.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    files.push(path);
+                    continue;
+                }
+                if path.extension().is_none_or(|x| x != "rs") || path.ends_with("time.rs") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                for needle in [
+                    "SystemTime",
+                    "UNIX_EPOCH",
+                    "Utc::now",
+                    "Local::now",
+                    "'now'",
+                    "CURRENT_TIMESTAMP",
+                    "unixepoch(",
+                ] {
+                    if text.contains(needle) {
+                        found.push(format!("{} reads {needle}", path.display()));
+                    }
+                }
+            }
+        }
+        assert!(found.is_empty(), "{found:#?}");
+    }
+
+    #[test]
+    fn a_start_far_from_now_is_refused() {
+        // Slice 08's review, finding 6: a clock started in 9999 leaves board
+        // lines, sessions and bans that never run out once the same data runs
+        // on the wall clock. A year either way covers every test's night.
+        let wall = utc(2026, 10, 17, 6, 0);
+        assert!(check_near(utc(2026, 10, 25, 12, 0), wall).is_ok(), "nine days on");
+        assert!(check_near(utc(2026, 1, 1, 0, 0), wall).is_ok(), "this year's past");
+        assert!(check_near(wall + 364 * 86_400_000, wall).is_ok());
+        let far = check_near(utc(9999, 12, 31, 23, 59), wall).unwrap_err();
+        assert!(format!("{far:#}").contains("CAFE_CLOCK_START"), "{far:#}");
+        assert!(check_near(0, wall).is_err(), "1970");
+        assert!(check_near(wall + 367 * 86_400_000, wall).is_err());
     }
 
     #[test]

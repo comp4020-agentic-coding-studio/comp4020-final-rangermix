@@ -143,6 +143,14 @@ pub fn world_value(data: &Path, key: &str) -> String {
     c.query_row("SELECT value FROM world WHERE key = ?1", [key], |r| r.get(0)).unwrap()
 }
 
+/// Writes a `world` value into a stopped café's store: a test's setup of
+/// what was saved, never a stand-in for time passing.
+pub fn set_world_value(data: &Path, key: &str, value: &str) {
+    let c = rusqlite::Connection::open(data.join("cafe.db")).unwrap();
+    let n = c.execute("UPDATE world SET value = ?2 WHERE key = ?1", [key, value]).unwrap();
+    assert_eq!(n, 1, "the store has a {key}");
+}
+
 /// The café's saved clock, as the store holds it.
 pub fn saved_at(data: &Path) -> String {
     world_value(data, "saved_at")
@@ -241,4 +249,59 @@ impl Socket {
     pub fn welcome(&mut self) -> serde_json::Value {
         self.next_where(Duration::from_secs(120), |m| m["type"] == "welcome")
     }
+
+    /// Takes a cushion from the catalogue and puts it down on a free tile, as
+    /// `spec/restart.test.ts`'s `placeACushion` does: a layout only the store
+    /// could keep. Its place, `cushion@x,y`.
+    pub fn place_a_cushion(&mut self, welcome: &serde_json::Value) -> String {
+        let you = welcome["you"].clone();
+        for (x, y) in free_tiles(welcome).into_iter().take(5) {
+            self.send_text(r#"{"type":"take","kind":"cushion"}"#);
+            self.next_where(Duration::from_secs(5), |m| m["type"] == "furnitureHeld" && m["by"] == you);
+            self.send_text(&format!(r#"{{"type":"place","to":{{"x":{x},"y":{y}}}}}"#));
+            let m = self.next_where(Duration::from_secs(15), |m| {
+                (m["type"] == "furniturePlaced" && m["by"] == you) || m["type"] == "error"
+            });
+            if m["type"] == "furniturePlaced" {
+                return format!("cushion@{},{}", m["piece"]["x"], m["piece"]["y"]);
+            }
+            self.send_text(r#"{"type":"putAway"}"#);
+        }
+        panic!("nowhere to put a cushion down");
+    }
+}
+
+/// Floor tiles nothing stands on, off the walkway and clear of the cats,
+/// from the back of the room.
+fn free_tiles(welcome: &serde_json::Value) -> Vec<(u64, u64)> {
+    let room = &welcome["snapshot"]["room"];
+    let n = |v: &serde_json::Value| v.as_u64().unwrap();
+    let covered = |x: u64, y: u64| {
+        room["furniture"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| (n(&f["x"])..n(&f["x"]) + n(&f["w"])).contains(&x) && (n(&f["y"])..n(&f["y"]) + n(&f["h"])).contains(&y))
+            || room["walkway"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|w| n(&w["x"]) == x && n(&w["y"]) == y)
+            || welcome["snapshot"]["cats"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|c| n(&c["at"]["x"]) == x && n(&c["at"]["y"]) == y)
+    };
+    let tiles: Vec<&str> = room["tiles"].as_array().unwrap().iter().map(|t| t.as_str().unwrap()).collect();
+    let (w, h) = (n(&room["width"]), n(&room["height"]));
+    let mut out = Vec::new();
+    for y in (2..h - 1).rev() {
+        for x in 1..w - 1 {
+            if tiles[y as usize].as_bytes()[x as usize] == b'.' && !covered(x, y) {
+                out.push((x, y));
+            }
+        }
+    }
+    out
 }
