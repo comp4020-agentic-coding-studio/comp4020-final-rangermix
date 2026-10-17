@@ -77,3 +77,23 @@ begun, isn't kept.
   Read it with `flyctl logs -a comp4020-final-rangermix | grep '"woke"'` (or
   `pnpm logs`) and record the line here. Until then this judged line is
   unmet, and the slice stays short of `Live` on it alone.
+- **Read on 2026-10-17 at 17:09 AEDT** (session `013dedec`, read-only).
+  Three wake-ups, all from idle stops that afternoon, on version 64 of the
+  app (build `mv91rjsh`):
+
+  | Woke (AEDT) | `gap_secs` | `took_ms` |
+  | --- | --- | --- |
+  | 16:09:38 | 324 | 3 |
+  | 16:32:10 | 916 | 8 |
+  | 16:48:46 | 599 | 6 |
+
+  Each logged `listening` before `woke`, as slice 07 expects. None was a
+  night. `flyctl logs --no-tail` returns only Fly's last 100 lines, which
+  reached back to 16:09 that day. The 16:09 wake's gap of 324 s means the
+  machine was already up before then, so the first wake after the night of
+  16 to 17 October had already left the buffer.
+
+  To catch the night's line, read the logs before the café has been used
+  much that morning, or leave `pnpm logs` running from the evening before.
+  The machine's own `/data` holds no log, since the café writes only to
+  stdout.

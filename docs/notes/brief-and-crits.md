@@ -92,5 +92,8 @@ Follow the links for the exact wording.
 ## Not yet checked
 
 - How `/ship` cutoff tags separate each crit's snapshot in the shared repo.
+  As of 17 October, `crit-8` (on `659952a`) is the only crit tag on the
+  remote. Crit 9's cutoff passed with no `crit-9` tag, and whether one is
+  needed after the fact isn't checked.
 - The studio crit model's "When a week runs differently" section for weeks 9
   to 11.

@@ -1,6 +1,6 @@
 # Slices 01 and 02: where the work stands
 
-Kept up to date by session `efabe266`. Plans:
+Kept up to date by session `efabe266`, and since by later sessions. Plans:
 [slice 01](plan-slice-01-fast-forward.md), [slice 02](plan-slice-02-chalkboard.md).
 
 Both slices are built, reviewed by a fresh agent with every finding
@@ -14,13 +14,19 @@ remains in each is a judged line that needs a real night:
 - **Slice 02:** the user reads the live board after a night and judges
   whether it's worth reading on arrival ([slice-02-board.md](slice-02-board.md)).
 
-For the user to decide:
+Settled since: a first visitor after a long break would have waited about
+30 s at Fly's baseline CPU. The user took both ways out on 2026-10-15. The
+cap is now 3 days (`replay_max_days`,
+[`fc086c6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/fc086c6)),
+and slice 07 serves the page at once while the café wakes.
 
-- A first visitor after a break of more than a week may wait about 30 s at
-  Fly's baseline CPU. If that's too long, shorten the cap or serve a page
-  while the café wakes ([slice-01-wake.md](slice-01-wake.md)).
-- What the slice 02 reviewer noted for the judged line: repeated plants,
-  times with no day, and meetings crowding out the night.
+For the user to weigh when reading the board: what the slice 02 reviewer
+noted, which is repeated plants, times with no day, and meetings crowding
+out the night.
+
+Checked again on 2026-10-17 at 17:09 AEDT (session `013dedec`): no night's
+wake read yet. Fly's log buffer held only the last 100 lines, from 16:09
+AEDT on ([slice-01-wake.md](slice-01-wake.md)).
 
 Slice 07 (getting in while the café wakes) is built, reviewed and live
 ([notes](slice-07-waking.md)). It also made a dead world task end the

@@ -12,8 +12,10 @@ which on 2026-10-12 replaced the phases of
 - **What:** a 2D pixel-art cat café, one shared room where up to six people
   sit with three cats who each have a character and remember everyone they
   meet. The brief's "multi-user, real-time website that's good".
-- **Dates:** crit 9 cutoff Wed 14 Oct, 13:30; crit 10 in week 11; final
-  submission Mon 9 Nov, 12:00; showcase Wed 11 Nov.
+- **Dates:** crit 9 cutoff Wed 14 Oct, 13:30 (passed); crit 10 cutoff
+  Wed 21 Oct, 13:30, inferred from the crit group, which the user hasn't
+  confirmed ([brief-and-crits.md](brief-and-crits.md)); final submission
+  Mon 9 Nov, 12:00; showcase Wed 11 Nov.
 - **Done means:** everything in `docs/design.md` is built, held by its
   checks and live, and `README.md`, `PROCESS.md` and the three reflections
   are in place.
@@ -55,18 +57,43 @@ before its plan.
 `README.md` and the reflections are the user's; the agent drafts them only
 when asked.
 
-For crit 9 (Wed 14 Oct, 13:30), as of 2026-10-12:
+Crit 9 (Wed 14 Oct, 13:30) has passed. `reflections/crit-9.md` is the
+user's, `PROCESS.md` was rewritten for it, including the switch to slices
+and ADR 0013
+([`8960bd4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8960bd4)),
+and its multi-user decision is ADR 0009 (the quiet seat). The repo has no
+`crit-9` tag; `crit-8` is the only crit tag on the remote (read 17 Oct).
 
-- `reflections/crit-9.md`: a draft is in place for the user to make their
-  own.
-- `PROCESS.md`: rewritten for crit 9. It doesn't yet mention the switch to
-  slices or ADR 0013, which is the user's choice.
-- `README.md`: the user's. It promises soothing music the design doesn't have
-  (slice 05's open question), and it has no sources yet;
-  [readme-material.md](readme-material.md) gathers them.
-- The multi-user decision crit 9 asks for is ADR 0009 (the quiet seat), built
-  and linked. "First grab wins" (ADR 0004) is the other one the pod may argue
-  with.
+## Where it stands (2026-10-17)
 
-For crit 10 (week 11): the logging and the live view (`pnpm logs`) were built
-in phase 3; `reflections/crit-10.md` and a rewritten `PROCESS.md` remain.
+Read by session `013dedec`. CI on `main` is green through `7b1a740`, and the
+machine serves version 64 of the app.
+
+- **Done and live:** phases 1 to 3, and slice 07.
+- **Built and deployed, each short of one judged line that needs a real
+  night:** slice 01, the first live `woke` line after a quiet night
+  ([slice-01-wake.md](slice-01-wake.md)); slice 02, the user reading the
+  board after a night ([slice-02-board.md](slice-02-board.md)).
+- **Specs waiting for the user's approval:** slices 03 to 06. None is planned.
+
+## What's left, in order
+
+1. **Crit 10 (cutoff Wed 21 Oct, 13:30).**
+   - The log line for every action and the live view (`pnpm logs`) were
+     built in phase 3.
+   - `PROCESS.md` rewritten for crit 10: the options first, for the user to
+     choose from.
+   - The demo by the logs alone, while the group uses the café: not yet
+     rehearsed.
+   - `reflections/crit-10.md`: the user's, still the empty template.
+2. **The two judged lines:** slice 01's, read by an agent after a night;
+   slice 02's, read by the user. Then both specs go to `Live`.
+3. **Approve and build slices 04, then 03.** The showcase puts a full room
+   of strangers in the café, so the load check and the window's count come
+   first, then mute, the blocklist and the admin ban. This order is the
+   agent's suggestion; the user hasn't chosen one.
+4. **Approve and build slices 05 and 06**, the art and accessibility passes.
+5. **Final submission (Mon 9 Nov, 12:00).** `PROCESS.md` rewritten again,
+   and the user's `README.md`. The README still promises soothing music the
+   design doesn't have (slice 05's open question) and has no sources yet;
+   [readme-material.md](readme-material.md) gathers them.
