@@ -10,13 +10,14 @@ const FRIDAY_NIGHT: u64 = 1_792_152_000_000;
 
 fn start(data: &std::path::Path, env: &[(&str, &str)]) -> Child {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-    let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cafe"));
+    // The OS picks the port as the café binds it, so tests side by side
+    // can't take each other's.
     cmd.env("DATA_DIR", data)
         .env("CONTENT_DIR", repo.join("content"))
         .env("CLIENT_DIR", data.join("no-client"))
         .env("README_PATH", repo.join("README.md"))
-        .env("PORT", port.to_string())
+        .env("PORT", "0")
         .env_remove("FLY_APP_NAME")
         .env_remove("CAFE_CLOCK_START")
         .stdout(Stdio::piped())
@@ -110,6 +111,23 @@ fn a_cafe_on_the_wall_clock_says_so() {
     let data = tempfile::tempdir().unwrap();
     let (child, lines) = running(data.path(), &[]);
     assert_eq!(wait_for(&lines, r#""message":"listening""#)["clock"], "wall");
+    wait_for(&lines, r#""what":"woke""#);
+    stop(child);
+}
+
+#[test]
+fn a_cafe_given_port_zero_says_which_port_it_took() {
+    // The binary tests start cafés side by side: the OS picks each one's
+    // port as it binds, so none can take another's (slice 08).
+    let data = tempfile::tempdir().unwrap();
+    let (child, lines) = running(data.path(), &[("PORT", "0")]);
+    let port = wait_for(&lines, r#""message":"listening""#)["port"].as_u64().unwrap();
+    assert_ne!(port, 0, "the port it bound, not the one it was given");
+    let mut s = std::net::TcpStream::connect(("127.0.0.1", port as u16)).expect("it answers there");
+    std::io::Write::write_all(&mut s, b"GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n").unwrap();
+    let mut answer = String::new();
+    s.read_to_string(&mut answer).unwrap();
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
     wait_for(&lines, r#""what":"woke""#);
     stop(child);
 }

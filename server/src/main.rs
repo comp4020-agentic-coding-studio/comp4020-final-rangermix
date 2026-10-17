@@ -66,6 +66,8 @@ async fn run() -> anyhow::Result<()> {
     // The doors open at once (slice 07): the page and the accounts work while
     // the café replays its sleep, and a café page opened meanwhile is told so.
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
+    // The port it took: `PORT=0` lets the OS choose, as the binary tests do.
+    let port = listener.local_addr()?.port();
     tracing::info!(target: "sys", port, build = %build, clock = %clock, "listening");
     // Set by the stop signal: a replay that ends after it doesn't start a café
     // that's about to exit (slice 07's review, finding 2).

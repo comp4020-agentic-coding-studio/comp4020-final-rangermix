@@ -220,3 +220,46 @@ Written 2026-10-17 from the code at `a45eec4`.
 ## Execution log
 
 Where carrying out this plan departed from it, task by task, and why.
+
+- **Task 1** ([`5805cdf`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5805cdf)).
+  As planned. A grep for `SystemTime`, `Utc::now`, `Local::now` and
+  `UNIX_EPOCH` in `server/src` outside `time.rs` found nothing, and the
+  store uses none of SQLite's own clock functions.
+- **Tasks 2 and 3 went in together.** Moving the shared helpers out of
+  `waking.rs` meant rewriting its three tests' starts anyway, so they moved
+  to the mocked clock in the same change, rather than once to the helpers
+  and again to the clock. The stop test's "save as it was" check, which now
+  compares with the save the first start wrote instead of a rewritten one,
+  was broken on purpose and seen to fail (`1792152000031`, 31 ms after
+  Friday 23:00, against a wrong value), then restored.
+- **The bowls at 07:30 are the night's business.** The night test first
+  asserted the morning welcome's bowls were full (3), and it failed with 0.
+  A throwaway replay of the same night, seeds 1 to 20, found the 7:00
+  refill fills them to 3 every time, and the three cats, hungry since the
+  18:00 refill, empty them within 0 to 9 minutes. The café is right and the
+  test was wrong. It now checks the saved bowls are on Saturday's 7:00
+  refill (`…|2026-10-17@420`), with `refills: 1` in the wake-up line.
+- **The treats test** first opened its socket before the morning café was
+  listening (connection refused). Now `Cafe::start` waits for `listening`.
+- **A port race in the binary tests.** One run of the three binary files
+  failed: `waking.rs`'s leave test timed out after 30 s waiting on a first
+  start's `woke`, and the message wasn't kept. It didn't come back in 12
+  sequential runs or 45 concurrent ones. Reading the helpers found a race
+  that fits it: each test chose a port by binding port 0 and letting it go,
+  then gave the number to the café, so another process could take it in
+  between, and the café's bind would fail and exit. It was there before
+  this slice (the old `waking.rs` did the same), and the new test files,
+  running beside it, made it likelier. Fixed at the source, test first: the
+  café's `listening` line logs the port it bound rather than the one it was
+  given (`a_cafe_given_port_zero_says_which_port_it_took`, seen failing with
+  0), and every binary test starts the café on `PORT=0` and reads its port
+  from `listening`. On Fly `PORT=8080` binds 8080, so the line is unchanged
+  there.
+- **What the night test's board shows**, for slice 02's judged line: 4 lines
+  from 8½ hours, the visitor's first meeting at 23:00 and three knock-overs
+  by 23:05 (the toys, then both plants), and nothing after. Once everything
+  knockable is down, the cats do nothing the board counts. The same was seen
+  on the live board on 15 October ([slice-02-board.md](slice-02-board.md)).
+  The test holds slice 02's rule (a night leaves lines and traces); whether
+  it reads like the café's story is the user's to judge, and this board is
+  the evidence.
