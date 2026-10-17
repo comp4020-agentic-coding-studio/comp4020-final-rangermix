@@ -1200,3 +1200,41 @@ planned from the code as it stood, then built test first, task by task.
   it dies, the process exits with a JSON line and Fly restarts it. The
   separate card was withdrawn.
 
+### 10. Where it stands, a week out from crit 10
+
+*Session `013dedec`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-10-17 17:06:47 AEDT*
+
+> check current progress, what's left in the plan
+
+**Result.** A read-only check of the root plan against the slice notes, the
+specs, CI and the live Fly logs.
+- **Done and live:** phases 1 to 3 and slice 07. CI on `main` is green
+  through `7b1a740`.
+- **Waiting on a night:** slices 01 and 02 are built and deployed, each
+  short of one judged line.
+- **Waiting for approval:** the specs for slices 03 to 06, none planned.
+- **Crit 10 (Wed 21 Oct, 13:30):** a `PROCESS.md` rewrite, the user's
+  reflection, and a rehearsal of the demo by the logs alone.
+- **Stale notes:** the root plan's last section still described crit 9, and
+  the status note still asked about the 30-second first wake, which the
+  3-day cap and slice 07 had settled.
+- **No night's wake yet:** Fly's log buffer held only that afternoon's
+  three short wake-ups.
+
+*Sent 2026-10-17 17:10:56 AEDT*
+
+> update your notes first
+
+**Result.** The notes now say where the work stands
+([`71fcdf5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/71fcdf5)):
+- **The root plan:** crit 10's cutoff, a "where it stands" section, and
+  what's left in order. The order of slices 03 to 06 is marked as the
+  agent's suggestion, since the user hasn't chosen one.
+- **The status note:** the 30-second wait is settled, with today's check
+  added.
+- **Slice 01's notes:** the afternoon's three wake-ups (3 to 8 ms after gaps
+  of 5 to 15 minutes). Fly's buffer keeps only 100 lines, so the night's
+  wake had already gone; the note says how to catch the next one.
+- **The brief note:** `crit-8` is the only crit tag on the remote.
