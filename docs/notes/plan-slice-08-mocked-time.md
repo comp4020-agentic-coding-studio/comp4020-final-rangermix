@@ -258,6 +258,15 @@ Where carrying out this plan departed from it, task by task, and why.
   0), and every binary test starts the café on `PORT=0` and reads its port
   from `listening`. On Fly `PORT=8080` binds 8080, so the line is unchanged
   there.
+- **Task 4** ([`2d51fa3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2d51fa3)).
+  As planned. Slice 01 went to `Live`, since its last line is now held by
+  a test.
+- **Checked on the image before the push, as CI does** (2026-10-17, 19:01
+  AEDT): the Dockerfile built here and run on a throwaway volume. Its
+  `listening` said `"port":8080,"clock":"wall"`, as the live café will.
+  `pnpm check` passed against it (the client's 89 checks, the spec's 63,
+  the browser checks and the restart among them), and the log check passed
+  over its 291 lines across both starts.
 - **What the night test's board shows**, for slice 02's judged line: 4 lines
   from 8½ hours, the visitor's first meeting at 23:00 and three knock-overs
   by 23:05 (the toys, then both plants), and nothing after. Once everything
