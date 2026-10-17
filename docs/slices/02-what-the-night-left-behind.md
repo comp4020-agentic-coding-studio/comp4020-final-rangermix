@@ -1,6 +1,6 @@
 # 02. What the night left behind
 
-- **Status:** Reviewed, every finding answered (approved 2026-10-14, with the proposed default for its open question: the board names people by username, only for what a cat did with them)
+- **Status:** Reviewed, every finding answered, and deployed (approved 2026-10-14, with the proposed default for its open question: the board names people by username, only for what a cat did with them). `Live` once the user has read the board the night test prints (since 2026-10-17, by [slice 08](08-long-gaps-held-by-mocked-time.md), not the live board after a real night)
 - **Plan:** [`docs/notes/plan-slice-02-chalkboard.md`](../notes/plan-slice-02-chalkboard.md)
 - **Design:** The room ("Traces stay until someone tidies them", "The
   chalkboard"); The client (the readable chalkboard on desktop and phone);
@@ -40,14 +40,14 @@ that way until someone tidies them, which regulars do for each other.
 
 | What must be true | Held by |
 | --- | --- |
-| An empty night leaves chalkboard lines and traces, and the same seed leaves the same night | `cargo test`, seeded (with slice 01's replay) |
+| An empty night leaves chalkboard lines and traces, and the same seed leaves the same night | `cargo test`, seeded (with slice 01's replay); and on the built binary through a night from 23:00 to 07:30 on mocked time (slice 08) |
 | Lines older than 24 hours drop off, live and in a replay | `cargo test` |
 | No line ever carries bubble text | `cargo test` |
 | A new line reaches every open chalkboard within a second | `spec/` |
 | Lines and traces survive a restart | `spec/` |
 | A tidied trace stays tidied | `cargo test` |
 | The chalkboard is readable at 1920×1080 in its panel and at 390×844 by tapping it, by keyboard, touch and mouse | browser check |
-| The board reads like the café's own story, worth reading on arrival | judged: by the user, reading the live board after a real night |
+| The board reads like the café's own story, worth reading on arrival | judged: by the user, reading the board the night test prints (`cargo test -p cafe --test long_gaps a_night -- --nocapture`). Until 2026-10-17, the live board after a real night (slice 08, [ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) |
 
 ## Rules it touches
 

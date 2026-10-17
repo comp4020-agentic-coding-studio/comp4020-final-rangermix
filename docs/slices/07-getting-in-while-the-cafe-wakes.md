@@ -45,7 +45,7 @@ where those days took them, and the café carries on.
 
 | What must be true | Held by |
 | --- | --- |
-| `/` and sign-up answer while a replay of days runs | `cargo test`, the built binary woken from a week asleep (the test raises the cap in a copy of `content/`, so the replay outlasts what it checks on a slow machine) |
+| `/` and sign-up answer while a replay of days runs | `cargo test`, the built binary woken from a week asleep (the test raises the cap in a copy of `content/`, so the replay outlasts what it checks on a slow machine). Since slice 08 the week is on the mocked clock: the second start is a week after the first, with the save the first wrote, not a rewritten `saved_at` |
 | A visitor connecting during the replay gets `waking` first, then the welcome once the café is ready; a Leave sent meanwhile frees the seat when it wakes | `cargo test`, the same binary |
 | A stop during the replay leaves the save as it was, and exits cleanly within Fly's five seconds even with a request in flight | `cargo test`, the same binary |
 | A panic in the world task ends the process with a JSON error line | `cargo test`, on `supervise` with tasks that panic or fail; that `run` hands the world task to `supervise` is checked by reading, and by the reviewer's patched build |

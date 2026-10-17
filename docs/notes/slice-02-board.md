@@ -51,9 +51,34 @@ café's cats do nothing it counts.
 ## The judged line
 
 "The board reads like the café's own story, worth reading on arrival":
-judged by the user, reading the live board after a real night. Waiting for
-them. The reviewer noted three things to weigh when doing so (slice 02's
-findings, "Noted, out of scope"):
+judged by the user. Since 2026-10-17 it's read on the board a mocked night
+leaves (slice 08,
+[ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)),
+not on the live board after a real night:
+
+```
+cargo test -p cafe --test long_gaps a_night -- --nocapture
+```
+
+Two runs of it on 2026-10-17 (the night differs a little run to run):
+
+```
+Fri 11:00pm  Burakku  met regular
+Fri 11:00pm  Burakku  knockedOver toys
+Fri 11:04pm  Burakku  knockedOver plant
+Fri 11:05pm  Burakku  knockedOver plant
+
+Fri 11:00pm  Burakku  met regular
+Fri 11:00pm  Burakku  knockedOver plant
+Fri 11:00pm  Burakku  knockedOver toys
+Fri 11:01pm  Burakku  knockedOver plant
+```
+
+Four lines from 8½ hours, all within five minutes of the visitor leaving,
+and nothing after. It's what the live board showed on 15 October: once
+everything knockable is down, the night's cats do nothing the board
+counts. Waiting for the user's reading. The reviewer noted three things to
+weigh when doing so (slice 02's findings, "Noted, out of scope"):
 
 - two plants knocked over seconds apart read as a repeat;
 - times carry no day, so yesterday's 4:00pm sits among this morning's lines;

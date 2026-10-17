@@ -1,6 +1,11 @@
 # 01. The café keeps living while it sleeps
 
-- **Status:** Reviewed, every finding answered, and deployed (approved 2026-10-14 with the proposed default for its open question). `Live` once the judged line is read after a real night ([slice-01-wake.md](../notes/slice-01-wake.md))
+- **Status:** Live. Reviewed, every finding answered, and deployed
+  (approved 2026-10-14 with the proposed default for its open question).
+  Its last line, waking after a night, was judged on the live machine after
+  a real night until 2026-10-17, and is now held by `cargo test` on mocked
+  time ([slice 08](08-long-gaps-held-by-mocked-time.md),
+  [ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md))
 - **Plan:** [`docs/notes/plan-slice-01-fast-forward.md`](../notes/plan-slice-01-fast-forward.md)
 - **Superseded in part** by [slice 07](07-getting-in-while-the-cafe-wakes.md)
   (2026-10-15): the doors now open at once, and only the café itself waits
@@ -52,7 +57,7 @@ a few seconds.
 | Stopping the image and starting it again after a pause brings the cats back moved by the gap, with furniture and trust as they were | `spec/`, a stop and start of the container |
 | A database that won't open stops the server instead of serving an empty café | `cargo test` |
 | Every wake-up logs its summary, and the narrator has words for it | `spec/` (the log check), narrator tests |
-| Waking after eight hours takes a few seconds at most on the live machine | judged: measured by the agent from the live summary line after a real night, recorded in `docs/notes/` |
+| Waking after a night takes a few seconds at most | `cargo test`, the built binary started at 23:00 and again at 07:30 on mocked time, its replay bounded at 20 s in a debug build (0.6 s on the development machine) (slice 08). Until 2026-10-17 this was judged from the live summary line after a real night; the baseline-CPU numbers stay in [slice-01-wake.md](../notes/slice-01-wake.md) |
 
 ## Rules it touches
 

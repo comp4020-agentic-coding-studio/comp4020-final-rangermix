@@ -164,6 +164,7 @@ fn a_night_from_eleven_to_half_past_seven() {
     assert_eq!(places(&after), places(&last_look), "a night knocks things over, but moves nothing");
 
     // For the judged line: the board as the morning's first visitor reads it.
+    println!("The wake-up at 07:30 on Saturday: {woke}");
     println!("The board at 07:30 on Saturday, after a night alone (latest {}):", board.len());
     for line in board {
         println!("  {}", told(line));

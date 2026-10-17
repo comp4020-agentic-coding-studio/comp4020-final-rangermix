@@ -39,8 +39,8 @@ starts, from the code as it then stands, and it ends with a fresh review.
 
 | # | Slice | Delivers | Spec | Status |
 | --- | --- | --- | --- | --- |
-| 01 | The café keeps living while it sleeps | Fast-forward on wake, with the saved clock and random state; the schedule during a replay; loud failures | [01](../slices/01-the-cafe-keeps-living-while-it-sleeps.md) | reviewed and deployed ([plan](plan-slice-01-fast-forward.md), [findings](reviews/slice-01-findings.md)); live once a real night's wake is read |
-| 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | reviewed ([plan](plan-slice-02-chalkboard.md), [findings](reviews/slice-02-findings.md)); live once deployed and the user has read the board after a night |
+| 01 | The café keeps living while it sleeps | Fast-forward on wake, with the saved clock and random state; the schedule during a replay; loud failures | [01](../slices/01-the-cafe-keeps-living-while-it-sleeps.md) | live ([plan](plan-slice-01-fast-forward.md), [findings](reviews/slice-01-findings.md)); its night line held by slice 08's tests since 2026-10-17 |
+| 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | reviewed and deployed ([plan](plan-slice-02-chalkboard.md), [findings](reviews/slice-02-findings.md)); live once the user has read the board slice 08's night test prints ([slice-02-board.md](slice-02-board.md)) |
 | 03 | Keeping it kind | Mute, the slur blocklist, the admin ban | [03](../slices/03-keeping-it-kind.md) | spec proposed |
 | 04 | The showcase room | A load check at forty connections inside 256 MB; the window's count | [04](../slices/04-the-showcase-room.md) | spec proposed |
 | 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | spec proposed |
@@ -70,11 +70,13 @@ and its multi-user decision is ADR 0009 (the quiet seat). The repo has no
 Read by session `013dedec`. CI on `main` is green through `7b1a740`, and the
 machine serves version 64 of the app.
 
-- **Done and live:** phases 1 to 3, and slice 07.
-- **Built and deployed, each short of one judged line that needs a real
-  night:** slice 01, the first live `woke` line after a quiet night
-  ([slice-01-wake.md](slice-01-wake.md)); slice 02, the user reading the
-  board after a night ([slice-02-board.md](slice-02-board.md)).
+- **Done and live:** phases 1 to 3, and slices 01 and 07.
+- **Built and deployed, short of one judged line:** slice 02, the user
+  reading the board a mocked night leaves
+  ([slice-02-board.md](slice-02-board.md)).
+- **Being built:** slice 08, long gaps held by mocked time, after the user
+  asked on 2026-10-17 that no check wait on a real night
+  ([plan](plan-slice-08-mocked-time.md)).
 - **Specs waiting for the user's approval:** slices 03 to 06. None is planned.
 
 ## What's left, in order
@@ -87,8 +89,9 @@ machine serves version 64 of the app.
    - The demo by the logs alone, while the group uses the café: not yet
      rehearsed.
    - `reflections/crit-10.md`: the user's, still the empty template.
-2. **The two judged lines:** slice 01's, read by an agent after a night;
-   slice 02's, read by the user. Then both specs go to `Live`.
+2. **Slice 08:** reviewed fresh, then deployed. Then slice 02's judged
+   line, read by the user on the board the night test prints, and slice 02
+   goes to `Live`.
 3. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the

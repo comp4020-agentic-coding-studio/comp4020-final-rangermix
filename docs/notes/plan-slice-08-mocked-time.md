@@ -84,8 +84,11 @@ Written 2026-10-17 from the code at `a45eec4`.
    daylight saving.
 4. **The café's random seed.** A first start seeds the generator from
    `now` (`main.rs` passes `now` as `fresh_seed`), so a café first started
-   at a fixed mocked instant gets the same seed every run. The night test's
-   outcomes are fixed by that, and held across 300 seeds besides.
+   at a fixed mocked instant gets nearly the same seed every run, give or
+   take the milliseconds before it reads the clock. The evening also runs
+   live for a few seconds, a varying number of ticks, so the night isn't
+   the same night every run. The test asserts only what held across 300
+   seeds with jittered starts.
 5. **`listening` carries `clock`:** `"wall"`, or the RFC 3339 start. The log
    check requires the field on every start, so a café on mocked time is
    never mistaken for the live one in a log.
@@ -225,7 +228,7 @@ Where carrying out this plan departed from it, task by task, and why.
   As planned. A grep for `SystemTime`, `Utc::now`, `Local::now` and
   `UNIX_EPOCH` in `server/src` outside `time.rs` found nothing, and the
   store uses none of SQLite's own clock functions.
-- **Tasks 2 and 3 went in together.** Moving the shared helpers out of
+- **Tasks 2 and 3 went in together** ([`b167901`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b167901)). Moving the shared helpers out of
   `waking.rs` meant rewriting its three tests' starts anyway, so they moved
   to the mocked clock in the same change, rather than once to the helpers
   and again to the clock. The stop test's "save as it was" check, which now

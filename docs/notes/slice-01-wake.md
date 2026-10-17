@@ -72,11 +72,12 @@ begun, isn't kept.
   The machine stops itself when idle and wakes on the next request, so these
   are real sleeps, not only redeploys. Earlier redeploys took 0 ms for gaps
   of 3 to 5 seconds.
-- **After a real night:** pending. The machine stops itself when idle, so
-  the first visit after a quiet night logs a wake-up with a gap of hours.
-  Read it with `flyctl logs -a comp4020-final-rangermix | grep '"woke"'` (or
-  `pnpm logs`) and record the line here. Until then this judged line is
-  unmet, and the slice stays short of `Live` on it alone.
+- **After a real night:** no longer needed. Since 2026-10-17 the judged
+  line is held by `cargo test` on mocked time instead (slice 08,
+  [ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)):
+  see "On mocked time" below. Until then it was pending, read from
+  `flyctl logs -a comp4020-final-rangermix | grep '"woke"'` after a quiet
+  night.
 - **Read on 2026-10-17 at 17:09 AEDT** (session `013dedec`, read-only).
   Three wake-ups, all from idle stops that afternoon, on version 64 of the
   app (build `mv91rjsh`):
@@ -93,7 +94,30 @@ begun, isn't kept.
   machine was already up before then, so the first wake after the night of
   16 to 17 October had already left the buffer.
 
-  To catch the night's line, read the logs before the café has been used
-  much that morning, or leave `pnpm logs` running from the evening before.
   The machine's own `/data` holds no log, since the café writes only to
-  stdout.
+  stdout. That, and the user's ask the same day ("do not rely on realworld
+  checks"), is why the night moved to mocked time.
+
+## On mocked time (slice 08)
+
+`server/tests/long_gaps.rs`, `a_night_from_eleven_to_half_past_seven`,
+starts the built binary at 23:00 on Friday 16 October 2026 (Canberra) with
+`CAFE_CLOCK_START`, lets a visitor meet a cat and leave, stops it, and starts
+it at 07:30 on Saturday with the save the café wrote. It requires the
+wake-up line's gap to be within a minute of 30,600 s (the evening's
+seconds), the steps to match, one refill, and `took_ms` under 20,000. The
+test prints its wake-up line. On the development machine (Apple M4, debug
+build, 2026-10-17):
+
+```
+"gap_secs":30584,"steps":30584,"refills":1,"capped":false,"failed":false,
+"took_ms":570,"walks":"[[\"Burakku\",1501],[\"Mochi\",183],[\"Tora\",1071]]"
+```
+
+Burakku, who is nocturnal, walked eight times as often as Mochi. The
+evening runs live for a few seconds before the stop, and how many ticks it
+gets varies from run to run, so the night differs a little between runs;
+the test asserts only what held for every one of 300 seeds. CI's runners
+run it on every push, so a slower replay fails before a deploy rather than
+after a night. The baseline-CPU numbers above stay as the record of how the
+live machine compares.

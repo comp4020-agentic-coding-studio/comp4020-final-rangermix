@@ -455,6 +455,19 @@ renamed.
   and a start; pathfinding and placement (the door walkway can't be blocked);
   rate limits; the blocklist; accounts and recovery; the quiet-seat rule, with
   a controllable clock; bubble text never reaching a log line.
+- **Long gaps on mocked time, never a real night**
+  ([ADR 0016](adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)).
+  Every instant the server reads comes from one clock (`time::now_ms`), which
+  a test can start at a chosen instant with `CAFE_CLOCK_START` (an RFC 3339
+  time with its offset); from there it runs at the wall's speed. It is
+  refused on Fly, or if it won't parse, before the store is opened, and
+  every start's `listening` line says which clock it's on. `cargo test`
+  runs the built binary through a night (23:00 to 07:30: the wake-up line,
+  the 7:00 refill, trust kept, the board's lines and traces, the furniture
+  where it stood), a midnight (treats back) and nine days asleep (the last
+  three replayed), and slice 07's waking tests sleep a week on it. No check
+  waits on a real night or the live logs. (Slice 08,
+  [plan](notes/plan-slice-08-mocked-time.md).)
 - **Type drift:** regenerating the TypeScript types must leave
   `client/src/protocol/` unchanged.
 - **`spec/`, black-box against the running image:** the two shipped checks;
@@ -543,6 +556,9 @@ renamed.
 - **Agents test on the live café.** With accounts of their own, named
   `agent_…`, and on the Fly app as testing needs, within the course's fixed
   shape. ([ADR 0015](adr/0015-let-agents-test-on-the-live-cafe-and-its-fly-app.md))
+- **Long gaps are checked on mocked time,** in unit and integration tests,
+  never by waiting for a real night on the live café.
+  ([ADR 0016](adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md))
 - **Built in vertical slices.** Phases 1 to 3 were built as phases lined up
   with the crits ([ADR 0012](adr/0012-plan-in-phases-and-build-each-phase-natively.md)).
   The rest is built as vertical slices, each one thing a visitor can use

@@ -5,13 +5,14 @@ Kept up to date by session `efabe266`, and since by later sessions. Plans:
 
 Both slices are built, reviewed by a fresh agent with every finding
 answered ([01](reviews/slice-01-findings.md), [02](reviews/slice-02-findings.md)),
-recorded in design.md, and deployed (CI green through `be74a01`). What
-remains in each is a judged line that needs a real night:
+recorded in design.md, and deployed (CI green through `be74a01`). Since
+2026-10-17 nothing in them waits on a real night: slice 08 holds the night
+with the built café on mocked time
+([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)).
 
-- **Slice 01:** read the first live `woke` line after a quiet night and
-  record it in [slice-01-wake.md](slice-01-wake.md). Then the spec goes to
-  `Live`. The live idle stops so far (up to 51 minutes) wake in under 20 ms.
-- **Slice 02:** the user reads the live board after a night and judges
+- **Slice 01** is `Live`. Waking after a night is `cargo test`'s
+  ([slice-01-wake.md](slice-01-wake.md)).
+- **Slice 02:** the user reads the board the night test prints and judges
   whether it's worth reading on arrival ([slice-02-board.md](slice-02-board.md)).
 
 Settled since: a first visitor after a long break would have waited about
@@ -26,7 +27,8 @@ out the night.
 
 Checked again on 2026-10-17 at 17:09 AEDT (session `013dedec`): no night's
 wake read yet. Fly's log buffer held only the last 100 lines, from 16:09
-AEDT on ([slice-01-wake.md](slice-01-wake.md)).
+AEDT on ([slice-01-wake.md](slice-01-wake.md)). The user then asked for long
+gaps to be held by mocked time instead, which became slice 08.
 
 Slice 07 (getting in while the café wakes) is built, reviewed and live
 ([notes](slice-07-waking.md)). It also made a dead world task end the
