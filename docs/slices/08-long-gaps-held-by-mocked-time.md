@@ -1,6 +1,8 @@
 # 08. Long gaps held by mocked time
 
-- **Status:** Approved (2026-10-17, asked for by the user: "for the long gap
+- **Status:** Reviewed, every finding answered
+  ([findings](../notes/reviews/slice-08-findings.md)); not yet deployed.
+  Approved (2026-10-17, asked for by the user: "for the long gap
   checks use unit test and integ test with mocked time. do not rely on
   realworld checks"). Amended after the review, for the user to see: "the
   bowls full from 7:00" became "on the 7:00 refill", since the cats eat the

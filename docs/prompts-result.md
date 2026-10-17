@@ -1238,3 +1238,69 @@ specs, CI and the live Fly logs.
   of 5 to 15 minutes). Fly's buffer keeps only 100 lines, so the night's
   wake had already gone; the note says how to catch the next one.
 - **The brief note:** `crit-8` is the only crit tag on the remote.
+
+*Sent 2026-10-17 17:50:31 AEDT*
+
+> for the long gap checks use unit test and integ test with mocked time. do not rely on realworld checks
+
+**Result.** Slice 08, "Long gaps held by mocked time"
+([spec](slices/08-long-gaps-held-by-mocked-time.md),
+[plan](notes/plan-slice-08-mocked-time.md),
+[ADR 0016](adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)),
+approved by the ask itself
+([`8d3b2f9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8d3b2f9)).
+- **The gap it closed.** The unit tests already passed time in. The built
+  binary could only read the wall clock, so slice 07's tests faked a long
+  sleep by rewriting the saved clock. Slices 01 and 02 each waited on a
+  real night.
+- **One clock**
+  ([`5805cdf`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5805cdf)).
+  `time::now_ms()` is the wall clock plus an offset fixed once at start
+  from `CAFE_CLOCK_START`. It's refused on Fly or if it won't parse, before
+  the store opens. `listening` says which clock a start is on, and the log
+  check requires it.
+- **The built café through a night, a midnight and nine days**
+  ([`b167901`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b167901)).
+  The test starts it at 23:00 and again at 07:30, then checks the wake-up
+  line, trust, the 7:00 refill, the board and the furniture. Slice 07's
+  tests sleep a week on the same clock. Two things turned up:
+  - The bowls are empty by 07:30 because the cats eat the 7:00 refill
+    within minutes. That's the café working, and the test was wrong.
+  - Tests chose ports in a way that could race. The café now binds port 0
+    and logs the port it took.
+- **The night lines off the live café**
+  ([`2d51fa3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2d51fa3)).
+  Slice 01 went to `Live`. Slice 02's judged line is now read on the board
+  the night test prints. It shows four lines, all within five minutes of
+  23:00, and nothing after: once everything is down, the cats do nothing
+  the board counts.
+- **The review**
+  ([brief](notes/reviews/slice-08-brief.md) [`e18bd2d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e18bd2d),
+  [findings](notes/reviews/slice-08-findings.md) [`9c24eb0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9c24eb0)).
+  2 major findings and 8 minor.
+  - Both majors were checks that could pass without the behaviour: a café
+    forgetting treats, and one forgetting its furniture.
+  - All were fixed in
+    [`b955ba9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b955ba9)
+    and answered in
+    [`92b6c05`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/92b6c05).
+    Each fix was seen failing under its fault.
+  - A first fix for the furniture finding was itself flaky. The concurrent
+    stress run caught it before it shipped.
+
+*Sent 2026-10-17 20:33:52 AEDT*
+
+> check if the subagent is stalled
+
+**Result.** Not stalled at the time: it had built its copy and run a batch
+of clock probes at 20:15, nine odd `CAFE_CLOCK_START` values, each exiting
+cleanly. It was quiet since then, and nothing was hung.
+
+*Sent 2026-10-17 21:34:41 AEDT*
+
+> so what and how long are we waiting for
+
+**Result.** The reviewer was stalled by then: it had done nothing for an
+hour, two and a half hours in. It was told to write up what it had at once,
+and did: 0 critical, 2 major, 8 minor findings, which became the fixes
+above.
