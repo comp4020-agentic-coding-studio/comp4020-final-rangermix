@@ -49,6 +49,13 @@ looks like what it is, and the light moves from morning to night.
 
 ## Open questions
 
+- **The look itself is open (2026-10-17).** The user asked whether the café
+  should take Catppuccin's colours, denser pixel art and an angled camera.
+  The judgement is in
+  [notes/visual-direction.md](../notes/visual-direction.md): it suggests an
+  isometric camera, 32-px tiles with 24-px cats, and Catppuccin-led day and
+  night palettes. Any of these would redraw every sprite, so this slice
+  waits for the user's choice and is rewritten to match.
 - **The README promises soothing music, and the design has none.** Proposed
   options for the user: add a small slice for quiet background music, off
   until a visitor turns it on, or take the promise out of the README.
