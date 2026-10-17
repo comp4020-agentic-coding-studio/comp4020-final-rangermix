@@ -46,6 +46,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | spec proposed |
 | 06 | The accessibility pass | Every action by keyboard, touch and screen reader, held by browser checks | [06](../slices/06-the-accessibility-pass.md) | spec proposed |
 | 07 | Getting in while the café wakes | The port opens at once; the page and accounts work during a replay; the café shows "Dusting off the café…" until it's ready; a dead world task restarts the machine | [07](../slices/07-getting-in-while-the-cafe-wakes.md) | reviewed and live ([plan](plan-slice-07-waking.md), [findings](reviews/slice-07-findings.md), [notes](slice-07-waking.md)) |
+| 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | approved 2026-10-17, building ([plan](plan-slice-08-mocked-time.md)) |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.

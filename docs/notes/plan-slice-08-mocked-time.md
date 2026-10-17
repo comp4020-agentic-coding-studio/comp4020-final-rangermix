@@ -1,0 +1,222 @@
+# Slice 08, "Long gaps held by mocked time": Implementation Plan
+
+> Method fixed by [ADR 0014](../adr/0014-build-the-rest-in-vertical-slices-each-with-a-spec.md):
+> built natively, test first, committed and pushed per task, a fresh review
+> with brief and findings as files, then deployed. Why mocked time and not
+> a real night: [ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md).
+
+**Goal:** every check on a long gap runs before a deploy, on mocked time,
+in seconds. The built binary can be started at a chosen instant, so a test
+can live through a night (23:00 to 07:30), a midnight and nine days asleep
+on the real server, with saves the café wrote itself.
+
+**Architecture:** `time::now_ms()` stays the one way the server reads the
+time, and becomes wall time plus an offset. The offset is fixed once at
+start by `time::start_at(at)`, from `CAFE_CLOCK_START`, in a process-wide
+`OnceLock`, so no caller changes and nothing can move the clock afterwards.
+`Config` reads the variable. `run()` refuses it on Fly, or unparseable,
+before it opens the store, and logs the clock on `listening`. The world
+task's 100 ms ticker, the 5-second saves, session expiry, rate-limit
+windows and "gone quiet" all read `now_ms()`, and all measure intervals or
+compare with times written on the same clock, so a clock that starts
+elsewhere and runs at real speed behaves like the live one.
+
+**Spec:** [`docs/slices/08-long-gaps-held-by-mocked-time.md`](../slices/08-long-gaps-held-by-mocked-time.md).
+Written 2026-10-17 from the code at `a45eec4`.
+
+## What the code does now
+
+- `server/src/time.rs`: `now_ms()` reads `SystemTime::now()`. It is the only
+  place the server reads the wall clock. `Instant::now()` in `wake.rs` times
+  the replay, which is a duration, not an instant in the café.
+- Callers of `now_ms()`: `main.rs` (the wake's `now`), `ws.rs` (the world
+  task's ticks and commands, a connection's buckets and silence), `api.rs`
+  (rate limits, sessions, sign-up time).
+- `server/tests/waking.rs` makes a long sleep by rewriting `saved_at` with
+  rusqlite, with the cap raised to 7 days in a copy of `content/`, so the
+  replay outlasts a sign-up and a socket on a slow machine.
+- A debug build replays 8 hours in 0.55 s, 3 days in 4.5 s and 7 days in
+  10.4 s here (Apple M4, 2026-10-17). Across 300 seeds with start times
+  jittered within a minute of 23:00, every night to 07:30 left at least
+  3 board lines, at least one toppled piece and exactly one refill (a
+  throwaway test, not kept).
+
+## Global constraints
+
+- AGENTS.md's rules hold. Nothing said is logged: the tests' visitors say
+  nothing. The server decides every outcome, on its own clock. No client
+  can set or see the offset.
+- The live café runs on the wall clock: `CAFE_CLOCK_START` with
+  `FLY_APP_NAME` set stops the server before it opens the store.
+- Unit tests keep passing `now` explicitly. Nothing in `cargo test`'s unit
+  tests depends on the offset, since `start_at` is never called there.
+- fmt, clippy, `cargo test`, `pnpm typecheck`, `pnpm test` (the spec's unit
+  checks on scripts) pass before each push.
+
+## Review focus
+
+1. **Every instant comes from `now_ms()`.** No other `SystemTime::now`,
+   `Utc::now` or `chrono::Local::now` in `server/src` outside `time.rs`.
+   (Task 1.)
+2. **The clock can't be moved once set,** and can't be set on Fly. (Task 1.)
+3. **The night test checks a night, not just a gap:** the 7:00 refill, the
+   board's lines dated between the stop and the start, traces, trust, the
+   furniture. (Task 2.)
+4. **Flakiness:** every number the binary tests assert is exact (steps,
+   refills, the cap) or a generous bound (`took_ms`). Outcomes left to the
+   random generator (a night line, a trace) were seen to hold for every one
+   of 300 seeds, and the café's seed is fixed by its first start. (Task 2.)
+5. **`waking.rs` still checks what slice 07 promised** with the rewrite of
+   `saved_at` gone. (Task 3.)
+
+## Decisions made in this plan
+
+1. **An offset, not an injected clock object.** `now_ms()` has nine callers
+   across four files, all happy with "now". A `Clock` passed through
+   `AppState`, the world task and `wake` would change every signature for
+   the same behaviour. An offset fixed once in a `OnceLock` keeps
+   `now_ms()`'s contract and can't drift mid-run.
+2. **Real speed, not accelerated.** The binary's own loop runs at 10 ticks
+   a second as it does live. Long spans are the replay's job, already in
+   one-second steps.
+3. **RFC 3339 with an offset** (`2026-10-16T23:00:00+11:00`), parsed by
+   chrono, so a test says exactly which Canberra instant it means across
+   daylight saving.
+4. **The café's random seed.** A first start seeds the generator from
+   `now` (`main.rs` passes `now` as `fresh_seed`), so a café first started
+   at a fixed mocked instant gets the same seed every run. The night test's
+   outcomes are fixed by that, and held across 300 seeds besides.
+5. **`listening` carries `clock`:** `"wall"`, or the RFC 3339 start. The log
+   check requires the field on every start, so a café on mocked time is
+   never mistaken for the live one in a log.
+6. **`waking.rs` keeps the raised cap.** A sleep of 7 days on the mocked
+   clock replays 7 days, which is what gives a sign-up and a socket time to
+   happen during the replay. The rewrite of `saved_at` goes. The start
+   after it is set 7 days later instead.
+
+## Tasks
+
+### Task 1: One clock, startable at a chosen instant
+
+**Files:** `server/src/time.rs`, `server/src/config.rs`,
+`server/src/main.rs`, `server/tests/clock.rs` (new),
+`scripts/check-logs.ts`, `spec/check-logs.test.ts`.
+
+- [ ] Tests first:
+  - `time.rs`: `parse_start("2026-10-16T23:00:00+11:00")` is that instant
+    in ms; `parse_start("tomorrow")` and a time with no offset are errors.
+    `offset_for(start, wall)` is `start - wall`, negative included.
+    `now_with(offset, wall)` is `wall + offset`.
+  - `config.rs`: `clock_start` is `None` without the variable, and the
+    variable's text with it.
+  - `server/tests/clock.rs`, the built binary: started with
+    `CAFE_CLOCK_START=2026-10-16T23:00:00+11:00`, its `listening` line says
+    `"clock":"2026-10-16T23:00:00+11:00"`. Log lines' own `timestamp` is
+    tracing's wall time, so the café's clock is checked through what it
+    saves: after a stop, `saved_at` in the database is within a minute
+    after that instant. Started with `CAFE_CLOCK_START=tomorrow`, or with
+    any value and `FLY_APP_NAME=x`, it exits non-zero within 10 s with one
+    JSON error line naming `CAFE_CLOCK_START`, and never logs `listening`.
+    Without the variable, `listening` says `"clock":"wall"`.
+  - `check-logs`: a `listening` line without `clock` is a problem.
+- [ ] Implement:
+  - `time.rs`: `static OFFSET: OnceLock<i64>`; `pub fn start_at(at: u64)`
+    sets it from the wall clock (a second call is a bug: it panics);
+    `now_ms()` is `now_with(OFFSET.get().copied().unwrap_or(0), wall)`;
+    `pub fn parse_start(text) -> anyhow::Result<u64>`.
+  - `config.rs`: `clock_start: Option<String>` from `CAFE_CLOCK_START`.
+  - `main.rs` `run()`: before anything else, if `clock_start` is set, refuse
+    on Fly (`behind_fly`), else parse it and `start_at` it; errors return
+    from `run`, so `main` logs them as its one error line and exits 1.
+    `listening` gains `clock`.
+  - `check-logs.ts` requires `clock` on `listening`; its test lines get one.
+- [ ] fmt, clippy, test, commit and push ("Let the café start its clock at
+  a chosen instant, never on Fly").
+
+### Task 2: A night, a midnight and nine days on the built binary
+
+**Files:** `server/tests/long_gaps.rs` (new), `server/tests/common/mod.rs`
+(new: `Cafe`, `Socket`, `signup`, shared with `waking.rs`).
+
+- [ ] Move `Cafe`, `Socket`, `signup`, `copy_dir` from `waking.rs` into
+  `server/tests/common/mod.rs`, unchanged except that `Cafe::start` takes
+  the clock's start (`Option<&str>`) and the content directory. `waking.rs`
+  passes `None` for now and still passes.
+- [ ] Tests first, in `long_gaps.rs`, each in its own data directory, with
+  the repo's content:
+  - **`a_night_from_eleven_to_half_past_seven`.** Start at
+    `2026-10-16T23:00:00+11:00`. Sign up; open a socket; pet each cat until
+    one sniffs (as `spec/helpers.ts`'s `meetACat`); note the trust; leave;
+    wait for the next 5-second save; stop. Start at
+    `2026-10-17T07:30:00+11:00`. Its `woke` line: `first` false,
+    `gap_secs` within 10 s of 30,600 (the first start ran a few seconds),
+    `steps` equal to `gap_secs` within 1, `refills` 1, `capped` false,
+    `failed` false, every cat in `walks` and some walk above 0, `took_ms`
+    under 20,000. The visitor's welcome: the same trust for that cat,
+    `bowls` the café's portions (3), at least one board line dated after
+    the stop's `saved_at` and before 07:30, at least one toppled piece, and
+    every piece at the place it stood before the stop. The test prints the
+    board's lines, oldest first, as Canberra times and their fields, for
+    the judged line.
+  - **`treats_used_before_midnight_come_back_in_the_morning`.** Start at
+    `2026-10-16T23:00:00+11:00`; sign up; put down treats until
+    `yourTreats` says 0; leave; stop. Start at
+    `2026-10-17T07:30:00+11:00`: the welcome's `yourTreats` is 3.
+  - **`nine_days_asleep_replay_the_last_three`.** Start at
+    `2026-10-16T23:00:00+11:00`; stop once `woke`; start at
+    `2026-10-25T23:00:00+11:00`: `gap_secs` within 10 s of 9 days,
+    `steps` 259,200, `capped` true.
+- [ ] Implement nothing new in the server: these pass on Task 1. If one
+  fails, that's a finding about the café, fixed test first.
+- [ ] fmt, clippy, test, commit and push ("Live through a night, a midnight
+  and nine days on the built café, on mocked time").
+
+### Task 3: Slice 07's tests sleep on the mocked clock
+
+**Files:** `server/tests/waking.rs`.
+
+- [ ] The three tests start the first café at a fixed instant
+  (`2026-10-16T23:00:00+11:00`) and the second 7 days later
+  (`2026-10-23T23:00:00+11:00`), with no `set_saved_at`. Remove
+  `set_saved_at` and the test's own `now_ms`. The stop test's check
+  becomes: `saved_at` after the stop equals `saved_at` before the second
+  start. Each test is run and seen to pass. Since the assertion that
+  `saved_at` is left alone has to be seen failing too, break it on purpose
+  once (assert a different value) and see it fail.
+- [ ] fmt, clippy, test, commit and push ("Wake slice 07's café from a
+  week on the mocked clock, not a rewritten save").
+
+### Task 4: Move the night lines off the live café
+
+**Files:** `docs/slices/01-the-cafe-keeps-living-while-it-sleeps.md`,
+`docs/slices/02-what-the-night-left-behind.md`, `docs/design.md`
+(Persistence and fast-forward, Checks, Harness's ADR list),
+`docs/notes/slice-01-wake.md`, `docs/notes/slice-02-board.md`,
+`docs/notes/slices-01-02-status.md`, `docs/notes/plan.md`.
+
+- [ ] Slice 01's last done-when line becomes "Waking after a night takes a
+  few seconds at most", held by `cargo test`, the night test, bounded at
+  20 s in a debug build. Slice 02's judged line is on the board the night
+  test prints. Both statuses say what's left (the user's reading of the
+  printed board for 02).
+- [ ] design.md: the Checks section lists the binary tests on mocked time,
+  the variable and its guard; Harness links ADR 0016.
+- [ ] Notes: the live night reading is no longer pending.
+- [ ] Commit and push ("Hold the night lines with mocked time, not a real
+  night").
+
+### Task 5: Review
+
+- [ ] Brief a fresh reviewer in `docs/notes/reviews/slice-08-brief.md`,
+  findings in `slice-08-findings.md`. Fix each finding test first, or
+  answer it.
+
+### Task 6: Deploy
+
+- [ ] Push to `main` runs CI (the Rust job runs the new binary tests; the
+  check job runs the log check, which now requires `clock`). Check after the
+  deploy that the live `listening` line says `"clock":"wall"`.
+
+## Execution log
+
+Where carrying out this plan departed from it, task by task, and why.
