@@ -294,3 +294,59 @@ that requires `clock: "wall"`.
 - **The refusal tests.** `clock.rs`'s refusal tests check for "an error line
   naming `CAFE_CLOCK_START`" rather than exactly one line, but every refusal
   I ran printed exactly one.
+
+## Answers
+
+By the builder, 2026-10-17. All fixed in
+[`b955ba9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b955ba9).
+Each strengthened check was seen failing under the fault it holds.
+
+1. **Fixed.** The treats test restarts at 23:30 the same night and expects
+   `yourTreats` 0, then 3 at 07:30. With `wake.rs` passing no treat rows to
+   `restore_treats`, it failed at 23:30 with 3.
+2. **Fixed, in two tests.**
+   - **The night test.** A night owl stays in until the stop, so nothing
+     falls before it. The regular moves a cushion, and the morning must have
+     it where it was put. With `restore_arrangement` doing nothing, it failed
+     with the cushion back at `room.toml`'s (9,7).
+   - **A new test for a kept trace,**
+     `a_trace_left_at_the_stop_is_down_after_the_restart`. It puts a trace
+     in the save the café wrote: the first piece of a kind `furniture.toml`
+     says a cat can knock over. It restarts at the instant the stop saved,
+     so the replay has 0 steps (asserted) and only the store can keep the
+     piece down. Under the same fault it failed with `plant@11,1` standing.
+
+   A first version waited for an empty café's cats to knock something over
+   live, and restarted at 07:30. It passed under the fault, because the
+   night re-knocked the same pieces. The concurrent stress run also found
+   it flaky: one seed's cats all napped, and nothing fell in 300 s. The
+   plan's execution log has the detail.
+3. **Fixed** by the night owl. Every knockable piece stands at the stop
+   (asserted), so the night has them all to knock over.
+4. **Fixed.** The bound is now 5 s, about eight times the 0.6 s measured
+   here. CI ran `cargo test`'s unit tests about 1.6 times slower than this
+   machine. Slice 01's line now says that the bound holds the replay's
+   speed on every push, not on Fly's CPU, with the baseline measurement
+   alongside it.
+5. **Fixed.** Slice 08's spec says "on the 7:00 refill". Its status records
+   the change, so the user can see it. The test also requires the welcome's
+   bowls to equal the portions the replay saved. A portion check at 07:00:05
+   wasn't added: cats eat within the first minute on some seeds, so it would
+   flake, and `bowls_tick`'s fill is held by the replay unit tests.
+6. **Fixed, bounded.** A start more than a year from the wall clock is
+   refused (`time.rs`'s `check_near`, with a unit test). `9999` and `1970`
+   are refused, and every test's October 2026 night is accepted. **Known
+   limit:** from October 2027 those fixed dates are over a year past, and
+   the binary tests would need dates relative to the current year. The repo
+   ships on 9 November 2026.
+7. **Fixed.** The night test reads the cats' names from `content/cats/`.
+8. **Fixed.** `time.rs`'s `only_this_file_reads_the_wall_clock` scans
+   `server/src` for `SystemTime`, `UNIX_EPOCH`, `Utc::now`, `Local::now`
+   and SQLite's `'now'`, `CURRENT_TIMESTAMP` and `unixepoch(`. A
+   `SystemTime::now()` planted in `limits.rs` failed it.
+9. **Fixed.** The night test prints each line in the words
+   `client/src/chalk.ts` puts on the board ("Burakku scattered the toys").
+10. **Fixed.** `scripts/check-logs.ts --wall` requires `clock: "wall"` on
+    every start. CI's log check step uses it, so the image is held to the
+    wall clock before every deploy. Its test sees a mocked clock fail under
+    `--wall`.
