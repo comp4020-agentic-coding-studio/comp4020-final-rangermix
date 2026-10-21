@@ -209,7 +209,7 @@ renamed.
 ## The room
 
 - **12 by 10 tiles**, seen from inside at an angle, with the street wall
-  (row 0) standing at the back right. That wall holds the window, where the
+  (row 0) standing at the back left. That wall holds the window, where the
   line's faces peek in; the door, with a walkway that's never blocked; and
   the chalkboard beside it. A floor plan is in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).

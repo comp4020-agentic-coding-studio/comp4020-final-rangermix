@@ -605,20 +605,21 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // would hang off the screen. The ring used to slide inwards off its
     // tile, onto the thing it was for (CI caught it on a cat napping on the
     // cat bed, 2026-10-13); the room moves over instead while the ring is
-    // open. At an angle that corner is the box at (1,9) (slice 09's review,
-    // finding 5: the sofa's end is no longer at an edge).
+    // open. Seen from the front-right, that corner is (0,1), by the street
+    // wall's near end, where the cat tower stands (slice 09's review,
+    // finding 5; the room turned 2026-10-22).
     const v = await visit({ width: 390, height: 844 }, true);
     await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
     const welcome = v.frames.find((f) => f.type === "welcome")!;
-    const box = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "box");
-    expect(box, "the box stands in the room's front-left corner").toMatchObject({ x: 1, y: 9 });
-    // The pointer out, then left and down into the corner whatever the
-    // arrows are clamped to, then onto the box.
+    const tower = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "cat_tower");
+    expect(tower, "the cat tower stands in the room's corner by the street wall's near end").toMatchObject({ x: 0, y: 1 });
+    const corner = { x: 0, y: 1 };
+    // The pointer out, then left and up into the corner whatever the arrows
+    // are clamped to.
     await v.page.locator("#room").focus();
     await v.page.keyboard.press("ArrowRight");
     for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
-    for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowDown");
-    await v.page.keyboard.press("ArrowRight");
+    for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowUp");
     // The view has followed the pointer as far as it goes before Enter.
     const leftOf = () => v.page.evaluate(() => document.getElementById("room")!.style.left);
     let settled = await leftOf();
@@ -632,11 +633,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.keyboard.press("Enter");
     await v.page.locator(".menu.ring").waitFor({ timeout: 3000 });
     await v.page.waitForTimeout(500);
-    const { off } = await ringFromTile(v.page, { x: box.x, y: box.y });
-    // Round the box itself: the room moved over by just as much as the ring
-    // would otherwise have slid (about 20 px here), so its centre is on the
-    // box's to the pixel, give or take rounding.
-    expect(off, "the ring is round the box").toBeLessThanOrEqual(3);
+    const { off } = await ringFromTile(v.page, corner);
+    // Round the corner's tile itself: the room moved over by just as much as
+    // the ring would otherwise have slid, so its centre is on the tile's to
+    // the pixel, give or take rounding.
+    expect(off, "the ring is round the cat tower's corner tile").toBeLessThanOrEqual(3);
     await expectRingClear(v.page);
   });
 

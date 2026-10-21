@@ -84,7 +84,7 @@ describe("the stage on the isometric camera", () => {
 
   it("puts a tile's centre where the camera draws it", () => {
     const stage = stageAt(3, 100, 50);
-    // (0,1)'s centre is (0.5, 1.5) on the grid: (160 + 16(0.5 - 1.5), 56 + 8(0.5 + 1.5)) at 1x.
-    expect(stage.tileToCss(0.5, 1.5)).toEqual({ left: 100 + 144 * 3, top: 50 + 72 * 3 });
+    // (0,1)'s centre is (0.5, 1.5) on the grid: (-16 + 16(0.5 + 1.5), 144 + 8(1.5 - 0.5)) at 1x.
+    expect(stage.tileToCss(0.5, 1.5)).toEqual({ left: 100 + 16 * 3, top: 50 + 152 * 3 });
   });
 });

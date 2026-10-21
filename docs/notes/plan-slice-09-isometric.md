@@ -229,3 +229,15 @@ Where the build departed from this plan, task by task.
   the page's clock. Decision 8 didn't hold as written: the tint covers the
   whole canvas, as before, not the floor and walls only. Slice 10 replaces
   it either way.
+- **After going live (2026-10-22).** The user judged the room ("otherwise
+  lgtm") and asked for it turned 90° so the door and window are on the
+  left. `iso.ts` now maps a grid point to `(-16 + 16(gx + gy), 144 +
+  8(gy - gx))` on the same 336×232 canvas: the street wall up the back
+  left, x still running left to right along it, and the plain wall at
+  x = 12 up the back right. "Wholly behind" became further along x or
+  less far along y. `render.ts` draws the plain wall at x = 12, each
+  block's face toward x rather than x + w, and the block's silhouette
+  from the front-right. Picking, the draw order and the browser checks
+  follow the module; the edge-ring check moved to the new left corner,
+  (0,1), by the cat tower, and still fails without the room's move (68 px
+  off).

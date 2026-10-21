@@ -1,6 +1,6 @@
 # 09. The room seen at an angle
 
-- **Status:** Reviewed, every finding answered ([findings](../notes/reviews/slice-09-findings.md)), and deployed 2026-10-21, checked live ([notes](../notes/slice-09-isometric.md)); approved, planned and built the same day, with the proposed default for its open question (the arrows move along the room's axes). `Live` once the user has judged the room from [the screenshots](../notes/screens/slice-09/)
+- **Status:** Live. Reviewed, every finding answered ([findings](../notes/reviews/slice-09-findings.md)), deployed and checked live ([notes](../notes/slice-09-isometric.md)). The user judged the room on 2026-10-22 ("otherwise lgtm") and asked for it turned 90° so the street wall is on the left, which was done the same day. Approved, planned and built 2026-10-21, with the proposed default for its open question (the arrows move along the room's axes)
 - **Plan:** [`docs/notes/plan-slice-09-isometric.md`](../notes/plan-slice-09-isometric.md)
 - **Design:** The room (12 by 10 tiles); The client ("Phone", "Drawing",
   "The look");
@@ -11,7 +11,7 @@
 
 A visitor looks into the café from above and to one side, as into a room,
 not down on a floor plan. The floor is a grid of diamonds, the street wall
-with its window, door and chalkboard runs along the back right, and a cat on
+with its window, door and chalkboard runs along the back left, and a cat on
 the rug reads as on it. Everything they could do before, they still do, the
 same way, by keyboard, touch and mouse, at both sizes. On a phone they land
 in the bigger room, following them.
@@ -27,7 +27,7 @@ their real footprints, as in the study, until slice 11 draws them.
   through these, so they follow. The tile size becomes 32 px wide, and the
   canvas is sized to the room's diamond plus its walls.
 - **The renderer.** `render.ts` draws the floor as diamonds, the two back
-  walls with the window, door and chalkboard on the back-right one, and
+  walls with the window, door and chalkboard on the back-left one, and
   orders everything that stands by `x + y`. A piece several tiles long is
   ordered so a cat or person behind it isn't drawn in front. The line's
   faces still show through the window.
@@ -67,7 +67,7 @@ their real footprints, as in the study, until slice 11 draws them.
 | No placement is allowed, and no walk ends, anywhere the server didn't already allow it: the walkway, the cap and the line are unchanged | `spec/` and `cargo test`, unchanged and passing |
 | Every kind of furniture has a height to draw its block at | `cargo test` (`every_kind_of_furniture_has_a_height_to_draw_at`, reading `content/sprites/heights.json`) |
 | A click or tap on a cat, person or piece acts on it where it's drawn, up off its tile at an angle | client unit tests (`hitAt`), browser check (a cat napping on the window seat) |
-| The room reads as a room you look into, with the street wall at the back right, and nothing hidden that shouldn't be | judged: by the user, from screenshots at both sizes in `docs/notes/screens/` |
+| The room reads as a room you look into, with the street wall at the back left, and nothing hidden that shouldn't be | judged: by the user, from screenshots at both sizes in `docs/notes/screens/` |
 
 ## Rules it touches
 

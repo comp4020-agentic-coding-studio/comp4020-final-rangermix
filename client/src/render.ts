@@ -109,9 +109,14 @@ function up(gx: number, gy: number, z = 0): Pt {
   return { x: p.x, y: p.y - z };
 }
 
-/** A block standing on the floor over (x, y, w, h), `z` pixels tall: its right face, left face and top. */
+/**
+ * A block standing on the floor over (x, y, w, h), `z` pixels tall: the two
+ * faces the viewer sees from the front-right corner (the one toward the
+ * street wall's near end, at x, and the one toward the front, at y + h),
+ * then its top.
+ */
 function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string): void {
-  poly(ctx, [up(x + w, y), up(x + w, y + h), up(x + w, y + h, z), up(x + w, y, z)], shade(colour, 0.3));
+  poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.3));
   poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.14));
   poly(ctx, [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x, y + h, z)], colour);
 }
@@ -189,9 +194,11 @@ function blockOutline(f: FurnitureView): Pt[] {
     const along = Math.min(f.w - 0.1, w * 1.8);
     const lz = Math.max(2, Math.round(z / 3));
     const [bx, by, bw, bh] = [f.x + (f.w - along) / 2, y + h * 0.25, along, h * 0.5];
-    return [up(bx, by, lz), up(bx + bw, by, lz), up(bx + bw, by), up(bx + bw, by + bh), up(bx, by + bh), up(bx, by + bh, lz)];
+    return [up(bx, by, lz), up(bx + bw, by, lz), up(bx + bw, by + bh, lz), up(bx + bw, by + bh), up(bx, by + bh), up(bx, by)];
   }
-  return [up(x, y, z), up(x + w, y, z), up(x + w, y), up(x + w, y + h), up(x, y + h), up(x, y + h, z)];
+  // Its silhouette from the front-right: round the top's back edges, down the
+  // right, along the front base, and up the left.
+  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h), up(x, y + h), up(x, y)];
 }
 
 /** A figure's sprite box, `lift` pixels up, as a polygon. */
@@ -404,21 +411,22 @@ function drawFloor(ctx: Ctx, room: RoomView): void {
 }
 
 /**
- * The two back walls: the plain one on the left, and the street wall on the
- * right with row 0's window, door and chalkboard on it, and the line's faces
- * in the window.
+ * The two back walls: the street wall on the left with row 0's window, door
+ * and chalkboard on it, and the line's faces in the window; the plain one on
+ * the right.
  */
 function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
   const { room } = state;
   const H = ISO.wall;
   const wall = ROOM[3];
   const wainscot = ROOM[4];
-  // Back-left wall.
-  poly(ctx, [up(0, 1), up(0, room.height), up(0, room.height, H), up(0, 1, H)], shade(wall, 0.22));
-  poly(ctx, [up(0, 1), up(0, room.height), up(0, room.height, 14), up(0, 1, 14)], shade(wainscot, 0.2));
-  // The street wall.
-  poly(ctx, [up(0, 1), up(room.width, 1), up(room.width, 1, H), up(0, 1, H)], shade(wall, 0.08));
-  poly(ctx, [up(0, 1), up(room.width, 1), up(room.width, 1, 14), up(0, 1, 14)], wainscot);
+  // The plain wall, up the back right.
+  const W = room.width;
+  poly(ctx, [up(W, 1), up(W, room.height), up(W, room.height, H), up(W, 1, H)], shade(wall, 0.22));
+  poly(ctx, [up(W, 1), up(W, room.height), up(W, room.height, 14), up(W, 1, 14)], shade(wainscot, 0.2));
+  // The street wall, up the back left.
+  poly(ctx, [up(0, 1), up(W, 1), up(W, 1, H), up(0, 1, H)], shade(wall, 0.08));
+  poly(ctx, [up(0, 1), up(W, 1), up(W, 1, 14), up(0, 1, 14)], wainscot);
   const panel = (x0: number, x1: number, z0: number, z1: number, colour: string) => poly(ctx, [up(x0, 1, z0), up(x1, 1, z0), up(x1, 1, z1), up(x0, 1, z1)], colour);
   const tiles = room.tiles[0] ?? "";
   const line = [...state.people.values()].filter((p) => p.place === "window");

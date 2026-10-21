@@ -123,3 +123,9 @@ each leave the café working.
   [`f83105a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f83105a),
   with its slices proposed in
   [`1c113f8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c113f8).
+- On 2026-10-22, judging slice 09 live, the user asked for the room turned
+  90° so the door and window are on the left. The camera now looks from
+  the room's front-right corner: the street wall stands up the back left,
+  in its order from the left, and the plain wall up the back right. Which
+  corner the camera looks from isn't part of this decision, so it changed
+  in `docs/design.md` and slice 09's spec, not here.

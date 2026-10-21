@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { ISO, inDrawOrder, pickTile, toCanvas } from "../src/iso";
 
 // The camera (slice 09, ADR 0017): a 2:1 isometric view of the same 12 by 10
-// grid, the floor rows 1 to 9 and the street wall, row 0, up the back right.
+// grid, the floor rows 1 to 9, seen from the room's front-right corner, so
+// the street wall, row 0, stands up the back left, the windows, door and
+// chalkboard on it in their order from the left (turned so on 2026-10-22).
 
 const room = { width: 12, height: 10 };
 
@@ -12,11 +14,20 @@ describe("the isometric camera", () => {
     expect(ISO.height).toBe(232);
   });
 
-  it("puts the floor's four corners where the study did, filling the canvas", () => {
-    expect(toCanvas(0, 1)).toEqual({ x: 144, y: 64 });
-    expect(toCanvas(12, 1)).toEqual({ x: 336, y: 160 });
-    expect(toCanvas(0, 10)).toEqual({ x: 0, y: 136 });
-    expect(toCanvas(12, 10)).toEqual({ x: 192, y: 232 });
+  it("puts the street wall's corner far left, the plain wall's far right, and the front corner at the bottom", () => {
+    // The floor's back corner, where the two walls meet, top and centre.
+    expect(toCanvas(12, 1)).toEqual({ x: 192, y: 56 });
+    // The street wall's near end, at the left.
+    expect(toCanvas(0, 1)).toEqual({ x: 0, y: 152 });
+    // The plain wall's near end, at the right.
+    expect(toCanvas(12, 10)).toEqual({ x: 336, y: 128 });
+    // The front corner, nearest the viewer.
+    expect(toCanvas(0, 10)).toEqual({ x: 144, y: 224 });
+  });
+
+  it("keeps the street wall's order from the left: going along it, x grows to the right", () => {
+    expect(toCanvas(7.5, 1).x).toBeGreaterThan(toCanvas(3.5, 1).x);
+    expect(toCanvas(8.5, 1).x).toBeGreaterThan(toCanvas(7.5, 1).x);
   });
 
   it("picks every floor tile from its centre and from just inside each corner of its diamond", () => {
@@ -24,42 +35,50 @@ describe("the isometric camera", () => {
       for (let x = 0; x < room.width; x++) {
         const c = toCanvas(x + 0.5, y + 0.5);
         expect(pickTile(c.x, c.y, room), `centre of (${x},${y})`).toEqual({ x, y });
-        const top = toCanvas(x + 0.05, y + 0.05);
-        const right = toCanvas(x + 0.95, y + 0.05);
-        const bottom = toCanvas(x + 0.95, y + 0.95);
-        const left = toCanvas(x + 0.05, y + 0.95);
-        for (const p of [top, right, bottom, left]) expect(pickTile(p.x, p.y, room), `inside (${x},${y})`).toEqual({ x, y });
+        for (const [dx, dy] of [
+          [0.05, 0.05],
+          [0.95, 0.05],
+          [0.95, 0.95],
+          [0.05, 0.95],
+        ]) {
+          const p = toCanvas(x + dx, y + dy);
+          expect(pickTile(p.x, p.y, room), `inside (${x},${y})`).toEqual({ x, y });
+        }
       }
     }
   });
 
   it("picks row 0 on the street wall's face, at the column under the point", () => {
-    // Halfway up the back-right wall, over each column.
+    // Halfway up the back-left wall, over each column.
     for (let x = 0; x < room.width; x++) {
       const foot = toCanvas(x + 0.5, 1);
       expect(pickTile(foot.x, foot.y - ISO.wall / 2, room), `wall over column ${x}`).toEqual({ x, y: 0 });
     }
   });
 
-  it("picks nothing off the room, or on the back-left wall", () => {
+  it("picks nothing off the room, or on the plain back wall", () => {
     expect(pickTile(2, 2, room)).toBeNull();
     expect(pickTile(330, 228, room)).toBeNull();
-    // Halfway up the back-left wall, by row 5.
-    const foot = toCanvas(0, 5.5);
-    expect(pickTile(foot.x - 2, foot.y - ISO.wall / 2, room)).toBeNull();
+    // Halfway up the plain back-right wall, by row 5.
+    const foot = toCanvas(12, 5.5);
+    expect(pickTile(foot.x + 2, foot.y - ISO.wall / 2, room)).toBeNull();
     // Above the street wall's top.
     const top = toCanvas(6.5, 1);
     expect(pickTile(top.x, top.y - ISO.wall - 4, room)).toBeNull();
   });
 
   it("draws what's nearer the viewer later, around a long piece too", () => {
+    // Nearer the viewer is further along y and less far along x.
     const sofa = { name: "sofa", x: 0, y: 5, w: 3, h: 1 };
     const cats = [
       { name: "behind", x: 1, y: 4, w: 1, h: 1, after: false },
       { name: "behind its far end", x: 2, y: 4, w: 1, h: 1, after: false },
       { name: "in front", x: 1, y: 6, w: 1, h: 1, after: true },
-      { name: "beside", x: 3, y: 5, w: 1, h: 1, after: true },
-      { name: "behind and beside", x: 3, y: 4, w: 1, h: 1, after: true },
+      { name: "beside, further along", x: 3, y: 5, w: 1, h: 1, after: false },
+      { name: "behind and beside", x: 3, y: 4, w: 1, h: 1, after: false },
+      { name: "in front of its near end", x: 0, y: 6, w: 1, h: 1, after: true },
+      // (A cat at (3,6) only touches the sofa's corner on screen, so either
+      // order draws the same.)
     ];
     for (const cat of cats) {
       // Whichever order they come in.
@@ -99,7 +118,7 @@ describe("the isometric camera", () => {
       { name: "bowls", x: 10, y: 9, w: 2, h: 1 },
     ];
     const order = inDrawOrder([...items].reverse());
-    const behind = (a: (typeof items)[0], b: (typeof items)[0]) => a.x + a.w <= b.x || a.y + a.h <= b.y;
+    const behind = (a: (typeof items)[0], b: (typeof items)[0]) => a.x >= b.x + b.w || a.y + a.h <= b.y;
     for (let i = 0; i < order.length; i++) {
       for (let j = i + 1; j < order.length; j++) {
         expect(behind(order[j], order[i]) && !behind(order[i], order[j]), `${order[j].name} is behind ${order[i].name} but drawn after it`).toBe(false);
