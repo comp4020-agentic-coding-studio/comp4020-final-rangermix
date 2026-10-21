@@ -1,25 +1,32 @@
+/* The page in Catppuccin (slice 10; content/sprites/CREDITS.md): Latte for a
+   light setting, Mocha for a dark one. Every text and control colour is
+   4.5:1 or better against what it sits on, held by client/test/contrast.test.ts.
+   Latte's subtext0 and peach are too light for text on its base, so muted
+   text is subtext1 and the accent is mauve. */
 :root {
   color-scheme: light dark;
-  --paper: #fbf6ee;
-  --ink: #2b2230;
-  --muted: #6d6170;
-  --card: #fffdf9;
-  --line: #e6d9c8;
-  --accent: #b4572d;
+  --paper: #eff1f5; /* Latte base */
+  --ink: #4c4f69; /* text */
+  --muted: #5c5f77; /* subtext1 */
+  --card: #ffffff;
+  --line: #bcc0cc; /* surface1 */
+  --accent: #8839ef; /* mauve */
   --accent-ink: #ffffff;
-  --focus: #2f6fd1;
+  --error: #d20f39; /* red */
+  --focus: #1e66f5; /* blue */
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #1c1820;
-    --ink: #efe6dc;
-    --muted: #b5a9b0;
-    --card: #262029;
-    --line: #3a313d;
-    --accent: #e8955c;
-    --accent-ink: #1c1820;
-    --focus: #8ab4ff;
+    --paper: #1e1e2e; /* Mocha base */
+    --ink: #cdd6f4; /* text */
+    --muted: #a6adc8; /* subtext0 */
+    --card: #313244; /* surface0 */
+    --line: #45475a; /* surface1 */
+    --accent: #fab387; /* peach */
+    --accent-ink: #1e1e2e; /* base */
+    --error: #f38ba8; /* red */
+    --focus: #89b4fa; /* blue */
   }
 }
 * { box-sizing: border-box; }
@@ -56,7 +63,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .look-row input:checked + canvas, .look-row input:checked + .swatch { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .look-row input:focus-visible + canvas, .look-row input:focus-visible + .swatch { outline: 3px solid var(--focus); outline-offset: 2px; }
 .recovery-code code { font-size: 1.25rem; letter-spacing: 0.08em; background: var(--paper); padding: 0.3rem 0.5rem; border-radius: 6px; }
-.error { color: #c0392b; min-height: 1.5em; margin: 0.5rem 0 0; }
+.error { color: var(--error); min-height: 1.5em; margin: 0.5rem 0 0; }
 .left-cafe { min-height: 100vh; display: grid; place-content: center; text-align: center; gap: 1rem; padding: 16px; }
 
 /* The café, on a desktop: the room in the middle, panels either side */

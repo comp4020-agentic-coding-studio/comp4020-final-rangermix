@@ -50,11 +50,12 @@ interface VisitOptions {
   /** Wait for the café's welcome before returning (the default). */
   waitInside?: boolean;
   reducedMotion?: "reduce" | "no-preference";
+  colorScheme?: "light" | "dark";
 }
 
 /** Opens the café in a fresh browser and signs up through the page, by keyboard. */
 async function visit(viewport: { width: number; height: number }, touch = false, opts: VisitOptions = {}): Promise<Visit> {
-  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, reducedMotion: opts.reducedMotion });
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, reducedMotion: opts.reducedMotion, colorScheme: opts.colorScheme });
   contexts.push(context);
   const page = await context.newPage();
   if (opts.prepare) await opts.prepare(page);
@@ -708,8 +709,10 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const at = await boardTile(v.page);
     await v.page.mouse.click(at.x, at.y);
     await board.waitFor();
-    // A chair, behind the board's backdrop and clear of the board itself.
-    const seat = await tileAt(v.page, { x: 9, y: 4 });
+    // A tile low in the room, behind the board's backdrop and clear of the board
+    // itself, which hangs over the room's middle (the chair went under it
+    // when the room turned, 2026-10-22).
+    const seat = await tileAt(v.page, { x: 3, y: 8 });
     expect(await v.page.evaluate(([x, y]) => document.getElementById("board")!.contains(document.elementFromPoint(x, y)), [seat.x, seat.y])).toBe(false);
     await v.page.mouse.click(seat.x, seat.y);
     await board.waitFor({ state: "hidden" });
@@ -845,6 +848,23 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await v.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await v.page.locator("#board-close").tap();
     await board.waitFor({ state: "hidden" });
+  });
+
+  it("follows the device's light or dark setting in Catppuccin Latte or Mocha, at both sizes (slice 10)", async () => {
+    const base = { light: "rgb(239, 241, 245)", dark: "rgb(30, 30, 46)" };
+    for (const [viewport, touch] of [
+      [{ width: 1920, height: 1080 }, false],
+      [{ width: 390, height: 844 }, true],
+    ] as const) {
+      for (const scheme of ["light", "dark"] as const) {
+        const v = await visit(viewport, touch, { colorScheme: scheme });
+        const seen = await v.page.evaluate(() => ({ page: getComputedStyle(document.body).backgroundColor, talk: getComputedStyle(document.getElementById("talk-input")!).color }));
+        expect(seen.page, `${scheme} at ${viewport.width}`).toBe(base[scheme]);
+        // Every control still shows: the talk box's text isn't the page's colour.
+        expect(seen.talk).not.toBe(seen.page);
+        await v.page.locator("#leave").click();
+      }
+    }
   });
 
   it("dusts off the café while it wakes, with nothing of the café yet, then opens it", async () => {
