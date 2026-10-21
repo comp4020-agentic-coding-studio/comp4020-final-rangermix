@@ -184,3 +184,46 @@ Files: `client/src/main.ts`, `spec/browser.test.ts`.
 ## Execution log
 
 Where the build departed from this plan, task by task.
+
+- **Task 1** ([`23ab0f5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/23ab0f5)).
+  Decision 3 didn't hold: a single depth number, the front corner's
+  `x + y`, tied a cat beside the sofa with the sofa (the test caught it).
+  The order is `inDrawOrder`, a sort on "wholly behind" (one footprint's
+  x-range or y-range ends where the other's starts), with nearer centres
+  later among the rest, held by a test over the starting room's
+  footprints.
+- **Task 2** ([`5af5571`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5af5571)).
+  Added `wallToCss` for row 0's spot halfway up the street wall, and
+  `roomBox` and `figureToCss` for bubbles: the old room box was the
+  corners `tileToCss(0,0)` and `(w,h)`, which aren't the canvas's corners
+  at an angle. `main.ts`'s menu anchor is the diamond's left and right
+  corners; row 0's is on the wall. `TILE` stays in `scale.ts` for the
+  16-px sprites till slice 11.
+- **Task 3** ([`32cbf7f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/32cbf7f)).
+  The heights went in `content/sprites/heights.json`, beside the
+  palettes, not `furniture.toml`: they're the client's to draw by, and
+  the server would otherwise have had to serve them through the protocol,
+  which ADR 0017 keeps unchanged. `cargo test` holds that every kind has
+  one. The first screenshot showed two cats missing: napping on the window
+  seat and the cat tower, they were drawn inside the blocks. A cat or
+  person on a standing piece is now raised by its height and sorts just
+  in front of it (two tests, seen failing). The room has a dark backdrop,
+  the study's, rather than the page showing round the diamond.
+- **Task 4** ([`7bbcd4e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7bbcd4e)).
+  As planned.
+- **Task 5** ([`4fd3746`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4fd3746)).
+  `window.cafe` is already the `#cafe` element (named access), so the
+  page's hook is `window.cafeRoom.tileAt`. Making B the phone's default
+  exposed a phase 2 gap: B hid both panels with `display: none`, which
+  took the chalkboard's copy from screen readers on every phone; slice
+  02's check caught it. With the drawer shut, the left panel is now
+  visually hidden instead. Six checks that switched a phone into B now
+  start there; the sheet check and one board tap switch to the whole
+  room, so both layouts stay covered. Locally 19 of 21 browser checks
+  pass; the two that don't are slice 07's routed-socket waking checks,
+  which time out on this machine on `main` too and pass in CI
+  ([slice-07-waking.md](slice-07-waking.md)).
+- **Task 6.** Screenshots in
+  [screens/slice-09/](screens/slice-09/): the desktop, a phone in the
+  bigger room and in the whole room, and the room at 10:00 and 22:00 by
+  the page's clock.

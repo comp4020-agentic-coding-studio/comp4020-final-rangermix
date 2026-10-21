@@ -1,6 +1,6 @@
 # 09. The room seen at an angle
 
-- **Status:** Planned 2026-10-21 (approved the same day, with the proposed default for its open question: the arrows move along the room's axes)
+- **Status:** Built 2026-10-21, on branch `slice-09-isometric`, waiting for its review (approved and planned the same day, with the proposed default for its open question: the arrows move along the room's axes)
 - **Plan:** [`docs/notes/plan-slice-09-isometric.md`](../notes/plan-slice-09-isometric.md)
 - **Design:** The room (12 by 10 tiles); The client ("Phone", "Drawing",
   "The look");
