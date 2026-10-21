@@ -1,6 +1,6 @@
 # 05. The art pass
 
-- **Status:** Proposed
+- **Status:** Superseded by slices [09](09-the-room-seen-at-an-angle.md), [10](10-catppuccin-by-day-and-by-night.md) and [11](11-cats-you-can-tell-apart.md) on 2026-10-21, when the user chose the look ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)). Kept as it was, below, for the record
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-05-art.md`
 - **Design:** The client ("Sprites", "Drawing"); The room (the starting
   furniture); "Cats change through `content/`, not code";

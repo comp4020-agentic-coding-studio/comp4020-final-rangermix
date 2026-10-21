@@ -1,9 +1,13 @@
 # Visual direction: Catppuccin, pixel density and an angled camera
 
-**Status:** a judgement for the user, asked 2026-10-17 18:05 AEDT. Nothing is
-decided or built. Once the user chooses, the decision becomes an ADR (the
-look and the camera are costly to reverse) and the art pass, slice 05, is
-rewritten to match.
+**Status:** decided 2026-10-21. The user took the suggestion below on every
+count: all three changes, layout B as the phone's default, sprites drawn by
+the agent, and the page in Latte and Mocha. That is
+[ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
+built as slices [09](../slices/09-the-room-seen-at-an-angle.md),
+[10](../slices/10-catppuccin-by-day-and-by-night.md) and
+[11](../slices/11-cats-you-can-tell-apart.md), which replace slice 05. The
+judgement, asked 2026-10-17 18:05 AEDT, stays below as it was.
 
 The user asked for a judgement on three things: whether
 [Catppuccin](https://catppuccin.com/) colours can be used, how dense the pixel
