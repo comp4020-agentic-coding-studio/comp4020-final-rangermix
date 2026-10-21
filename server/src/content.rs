@@ -142,4 +142,17 @@ mod tests {
             assert!(coat.len() >= 6, "{}", cat.coat);
         }
     }
+
+    /// The room at an angle draws each piece as a block this tall until its
+    /// art comes (slice 09): every kind, in the room or the catalogue, has one.
+    #[test]
+    fn every_kind_of_furniture_has_a_height_to_draw_at() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/heights.json");
+        let heights: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).expect("content/sprites/heights.json")).unwrap();
+        for kind in repo_content().room.kinds.keys() {
+            let h = heights[kind].as_u64().unwrap_or_else(|| panic!("no height for {kind}"));
+            assert!((1..=64).contains(&h), "{kind}'s height {h} isn't between 1 and 64 pixels");
+        }
+    }
 }
