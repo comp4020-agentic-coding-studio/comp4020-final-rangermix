@@ -855,24 +855,32 @@ describe("in a browser", { timeout: 30_000 }, () => {
   });
 
   it("draws the room and its cats in the hour's light, and moves on to night on an open page (slice 10's review, finding 1)", async () => {
-    // A cat pinned sitting on bare floor at (6,6), on this page only, so its
-    // coat's pixels can be read; the floor at (9,8), bare too.
+    // On this page only, every cat is pinned sitting still, the first on bare
+    // floor at (6,6) so its coat's pixels can be read, the others in the far
+    // corner, so none wanders over the floor read at (9,8) (CI and a local
+    // run each caught a roaming cat there, 2026-10-22). What the café says of
+    // the cats later is held back; it still answers everything.
     const CAT = { x: 6, y: 6 };
     const FLOOR = { x: 9, y: 8 };
+    const ASIDE = [
+      { x: 11, y: 1 },
+      { x: 11, y: 2 },
+    ];
     let coat = "";
     const pinned = (page: Page) =>
       page.routeWebSocket(/\/ws$/, (ws) => {
         const server = ws.connectToServer();
-        let id: string | null = null;
+        const ids = new Set<string>();
         server.onMessage((m) => {
           const f = JSON.parse(String(m));
           if (f.type === "welcome") {
-            const cat = f.snapshot.cats[0];
-            id = cat.id;
-            coat = cat.coat;
-            Object.assign(cat, { at: CAT, walk: null, pose: "sit", heldBy: null });
+            f.snapshot.cats.forEach((cat: Frame, i: number) => {
+              ids.add(cat.id);
+              if (i === 0) coat = cat.coat;
+              Object.assign(cat, { at: i === 0 ? CAT : ASIDE[(i - 1) % ASIDE.length], walk: null, pose: "sit", heldBy: null });
+            });
             ws.send(JSON.stringify(f));
-          } else if (f.cat !== id) ws.send(m);
+          } else if (!ids.has(f.cat)) ws.send(m);
         });
       });
     const v = await visit({ width: 1920, height: 1080 }, false, {
@@ -882,7 +890,12 @@ describe("in a browser", { timeout: 30_000 }, () => {
         await pinned(page);
       },
     });
-    /** Every colour on the canvas's own pixels within `r` canvas pixels of a tile's spot, `up` pixels above it. */
+    /**
+     * Every colour painted on the canvas's own pixels within `r` canvas
+     * pixels of a tile's spot, `up` pixels above it. Clear pixels, not yet
+     * drawn on, are left out: a slow runner can be read before the first
+     * frame lands (CI caught it reading #000000, 2026-10-22).
+     */
     const coloursAt = (tile: Tile, up: number, r: number) =>
       v.page.evaluate(
         ([x, y, up, r]) => {
@@ -894,25 +907,42 @@ describe("in a browser", { timeout: 30_000 }, () => {
           const cy = Math.round((at.y - box.top) / scale) - up;
           const data = canvas.getContext("2d")!.getImageData(cx - r, cy - r, 2 * r + 1, 2 * r + 1).data;
           const seen = new Set<string>();
-          for (let i = 0; i < data.length; i += 4) seen.add(`#${[data[i], data[i + 1], data[i + 2]].map((c) => c.toString(16).padStart(2, "0")).join("")}`);
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] === 0) continue;
+            seen.add(`#${[data[i], data[i + 1], data[i + 2]].map((c) => c.toString(16).padStart(2, "0")).join("")}`);
+          }
           return [...seen];
         },
         [tile.x, tile.y, up, r],
       );
-    // The diamond's middle at (9,8): one of the floor's two shades.
-    const floorDay = await coloursAt(FLOOR, 0, 1);
-    // The cat's sprite: 16 px, feet 2 px below its tile's centre.
-    const catDay = await coloursAt(CAT, 6, 5);
     const day = palettes.day;
     const night = palettes.night;
     const coatOf = (p: typeof day) => (p.coats as Record<string, string[]>)[coat];
+    /** The colours at a spot once a frame has painted one of `want` there, or what was there after 5 s. */
+    const settled = async (tile: Tile, up: number, r: number, want: string[]) => {
+      let seen: string[] = [];
+      await expect
+        .poll(
+          async () => {
+            seen = await coloursAt(tile, up, r);
+            return seen.some((c) => want.includes(c));
+          },
+          { timeout: 5000 },
+        )
+        .toBe(true)
+        .catch(() => {});
+      return seen;
+    };
+    // The diamond's middle at (9,8): one of the floor's two shades.
+    const floorDay = await settled(FLOOR, 0, 1, day.room.slice(0, 2));
+    // The cat's sprite: 16 px, feet 2 px below its tile's centre.
+    const catDay = await settled(CAT, 6, 5, coatOf(day));
     expect(floorDay.some((c) => day.room.slice(0, 2).includes(c)), `day floor ${floorDay}`).toBe(true);
     expect(catDay.some((c) => coatOf(day).includes(c)), `day coat ${catDay}`).toBe(true);
     // The same page, on to 22:00: night, without a reload.
     await v.page.clock.fastForward("12:00:00");
-    await v.page.waitForTimeout(300);
-    const floorNight = await coloursAt(FLOOR, 0, 1);
-    const catNight = await coloursAt(CAT, 6, 5);
+    const floorNight = await settled(FLOOR, 0, 1, night.room.slice(0, 2));
+    const catNight = await settled(CAT, 6, 5, coatOf(night));
     expect(floorNight.some((c) => night.room.slice(0, 2).includes(c)), `night floor ${floorNight}`).toBe(true);
     expect(floorNight.some((c) => day.room.slice(0, 2).includes(c)), "no day floor left at night").toBe(false);
     expect(catNight.some((c) => coatOf(night).includes(c)), `night coat ${catNight}`).toBe(true);
