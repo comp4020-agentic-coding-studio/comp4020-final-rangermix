@@ -1,6 +1,6 @@
 # 09. The room seen at an angle
 
-- **Status:** Proposed
+- **Status:** Approved 2026-10-21, with the proposed default for its open question (the arrows move along the room's axes)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-09-isometric.md`
 - **Design:** The room (12 by 10 tiles); The client ("Phone", "Drawing",
   "The look");
@@ -83,5 +83,5 @@ their real footprints, as in the study, until slice 11 draws them.
 ## Open questions
 
 - **The arrows: along the room's axes, or the screen's diagonals?**
-  Proposed default: along the room's axes, with the pointer drawn as a
-  diamond, the usual choice in isometric games.
+  Settled 2026-10-21, the default: along the room's axes, with the pointer
+  drawn as a diamond, the usual choice in isometric games.

@@ -1,6 +1,6 @@
 # 10. Catppuccin by day and by night
 
-- **Status:** Proposed
+- **Status:** Approved 2026-10-21, with the proposed default for its open question (the afternoon keeps the day's palette)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-10-palette.md`
 - **Design:** The café ("It keeps Canberra time"); The client ("Drawing",
   "The look"); Numbers to tune ("Day and night");
@@ -62,5 +62,6 @@ dark setting, in Latte or Mocha.
 
 ## Open questions
 
-- **Does the afternoon get its own palette,** or stay the day's? Proposed
-  default: the day's, with the evening as a single step halfway to night.
+- **Does the afternoon get its own palette,** or stay the day's? Settled
+  2026-10-21, the default: the day's, with the evening as a single step
+  halfway to night.

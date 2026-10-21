@@ -47,9 +47,9 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 06 | The accessibility pass | Every action by keyboard, touch and screen reader, held by browser checks | [06](../slices/06-the-accessibility-pass.md) | spec proposed |
 | 07 | Getting in while the café wakes | The port opens at once; the page and accounts work during a replay; the café shows "Dusting off the café…" until it's ready; a dead world task restarts the machine | [07](../slices/07-getting-in-while-the-cafe-wakes.md) | reviewed and live ([plan](plan-slice-07-waking.md), [findings](reviews/slice-07-findings.md), [notes](slice-07-waking.md)) |
 | 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | live 2026-10-21 ([plan](plan-slice-08-mocked-time.md), [findings](reviews/slice-08-findings.md)) |
-| 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | spec proposed |
-| 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | spec proposed |
-| 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | spec proposed |
+| 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | approved 2026-10-21; being planned |
+| 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | approved 2026-10-21 |
+| 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21 |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -79,8 +79,8 @@ rehearsed isn't recorded. There's still no `crit-9` or `crit-10` tag.
 
 ## Where it stands (2026-10-21)
 
-Updated by session `6753d63d`. CI on `main` is green through `075a558`
-(run 39547349911: rust, check and deploy).
+Updated by session `6753d63d`. CI on `main` is green through `9c8d23a`
+(run 39549878399: rust, check and deploy), with the low menu fix live.
 
 - **Done and live:** phases 1 to 3, and slices 01, 02, 07 and 08.
 - **The look is chosen** (2026-10-21,
@@ -89,12 +89,15 @@ Updated by session `6753d63d`. CI on `main` is green through `075a558`
   night palettes, layout B the phone's default, sprites drawn by the agent,
   and the page in Latte and Mocha. It's built as slices 09 to 11, which
   replace slice 05.
-- **Specs waiting for the user's approval:** slices 03, 04, 06, 09, 10 and
-  11. None is planned.
+- **Approved, not yet built:** slices 09, 10 and 11 (2026-10-21, with
+  their proposed defaults). Nothing of the look is on the live café yet.
+  Slice 09 is being planned.
+- **Specs waiting for the user's approval:** slices 03, 04 and 06. None is
+  planned.
 
 ## What's left, in order
 
-1. **Approve and build slices 09, 10 and 11**, in that order: the camera
+1. **Build slices 09, 10 and 11** (approved 2026-10-21), in that order: the camera
    decides every sprite's shape, so it comes first, then the palette, then
    the art. Each ships on its own and leaves the café working.
 2. **Approve and build slices 04, then 03.** The showcase puts a full room

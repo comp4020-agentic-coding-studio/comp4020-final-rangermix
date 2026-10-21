@@ -1,6 +1,6 @@
 # 11. Cats you can tell apart
 
-- **Status:** Proposed
+- **Status:** Approved 2026-10-21, with the proposed defaults for its open questions (one cat first; the README's music promise comes out)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-11-art.md`
 - **Design:** The client ("Sprites", "The look"); The room (the starting
   furniture); "Cats change through `content/`, not code";
@@ -66,8 +66,10 @@ furniture looks like what it is, standing or knocked over.
 ## Open questions
 
 - **The README promises soothing music, and the design has none** (carried
-  from slice 05). Proposed default: take the promise out of the README;
+  from slice 05). Settled 2026-10-21, the default: take the promise out of
+  the README, which is the user's file, so the edit is offered to them;
   quiet music, off until a visitor turns it on, can be a small slice of its
   own if wanted.
-- **Cat by cat, or all at once?** Proposed default: one cat first, judged,
-  then the rest in its style, so a miss costs one cat's drawing.
+- **Cat by cat, or all at once?** Settled 2026-10-21, the default: one cat
+  first, judged, then the rest in its style, so a miss costs one cat's
+  drawing.
