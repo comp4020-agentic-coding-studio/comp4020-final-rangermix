@@ -92,9 +92,19 @@ function enter(me: ApiMe): void {
     if (cafe.state) bubbles.update(cafe.state);
   });
   const ringLayout = () => document.body.classList.contains("layout-b");
-  /** Where a menu goes: beside the tile, or (for a ring) round its middle. */
-  /** A tile's middle on screen: on the floor, or up the street wall for row 0. */
+  /** A tile's middle on screen, within the stage: on the floor, or up the street wall for row 0. */
   const middle = (tile: { x: number; y: number }) => (tile.y === 0 ? stage.wallToCss(tile.x + 0.5) : stage.tileToCss(tile.x + 0.5, tile.y + 0.5));
+  // Where a tile is in the window, read-only: the room is seen at an angle, so
+  // a fraction of the canvas isn't a tile (slice 09). The browser checks find
+  // tiles through it, and it tells nothing the canvas doesn't show.
+  (window as unknown as { cafeRoom: unknown }).cafeRoom = Object.freeze({
+    tileAt(x: number, y: number): { x: number; y: number } {
+      const box = $("stage").getBoundingClientRect();
+      const at = middle({ x, y });
+      return { x: box.left + at.left, y: box.top + at.top };
+    },
+  });
+  /** Where a menu goes: beside the tile, or (for a ring) round its middle. */
   const anchor = (tile: { x: number; y: number }) => {
     const centre = middle(tile);
     if (ringLayout()) return centre;

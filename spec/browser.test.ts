@@ -166,8 +166,9 @@ async function tabToCat(v: Visit, ok: (c: CatSeen) => boolean = () => true): Pro
 /** How far the open ring's middle is from a tile's centre on screen, and how wide a tile is, in CSS pixels. */
 async function ringFromTile(page: Page, tile: Tile): Promise<{ off: number; px: number }> {
   const room = (await page.locator("#room").boundingBox())!;
-  const px = room.width / 12;
-  const at = { x: room.x + (tile.x + 0.5) * px, y: room.y + (tile.y + 0.5) * px };
+  // A tile's diamond is 32 of the canvas's 336 pixels across.
+  const px = (room.width * 32) / 336;
+  const at = await tileAt(page, tile);
   const boxes = await Promise.all((await page.locator(".menu.ring").getByRole("menuitem").all()).map((b) => b.boundingBox()));
   const centre = boxes.reduce((c, b) => ({ x: c.x + (b!.x + b!.width / 2) / boxes.length, y: c.y + (b!.y + b!.height / 2) / boxes.length }), { x: 0, y: 0 });
   return { off: Math.hypot(centre.x - at.x, centre.y - at.y), px };
@@ -192,10 +193,7 @@ async function expectRingClear(page: Page): Promise<void> {
  * the room has stopped moving (in the bigger room it pans to follow you).
  */
 async function boardTile(page: Page): Promise<{ x: number; y: number }> {
-  const at = async () => {
-    const box = (await page.locator("#room").boundingBox())!;
-    return { x: box.x + 8.5 * (box.width / 12), y: box.y + 0.5 * (box.height / 10) };
-  };
+  const at = () => tileAt(page, { x: 8, y: 0 });
   let last = await at();
   for (let i = 0; i < 20; i++) {
     await page.waitForTimeout(200);
@@ -206,6 +204,14 @@ async function boardTile(page: Page): Promise<{ x: number; y: number }> {
   return last;
 }
 
+/**
+ * Where a tile's middle is on screen, in viewport pixels, as the page draws
+ * it: on the floor, or up the street wall for row 0 (slice 09). The room is
+ * seen at an angle, so a fraction of the canvas isn't a tile.
+ */
+const tileAt = (page: Page, tile: Tile) =>
+  page.evaluate(([x, y]) => (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(x, y), [tile.x, tile.y]);
+
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
 const roomWidth = (page: Page) => page.evaluate(() => document.getElementById("room")?.style.width);
 
@@ -213,7 +219,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
   it("does everything by keyboard at both sizes, through a resize mid-use", async () => {
     const { page } = await visit({ width: 1920, height: 1080 });
     expect(await focused(page)).toBe("room");
-    expect(await roomWidth(page)).toBe("960px");
+    // The room at an angle, 336 pixels wide at 1x, at 3x (slice 09).
+    expect(await roomWidth(page)).toBe("1008px");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
@@ -223,8 +230,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Escape");
     expect(await page.locator(".menu").count()).toBe(0);
     expect(await focused(page)).toBe("room");
+    // A phone opens in the bigger room, at 3x, panned to follow you.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => document.getElementById("room")?.style.width === "384px");
+    await page.waitForFunction(() => document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1008px");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await page.keyboard.press("Escape");
     await page.keyboard.press("Tab");
@@ -233,7 +241,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Enter");
     await page.locator(".bubble", { hasText: "hello by keyboard" }).waitFor();
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => document.getElementById("room")?.style.width === "960px");
+    await page.waitForFunction(() => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1008px");
     await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("room");
     // Back past the panel's own buttons (putting a treat down) to Leave.
@@ -247,6 +255,23 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Enter");
     await page.locator("#left-cafe").waitFor();
     expect(await focused(page)).toBe("come-back");
+  });
+
+  it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {
+    const { page, frames } = await visit({ width: 1920, height: 1080 });
+    const welcome = frames.find((f) => f.type === "welcome")!;
+    const chair = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "chair");
+    // The chair's middle is on the room, and a click there opens the chair's menu.
+    const at = await tileAt(page, chair);
+    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [at.x, at.y])).toBe("room");
+    await page.mouse.click(at.x, at.y);
+    await expect.poll(() => page.locator(".menu").getAttribute("aria-label")).toBe("Chair");
+    await page.keyboard.press("Escape");
+    // The chalkboard, up the street wall: a click there opens the board.
+    const board = await tileAt(page, { x: [...welcome.snapshot.room.tiles[0]].indexOf("C"), y: 0 });
+    await page.mouse.click(board.x, board.y);
+    await page.locator("#board").waitFor();
+    await page.getByRole("button", { name: "Close" }).click();
   });
 
   it("keeps a cat's menu opened low in the room whole on screen, by mouse and by keyboard, at both desktop sizes", async () => {
@@ -290,8 +315,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
       { width: 1280, height: 720 },
     ]) {
       const { page } = await visit(viewport, false, { prepare: lowCat });
-      const box = (await page.locator("#room").boundingBox())!;
-      await page.mouse.click(box.x + (LOW.x + 0.5) * (box.width / 12), box.y + (LOW.y + 0.5) * (box.height / 10));
+      const at = await tileAt(page, LOW);
+      await page.mouse.click(at.x, at.y);
       await expectMenuInStage(page);
       expect(await page.locator(".menu").getByRole("menuitem").count(), "a cat's whole menu").toBeGreaterThanOrEqual(4);
       await page.keyboard.press("Escape");
@@ -306,13 +331,16 @@ describe("in a browser", { timeout: 30_000 }, () => {
     }
   });
 
-  it("opens actions as a sheet from the bottom on a phone, by touch", async () => {
+  it("opens actions as a sheet from the bottom on a phone showing the whole room, by touch", async () => {
     const { page, frames } = await visit({ width: 390, height: 844 }, true);
     const welcome = frames.find((f) => f.type === "welcome")!;
-    const box = (await page.locator("#room").boundingBox())!;
+    // A phone opens in the bigger room; the whole room is a tap away.
+    await page.locator("#layout-switch").tap();
+    await page.waitForFunction(() => !document.body.classList.contains("layout-b"));
     // A chair stays put, where a cat might wander off just as it's tapped.
     const chair = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "chair");
-    await page.touchscreen.tap(box.x + (chair.x + 0.5) * (box.width / 12), box.y + (chair.y + 0.5) * (box.height / 10));
+    const at = await tileAt(page, chair);
+    await page.touchscreen.tap(at.x, at.y);
     const menu = page.locator(".menu.sheet");
     await menu.waitFor();
     const r = (await menu.boundingBox())!;
@@ -321,11 +349,10 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await expect.poll(() => menu.getByRole("menuitem").count()).toBeGreaterThan(0);
   });
 
-  it("switches the phone to the bigger room, follows the pointer, opens rings, and remembers it", async () => {
-    const { page, frames } = await visit({ width: 390, height: 844 }, true);
-    await page.locator("#layout-switch").tap();
-    await page.waitForFunction(() => document.body.classList.contains("layout-b"));
-    expect(await roomWidth(page)).toBe("576px");
+  it("opens a phone in the bigger room, follows the pointer, opens rings, and remembers a switch to the whole room", async () => {
+    const { page } = await visit({ width: 390, height: 844 }, true);
+    expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(true);
+    expect(await roomWidth(page)).toBe("1008px");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     // The keyboard's pointer pulls the view along with it.
     const leftOf = () => page.evaluate(() => document.getElementById("room")?.style.left);
@@ -346,11 +373,15 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await ring.waitFor({ timeout: 3000 });
     await expectRingClear(page);
     await page.keyboard.press("Escape");
+    // The whole room, at 1x across the phone, remembered through a reload.
+    await page.locator("#layout-switch").tap();
+    expect(await roomWidth(page)).toBe("336px");
     await page.reload();
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
-    expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(true);
+    expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(false);
+    expect(await roomWidth(page)).toBe("336px");
     await page.locator("#layout-switch").tap();
-    expect(await roomWidth(page)).toBe("384px");
+    expect(await roomWidth(page)).toBe("1008px");
   });
 
   it("puts a treat down from the panel, and the other visitor sees it", async () => {
@@ -427,13 +458,25 @@ describe("in a browser", { timeout: 30_000 }, () => {
     let asked: CatSeen | null = null;
     let from = 0;
     for (let attempt = 0; attempt < 6 && !asked; attempt++) {
-      const cat = [...catsSeen(v.frames).values()].find((c) => !c.walking && c.heldBy === null);
+      // In the bigger room part of the room is off screen: a still cat whose
+      // tile is on screen, clear of the bars floating over it.
+      const bars = await v.page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
+      let cat: CatSeen | null = null;
+      let at = { x: 0, y: 0 };
+      for (const c of catsSeen(v.frames).values()) {
+        if (c.walking || c.heldBy !== null) continue;
+        const p = await tileAt(v.page, c.at);
+        if (p.x > 8 && p.x < 382 && p.y > bars[0] + 8 && p.y < bars[1] - 8) {
+          cat = c;
+          at = p;
+          break;
+        }
+      }
       if (!cat) {
         await v.page.waitForTimeout(500);
         continue;
       }
-      const box = (await v.page.locator("#room").boundingBox())!;
-      await v.page.touchscreen.tap(box.x + (cat.at.x + 0.5) * (box.width / 12), box.y + (cat.at.y + 0.5) * (box.height / 10));
+      await v.page.touchscreen.tap(at.x, at.y);
       const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
       if (!(await pick.isVisible({ timeout: 1000 }).catch(() => false))) {
         // It moved just as it was tapped.
@@ -466,8 +509,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
   });
 
   it("in the bigger room, keeps a keyboard-opened ring round a cat well away from you", async () => {
+    // A phone opens in the bigger room (slice 09).
     const v = await visit({ width: 390, height: 844 }, true);
-    await v.page.locator("#layout-switch").tap();
     await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
     const ring = v.page.locator(".menu.ring");
     let cat: CatSeen | null = null;
@@ -494,8 +537,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // off the screen. The ring used to slide inwards off its tile, onto the
     // thing it was for (CI caught it on a cat napping on the cat bed,
     // 2026-10-13); the room moves over instead while the ring is open.
+    // A phone opens in the bigger room (slice 09).
     const v = await visit({ width: 390, height: 844 }, true);
-    await v.page.locator("#layout-switch").tap();
     await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
     const welcome = v.frames.find((f) => f.type === "welcome")!;
     const sofa = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "sofa");
@@ -582,8 +625,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const at = await boardTile(v.page);
     await v.page.mouse.click(at.x, at.y);
     await board.waitFor();
-    const box = (await v.page.locator("#room").boundingBox())!;
-    const seat = { x: box.x + 3.5 * (box.width / 12), y: box.y + 1.5 * (box.height / 10) };
+    // A chair, behind the board's backdrop and clear of the board itself.
+    const seat = await tileAt(v.page, { x: 9, y: 4 });
     expect(await v.page.evaluate(([x, y]) => document.getElementById("board")!.contains(document.elementFromPoint(x, y)), [seat.x, seat.y])).toBe(false);
     await v.page.mouse.click(seat.x, seat.y);
     await board.waitFor({ state: "hidden" });
@@ -611,7 +654,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await board.waitFor({ state: "hidden" });
   });
 
-  it("reads the board on a phone by keyboard, in the bigger room, and through a resize", async () => {
+  it("reads the board on a phone by keyboard in the bigger room, through a resize, and by a tap on the whole room", async () => {
     const v = await visit({ width: 390, height: 844 }, true);
     const board = v.page.locator("#board");
     // By keyboard at 390×844.
@@ -632,9 +675,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
     }
     await v.page.keyboard.press("Escape");
     await board.waitFor({ state: "hidden" });
-    // In the bigger room, by a tap.
+    // With the whole room on screen, by a tap.
     await v.page.locator("#layout-switch").tap();
-    await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    await v.page.waitForFunction(() => !document.body.classList.contains("layout-b"));
     const at = await boardTile(v.page);
     await v.page.touchscreen.tap(at.x, at.y);
     await board.waitFor();
@@ -714,8 +757,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.locator("#add-furniture").click();
     await v.page.locator(".menu").getByRole("menuitem", { name: "A lamp" }).click();
     await v.page.locator("#carrying").waitFor();
-    const box = (await v.page.locator("#room").boundingBox())!;
-    await v.page.mouse.click(box.x + 9.5 * (box.width / 12), box.y + 4.5 * (box.height / 10));
+    const chair = await tileAt(v.page, { x: 9, y: 4 });
+    await v.page.mouse.click(chair.x, chair.y);
     await route.first!.close();
     await v.page.locator("#waking").waitFor();
     expect(await v.page.locator(".menu").count(), "no menu left open over it").toBe(0);
