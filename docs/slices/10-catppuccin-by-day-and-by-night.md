@@ -29,8 +29,12 @@ dark setting, in Latte or Mocha.
 - **The page's colours** in `client/src/style.css`: Latte for
   `prefers-color-scheme: light`, Mocha for dark, with Latte's mauve for
   links and buttons in the light theme.
-- **The palettes' sources credited**: Catppuccin is MIT-licensed, credited
-  in `/readme/` and the README's sources.
+- **The palettes' sources credited**: Catppuccin is MIT-licensed. Its
+  copyright line and licence are in `content/sprites/CREDITS.md`, which is
+  what the licence asks. A line for the README's sources, which `/readme/`
+  serves, is the user's to add (AGENTS.md: `README.md` is theirs); it's
+  proposed in [the slice's notes](../notes/slice-10-palette.md) (slice
+  10's review, finding 5).
 
 ## Not in this slice
 
