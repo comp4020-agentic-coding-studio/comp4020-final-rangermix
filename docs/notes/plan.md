@@ -40,7 +40,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | # | Slice | Delivers | Spec | Status |
 | --- | --- | --- | --- | --- |
 | 01 | The café keeps living while it sleeps | Fast-forward on wake, with the saved clock and random state; the schedule during a replay; loud failures | [01](../slices/01-the-cafe-keeps-living-while-it-sleeps.md) | live ([plan](plan-slice-01-fast-forward.md), [findings](reviews/slice-01-findings.md)); its night line held by slice 08's tests since 2026-10-17 |
-| 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | reviewed and deployed ([plan](plan-slice-02-chalkboard.md), [findings](reviews/slice-02-findings.md)); live once the user has read the board slice 08's night test prints ([slice-02-board.md](slice-02-board.md)) |
+| 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | live 2026-10-21, its judged line passed by the user on the board slice 08's night test prints ([plan](plan-slice-02-chalkboard.md), [findings](reviews/slice-02-findings.md), [notes](slice-02-board.md)) |
 | 03 | Keeping it kind | Mute, the slur blocklist, the admin ban | [03](../slices/03-keeping-it-kind.md) | spec proposed |
 | 04 | The showcase room | A load check at forty connections inside 256 MB; the window's count | [04](../slices/04-the-showcase-room.md) | spec proposed |
 | 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | spec proposed |
@@ -65,37 +65,38 @@ and ADR 0013
 and its multi-user decision is ADR 0009 (the quiet seat). The repo has no
 `crit-9` tag; `crit-8` is the only crit tag on the remote (read 17 Oct).
 
+Crit 10 (Wed 21 Oct, 13:30) has passed. `reflections/crit-10.md` is the
+user's
+([`385f13b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/385f13b)),
+and `PROCESS.md` was rewritten for it, with the logs as the crit's
+instruments and mocked time
+([`06727de`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/06727de)).
+Both landed before the cutoff. Whether the demo by the logs alone was
+rehearsed isn't recorded. There's still no `crit-9` or `crit-10` tag.
+
 ## Where it stands (2026-10-21)
 
-Updated by session `013dedec`. CI on `main` is green through `e702baf`,
-deployed by run 39526943033, and the live café runs build `mvhfoihc` on the
-wall clock.
+Updated by session `6753d63d`. CI on `main` is green through `06727de`, and
+the live café runs build `mvhfoihc` on the wall clock.
 
-- **Done and live:** phases 1 to 3, and slices 01, 07 and 08.
-- **Built and deployed, short of one judged line:** slice 02, the user
-  reading the board a mocked night leaves
-  ([slice-02-board.md](slice-02-board.md)).
+- **Done and live:** phases 1 to 3, and slices 01, 02, 07 and 08.
+- **The café's look is being rethought** (asked 2026-10-17): a judgement on
+  Catppuccin colours, pixel density and an isometric camera is in
+  [visual-direction.md](visual-direction.md), waiting on the user's four
+  choices. It decides what slice 05 becomes.
 - **Specs waiting for the user's approval:** slices 03 to 06. None is planned.
 
 ## What's left, in order
 
-1. **Crit 10 (cutoff Wed 21 Oct, 13:30).**
-   - The log line for every action and the live view (`pnpm logs`) were
-     built in phase 3.
-   - `PROCESS.md` rewritten for crit 10: the options first, for the user to
-     choose from.
-   - The demo by the logs alone, while the group uses the café: not yet
-     rehearsed.
-   - `reflections/crit-10.md`: the user's, still the empty template.
-2. **Slice 02's judged line,** read by the user on the board slice 08's
-   night test prints (`cargo test -p cafe --test long_gaps a_night --
-   --nocapture`). Then slice 02 goes to `Live`.
-3. **Approve and build slices 04, then 03.** The showcase puts a full room
+1. **The visual direction:** the user's choices in
+   [visual-direction.md](visual-direction.md), then an ADR, and slice 05
+   rewritten (probably split into the camera, the palette and the art).
+2. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the
    agent's suggestion; the user hasn't chosen one.
-4. **Approve and build slices 05 and 06**, the art and accessibility passes.
-5. **Final submission (Mon 9 Nov, 12:00).** `PROCESS.md` rewritten again,
+3. **Approve and build slices 05 and 06**, the art and accessibility passes.
+4. **Final submission (Mon 9 Nov, 12:00).** `PROCESS.md` rewritten again,
    and the user's `README.md`. The README still promises soothing music the
    design doesn't have (slice 05's open question) and has no sources yet;
    [readme-material.md](readme-material.md) gathers them.
