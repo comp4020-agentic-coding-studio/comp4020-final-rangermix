@@ -417,13 +417,13 @@ renamed.
   the same day and the same eight as the server. Wireframes are in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
 - **Drawing:** the canvas uses the largest whole-number scale that fits, so
-  pixels stay crisp and a resize mid-use just refits; day and night is a tint
-  by the Canberra hour, until slice 10.
+  pixels stay crisp and a resize mid-use just refits; the room is coloured
+  by the Canberra hour's light (below), with nothing laid over it.
 - **The look** is chosen
   ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
   from [notes/visual-direction.md](notes/visual-direction.md)) and built in
-  slices 09 to 11. Until slices 10 and 11 are built, the tint above and the
-  sprites below stay true of the live café.
+  slices 09 to 11. Until slice 11 is built, the sprites below stay true of
+  the live café.
   - **A 2:1 isometric camera** on the same grid (slice 09, built): 32×16
     diamonds on a 336×232 canvas. Things are drawn so nothing wholly behind
     another comes after it, and things on one spot go piece, treat, cat,
@@ -432,11 +432,17 @@ renamed.
     floor. Until slice 11, furniture is shaded blocks as tall as
     `content/sprites/heights.json` says, lying lower and longer when
     knocked over.
-  - **Catppuccin-led colours**: Mocha's pastels on wood mixed from its peach
-    and rosewater, and a night palette pulled toward Mocha's dark base with
-    the window lit, in place of the tint (slice 10). The page follows:
-    Catppuccin Latte for the light theme and Mocha for the dark, with
-    Latte's mauve for links and buttons.
+  - **Catppuccin-led colours** (slice 10, built): `content/sprites/palettes.json`
+    holds a day set and a night set of the same shape, written by
+    `scripts/palettes.ts` from Catppuccin's values (credited in
+    `content/sprites/CREDITS.md`). By day, Mocha's pastels on wood mixed
+    from its peach and rosewater; at night, every colour pulled toward
+    Mocha's base and lavender, cats and people less, and the window's
+    glass lit yellow. The light is day through the afternoon, halfway in
+    the evening, and night from 21:00, the sets blended slot by slot. The
+    page follows the device's setting: Catppuccin Latte in a light one
+    (mauve for links and buttons, subtext1 for muted text) and Mocha in a
+    dark one (peach), every text and control at 4.5:1 or better.
   - **Cats about 24 px and people about 32 to 36 px tall**, drawn by Claude
     as PNGs in `content/sprites/` and turned into palette slots by the
     client, with a pose for each thing a cat does (slice 11).

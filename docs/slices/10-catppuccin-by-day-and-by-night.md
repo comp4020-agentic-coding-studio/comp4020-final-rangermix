@@ -1,6 +1,6 @@
 # 10. Catppuccin by day and by night
 
-- **Status:** Planned 2026-10-22 (approved 2026-10-21, with the proposed default for its open question: the afternoon keeps the day's palette)
+- **Status:** Built 2026-10-22, waiting for its review (approved 2026-10-21, with the proposed default for its open question: the afternoon keeps the day's palette)
 - **Plan:** [`docs/notes/plan-slice-10-palette.md`](../notes/plan-slice-10-palette.md)
 - **Design:** The café ("It keeps Canberra time"); The client ("Drawing",
   "The look"); Numbers to tune ("Day and night");

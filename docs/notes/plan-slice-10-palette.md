@@ -152,3 +152,24 @@ Files: `client/src/style.css`, `client/test/contrast.test.ts`,
 ## Execution log
 
 Where the build departed from this plan, task by task.
+
+- **Tasks 1 to 3** ([`0a666a5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0a666a5),
+  formatted in [`5977e7f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5977e7f)).
+  Committed together: the palette file's new shape breaks the client
+  until `sprites.ts` and `render.ts` read it, so separate commits would
+  each have left the build red. Catppuccin's values came from the
+  published package's `css/catppuccin.css` (it ships no JSON), read as
+  data and written into `scripts/palettes.ts`. `render.ts` keeps one
+  palette for the frame, set by `draw`, and its kind colours became
+  furniture slots. The sprite cache key carries the light.
+- **Task 4** ([`05cad2b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/05cad2b)).
+  The contrast test first imported the stylesheet with `?raw`, which the
+  client's test setup doesn't give as text; it reads the file from disk.
+  It found the old light theme's link at 4.496:1, just short. Decision
+  6's tokens held, with Latte's subtext1 for muted text (subtext0 is
+  4.37:1 on its base) and white cards. The backdrop check's point moved:
+  after slice 09's turn the chair sat under the board dialog.
+- **Task 5.** Screenshots in [screens/slice-10/](screens/slice-10/): the
+  room at 10:00, 18:00 and 22:00, and the page light and dark at both
+  sizes. The README's credit is the user's to add (`README.md` is
+  theirs); the line is proposed in the slice's notes.
