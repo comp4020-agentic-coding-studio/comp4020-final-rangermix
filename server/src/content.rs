@@ -164,12 +164,18 @@ mod tests {
         lists(&palettes["day"], "".into(), &mut day);
         lists(&palettes["night"], "".into(), &mut night);
         assert!(!day.is_empty(), "no day palette");
-        assert_eq!(day.iter().map(|(k, _)| k).collect::<Vec<_>>(), night.iter().map(|(k, _)| k).collect::<Vec<_>>());
+        assert_eq!(
+            day.iter().map(|(k, _)| k).collect::<Vec<_>>(),
+            night.iter().map(|(k, _)| k).collect::<Vec<_>>()
+        );
         for ((at, d), (_, n)) in day.iter().zip(&night) {
             assert_eq!(d.len(), n.len(), "{at} has {} colours by day and {} by night", d.len(), n.len());
             for c in d.iter().chain(n.iter()) {
                 let hex = c.as_str().unwrap_or_else(|| panic!("{at}: {c} isn't a colour"));
-                assert!(hex.len() == 7 && hex.starts_with('#') && hex[1..].chars().all(|ch| ch.is_ascii_hexdigit()), "{at}: {hex} isn't #rrggbb");
+                assert!(
+                    hex.len() == 7 && hex.starts_with('#') && hex[1..].chars().all(|ch| ch.is_ascii_hexdigit()),
+                    "{at}: {hex} isn't #rrggbb"
+                );
             }
         }
     }
