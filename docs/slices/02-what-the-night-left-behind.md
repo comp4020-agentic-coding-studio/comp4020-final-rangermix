@@ -1,6 +1,6 @@
 # 02. What the night left behind
 
-- **Status:** Reviewed, every finding answered, and deployed (approved 2026-10-14, with the proposed default for its open question: the board names people by username, only for what a cat did with them). `Live` once the user has read the board the night test prints (since 2026-10-17, by [slice 08](08-long-gaps-held-by-mocked-time.md), not the live board after a real night)
+- **Status:** Live. Reviewed, every finding answered, and deployed (approved 2026-10-14, with the proposed default for its open question: the board names people by username, only for what a cat did with them). The judged line passed on 2026-10-21: the user read the board the night test prints and passed it ("Slice 2 lgtm")
 - **Plan:** [`docs/notes/plan-slice-02-chalkboard.md`](../notes/plan-slice-02-chalkboard.md)
 - **Design:** The room ("Traces stay until someone tidies them", "The
   chalkboard"); The client (the readable chalkboard on desktop and phone);
@@ -47,7 +47,7 @@ that way until someone tidies them, which regulars do for each other.
 | Lines and traces survive a restart | `spec/` |
 | A tidied trace stays tidied | `cargo test` |
 | The chalkboard is readable at 1920×1080 in its panel and at 390×844 by tapping it, by keyboard, touch and mouse | browser check |
-| The board reads like the café's own story, worth reading on arrival | judged: by the user, reading the board the night test prints (`cargo test -p cafe --test long_gaps a_night -- --nocapture`). Until 2026-10-17, the live board after a real night (slice 08, [ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) |
+| The board reads like the café's own story, worth reading on arrival | judged: by the user, reading the board the night test prints (`cargo test -p cafe --test long_gaps a_night -- --nocapture`). Until 2026-10-17, the live board after a real night (slice 08, [ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)). Passed by the user on 2026-10-21 |
 
 ## Rules it touches
 

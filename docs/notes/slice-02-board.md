@@ -77,10 +77,14 @@ Fri 11:01pm  Burakku  knockedOver plant
 Four lines from 8½ hours, all within five minutes of the visitor leaving,
 and nothing after. It's what the live board showed on 15 October: once
 everything knockable is down, the night's cats do nothing the board
-counts. Waiting for the user's reading. The reviewer noted three things to
-weigh when doing so (slice 02's findings, "Noted, out of scope"):
+counts. The reviewer noted three things to weigh when reading it (slice
+02's findings, "Noted, out of scope"):
 
 - two plants knocked over seconds apart read as a repeat;
 - times carry no day, so yesterday's 4:00pm sits among this morning's lines;
 - first meetings are told every time, so a morning's newcomers push the
   night off the latest eight within a few visits.
+
+**Passed by the user on 2026-10-21, 15:57 AEDT** ("Slice 2 lgtm, merge
+it"). Slice 02 is `Live`. The three notes above stay as they are: none was
+asked for, and any of them would be a new slice with its own spec.

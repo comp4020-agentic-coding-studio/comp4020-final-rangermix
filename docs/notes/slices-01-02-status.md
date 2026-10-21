@@ -12,8 +12,8 @@ with the built café on mocked time
 
 - **Slice 01** is `Live`. Waking after a night is `cargo test`'s
   ([slice-01-wake.md](slice-01-wake.md)).
-- **Slice 02:** the user reads the board the night test prints and judges
-  whether it's worth reading on arrival ([slice-02-board.md](slice-02-board.md)).
+- **Slice 02** is `Live`. The user read the board the night test prints
+  and passed it on 2026-10-21 ([slice-02-board.md](slice-02-board.md)).
 
 Settled since: a first visitor after a long break would have waited about
 30 s at Fly's baseline CPU. The user took both ways out on 2026-10-15. The
