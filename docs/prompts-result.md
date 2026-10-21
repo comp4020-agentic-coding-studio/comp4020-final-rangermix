@@ -1591,3 +1591,10 @@ then test first, task by task:
     Mocha by the device's setting, the floor's own pixels in the day
     set, no errors ([notes](notes/slice-10-palette.md)). The judged line
     and the README's credit are the user's.
+  - **A flaky check, steadied.** The next, notes-only push went red: the
+    light check read the canvas before its first frame, and a local rerun
+    caught a roaming cat over the spot it reads. It now waits for painted
+    pixels and pins every cat
+    ([`38ba731`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/38ba731)).
+    The deploy was skipped while it was red, so the live café kept the
+    tested build.

@@ -39,3 +39,18 @@ lamplit, not greyed, at night", is the user's, from
 reviewer flagged the evening's window glass, a mint green halfway between
 day's sky and night's lamplight, as one to weigh. The README's credit is
 the user's too (above).
+
+## A flaky check, after going live (2026-10-22)
+
+The next push to `main`, notes only (`ecb326f`), went red: CI run
+39671570299 failed the check that the café draws in the hour's light (the
+one written for the review's finding 1). It read the floor as `#000000`,
+a clear pixel, 369 ms in, before the first frame had painted on a slow
+runner. The deploy was skipped, so the live café kept slice 10's tested
+build throughout. A local rerun found a second cause: a cat the check
+hadn't pinned wandered over the floor spot it reads. The check now skips
+clear pixels, waits for the expected colour to be painted, and pins every
+cat on its page
+([`38ba731`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/38ba731)).
+Eight local runs passed, and it still fails on the slip it was written
+for.
