@@ -1,7 +1,8 @@
 # 08. Long gaps held by mocked time
 
-- **Status:** Reviewed, every finding answered
-  ([findings](../notes/reviews/slice-08-findings.md)); not yet deployed.
+- **Status:** Live. Reviewed, every finding answered
+  ([findings](../notes/reviews/slice-08-findings.md)), and deployed on
+  2026-10-21; the live café's `listening` says `"clock":"wall"`.
   Approved (2026-10-17, asked for by the user: "for the long gap
   checks use unit test and integ test with mocked time. do not rely on
   realworld checks"). Amended after the review, for the user to see: "the

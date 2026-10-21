@@ -1304,3 +1304,14 @@ cleanly. It was quiet since then, and nothing was hung.
 hour, two and a half hours in. It was told to write up what it had at once,
 and did: 0 critical, 2 major, 8 minor findings, which became the fixes
 above.
+
+*Sent 2026-10-21 12:20:38 AEDT*
+
+> merge it
+
+**Result.** `main` fast-forwarded from `7b1a740` to `e702baf` (slice 08's
+11 commits). CI run 39526943033 passed: rust, check and deploy. The check
+job's log check now runs with `--wall`. The live café's first start on the
+new build (`mvhfoihc`, 12:30:52 AEDT) logged `"clock":"wall"`, and woke after
+25 minutes asleep in 8 ms. Slice 08 went to `Live`. What's left from it is
+slice 02's judged line, read by the user on the board the night test prints.

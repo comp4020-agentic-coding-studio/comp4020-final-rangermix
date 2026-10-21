@@ -46,7 +46,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | spec proposed |
 | 06 | The accessibility pass | Every action by keyboard, touch and screen reader, held by browser checks | [06](../slices/06-the-accessibility-pass.md) | spec proposed |
 | 07 | Getting in while the café wakes | The port opens at once; the page and accounts work during a replay; the café shows "Dusting off the café…" until it's ready; a dead world task restarts the machine | [07](../slices/07-getting-in-while-the-cafe-wakes.md) | reviewed and live ([plan](plan-slice-07-waking.md), [findings](reviews/slice-07-findings.md), [notes](slice-07-waking.md)) |
-| 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | reviewed, every finding answered ([plan](plan-slice-08-mocked-time.md), [findings](reviews/slice-08-findings.md)); on branch `worktree-notes-2026-10-17`, deployed once merged to `main` |
+| 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | live 2026-10-21 ([plan](plan-slice-08-mocked-time.md), [findings](reviews/slice-08-findings.md)) |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -65,19 +65,16 @@ and ADR 0013
 and its multi-user decision is ADR 0009 (the quiet seat). The repo has no
 `crit-9` tag; `crit-8` is the only crit tag on the remote (read 17 Oct).
 
-## Where it stands (2026-10-17)
+## Where it stands (2026-10-21)
 
-Read by session `013dedec`. CI on `main` is green through `7b1a740`, and the
-machine serves version 64 of the app.
+Updated by session `013dedec`. CI on `main` is green through `e702baf`,
+deployed by run 39526943033, and the live café runs build `mvhfoihc` on the
+wall clock.
 
-- **Done and live:** phases 1 to 3, and slices 01 and 07.
+- **Done and live:** phases 1 to 3, and slices 01, 07 and 08.
 - **Built and deployed, short of one judged line:** slice 02, the user
   reading the board a mocked night leaves
   ([slice-02-board.md](slice-02-board.md)).
-- **Reviewed, not yet deployed:** slice 08, long gaps held by mocked time,
-  after the user asked on 2026-10-17 that no check wait on a real night
-  ([plan](plan-slice-08-mocked-time.md)). It deploys once its branch is
-  merged to `main`.
 - **Specs waiting for the user's approval:** slices 03 to 06. None is planned.
 
 ## What's left, in order
@@ -90,10 +87,9 @@ machine serves version 64 of the app.
    - The demo by the logs alone, while the group uses the café: not yet
      rehearsed.
    - `reflections/crit-10.md`: the user's, still the empty template.
-2. **Slice 08:** merge its branch to `main`, which deploys, then check the
-   live `listening` says `"clock":"wall"`. Then slice 02's judged line,
-   read by the user on the board the night test prints, and slice 02 goes
-   to `Live`.
+2. **Slice 02's judged line,** read by the user on the board slice 08's
+   night test prints (`cargo test -p cafe --test long_gaps a_night --
+   --nocapture`). Then slice 02 goes to `Live`.
 3. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the

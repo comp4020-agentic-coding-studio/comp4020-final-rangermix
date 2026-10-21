@@ -282,6 +282,13 @@ Where carrying out this plan departed from it, task by task, and why.
   café wrote (the first piece of a kind `furniture.toml` says a cat can
   knock over) and restarts at the instant it stopped, so the replay has no
   steps and only the store can keep the piece down. It runs in 7 s.
+- **Task 6, deployed (2026-10-21).** The user said "merge it". `main`
+  fast-forwarded from `7b1a740` to `e702baf`, and CI run 39526943033 passed
+  all three jobs: rust, check (the log check now with `--wall`) and deploy.
+  After it, the live café's start at 12:30:52 AEDT logged build `mvhfoihc`,
+  `"port":8080,"clock":"wall"`, and woke after 25 minutes asleep (1,506
+  steps in 8 ms). The page answered 200. The start before the deploy (build
+  `mv91rjsh`) had no `clock` field.
 - **What the night test's board shows**, for slice 02's judged line: 4 lines
   from 8½ hours, the visitor's first meeting at 23:00 and three knock-overs
   by 23:05 (the toys, then both plants), and nothing after. Once everything
