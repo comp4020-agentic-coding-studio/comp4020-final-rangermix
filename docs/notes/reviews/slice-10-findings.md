@@ -245,3 +245,22 @@ code from `0ae465f`). Built and run only in a throwaway copy
   a token fails the contrast test ("a token is missing").
 - **No wash:** the render test fails if anything fills at under full
   strength, and `nightTint` is gone from code and design.md.
+
+## Answers
+
+By the builder, 2026-10-22. Every finding was fixed, test first: each new
+or changed check was seen failing on the code before its fix.
+
+| # | Severity | Answer | Commit |
+| --- | --- | --- | --- |
+| 1 | major | Fixed three ways. The light is its own type, `Light` (`0 \| 0.5 \| 1`), so passing the hour where the light goes doesn't compile (seen: "Argument of type 'number' is not assignable to parameter of type 'Light'"). The render test leaves the sprites at light 0 and holds that `draw` sets them. A browser check reads the canvas's own pixels at 10:00 and, on the same page, at 22:00: the floor and a pinned cat's coat in each light's set. It failed on slip 2 (`sprites.light` dropped) and slip 3 (the cache keyed without the light). | [`c8e2f62`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c8e2f62) |
+| 2 | minor | Fixed. A `--placeholder` token (the muted colour) and a `::placeholder` rule; a `--track` token for the trust bar at 3:1 or better. The contrast test holds both and that the CSS uses them. Disabled buttons stay dimmed under WCAG 1.4.3's exemption for inactive controls, since the dimming is what says so; the spec now says this. | [`87e2c1b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/87e2c1b) |
+| 3 | minor | Fixed. The scattered toys are furniture palette slots, in the hour's light. A render test failed on the old fixed red first. | [`87e2c1b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/87e2c1b) |
+| 4 | minor | Fixed. The check clicks the window seat's tile (2,1), clear of the board, and holds that no walk was sent. With the backdrop letting the click through, it failed on "no menu opened behind the board". | [`87e2c1b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/87e2c1b) |
+| 5 | minor | Answered: the README is the user's. The licence's ask is met in `CREDITS.md`; the README line is proposed in [`slice-10-palette.md`](../slice-10-palette.md), and the spec says so. | [`3f2de37`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3f2de37) |
+| 6 | minor | Fixed, the better way. Each coat's day colours are data in `content/sprites/coats.json`; the script reads them and works out only the night's. A client test holds `palettes.json` equal to the script's output and the day coats to `coats.json`; a hand edit of one colour failed it. `content/sprites/README.md` and design.md say the file is written by the script. | [`cbc7bee`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/cbc7bee) |
+
+On "for the user's judgement": the evening's mint glass is left as built
+for the user to weigh in the screenshots; the colours in render.ts outside
+the light (the ghost, the keyboard pointer, the "you" marker) are marks
+that must stay visible at night, so they're kept fixed on purpose.
