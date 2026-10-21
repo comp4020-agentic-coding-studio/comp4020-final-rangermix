@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { chooseLayout, menuSpot, panOffset, ringCentre, ringPositions, ringRadius } from "../src/layout";
 
 describe("phone layout B", () => {
-  it("is only for a phone, and only when chosen", () => {
+  it("is a phone's unless it chose the whole room, and never a desktop's", () => {
+    // The room at an angle fits a phone's width only at 1x (slice 09).
+    expect(chooseLayout(null, true)).toBe("b");
     expect(chooseLayout("b", true)).toBe("b");
+    expect(chooseLayout("nonsense", true)).toBe("b");
+    expect(chooseLayout("a", true)).toBe("a");
     expect(chooseLayout("b", false)).toBe("a");
-    expect(chooseLayout(null, true)).toBe("a");
-    expect(chooseLayout("nonsense", true)).toBe("a");
+    expect(chooseLayout(null, false)).toBe("a");
   });
 
   it("pans to keep you in the middle of the view, and centres a room smaller than it", () => {

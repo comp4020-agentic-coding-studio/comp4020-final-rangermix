@@ -6,9 +6,13 @@ export type Layout = "a" | "b";
 
 const KEY = "cafe.layout";
 
-/** The layout in use: B only on a phone, and only if this device chose it. */
+/**
+ * The layout in use: B on a phone, unless this device chose the whole room;
+ * A everywhere else. The room at an angle fits a phone's width only at 1x,
+ * so B is where a phone starts (slice 09).
+ */
 export function chooseLayout(saved: string | null, phone: boolean): Layout {
-  return phone && saved === "b" ? "b" : "a";
+  return phone && saved !== "a" ? "b" : "a";
 }
 
 export function savedLayout(): string | null {

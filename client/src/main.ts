@@ -101,7 +101,7 @@ function enter(me: ApiMe): void {
     // Beside the tile's diamond: its left and right corners, from its top.
     return { left: centre.left - 16 * stage.scale, top: centre.top - 8 * stage.scale, right: centre.left + 16 * stage.scale };
   };
-  // The phone's two layouts: B by choice, remembered on this device.
+  // The phone's two layouts: B unless this device chose A, remembered (slice 09).
   const phoneQuery = matchMedia("(max-width: 700px)");
   const applyLayout = () => {
     const layout = chooseLayout(savedLayout(), phoneQuery.matches);
