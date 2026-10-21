@@ -1410,3 +1410,27 @@ branch, a root plan that still listed crit 10's work as undone, and no
   ([`49f1927`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/49f1927)):
   slice 02 live, crit 10's work recorded, and the visual direction first in
   what's left, since it decides what slice 05 becomes.
+
+Asked and answered after the studies were shown: the four choices the
+judgement left open. The user took the recommended option on each:
+"Which of the three changes should the redesign take?" — "All three";
+"If the room is angled, what should the phone (390×844) show by default?" —
+"Layout B default"; "Who should draw the new sprites?" — "The agent";
+"Should the page around the room follow Catppuccin too?" — "Yes, Latte and
+Mocha".
+
+- **The look chosen**
+  ([`f83105a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f83105a)):
+  [ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
+  accepted, with the options the judgement weighed. `docs/design.md` says
+  what changes (the room's tiles, the phone's default, the drawing, the
+  sprites, the page's colours) and that none of it is built yet. Slice 05
+  is superseded.
+- **Slices 09 to 11 proposed**
+  ([`1c113f8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c113f8)):
+  the camera with plain blocks and picking through the stage, then the day
+  and night palettes and the page, then the agent's PNG sprites. The
+  server and protocol don't change. Each waits for the user's approval
+  before it's planned. Open questions with proposed defaults: the arrows
+  along the room's axes (09), the afternoon keeping the day's palette (10),
+  one cat first and the README's music promise taken out (11).

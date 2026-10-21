@@ -119,3 +119,7 @@ each leave the café working.
   plain sprites. What would make us revisit it: the isometric room failing
   the browser checks at 390×844 in a way layout B can't fix, or the art
   not reading at 24 px when judged.
+- Chosen in
+  [`f83105a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f83105a),
+  with its slices proposed in
+  [`1c113f8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1c113f8).
