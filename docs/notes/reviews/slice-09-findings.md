@@ -327,3 +327,32 @@ that.
   is stored or logged. A furniture kind with no entry in the colour or
   inset tables falls back to defaults, and `cargo test` makes sure it has
   a height, so a new kind needs data, not code.
+
+## Answers
+
+By the builder, 2026-10-21. Every finding was fixed, test first: each new
+or changed check was seen failing on the code before its fix, except where
+said.
+
+| # | Severity | Answer | Commit |
+| --- | --- | --- | --- |
+| 1 | major | Fixed. `hitAt` walks the draw order front first, testing each sprite's box (raised by what it stands on) and each block's outline, and gives that thing's tile; only then the floor's diamond or the street wall. Carrying something, a click still goes to the floor tile it would be placed on. Unit tests, and a browser check that clicks a pinned cat's sprite on the window seat by mouse at 1920×1080 and by touch at 390×844. | [`1d67769`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1d67769) |
+| 2 | major | Fixed. Footprints are no longer nudged; things on the same spot are ordered by a layer (piece, treat, cat, person, lap cat), so a lap cat is drawn over its sitter on the sofa and on a chair. | [`94170cb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/94170cb) |
+| 3 | major | Fixed. Only what others stand on (the rug) is drawn first; toys, a cushion and treats join the one order and are drawn after it. | [`94170cb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/94170cb) |
+| 4 | minor | Fixed. In B with the drawer shut, only the chalkboard's copy is kept for a screen reader; your cats and the treat button go with the drawer. The check first passed without the fix (it started from the wrong place and allowed a box off screen); corrected, it failed on "Put a treat down", then passed. | [`c59b576`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c59b576) |
+| 5 | minor | Fixed. The check opens a ring on the box at (1,9), and the ring says where its centre is (`data-centre-x/y`): with one button, the buttons' average was a radius off and could never fail. Held within 3 px of the box: with the room's move removed it failed 3 runs of 3 (20 px off), with it passed 3 of 3. | [`c59b576`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c59b576) |
+| 6 | minor | Fixed: coverage added, not a bug, so nothing to see fail. The phone's board check also opens the board and a menu by keyboard in the whole room at 390×844. | [`c59b576`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c59b576) |
+| 7 | minor | Fixed with 2: someone behind the sofa's far end is drawn before it. A cat walking over a piece is up on it, stepping at the half-tile, not sliding: acceptable for blocks, and slice 11's art can ease it. | [`94170cb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/94170cb) |
+| 8 | minor | Fixed. Bubbles take how high someone is drawn (`personLift`), and a face in the window gives its top and the sill, so a bubble goes over the face or under the window. | [`9c66b6a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9c66b6a) |
+| 9 | minor | Fixed. The pan takes the band the bars leave clear and moves a room shorter than the view up or down just enough to keep what it follows 24 px inside it. | [`e244043`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e244043) |
+| 10 | minor | Fixed. The phone's layouts, with the switch, apply below 960 px, from one `PHONE` query kept in step with style.css. A check at 820×1180 found 36 tiles out of reach, then none. | [`dfda24f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dfda24f) |
+| 11 | minor | Fixed. The choice is kept in memory too, so with storage blocked the switch works for the visit. | [`e244043`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e244043) |
+| 12 | minor | Fixed. The spec names `heights.json` and its test, and holds picking; design.md's room and client entries say what was built; the plan's log records decision 8. | [`d081b08`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d081b08) |
+
+Also found while fixing: the touch pick-up check looked for a still cat
+already on screen in B, which with the view following you could find
+none. It now pans to a still cat on the floor with the keyboard's pointer
+and taps its sprite ([`dfda24f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dfda24f)).
+
+The reviewer's `pkill` stopped the builder's own local café on 18490,
+nothing else; it was restarted.
