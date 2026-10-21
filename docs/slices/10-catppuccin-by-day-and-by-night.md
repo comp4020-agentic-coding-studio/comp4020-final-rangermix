@@ -44,7 +44,7 @@ dark setting, in Latte or Mocha.
 | --- | --- |
 | Every sprite colours without a missing slot in every palette, day and night | `cargo test` (the content loader) and client unit tests (`sprites`) |
 | The palette in use at each hour follows "Numbers to tune": day from 6:00, the evening's step from 17:00, night from 21:00 | client unit tests (`canberra`) |
-| Text and buttons on the page meet 4.5:1 against their background in both themes | client unit tests, computed from the CSS colours |
+| Text and buttons on the page meet 4.5:1 against their background in both themes, a box's placeholder too, and the trust bar 3:1 against its track; a disabled button is dimmed, as WCAG 1.4.3 allows an inactive control, since the dimming is what says it's inactive | client unit tests, computed from the CSS colours |
 | The page follows the device's light or dark setting at both sizes | browser check (`emulateMedia`) |
 | The room reads as Catppuccino by day, and as lamplit, not greyed, at night | judged: by the user, from screenshots at 10:00, 18:00 and 22:00 in `docs/notes/screens/` |
 

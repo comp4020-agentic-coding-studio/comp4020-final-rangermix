@@ -13,6 +13,8 @@
   --accent: #8839ef; /* mauve */
   --accent-ink: #ffffff;
   --error: #d20f39; /* red */
+  --placeholder: #5c5f77; /* subtext1, as muted */
+  --track: #ccd0da; /* surface0: the trust bar at 3:1 */
   --focus: #1e66f5; /* blue */
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -26,6 +28,8 @@
     --accent: #fab387; /* peach */
     --accent-ink: #1e1e2e; /* base */
     --error: #f38ba8; /* red */
+    --placeholder: #a6adc8; /* subtext0, as muted */
+    --track: #45475a; /* surface1 */
     --focus: #89b4fa; /* blue */
   }
 }
@@ -41,6 +45,8 @@ button:disabled { opacity: 0.6; cursor: progress; }
 #add-furniture:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 input { font: inherit; width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+/* The browser's own grey is short of 4.5:1 on either base (slice 10's review, finding 2). */
+::placeholder { color: var(--placeholder); opacity: 1; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* The way in */
@@ -134,7 +140,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .board h2 { margin: 0; font-size: 1.1rem; }
 .board .hint, .board .chalk-lines time, .board .chalk-lines .empty { color: #cfd8cc; }
 .board button { justify-self: end; }
-.trust-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.trust-bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
 .trust-bar > span { display: block; height: 100%; background: var(--accent); }
 
 /* Bubbles, menus and notes over the room */

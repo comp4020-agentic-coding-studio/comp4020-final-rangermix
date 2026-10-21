@@ -49,11 +49,23 @@ describe("the page's colours", () => {
         ["a link on a card", t.accent, t.card],
         ["an error on the page", t.error, t.paper],
         ["an error on a card", t.error, t.card],
+        // Slice 10's review, finding 2: the talk box's hint, which the
+        // browser would otherwise draw in its own grey.
+        ["a placeholder in a box on the page", t.placeholder, t.paper],
+        ["a placeholder in a box on a card", t.placeholder, t.card],
       ];
       for (const [what, fg, bg] of pairs) {
         expect(fg && bg, `${what}: a token is missing`).toBeTruthy();
         expect(contrast(fg, bg), `${what} (${fg} on ${bg})`).toBeGreaterThanOrEqual(4.5);
       }
+      // A graphic that means something, the trust bar, at 3:1 against its track.
+      expect(t.track, "the trust bar's track: a token is missing").toBeTruthy();
+      expect(contrast(t.accent, t.track), `the trust bar (${t.accent} on ${t.track})`).toBeGreaterThanOrEqual(3);
     });
   }
+
+  it("draws a box's placeholder and the trust bar's track from the tokens, not the browser's own colours", () => {
+    expect(css).toMatch(/::placeholder\s*\{[^}]*color:\s*var\(--placeholder\)/);
+    expect(css).toMatch(/\.trust-bar\s*\{[^}]*background:\s*var\(--track\)/);
+  });
 });

@@ -484,21 +484,26 @@ function drawPiece(ctx: Ctx, f: FurnitureView): void {
   // Scattered toys (slice 02): a couple more balls of yarn strewn beside it,
   // where a cat batted them, until someone gathers them up.
   if (f.kind === "toys") {
-    for (const [dx, dy, c] of SCATTERED) {
+    for (const [dx, dy, slot] of SCATTERED) {
       const p = toCanvas(f.x + dx, f.y + dy);
-      ctx.fillStyle = c;
+      ctx.fillStyle = FURNITURE[slot];
       ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 3, 3);
-      ctx.fillStyle = "#4a3426";
+      ctx.fillStyle = FURNITURE[0];
       ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
     }
   }
 }
 
-/** Where scattered toys lie, in tiles from the toys' own tile, and their colours. */
-const SCATTERED: [number, number, string][] = [
-  [-0.3, 0.7, "#c96f6f"],
-  [1.2, 0.3, "#7a9cc6"],
-  [0.8, 1.1, "#c96f6f"],
+/**
+ * Where scattered toys lie, in tiles from the toys' own tile, and their
+ * colours as furniture palette slots (red and lavender yarn, an outline
+ * between), so they're in the hour's light like the rest (slice 10's
+ * review, finding 3).
+ */
+const SCATTERED: [number, number, number][] = [
+  [-0.3, 0.7, 1],
+  [1.2, 0.3, 9],
+  [0.8, 1.1, 1],
 ];
 
 function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, facing: 1 | -1): void {

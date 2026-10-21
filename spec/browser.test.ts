@@ -710,14 +710,17 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const at = await boardTile(v.page);
     await v.page.mouse.click(at.x, at.y);
     await board.waitFor();
-    // A tile low in the room, behind the board's backdrop and clear of the board
-    // itself, which hangs over the room's middle (the chair went under it
-    // when the room turned, 2026-10-22).
-    const seat = await tileAt(v.page, { x: 3, y: 8 });
+    // The window seat's left tile, behind the board's backdrop and clear of
+    // the board itself, which hangs over the room's middle: a click that got
+    // through would open the seat's menu (slice 10's review, finding 4; the
+    // chair went under the board when the room turned).
+    const seat = await tileAt(v.page, { x: 2, y: 1 });
     expect(await v.page.evaluate(([x, y]) => document.getElementById("board")!.contains(document.elementFromPoint(x, y)), [seat.x, seat.y])).toBe(false);
+    const sent = v.sent.length;
     await v.page.mouse.click(seat.x, seat.y);
     await board.waitFor({ state: "hidden" });
     expect(await v.page.locator(".menu").count(), "no menu opened behind the board").toBe(0);
+    expect(v.sent.slice(sent).filter((f) => f.type === "walkTo"), "no walk behind the board").toEqual([]);
     expect(await focused(v.page)).toBe("room");
     // Open again: Escape still closes it.
     await v.page.mouse.click(at.x, at.y);

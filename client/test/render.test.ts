@@ -197,6 +197,31 @@ describe("the room's draw order", () => {
     for (const seen of [day, night]) expect(seen.filter((s) => s.startsWith("rect ") && s !== "rect 1")).toEqual([]);
   });
 
+  it("draws the scattered toys in the light's colours, not fixed ones (slice 10's review, finding 3)", () => {
+    const fillsWith = (light: Light) => {
+      const seen = new Set<string>();
+      const ctx = new Proxy(
+        {},
+        {
+          get: () => () => {},
+          set: (_t, k, v) => {
+            if (k === "fillStyle") seen.add(String(v));
+            return true;
+          },
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const w = welcome();
+      w.snapshot.room.furniture = [{ ...piece(4, "toys", 7, 8, 1, 1), toppled: true }];
+      draw(ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, light);
+      return seen;
+    };
+    // The old palette's red, blue and brown, written into the code before.
+    for (const light of [0, 1] as Light[]) for (const old of ["#c96f6f", "#7a9cc6", "#4a3426"]) expect(fillsWith(light).has(old), `${old} at light ${light}`).toBe(false);
+    // The balls of yarn are the furniture palette's red and lavender, in each light.
+    expect(fillsWith(0).has(palettes.day.furniture[9])).toBe(true);
+    expect(fillsWith(1).has(palettes.night.furniture[9])).toBe(true);
+  });
+
   it("draws a held cat with its holder, not on its own", () => {
     expect(order).not.toContain("cat burakku");
     expect(order).toContain("person 2");
