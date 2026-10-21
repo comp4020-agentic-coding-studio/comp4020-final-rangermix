@@ -56,3 +56,16 @@ long sleep, on the same binary and client.
 After slice 07's review went live (`715951a`), a second cold start: the page
 answered 200 in 1.08 s and carries the waking overlay, `listening` came
 before the 30-second gap's `woke`, and `agent_0c7e80` was welcomed in 142 ms.
+
+## Two waking checks time out on a local run (2026-10-21)
+
+Session `6753d63d`, checking the low menu fix
+([`740069b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/740069b))
+against a local café (`cargo run`, port 18490, a fresh `DATA_DIR`):
+"puts away what was on screen when a reconnect lands on a waking café" and
+"dusts off the café on a phone…" both timed out with "Dusting off the café…"
+still showing. They did the same with `main`'s client, so the fix didn't
+cause it. In CI on the same push (run 39549878399) both passed, in 3.7 s and
+6.7 s. Both route the café's socket and hold back its welcome; something in
+that differs on this Mac's local run, not on the image CI starts. Not looked
+into further: CI holds them, and they don't touch the menu.
