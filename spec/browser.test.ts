@@ -249,6 +249,63 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await focused(page)).toBe("come-back");
   });
 
+  it("keeps a cat's menu opened low in the room whole on screen, by mouse and by keyboard, at both desktop sizes", async () => {
+    // A cat's menu is tall, and opened on the bottom row it ran off the
+    // room's bottom, under the talk bar. Cats wander, so this page is shown
+    // one sitting still on the bottom row at (5,9): its welcome says so, and
+    // what the café says of that cat later is held back. Only what this page
+    // draws changes; every action is still the café's to answer.
+    const LOW = { x: 5, y: 9 };
+    const lowCat = (page: Page) =>
+      page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        let pinned: string | null = null;
+        server.onMessage((m) => {
+          const f = JSON.parse(String(m));
+          if (f.type === "welcome") {
+            const cat = f.snapshot.cats[0];
+            pinned = cat.id;
+            Object.assign(cat, { at: LOW, walk: null, pose: "sit", heldBy: null });
+            ws.send(JSON.stringify(f));
+          } else if (f.cat !== pinned) ws.send(m);
+        });
+      });
+    const expectMenuInStage = async (page: Page) => {
+      const menu = page.locator(".menu");
+      await menu.waitFor();
+      const [m, s] = await Promise.all([menu.boundingBox(), page.locator("#stage").boundingBox()]);
+      expect(m!.y + m!.height, "the menu's bottom within the stage").toBeLessThanOrEqual(s!.y + s!.height + 0.5);
+      expect(m!.y).toBeGreaterThanOrEqual(s!.y - 0.5);
+      expect(m!.x + m!.width, "the menu's right within the stage").toBeLessThanOrEqual(s!.x + s!.width + 0.5);
+      expect(m!.x).toBeGreaterThanOrEqual(s!.x - 0.5);
+      // Every action is the topmost thing where it's drawn, so a click lands on it.
+      for (const item of await menu.getByRole("menuitem").all()) {
+        const b = (await item.boundingBox())!;
+        const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest(".menu") !== null, [b.x + b.width / 2, b.y + b.height / 2]);
+        expect(hit, `${await item.textContent()} can be clicked`).toBe(true);
+      }
+    };
+    for (const viewport of [
+      { width: 1920, height: 1080 },
+      { width: 1280, height: 720 },
+    ]) {
+      const { page } = await visit(viewport, false, { prepare: lowCat });
+      const box = (await page.locator("#room").boundingBox())!;
+      await page.mouse.click(box.x + (LOW.x + 0.5) * (box.width / 12), box.y + (LOW.y + 0.5) * (box.height / 10));
+      await expectMenuInStage(page);
+      expect(await page.locator(".menu").getByRole("menuitem").count(), "a cat's whole menu").toBeGreaterThanOrEqual(4);
+      await page.keyboard.press("Escape");
+      // By keyboard: the pointer to the bottom row's left end, along to the cat, and Enter.
+      await page.locator("#room").focus();
+      for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowDown");
+      for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowLeft");
+      for (let i = 0; i < LOW.x; i++) await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Enter");
+      await expectMenuInStage(page);
+      await page.keyboard.press("Escape");
+    }
+  });
+
   it("opens actions as a sheet from the bottom on a phone, by touch", async () => {
     const { page, frames } = await visit({ width: 390, height: 844 }, true);
     const welcome = frames.find((f) => f.type === "welcome")!;

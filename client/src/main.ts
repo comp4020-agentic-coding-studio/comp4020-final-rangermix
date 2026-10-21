@@ -95,8 +95,8 @@ function enter(me: ApiMe): void {
   /** Where a menu goes: beside the tile, or (for a ring) round its middle. */
   const anchor = (tile: { x: number; y: number }) => {
     if (ringLayout()) return stage.tileToCss(tile.x + 0.5, tile.y + 0.5);
-    const { left, top } = stage.tileToCss(tile.x + 1, tile.y);
-    return { left: left + 4, top };
+    const { left, top } = stage.tileToCss(tile.x, tile.y);
+    return { left, top, right: stage.tileToCss(tile.x + 1, tile.y).left };
   };
   // The phone's two layouts: B by choice, remembered on this device.
   const phoneQuery = matchMedia("(max-width: 700px)");

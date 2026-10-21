@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseLayout, panOffset, ringCentre, ringPositions, ringRadius } from "../src/layout";
+import { chooseLayout, menuSpot, panOffset, ringCentre, ringPositions, ringRadius } from "../src/layout";
 
 describe("phone layout B", () => {
   it("is only for a phone, and only when chosen", () => {
@@ -51,5 +51,45 @@ describe("phone layout B", () => {
     expect(ringCentre({ x: 200, y: 700 }, 72, free, 88)).toEqual({ x: 200, y: 624 });
     // The ring's buttons sit round that spot.
     for (const p of ringPositions(2, { x: 24, y: 400 }, 72, free, 88)) expect(Math.hypot(p.x - 116, p.y - 400)).toBeCloseTo(72, 5);
+  });
+});
+
+describe("the menu beside what you clicked", () => {
+  // A 1296 by 950 stage, as at 1920x1080, and a cat's menu of six actions.
+  const stage = { w: 1296, h: 950 };
+  const menu = { w: 193, h: 355 };
+  const inside = (at: { left: number; top: number }, m = menu, s = stage) => {
+    expect(at.left).toBeGreaterThanOrEqual(0);
+    expect(at.top).toBeGreaterThanOrEqual(0);
+    expect(at.left + m.w).toBeLessThanOrEqual(s.w);
+    expect(at.top + m.h).toBeLessThanOrEqual(s.h);
+  };
+
+  it("opens beside its tile when there's room", () => {
+    // The tile's left edge at 404, its right edge at 500.
+    expect(menuSpot({ left: 404, right: 500, top: 300 }, menu, stage)).toEqual({ left: 504, top: 300 });
+  });
+
+  it("moves up when its tile is low in the room, so nothing hides under the talk bar", () => {
+    // Tora on the box on the bottom row: the tile's top at 795.
+    const at = menuSpot({ left: 236, right: 332, top: 795 }, menu, stage);
+    inside(at);
+    expect(at).toEqual({ left: 336, top: 950 - 355 });
+  });
+
+  it("opens on the tile's left when its right side has no room", () => {
+    // The bowls against the right wall: right edge at 1256.
+    const at = menuSpot({ left: 1160, right: 1256, top: 300 }, menu, stage);
+    inside(at);
+    expect(at.left + menu.w).toBeLessThanOrEqual(1160);
+  });
+
+  it("keeps to the stage in a corner", () => {
+    inside(menuSpot({ left: 1160, right: 1256, top: 900 }, menu, stage));
+    inside(menuSpot({ left: 0, right: 96, top: -40 }, menu, stage));
+  });
+
+  it("starts at the stage's top when it's taller than the stage, so its top never hides", () => {
+    expect(menuSpot({ left: 404, right: 500, top: 200 }, menu, { w: 1296, h: 300 }).top).toBe(0);
   });
 });

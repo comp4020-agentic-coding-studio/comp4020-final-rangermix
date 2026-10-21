@@ -63,6 +63,24 @@ export function ringCentre(centre: { x: number; y: number }, radius: number, fre
 }
 
 /**
+ * Where a desktop menu `menu` big goes in a `stage` big, beside the tile whose
+ * edges are `tile`: to its right, or its left if the right has no room, and
+ * up from the tile's top as far as it must so none of it hangs below the
+ * stage, where it would be cut off under the talk bar. One taller than the
+ * stage starts at its top.
+ */
+export function menuSpot(
+  tile: { left: number; right: number; top: number },
+  menu: { w: number; h: number },
+  stage: { w: number; h: number },
+): { left: number; top: number } {
+  const gap = 4;
+  const right = tile.right + gap;
+  const left = right + menu.w <= stage.w ? right : tile.left - gap - menu.w;
+  return { left: clamp(left, 0, Math.max(0, stage.w - menu.w)), top: clamp(tile.top, 0, Math.max(0, stage.h - menu.h)) };
+}
+
+/**
  * Centres for `n` buttons of `size` pixels on a circle of `radius` round
  * `centre`, starting at the top; the whole ring moves to stay within `free`.
  */

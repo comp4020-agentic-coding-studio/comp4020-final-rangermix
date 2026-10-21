@@ -1,4 +1,4 @@
-import { ringCentre, ringPositions, ringRadius } from "./layout";
+import { menuSpot, ringCentre, ringPositions, ringRadius } from "./layout";
 
 // A small menu of what you can do: beside the thing on a desktop, a sheet from
 // the bottom on a phone, a ring round it in phone layout B. Real buttons, so
@@ -54,9 +54,20 @@ export function ringSlide(anchor: { left: number; top: number }): { x: number; y
   return { x: at.x - anchor.left, y: at.y - anchor.top };
 }
 
+/**
+ * Where a menu opens, in CSS pixels within the stage: a ring round the
+ * middle of its tile, or a desktop menu beside the tile's `left` and `right`
+ * edges, from its `top`.
+ */
+export interface Anchor {
+  left: number;
+  top: number;
+  right?: number;
+}
+
 export function openMenu(
   overlay: HTMLElement,
-  anchor: { left: number; top: number },
+  anchor: Anchor,
   title: string,
   note: string | null,
   actions: Action[],
@@ -110,11 +121,22 @@ export function openMenu(
     placeRing(menu, overlay, anchor);
   } else if (matchMedia("(max-width: 700px)").matches) {
     menu.classList.add("sheet");
-  } else {
-    menu.style.left = `${Math.min(anchor.left, Math.max(0, overlay.clientWidth - 200))}px`;
-    menu.style.top = `${Math.max(0, anchor.top)}px`;
   }
   overlay.append(menu);
+  if (!menu.classList.contains("ring") && !menu.classList.contains("sheet")) {
+    // Measured once it's on the page, then kept whole within the stage,
+    // which cuts off anything past its edges. One taller than the stage
+    // scrolls.
+    menu.style.maxHeight = `${overlay.clientHeight}px`;
+    menu.style.overflowY = "auto";
+    const at = menuSpot(
+      { left: anchor.left, right: anchor.right ?? anchor.left, top: anchor.top },
+      { w: menu.offsetWidth, h: menu.offsetHeight },
+      { w: overlay.clientWidth, h: overlay.clientHeight },
+    );
+    menu.style.left = `${at.left}px`;
+    menu.style.top = `${at.top}px`;
+  }
   open = menu;
   menu.querySelector("button")?.focus();
 }
