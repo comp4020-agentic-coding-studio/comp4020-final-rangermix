@@ -32,11 +32,12 @@ their real footprints, as in the study, until slice 11 draws them.
   ordered so a cat or person behind it isn't drawn in front. The line's
   faces still show through the window.
 - **Placeholders for the new camera**: each piece of furniture a shaded
-  block at its footprint, as tall as its kind's `height` in
-  `content/furniture.toml`, lying down when knocked over; cats and people as
-  today's sprites stood on their tile. Slice 11 replaces them. (The plan's
-  decision 4: blocks drawn from data, not text sprites slice 11 would throw
-  away.)
+  block at its footprint, as tall as its kind's entry in
+  `content/sprites/heights.json`, lying down as a lower, longer block when
+  knocked over; cats and people as today's sprites stood on their tile, or
+  up on the piece they're on. Slice 11 replaces them. (The plan's decision
+  4, as built: blocks drawn from data, not text sprites slice 11 would
+  throw away.)
 - **The keyboard.** The arrows move the pointer along the room's axes, and
   the pointer is drawn as a diamond.
 - **The phone's default becomes layout B** (`chooseLayout`), with A as the
@@ -64,7 +65,8 @@ their real footprints, as in the study, until slice 11 draws them.
 | Every action the browser checks already do still passes, by keyboard, touch and mouse, at 390×844 and 1920×1080, through a resize, with tiles found through the stage | browser check (`spec/browser.test.ts`) |
 | A phone that hasn't chosen opens in layout B; one that chose A keeps A | client unit tests (`chooseLayout`), browser check |
 | No placement is allowed, and no walk ends, anywhere the server didn't already allow it: the walkway, the cap and the line are unchanged | `spec/` and `cargo test`, unchanged and passing |
-| Every kind of furniture has a height to draw its block at | `cargo test` (the content loader) |
+| Every kind of furniture has a height to draw its block at | `cargo test` (`every_kind_of_furniture_has_a_height_to_draw_at`, reading `content/sprites/heights.json`) |
+| A click or tap on a cat, person or piece acts on it where it's drawn, up off its tile at an angle | client unit tests (`hitAt`), browser check (a cat napping on the window seat) |
 | The room reads as a room you look into, with the street wall at the back right, and nothing hidden that shouldn't be | judged: by the user, from screenshots at both sizes in `docs/notes/screens/` |
 
 ## Rules it touches

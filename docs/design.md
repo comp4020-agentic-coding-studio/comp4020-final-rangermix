@@ -208,14 +208,14 @@ renamed.
 
 ## The room
 
-- **12 by 10 tiles**, seen from inside with the street wall at the top. That
-  wall holds the window, where the line's faces peek in; the door, with a
-  walkway that's never blocked; and the chalkboard beside it. A floor plan is
-  in [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
-  Tiles are 16 pixels, drawn top-down, until slice 09 draws the room
-  isometric at 32 pixels a tile, with the street wall at the back right
-  ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)).
-  The grid itself doesn't change.
+- **12 by 10 tiles**, seen from inside at an angle, with the street wall
+  (row 0) standing at the back right. That wall holds the window, where the
+  line's faces peek in; the door, with a walkway that's never blocked; and
+  the chalkboard beside it. A floor plan is in
+  [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
+  The room is drawn isometric, each tile a 32×16 diamond, since slice 09
+  ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md));
+  the grid, and every rule about it, is unchanged.
 - **Starting furniture:** a window seat, where cats go to look at the line; a
   cat tower; a sofa; a rug; a table and two chairs; a cat bed; a box; a floor
   cushion; toys; and plants. Everything moves except the walls, window, door,
@@ -390,15 +390,19 @@ renamed.
   scale that fits; the readable chalkboard on the left; who's inside, who's at
   the window and the current visit's bubbles on the right; the talk box under
   the room; a small menu beside whatever you click.
-- **Phone (390×844):** two layouts, with one button to switch between them,
-  remembered per device. **A**: the whole room on top at 2×, with the visit's
-  bubbles, treats, emotes and the talk box below, and actions in a sheet from
-  the bottom. A is the default until slice 09, when B becomes the default,
-  because the isometric room fits A only at 1×
-  ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)).
-  **B**: the room fills the screen at 3× and pans to
-  follow you, with floating controls and actions in a ring around what you
-  tapped. While a ring is open the room holds still, and by the room's edges
+- **Phone (390×844), and anything narrower than 960 px:** two layouts, with
+  one button to switch between them, remembered per device (or for the visit,
+  if the device won't store it). **B**, the default: the room fills the
+  screen at 3× and pans to follow you, up and down too so nothing it follows
+  sits under the floating bars, with floating controls and actions in a ring
+  around what you tapped. **A**: the whole room on top at 1×, with the
+  visit's bubbles, treats, emotes and the talk box below, and actions in a
+  sheet from the bottom. B became the default in slice 09, because the room
+  at an angle fits a phone's width only at 1×, and the phone's layouts reach
+  up to 960 px because the desktop's panels leave the room too little room
+  below that
+  ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
+  slice 09's review). While a ring is open the room holds still, and by the room's edges
   it moves over, past its edge if it must, so the ring stays round what it is
   for with every button on screen. Tapping the chalkboard opens its readable
   copy, a modal dialog: it takes the focus and holds it, the café behind is
@@ -408,20 +412,26 @@ renamed.
   chalkboard comes last in the Tab cycle, after the cats, people and
   furniture, so it isn't everyone's first Tab by the door, and one Shift+Tab
   reaches it. On a phone the panel's copy is out of sight but still read by a
-  screen reader. The welcome carries the board's numbers, so the client keeps
+  screen reader, in both layouts; in B the rest of that panel (your cats)
+  comes with the drawer, so Tab never reaches what isn't on screen. The welcome carries the board's numbers, so the client keeps
   the same day and the same eight as the server. Wireframes are in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
 - **Drawing:** the canvas uses the largest whole-number scale that fits, so
-  pixels stay crisp and a resize mid-use just refits; things are drawn back to
-  front by row; day and night is a tint by the Canberra hour.
+  pixels stay crisp and a resize mid-use just refits; day and night is a tint
+  by the Canberra hour, until slice 10.
 - **The look** is chosen
   ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
   from [notes/visual-direction.md](notes/visual-direction.md)) and built in
-  slices 09 to 11. Until each is built, the line above and the one below
-  stay true of the live café.
-  - **A 2:1 isometric camera** on the same grid: 32×16 diamonds, things
-    drawn back to front by `x + y`, and a toppled piece shown by its own
-    lying-down sprite (slice 09).
+  slices 09 to 11. Until slices 10 and 11 are built, the tint above and the
+  sprites below stay true of the live café.
+  - **A 2:1 isometric camera** on the same grid (slice 09, built): 32×16
+    diamonds on a 336×232 canvas. Things are drawn so nothing wholly behind
+    another comes after it, and things on one spot go piece, treat, cat,
+    person, a cat on their lap; what stands on a piece is drawn up on it. A
+    click or tap acts on what's drawn under it, up off its tile, before the
+    floor. Until slice 11, furniture is shaded blocks as tall as
+    `content/sprites/heights.json` says, lying lower and longer when
+    knocked over.
   - **Catppuccin-led colours**: Mocha's pastels on wood mixed from its peach
     and rosewater, and a night palette pulled toward Mocha's dark base with
     the window lit, in place of the tint (slice 10). The page follows:

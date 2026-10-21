@@ -226,4 +226,6 @@ Where the build departed from this plan, task by task.
 - **Task 6.** Screenshots in
   [screens/slice-09/](screens/slice-09/): the desktop, a phone in the
   bigger room and in the whole room, and the room at 10:00 and 22:00 by
-  the page's clock.
+  the page's clock. Decision 8 didn't hold as written: the tint covers the
+  whole canvas, as before, not the floor and walls only. Slice 10 replaces
+  it either way.
