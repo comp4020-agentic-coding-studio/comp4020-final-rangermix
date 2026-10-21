@@ -172,10 +172,17 @@ export class Stage {
     const spot = pointer ?? (me ? positionAt(me.walk, me.at, serverNow(state)) : { x: state.room.width / 2, y: state.room.height / 2 });
     // The chalkboard's row is up the wall: follow the floor just in front of it.
     const at = toCanvas(spot.x + 0.5, Math.max(spot.y, 1) + 0.5);
+    // The band the floating bars leave clear, within the stage box.
+    const box = this.box.getBoundingClientRect();
+    const clear = {
+      top: (document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top) - box.top,
+      bottom: (document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom) - box.top,
+    };
     const offset = panOffset(
       { x: at.x * this.scale, y: at.y * this.scale },
       { w: this.box.clientWidth, h: this.box.clientHeight },
       { w: ISO.width * this.scale, h: ISO.height * this.scale },
+      clear,
     );
     const left = `${-offset.x}px`;
     const top = `${-offset.y}px`;

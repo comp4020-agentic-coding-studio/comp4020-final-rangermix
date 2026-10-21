@@ -15,15 +15,19 @@ export function chooseLayout(saved: string | null, phone: boolean): Layout {
   return phone && saved !== "a" ? "b" : "a";
 }
 
+/** This visit's choice, for a device that won't store it. */
+let thisVisit: Layout | null = null;
+
 export function savedLayout(): string | null {
   try {
-    return localStorage.getItem(KEY);
+    return localStorage.getItem(KEY) ?? thisVisit;
   } catch {
-    return null;
+    return thisVisit;
   }
 }
 
 export function saveLayout(layout: Layout): void {
+  thisVisit = layout;
   try {
     localStorage.setItem(KEY, layout);
   } catch {
@@ -39,13 +43,29 @@ function axis(you: number, view: number, room: number): number {
   return Math.round(clamp(you - view / 2, 0, room - view));
 }
 
+/** How far inside the free band what's followed is kept, in CSS pixels. */
+const CLEAR = 24;
+
 /**
  * How far to shift the room (in CSS pixels) so `you` sits in the middle of
  * the view, never showing past the room's edges; a room smaller than the
- * view sits in its middle (a negative shift).
+ * view sits in its middle (a negative shift). Given `free`, the band of the
+ * view the floating bars leave clear, a room shorter than the view moves up
+ * or down just enough to keep `you` inside it (slice 09's review, finding 9).
  */
-export function panOffset(you: { x: number; y: number }, view: { w: number; h: number }, room: { w: number; h: number }): { x: number; y: number } {
-  return { x: axis(you.x, view.w, room.w), y: axis(you.y, view.h, room.h) };
+export function panOffset(
+  you: { x: number; y: number },
+  view: { w: number; h: number },
+  room: { w: number; h: number },
+  free?: { top: number; bottom: number },
+): { x: number; y: number } {
+  let y = axis(you.y, view.h, room.h);
+  if (free && room.h <= view.h) {
+    const on = you.y - y;
+    if (on > free.bottom - CLEAR) y += on - (free.bottom - CLEAR);
+    else if (on < free.top + CLEAR) y -= free.top + CLEAR - on;
+  }
+  return { x: axis(you.x, view.w, room.w), y: Math.round(y) };
 }
 
 /** A ring wide enough that `n` buttons `size` pixels across never touch. */

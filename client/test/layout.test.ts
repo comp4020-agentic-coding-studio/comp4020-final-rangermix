@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseLayout, menuSpot, panOffset, ringCentre, ringPositions, ringRadius } from "../src/layout";
+import { chooseLayout, menuSpot, panOffset, ringCentre, ringPositions, ringRadius, saveLayout, savedLayout } from "../src/layout";
 
 describe("phone layout B", () => {
   it("is a phone's unless it chose the whole room, and never a desktop's", () => {
@@ -12,9 +12,41 @@ describe("phone layout B", () => {
     expect(chooseLayout(null, false)).toBe("a");
   });
 
+  it("keeps a switch for this visit when the device won't store it (slice 09's review, finding 11)", () => {
+    const real = Object.getOwnPropertyDescriptor(window, "localStorage")!;
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("blocked");
+      },
+    });
+    try {
+      saveLayout("a");
+      expect(savedLayout()).toBe("a");
+      expect(chooseLayout(savedLayout(), true)).toBe("a");
+      saveLayout("b");
+      expect(chooseLayout(savedLayout(), true)).toBe("b");
+    } finally {
+      Object.defineProperty(window, "localStorage", real);
+    }
+  });
+
   it("pans to keep you in the middle of the view, and centres a room smaller than it", () => {
     // A 576 by 480 room at 3x in a 390 by 700 view: you at (300, 200).
     expect(panOffset({ x: 300, y: 200 }, { w: 390, h: 700 }, { w: 576, h: 480 })).toEqual({ x: 105, y: -110 });
+  });
+
+  it("moves a room shorter than the view just enough to bring what it follows out from under the bars (slice 09's review, finding 9)", () => {
+    // The room at an angle, 1008 by 696 at 3x, in a 390 by 844 phone with bars down to 74 and up from 740.
+    const free = { top: 74, bottom: 740 };
+    // Something in the middle: the room stays centred, as before.
+    expect(panOffset({ x: 500, y: 348 }, { w: 390, h: 844 }, { w: 1008, h: 696 }, free).y).toBe(-74);
+    // The front corner tile, its centre 672 px down the room: the room moves up so it's clear of the talk bar.
+    const low = panOffset({ x: 500, y: 672 }, { w: 390, h: 844 }, { w: 1008, h: 696 }, free);
+    expect(672 - low.y).toBeLessThanOrEqual(740 - 24);
+    // Something at the very top: the room moves down so it's clear of the status bar.
+    const high = panOffset({ x: 500, y: 20 }, { w: 390, h: 844 }, { w: 1008, h: 696 }, free);
+    expect(20 - high.y).toBeGreaterThanOrEqual(74 + 24);
   });
 
   it("stops at the room's edges", () => {
