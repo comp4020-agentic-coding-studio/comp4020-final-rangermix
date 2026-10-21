@@ -2,10 +2,14 @@ import type { Cafe } from "./cafe";
 import { canberraHour } from "./canberra";
 import { type Layout, panOffset } from "./layout";
 import { positionAt } from "./motion";
+import { ISO, pickTile, toCanvas } from "./iso";
 import { type Pointer, draw } from "./render";
-import { TILE, fitScale } from "./scale";
+import { fitScale } from "./scale";
 import { Sprites } from "./sprites";
 import { serverNow } from "./state";
+
+/** How tall someone stands, in canvas pixels at 1x: today's 16-px sprites, till slice 11. */
+const FIGURE = 16;
 
 /** The room on screen: sized to the largest whole-number scale that fits, drawn every frame. */
 export class Stage {
@@ -44,9 +48,32 @@ export class Stage {
     this.resize.disconnect();
   }
 
-  /** CSS pixels, within the stage box, of a point given in tiles. */
+  /** CSS pixels, within the stage box, of a point on the floor given in tiles. */
   tileToCss(x: number, y: number): { left: number; top: number } {
-    return { left: this.canvas.offsetLeft + x * TILE * this.scale, top: this.canvas.offsetTop + y * TILE * this.scale };
+    const p = toCanvas(x, y);
+    return { left: this.canvas.offsetLeft + p.x * this.scale, top: this.canvas.offsetTop + p.y * this.scale };
+  }
+
+  /** CSS pixels, within the stage box, halfway up the street wall over column `x`: where row 0's tiles are. */
+  wallToCss(x: number): { left: number; top: number } {
+    const p = toCanvas(x, 1);
+    return { left: this.canvas.offsetLeft + p.x * this.scale, top: this.canvas.offsetTop + (p.y - ISO.wall / 2) * this.scale };
+  }
+
+  /** The room's canvas, within the stage box, in CSS pixels. */
+  roomBox(): { left: number; top: number; right: number; bottom: number } {
+    const left = this.canvas.offsetLeft;
+    const top = this.canvas.offsetTop;
+    return { left, top, right: left + ISO.width * this.scale, bottom: top + ISO.height * this.scale };
+  }
+
+  /**
+   * Where someone standing at `spot` is, in CSS pixels within the stage box:
+   * their feet on the tile's centre, their head a figure's height above.
+   */
+  figureToCss(spot: { x: number; y: number }): { x: number; head: number; feet: number } {
+    const feet = this.tileToCss(spot.x + 0.5, spot.y + 0.5);
+    return { x: feet.left, head: feet.top - FIGURE * this.scale, feet: feet.top };
   }
 
   /** The tile under a pointer, or null outside the room. */
@@ -54,9 +81,7 @@ export class Stage {
     const room = this.cafe.state?.room;
     if (!room) return null;
     const r = this.canvas.getBoundingClientRect();
-    const x = Math.floor((clientX - r.left) / (TILE * this.scale));
-    const y = Math.floor((clientY - r.top) / (TILE * this.scale));
-    return x >= 0 && y >= 0 && x < room.width && y < room.height ? { x, y } : null;
+    return pickTile((clientX - r.left) / this.scale, (clientY - r.top) / this.scale, room);
   }
 
   /**
@@ -79,23 +104,20 @@ export class Stage {
   }
 
   fit(): void {
-    const room = this.cafe.state?.room;
-    const w = room?.width ?? 12;
-    const h = room?.height ?? 10;
     if (this.layout === "b") {
       // Layout B: the room at 3x, bigger than the screen, panned to follow you.
       this.scale = 3;
     } else {
       // On a phone the page scrolls, so only the width limits the room.
       const phone = matchMedia("(max-width: 700px)").matches;
-      this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight, w, h);
+      this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight);
       this.canvas.style.left = "";
       this.canvas.style.top = "";
     }
-    this.canvas.width = w * TILE;
-    this.canvas.height = h * TILE;
-    this.canvas.style.width = `${w * TILE * this.scale}px`;
-    this.canvas.style.height = `${h * TILE * this.scale}px`;
+    this.canvas.width = ISO.width;
+    this.canvas.height = ISO.height;
+    this.canvas.style.width = `${ISO.width * this.scale}px`;
+    this.canvas.style.height = `${ISO.height * this.scale}px`;
     for (const hook of this.panHooks) hook();
   }
 
@@ -106,7 +128,7 @@ export class Stage {
       this.canvas.getContext("2d")?.clearRect(0, 0, this.canvas.width, this.canvas.height);
       return;
     }
-    if (this.canvas.width !== state.room.width * TILE) this.fit();
+    if (this.canvas.width !== ISO.width) this.fit();
     if (this.layout === "b") this.pan(state);
     const ctx = this.canvas.getContext("2d");
     if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, canberraHour());
@@ -121,11 +143,12 @@ export class Stage {
     const me = state.people.get(state.you);
     const pointer = this.pointer.visible ? this.pointer.tile : null;
     const spot = pointer ?? (me ? positionAt(me.walk, me.at, serverNow(state)) : { x: state.room.width / 2, y: state.room.height / 2 });
-    const px = TILE * this.scale;
+    // The chalkboard's row is up the wall: follow the floor just in front of it.
+    const at = toCanvas(spot.x + 0.5, Math.max(spot.y, 1) + 0.5);
     const offset = panOffset(
-      { x: (spot.x + 0.5) * px, y: (spot.y + 0.5) * px },
+      { x: at.x * this.scale, y: at.y * this.scale },
       { w: this.box.clientWidth, h: this.box.clientHeight },
-      { w: state.room.width * px, h: state.room.height * px },
+      { w: ISO.width * this.scale, h: ISO.height * this.scale },
     );
     const left = `${-offset.x}px`;
     const top = `${-offset.y}px`;

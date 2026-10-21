@@ -93,10 +93,13 @@ function enter(me: ApiMe): void {
   });
   const ringLayout = () => document.body.classList.contains("layout-b");
   /** Where a menu goes: beside the tile, or (for a ring) round its middle. */
+  /** A tile's middle on screen: on the floor, or up the street wall for row 0. */
+  const middle = (tile: { x: number; y: number }) => (tile.y === 0 ? stage.wallToCss(tile.x + 0.5) : stage.tileToCss(tile.x + 0.5, tile.y + 0.5));
   const anchor = (tile: { x: number; y: number }) => {
-    if (ringLayout()) return stage.tileToCss(tile.x + 0.5, tile.y + 0.5);
-    const { left, top } = stage.tileToCss(tile.x, tile.y);
-    return { left, top, right: stage.tileToCss(tile.x + 1, tile.y).left };
+    const centre = middle(tile);
+    if (ringLayout()) return centre;
+    // Beside the tile's diamond: its left and right corners, from its top.
+    return { left: centre.left - 16 * stage.scale, top: centre.top - 8 * stage.scale, right: centre.left + 16 * stage.scale };
   };
   // The phone's two layouts: B by choice, remembered on this device.
   const phoneQuery = matchMedia("(max-width: 700px)");
@@ -120,7 +123,7 @@ function enter(me: ApiMe): void {
   // A ring sits round a tile: when the room pans under it, it follows the tile.
   let ringTile: { x: number; y: number } | null = null;
   stage.panHooks.push(() => {
-    if (ringLayout() && ringTile) moveRing(stage.tileToCss(ringTile.x + 0.5, ringTile.y + 0.5));
+    if (ringLayout() && ringTile) moveRing(middle(ringTile));
   });
   applyLayout();
   /** What you're carrying, if anything. */

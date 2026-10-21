@@ -62,9 +62,7 @@ export class Bubbles {
     const now = serverNow(state, localNow);
     const live = new Set<number>();
     const lift = new Map<number, number>();
-    const corner = this.stage.tileToCss(0, 0);
-    const far = this.stage.tileToCss(state.room.width, state.room.height);
-    const room = { left: corner.left, top: corner.top, right: far.left, bottom: far.top };
+    const room = this.stage.roomBox();
     // Newest first, so it sits nearest the speaker's head.
     for (const b of [...state.bubbles].reverse()) {
       const speaker = state.people.get(b.from);
@@ -76,12 +74,11 @@ export class Bubbles {
         this.overlay.append(el);
         this.shown.set(b.id, el);
       }
-      const spot = speaker.place === "inside" ? positionAt(speaker.walk, speaker.at, now) : windowSpot(state, speaker.id);
-      const head = this.stage.tileToCss(spot.x + 0.5, spot.y);
-      const feet = this.stage.tileToCss(spot.x + 0.5, spot.y + 1);
+      // Inside, over their head; waiting, over their face in the window, up the street wall.
+      const at = speaker.place === "inside" ? this.stage.figureToCss(positionAt(speaker.walk, speaker.at, now)) : this.windowFace(windowSpot(state, speaker.id).x);
       const stack = lift.get(b.from) ?? 0;
       const size = { width: el.offsetWidth, height: el.offsetHeight };
-      const { left, top } = placeBubble({ x: head.left, head: head.top, feet: feet.top }, stack, size, room);
+      const { left, top } = placeBubble(at, stack, size, room);
       el.style.left = `${left}px`;
       el.style.top = `${top}px`;
       lift.set(b.from, stack + size.height + GAP);
@@ -92,5 +89,11 @@ export class Bubbles {
         this.shown.delete(id);
       }
     }
+  }
+
+  /** A face in the window over column `x`: halfway up the street wall. */
+  private windowFace(x: number): { x: number; head: number; feet: number } {
+    const face = this.stage.wallToCss(x + 0.5);
+    return { x: face.left, head: face.top, feet: face.top };
   }
 }
