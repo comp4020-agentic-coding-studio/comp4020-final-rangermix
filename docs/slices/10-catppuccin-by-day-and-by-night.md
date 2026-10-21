@@ -1,6 +1,6 @@
 # 10. Catppuccin by day and by night
 
-- **Status:** Reviewed, every finding answered ([findings](../notes/reviews/slice-10-findings.md)), 2026-10-22 (approved 2026-10-21, with the proposed default for its open question: the afternoon keeps the day's palette). Its judged line waits for the user, from [the screenshots](../notes/screens/slice-10/)
+- **Status:** Reviewed, every finding answered ([findings](../notes/reviews/slice-10-findings.md)), deployed and checked live 2026-10-22 ([notes](../notes/slice-10-palette.md)); approved 2026-10-21, with the proposed default for its open question (the afternoon keeps the day's palette). `Live` once the user has judged it from [the screenshots](../notes/screens/slice-10/)
 - **Plan:** [`docs/notes/plan-slice-10-palette.md`](../notes/plan-slice-10-palette.md)
 - **Design:** The café ("It keeps Canberra time"); The client ("Drawing",
   "The look"); Numbers to tune ("Day and night");

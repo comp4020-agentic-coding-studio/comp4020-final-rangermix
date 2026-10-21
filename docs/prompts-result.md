@@ -1586,3 +1586,8 @@ then test first, task by task:
     [`6c7a0d8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6c7a0d8).
   - **Merged to `main`** after the whole spec passed on a fresh café, 69
     of 69.
+  - **Deployed and checked live**: CI run 39670502960 passed and
+    deployed. One short `agent_` visit at 07:00: the page in Latte or
+    Mocha by the device's setting, the floor's own pixels in the day
+    set, no errors ([notes](notes/slice-10-palette.md)). The judged line
+    and the README's credit are the user's.
