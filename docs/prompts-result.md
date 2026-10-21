@@ -1315,3 +1315,23 @@ job's log check now runs with `--wall`. The live café's first start on the
 new build (`mvhfoihc`, 12:30:52 AEDT) logged `"clock":"wall"`, and woke after
 25 minutes asleep in 8 ms. Slice 08 went to `Live`. What's left from it is
 slice 02's judged line, read by the user on the board the night test prints.
+
+*Sent 2026-10-21 13:02:42 AEDT*
+
+> rewrite @PROCESS.md as crit required
+
+Asked and answered before writing: which of the new material should fill
+the room left after the harness, design, stack and workflow. The user chose
+"Logs as instruments" and "Live testing, then mocked time" (not slices and
+reviews as a section, and not keeping crit 9's quiet seat), and to push it
+to `main` once the evidence check passed.
+
+**Result.** `PROCESS.md` rewritten for crit 10, not appended: 937 words, 15
+cited commits, all resolving by `pnpm check:evidence`. The harness, the
+design and the stack are condensed. Two new sections:
+- the logs as the crit's instruments, and as how the flaky ring check and
+  the cats' "consent" were found;
+- live testing (ADR 0015), the three days spent waiting on a real night,
+  and the mocked time it led to (ADR 0016), with what slice 08's review
+  found.
+Crit 9's quiet-seat section was cut for room. ADR 0009 still records it.
