@@ -1501,3 +1501,24 @@ then test first, task by task:
   and the review brief
   ([`00b859b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/00b859b)).
   A fresh reviewer is reading it.
+- **The review** ([findings](notes/reviews/slice-09-findings.md),
+  [`f2f9467`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f2f9467)):
+  0 critical, 3 major, 9 minor. The majors: a click on a cat drawn up on
+  the window seat walked to the wall behind it; a lap cat was drawn under
+  its sitter; treats and toys put on the rug were drawn under it. All
+  twelve were fixed test first
+  ([`94170cb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/94170cb),
+  [`1d67769`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1d67769),
+  [`9c66b6a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9c66b6a),
+  [`e244043`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e244043),
+  [`c59b576`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c59b576),
+  [`dfda24f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dfda24f),
+  [`d081b08`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d081b08))
+  and answered
+  ([`8cf77bf`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8cf77bf)).
+  Two checks first passed without their fix and were corrected until they
+  failed: the edge-ring check measured a one-button ring by its button,
+  which can't fail, and the Tab check started from the wrong place.
+- **Merged to `main`** once fmt, clippy, `cargo test`, the 127 client
+  tests and 65 of 67 spec checks passed locally (the two left are slice
+  07's waking checks, which time out on this machine on `main` too).
