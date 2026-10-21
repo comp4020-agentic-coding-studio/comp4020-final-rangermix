@@ -1434,3 +1434,28 @@ Mocha".
   before it's planned. Open questions with proposed defaults: the arrows
   along the room's axes (09), the afternoon keeping the day's palette (10),
   one cat first and the README's music promise taken out (11).
+
+*Sent 2026-10-21 16:16:07 AEDT*
+
+> [a screenshot of Tora's menu, opened on the room's bottom row, cut off under the talk bar] when a cat is on the lower part of the room clicking it hides some of the menu, fix it
+
+**Result.** Fixed
+([`740069b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/740069b)).
+- **Cause:** on a desktop the menu opened at its tile's top-right corner,
+  and only its top was kept on screen. The stage cuts off whatever runs
+  past it, so a cat's menu (five or six actions) opened low in the room lost
+  its last actions under the talk bar. Reproduced on a local café: Tora on
+  the box at (1,9), the menu's bottom 200 px past the stage at 1920×1080.
+- **Fix:** the menu is measured once it's on the page and placed beside its
+  tile, moved up as far as it must, or to the tile's left when the right
+  has no room (`menuSpot`, beside the ring's `ringCentre`). One taller than
+  the stage scrolls.
+- **Held by** five layout unit tests and a browser check that pins a cat
+  to the bottom row on its own page, through its socket, and opens its menu
+  by mouse and by keyboard at 1920×1080 and 1280×720. Each was seen failing
+  first; the browser check found the menu's bottom at 1168 against the
+  stage's 1014.
+- **Checked locally:** the client's 94 unit tests, 18 of the 20 browser
+  checks and the other 43 spec checks pass. The two slice 07 waking checks
+  that route the socket time out on this machine with or without the fix,
+  so they're CI's to hold.
