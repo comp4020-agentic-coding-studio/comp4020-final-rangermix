@@ -5,6 +5,7 @@ import emoteSheet from "../../content/sprites/emotes.txt?raw";
 import furnitureSheet from "../../content/sprites/furniture.txt?raw";
 import palettes from "../../content/sprites/palettes.json";
 import roomSheet from "../../content/sprites/room.txt?raw";
+import type { Light } from "../src/canberra";
 import { AVATARS, COLOURS, avatarPalette, paletteAt, parseSheet, toRgba } from "../src/sprites";
 
 const luminance = (hex: string) => {
@@ -57,7 +58,7 @@ describe("the café's colours in each light", () => {
   });
 
   it("colours every sprite in every light, with no missing slot", () => {
-    for (const light of [0, 0.5, 1]) {
+    for (const light of [0, 0.5, 1] as Light[]) {
       const p = paletteAt(light);
       for (const grid of parseSheet(roomSheet).values()) expect(() => toRgba(grid, p.room)).not.toThrow();
       for (const grid of parseSheet(furnitureSheet).values()) expect(() => toRgba(grid, p.furniture)).not.toThrow();

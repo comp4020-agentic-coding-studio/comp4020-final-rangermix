@@ -3,6 +3,7 @@ import type { ServerMsg } from "../src/protocol/ServerMsg";
 import palettes from "../../content/sprites/palettes.json";
 import { toCanvas } from "../src/iso";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
+import type { Light } from "../src/canberra";
 import { Sprites } from "../src/sprites";
 import { fromWelcome } from "../src/state";
 
@@ -166,7 +167,7 @@ describe("the room's draw order", () => {
   // Slice 10: the room in the hour's colours, with no grey wash over it.
 
   it("paints the floor in the day's colours by day and the night's at night, with no wash laid over", () => {
-    const fills = (light: number) => {
+    const fills = (light: Light) => {
       const seen: string[] = [];
       let alpha = 1;
       const ctx = new Proxy(
@@ -180,9 +181,10 @@ describe("the room's draw order", () => {
           },
         },
       ) as unknown as CanvasRenderingContext2D;
+      // A fresh Sprites, at light 0: draw itself must colour them in its light.
       const sprites = new Sprites();
-      sprites.light = light;
       draw(ctx, fromWelcome(welcome(), 10_000), sprites, 10_000, { tile: null, visible: false, hover: null, ghost: null }, light);
+      expect(sprites.light, "draw sets the sprites' light").toBe(light);
       return seen;
     };
     const day = fills(0);

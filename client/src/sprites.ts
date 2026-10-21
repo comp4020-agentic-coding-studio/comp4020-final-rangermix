@@ -4,6 +4,7 @@ import emoteSheet from "../../content/sprites/emotes.txt?raw";
 import furnitureSheet from "../../content/sprites/furniture.txt?raw";
 import palettes from "../../content/sprites/palettes.json";
 import roomSheet from "../../content/sprites/room.txt?raw";
+import type { Light } from "./canberra";
 import type { Look } from "./protocol/Look";
 
 // Sprites are data (design.md, "The client"): grids of palette slots in
@@ -87,7 +88,7 @@ const blended = new Map<number, Palette>();
  * The café's colours in a light (slice 10): the day set at 0, the night set
  * at 1, and between them slot by slot, as in the evening's 0.5.
  */
-export function paletteAt(light: number): Palette {
+export function paletteAt(light: Light): Palette {
   if (light <= 0) return palettes.day;
   if (light >= 1) return palettes.night as Palette;
   let p = blended.get(light);
@@ -101,14 +102,14 @@ export const COLOURS = palettes.day.avatars.colours.length;
 export const shirtColour = (i: number): string => palettes.day.avatars.colours[i % COLOURS];
 
 /** An avatar's palette in a light: outline and eyes, skin, hair, shirt, trousers, shoes, white. */
-export function avatarPalette(look: Look, light: number): string[] {
+export function avatarPalette(look: Look, light: Light): string[] {
   const a = paletteAt(light).avatars;
   return [a.base[0], a.skins[look.avatar % AVATARS], a.hair[look.avatar % AVATARS], a.colours[look.colour % COLOURS], a.base[1], a.base[2], a.base[3]];
 }
 
 export class Sprites {
   /** How far toward night to colour them (slice 10); the stage sets it each frame. */
-  light = 0;
+  light: Light = 0;
   private readonly sheets = {
     room: parseSheet(roomSheet),
     furniture: parseSheet(furnitureSheet),

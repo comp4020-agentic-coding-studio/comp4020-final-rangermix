@@ -1,4 +1,5 @@
 import heights from "../../content/sprites/heights.json";
+import type { Light } from "./canberra";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -363,7 +364,7 @@ function footprint(spot: { x: number; y: number }, on: FurnitureView | null): { 
  * `lightAt`): the room, furniture and sprites in that light's colours, the
  * window lit at night, and no wash laid over it (slice 10).
  */
-export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, light: number): void {
+export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, light: Light): void {
   const { room } = state;
   const palette = paletteAt(light);
   ROOM = palette.room;

@@ -2,6 +2,7 @@ import { type Browser, type BrowserContext, type Page, type WebSocketRoute, chro
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { baseUrl, meetACat, signUp, uniqueName, Visitor } from "./helpers";
 import heights from "../content/sprites/heights.json" with { type: "json" };
+import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
 /** How tall each kind of furniture is drawn, in canvas pixels (slice 09): a cat on one is drawn that high. */
 const HEIGHTS = heights as Record<string, number>;
@@ -848,6 +849,71 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await v.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await v.page.locator("#board-close").tap();
     await board.waitFor({ state: "hidden" });
+  });
+
+  it("draws the room and its cats in the hour's light, and moves on to night on an open page (slice 10's review, finding 1)", async () => {
+    // A cat pinned sitting on bare floor at (6,6), on this page only, so its
+    // coat's pixels can be read; the floor at (9,8), bare too.
+    const CAT = { x: 6, y: 6 };
+    const FLOOR = { x: 9, y: 8 };
+    let coat = "";
+    const pinned = (page: Page) =>
+      page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        let id: string | null = null;
+        server.onMessage((m) => {
+          const f = JSON.parse(String(m));
+          if (f.type === "welcome") {
+            const cat = f.snapshot.cats[0];
+            id = cat.id;
+            coat = cat.coat;
+            Object.assign(cat, { at: CAT, walk: null, pose: "sit", heldBy: null });
+            ws.send(JSON.stringify(f));
+          } else if (f.cat !== id) ws.send(m);
+        });
+      });
+    const v = await visit({ width: 1920, height: 1080 }, false, {
+      prepare: async (page) => {
+        await page.clock.install({ time: new Date("2026-10-22T10:00:00+11:00") });
+        await page.clock.resume();
+        await pinned(page);
+      },
+    });
+    /** Every colour on the canvas's own pixels within `r` canvas pixels of a tile's spot, `up` pixels above it. */
+    const coloursAt = (tile: Tile, up: number, r: number) =>
+      v.page.evaluate(
+        ([x, y, up, r]) => {
+          const canvas = document.getElementById("room") as HTMLCanvasElement;
+          const box = canvas.getBoundingClientRect();
+          const scale = box.width / canvas.width;
+          const at = (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(x, y);
+          const cx = Math.round((at.x - box.left) / scale);
+          const cy = Math.round((at.y - box.top) / scale) - up;
+          const data = canvas.getContext("2d")!.getImageData(cx - r, cy - r, 2 * r + 1, 2 * r + 1).data;
+          const seen = new Set<string>();
+          for (let i = 0; i < data.length; i += 4) seen.add(`#${[data[i], data[i + 1], data[i + 2]].map((c) => c.toString(16).padStart(2, "0")).join("")}`);
+          return [...seen];
+        },
+        [tile.x, tile.y, up, r],
+      );
+    // The diamond's middle at (9,8): one of the floor's two shades.
+    const floorDay = await coloursAt(FLOOR, 0, 1);
+    // The cat's sprite: 16 px, feet 2 px below its tile's centre.
+    const catDay = await coloursAt(CAT, 6, 5);
+    const day = palettes.day;
+    const night = palettes.night;
+    const coatOf = (p: typeof day) => (p.coats as Record<string, string[]>)[coat];
+    expect(floorDay.some((c) => day.room.slice(0, 2).includes(c)), `day floor ${floorDay}`).toBe(true);
+    expect(catDay.some((c) => coatOf(day).includes(c)), `day coat ${catDay}`).toBe(true);
+    // The same page, on to 22:00: night, without a reload.
+    await v.page.clock.fastForward("12:00:00");
+    await v.page.waitForTimeout(300);
+    const floorNight = await coloursAt(FLOOR, 0, 1);
+    const catNight = await coloursAt(CAT, 6, 5);
+    expect(floorNight.some((c) => night.room.slice(0, 2).includes(c)), `night floor ${floorNight}`).toBe(true);
+    expect(floorNight.some((c) => day.room.slice(0, 2).includes(c)), "no day floor left at night").toBe(false);
+    expect(catNight.some((c) => coatOf(night).includes(c)), `night coat ${catNight}`).toBe(true);
+    expect(catNight.some((c) => coatOf(day).includes(c) && !coatOf(night).includes(c)), "no day coat left at night").toBe(false);
   });
 
   it("follows the device's light or dark setting in Catppuccin Latte or Mocha, at both sizes (slice 10)", async () => {
