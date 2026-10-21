@@ -19,6 +19,13 @@
 // they still read. The window's glass is lit with Mocha's yellow: lamplight
 // from the street.
 import { writeFileSync } from "node:fs";
+import coatsFile from "../content/sprites/coats.json" with { type: "json" };
+
+// A cat's coat is data, as AGENTS.md asks ("cats change through content/,
+// not code"): its day colours are in content/sprites/coats.json, and only
+// its night colours are worked out here. A new coat is a key there, then a
+// run of this script (slice 10's review, finding 6).
+const coats: Record<string, string[]> = coatsFile;
 
 const m = {
   rosewater: "#f5e0dc",
@@ -62,7 +69,7 @@ const outline = mix(m.base, m.mauve, 0.12);
 
 // The slots each sheet uses (content/sprites/*.txt); the comments say what
 // the room's are drawn as in render.ts.
-const day = {
+export const day = {
   room: [
     mix(m.peach, m.surface2, 0.3), // 0 floor, light boards
     mix(m.peach, m.surface2, 0.42), // 1 floor, dark boards
@@ -96,11 +103,7 @@ const day = {
     mix(m.peach, m.base, 0.45),
     m.sapphire,
   ],
-  coats: {
-    white_grey: [outline, m.text, m.overlay1, "#ffffff", m.blue, m.pink],
-    black: [m.crust, m.base, m.surface0, m.surface1, m.yellow, m.flamingo],
-    orange_tabby: [mix(m.peach, m.base, 0.7), m.peach, mix(m.peach, m.maroon, 0.5), m.rosewater, m.green, m.pink],
-  },
+  coats,
   avatars: {
     skins: [m.rosewater, mix(m.peach, m.rosewater, 0.4), mix(m.peach, m.surface2, 0.4), mix(m.peach, m.base, 0.62)],
     hair: [mix(m.base, m.mauve, 0.25), m.yellow, mix(m.maroon, m.base, 0.45), m.surface0],
@@ -115,7 +118,7 @@ const dusk = mix(m.base, m.lavender, 0.18);
 const toNight = (c: string, t: number): string => mix(c, dusk, t);
 const all = <T extends string[]>(list: T, t: number): string[] => list.map((c) => toNight(c, t));
 
-const night = {
+export const night = {
   // The room sinks furthest; the window's glass is lit instead.
   room: day.room.map((c, i) => (i === 8 ? m.yellow : toNight(c, 0.55))),
   furniture: all(day.furniture, 0.5),

@@ -435,7 +435,10 @@ renamed.
   - **Catppuccin-led colours** (slice 10, built): `content/sprites/palettes.json`
     holds a day set and a night set of the same shape, written by
     `scripts/palettes.ts` from Catppuccin's values (credited in
-    `content/sprites/CREDITS.md`). By day, Mocha's pastels on wood mixed
+    `content/sprites/CREDITS.md`), never by hand: a client test holds that
+    it is what the script writes. A coat's day colours are data, in
+    `content/sprites/coats.json`; a new coat is a key there, then a run of
+    the script, which works out its night colours. By day, Mocha's pastels on wood mixed
     from its peach and rosewater; at night, every colour pulled toward
     Mocha's base and lavender, cats and people less, and the window's
     glass lit yellow. The light is day through the afternoon, halfway in
