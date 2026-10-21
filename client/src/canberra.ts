@@ -6,15 +6,13 @@ export function canberraHour(date = new Date()): number {
   return Number(HOUR.format(date)) % 24;
 }
 
-export interface Tint {
-  colour: string;
-  alpha: number;
-}
-
-/** The light by the hour (design.md, "Numbers to tune"): morning from 6, afternoon from 12, evening from 17, night from 21. */
-export function nightTint(hour: number): Tint | null {
-  if (hour >= 21 || hour < 6) return { colour: "#0b1030", alpha: 0.38 };
-  if (hour >= 17) return { colour: "#1d2350", alpha: 0.16 };
-  if (hour >= 12) return { colour: "#ffb347", alpha: 0.06 };
-  return null;
+/**
+ * How far toward night the café's light is, by the hour (design.md,
+ * "Numbers to tune"): day from 6, through the afternoon; halfway in the
+ * evening, from 17; night from 21. The colours blend by it (slice 10).
+ */
+export function lightAt(hour: number): 0 | 0.5 | 1 {
+  if (hour >= 21 || hour < 6) return 1;
+  if (hour >= 17) return 0.5;
+  return 0;
 }

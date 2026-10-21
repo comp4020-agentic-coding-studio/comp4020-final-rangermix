@@ -1,6 +1,4 @@
 import heights from "../../content/sprites/heights.json";
-import palettes from "../../content/sprites/palettes.json";
-import { nightTint } from "./canberra";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -9,7 +7,7 @@ import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
 import type { Walk } from "./protocol/Walk";
 import { TILE } from "./scale";
-import type { AvatarFrame, CatFrame, EmoteName, Sprites } from "./sprites";
+import { type AvatarFrame, type CatFrame, type EmoteName, type Sprites, paletteAt } from "./sprites";
 import { type CafeState, type Cat, lapOf, serverNow } from "./state";
 
 // Draws the whole café at 1:1 into the canvas, in a 2:1 isometric camera
@@ -42,25 +40,27 @@ const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
   play: "heart",
 };
 
-const ROOM = palettes.room;
-const FURNITURE = palettes.furniture;
-/** Each kind's block colour, from the furniture palette. */
-const COLOUR: Record<string, string> = {
-  cat_tower: FURNITURE[3],
-  window_seat: FURNITURE[11],
-  sofa: FURNITURE[1],
-  rug: FURNITURE[9],
-  table: FURNITURE[11],
-  chair: FURNITURE[4],
-  cat_bed: FURNITURE[1],
-  box: FURNITURE[3],
-  plant: FURNITURE[6],
-  toys: FURNITURE[1],
-  bowls: FURNITURE[13],
-  cushion: FURNITURE[9],
-  scratching_post: FURNITURE[11],
-  lamp: FURNITURE[5],
+/** This frame's colours, in the hour's light (slice 10); `draw` sets them. */
+let ROOM = paletteAt(0).room;
+let FURNITURE = paletteAt(0).furniture;
+/** Each kind's block colour, as a slot in the furniture palette. */
+const SLOT: Record<string, number> = {
+  cat_tower: 3,
+  window_seat: 11,
+  sofa: 1,
+  rug: 9,
+  table: 11,
+  chair: 4,
+  cat_bed: 1,
+  box: 3,
+  plant: 6,
+  toys: 1,
+  bowls: 13,
+  cushion: 9,
+  scratching_post: 11,
+  lamp: 5,
 };
+const colourOf = (kind: string): string => FURNITURE[SLOT[kind] ?? 3];
 /** How far in from its footprint's edges a small piece's block stands, in tiles. */
 const INSET: Record<string, number> = { plant: 0.28, toys: 0.32, bowls: 0.18, chair: 0.2, cat_bed: 0.12, box: 0.15, cushion: 0.15, scratching_post: 0.3, lamp: 0.3 };
 const HEIGHT = heights as Record<string, number>;
@@ -358,8 +358,17 @@ function footprint(spot: { x: number; y: number }, on: FurnitureView | null): { 
   return on ? { x: on.x, y: on.y, w: on.w, h: on.h } : { x: spot.x, y: spot.y, w: 1, h: 1 };
 }
 
-export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, hour: number): void {
+/**
+ * Draws the café in a light, how far toward night it is (0 to 1, from
+ * `lightAt`): the room, furniture and sprites in that light's colours, the
+ * window lit at night, and no wash laid over it (slice 10).
+ */
+export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, light: number): void {
   const { room } = state;
+  const palette = paletteAt(light);
+  ROOM = palette.room;
+  FURNITURE = palette.furniture;
+  sprites.light = light;
   ctx.imageSmoothingEnabled = false;
   // Night outside the room's walls, as in the study the look was chosen from.
   ctx.fillStyle = BACKDROP;
@@ -369,14 +378,6 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   drawWalls(ctx, state, sprites);
 
   for (const item of drawOrder(state, localNow)) item.paint(ctx, sprites);
-
-  const tint = nightTint(hour);
-  if (tint) {
-    ctx.globalAlpha = tint.alpha;
-    ctx.fillStyle = tint.colour;
-    ctx.fillRect(0, 0, ISO.width, ISO.height);
-    ctx.globalAlpha = 1;
-  }
 
   if (pointer.ghost) {
     const { piece, at, ok } = pointer.ghost;
@@ -464,7 +465,7 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
 
 /** A piece where it stands, as a shaded block; knocked over, lying on its side. */
 function drawPiece(ctx: Ctx, f: FurnitureView): void {
-  const colour = COLOUR[f.kind] ?? FURNITURE[3];
+  const colour = colourOf(f.kind);
   const z = HEIGHT[f.kind] ?? 8;
   const i = INSET[f.kind] ?? 0.06;
   const x = f.x + i;
@@ -534,7 +535,7 @@ function drawCat(ctx: Ctx, sprites: Sprites, cat: Cat, spot: Spot, now: number, 
 /** A carried piece, held up over its carrier's head: a small block. */
 function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): void {
   const lift = TILE + 6 + standing;
-  const colour = COLOUR[piece.kind] ?? FURNITURE[3];
+  const colour = colourOf(piece.kind);
   const z = Math.min(HEIGHT[piece.kind] ?? 8, 14);
   const s = 0.6;
   const cx = spot.x + 0.5 - s / 2;

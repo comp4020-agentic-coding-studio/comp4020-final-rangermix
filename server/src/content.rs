@@ -135,11 +135,42 @@ mod tests {
     fn every_cat_coat_has_a_palette() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/palettes.json");
         let palettes: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-        for cat in repo_content().cats {
-            let coat = palettes["coats"][&cat.coat]
-                .as_array()
-                .unwrap_or_else(|| panic!("no palette for {}'s coat {}", cat.id, cat.coat));
-            assert!(coat.len() >= 6, "{}", cat.coat);
+        // By day and by night (slice 10).
+        for light in ["day", "night"] {
+            for cat in repo_content().cats {
+                let coat = palettes[light]["coats"][&cat.coat]
+                    .as_array()
+                    .unwrap_or_else(|| panic!("no {light} palette for {}'s coat {}", cat.id, cat.coat));
+                assert!(coat.len() >= 6, "{light} {}", cat.coat);
+            }
+        }
+    }
+
+    /// The day and night palettes are blended slot by slot (slice 10), so
+    /// every list in one has as many colours as the same list in the other,
+    /// and every colour is a six-digit hex.
+    #[test]
+    fn the_day_and_night_palettes_match_slot_for_slot() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/palettes.json");
+        let palettes: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        fn lists<'a>(v: &'a serde_json::Value, at: String, out: &mut Vec<(String, &'a Vec<serde_json::Value>)>) {
+            match v {
+                serde_json::Value::Array(a) => out.push((at, a)),
+                serde_json::Value::Object(o) => o.iter().for_each(|(k, v)| lists(v, format!("{at}.{k}"), out)),
+                _ => panic!("{at} isn't a list or a set of lists"),
+            }
+        }
+        let (mut day, mut night) = (Vec::new(), Vec::new());
+        lists(&palettes["day"], "".into(), &mut day);
+        lists(&palettes["night"], "".into(), &mut night);
+        assert!(!day.is_empty(), "no day palette");
+        assert_eq!(day.iter().map(|(k, _)| k).collect::<Vec<_>>(), night.iter().map(|(k, _)| k).collect::<Vec<_>>());
+        for ((at, d), (_, n)) in day.iter().zip(&night) {
+            assert_eq!(d.len(), n.len(), "{at} has {} colours by day and {} by night", d.len(), n.len());
+            for c in d.iter().chain(n.iter()) {
+                let hex = c.as_str().unwrap_or_else(|| panic!("{at}: {c} isn't a colour"));
+                assert!(hex.len() == 7 && hex.starts_with('#') && hex[1..].chars().all(|ch| ch.is_ascii_hexdigit()), "{at}: {hex} isn't #rrggbb");
+            }
         }
     }
 

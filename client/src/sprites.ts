@@ -69,17 +69,46 @@ export function toRgba(grid: Grid, palette: string[]): Uint8ClampedArray<ArrayBu
   return bytes;
 }
 
-export const AVATARS = palettes.avatars.skins.length;
-export const COLOURS = palettes.avatars.colours.length;
-export const shirtColour = (i: number): string => palettes.avatars.colours[i % COLOURS];
+/** One light's colours: the same lists as each set in palettes.json. */
+export type Palette = typeof palettes.day;
 
-/** An avatar's palette: outline and eyes, skin, hair, shirt, trousers, shoes, white. */
-export function avatarPalette(look: Look): string[] {
-  const a = palettes.avatars;
-  return [a.base[0], a.skins[look.avatar % AVATARS], a.hair[look.avatar % AVATARS], shirtColour(look.colour), a.base[1], a.base[2], a.base[3]];
+const hexOf = (c: number[]): string => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+const blend = (a: string, b: string, t: number): string => hexOf(rgb(a).map((v, i) => v * (1 - t) + rgb(b)[i] * t));
+
+/** Every list in `day` blended toward the same list in `night` by `t`. */
+function blendAll<T>(day: T, night: T, t: number): T {
+  if (Array.isArray(day)) return day.map((c, i) => blend(c, (night as string[])[i], t)) as T;
+  return Object.fromEntries(Object.entries(day as Record<string, unknown>).map(([k, v]) => [k, blendAll(v, (night as Record<string, unknown>)[k], t)])) as T;
+}
+
+const blended = new Map<number, Palette>();
+
+/**
+ * The café's colours in a light (slice 10): the day set at 0, the night set
+ * at 1, and between them slot by slot, as in the evening's 0.5.
+ */
+export function paletteAt(light: number): Palette {
+  if (light <= 0) return palettes.day;
+  if (light >= 1) return palettes.night as Palette;
+  let p = blended.get(light);
+  if (!p) blended.set(light, (p = blendAll(palettes.day, palettes.night as Palette, light)));
+  return p;
+}
+
+export const AVATARS = palettes.day.avatars.skins.length;
+export const COLOURS = palettes.day.avatars.colours.length;
+/** A shirt's colour by day, as the look picker shows it. */
+export const shirtColour = (i: number): string => palettes.day.avatars.colours[i % COLOURS];
+
+/** An avatar's palette in a light: outline and eyes, skin, hair, shirt, trousers, shoes, white. */
+export function avatarPalette(look: Look, light: number): string[] {
+  const a = paletteAt(light).avatars;
+  return [a.base[0], a.skins[look.avatar % AVATARS], a.hair[look.avatar % AVATARS], a.colours[look.colour % COLOURS], a.base[1], a.base[2], a.base[3]];
 }
 
 export class Sprites {
+  /** How far toward night to colour them (slice 10); the stage sets it each frame. */
+  light = 0;
   private readonly sheets = {
     room: parseSheet(roomSheet),
     furniture: parseSheet(furnitureSheet),
@@ -90,27 +119,29 @@ export class Sprites {
   private readonly cache = new Map<string, HTMLCanvasElement | null>();
 
   tile(name: TileName): HTMLCanvasElement | null {
-    return this.get(`room:${name}`, this.sheets.room.get(name), palettes.room);
+    return this.get(`room:${name}`, this.sheets.room.get(name), paletteAt(this.light).room);
   }
 
   furniture(kind: string): HTMLCanvasElement | null {
-    return this.get(`furniture:${kind}`, this.sheets.furniture.get(kind), palettes.furniture);
+    return this.get(`furniture:${kind}`, this.sheets.furniture.get(kind), paletteAt(this.light).furniture);
   }
 
   cat(coat: string, frame: CatFrame): HTMLCanvasElement | null {
-    const coats = palettes.coats as Record<string, string[]>;
+    const coats = paletteAt(this.light).coats as Record<string, string[]>;
     return this.get(`cat:${coat}:${frame}`, this.sheets.cat.get(frame), coats[coat] ?? coats.white_grey);
   }
 
   avatar(look: Look, frame: AvatarFrame): HTMLCanvasElement | null {
-    return this.get(`avatar:${look.avatar}:${look.colour}:${frame}`, this.sheets.avatar.get(frame), avatarPalette(look));
+    return this.get(`avatar:${look.avatar}:${look.colour}:${frame}`, this.sheets.avatar.get(frame), avatarPalette(look, this.light));
   }
 
   emote(name: EmoteName): HTMLCanvasElement | null {
-    return this.get(`emote:${name}`, this.sheets.emote.get(name), palettes.emotes);
+    return this.get(`emote:${name}`, this.sheets.emote.get(name), paletteAt(this.light).emotes);
   }
 
-  private get(key: string, grid: Grid | undefined, palette: string[]): HTMLCanvasElement | null {
+  /** A sprite coloured in this light, made once and cached by name and light. */
+  private get(name: string, grid: Grid | undefined, palette: string[]): HTMLCanvasElement | null {
+    const key = `${name}@${this.light}`;
     const cached = this.cache.get(key);
     if (cached !== undefined) return cached;
     let canvas: HTMLCanvasElement | null = null;

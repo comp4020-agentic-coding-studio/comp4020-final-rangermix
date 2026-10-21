@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
+import palettes from "../../content/sprites/palettes.json";
 import { toCanvas } from "../src/iso";
-import { drawOrder, hitAt, personLift } from "../src/render";
+import { draw, drawOrder, hitAt, personLift } from "../src/render";
+import { Sprites } from "../src/sprites";
 import { fromWelcome } from "../src/state";
 
 // What's drawn, in order, in the room at an angle (slice 09): what lies flat
@@ -159,6 +161,38 @@ describe("the room's draw order", () => {
     // The sofa is 16 px tall; someone on it sinks 4 px in.
     expect(personLift(s, s.people.get(1)!, 10_000)).toBe(12);
     expect(personLift(s, s.people.get(2)!, 10_000)).toBe(0);
+  });
+
+  // Slice 10: the room in the hour's colours, with no grey wash over it.
+
+  it("paints the floor in the day's colours by day and the night's at night, with no wash laid over", () => {
+    const fills = (light: number) => {
+      const seen: string[] = [];
+      let alpha = 1;
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, k) => (k === "globalAlpha" ? alpha : k === "fillRect" ? () => seen.push(`rect ${alpha}`) : () => {}),
+          set: (_t, k, v) => {
+            if (k === "fillStyle") seen.push(String(v));
+            if (k === "globalAlpha") alpha = v;
+            return true;
+          },
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const sprites = new Sprites();
+      sprites.light = light;
+      draw(ctx, fromWelcome(welcome(), 10_000), sprites, 10_000, { tile: null, visible: false, hover: null, ghost: null }, light);
+      return seen;
+    };
+    const day = fills(0);
+    const night = fills(1);
+    expect(day).toContain(palettes.day.room[0]);
+    expect(day).not.toContain(palettes.night.room[0]);
+    expect(night).toContain(palettes.night.room[0]);
+    expect(night).not.toContain(palettes.day.room[0]);
+    // Nothing is laid over the whole canvas at less than full strength.
+    for (const seen of [day, night]) expect(seen.filter((s) => s.startsWith("rect ") && s !== "rect 1")).toEqual([]);
   });
 
   it("draws a held cat with its holder, not on its own", () => {

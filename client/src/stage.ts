@@ -1,5 +1,5 @@
 import type { Cafe } from "./cafe";
-import { canberraHour } from "./canberra";
+import { canberraHour, lightAt } from "./canberra";
 import { type Layout, PHONE, panOffset } from "./layout";
 import { positionAt } from "./motion";
 import { ISO, pickTile, toCanvas } from "./iso";
@@ -158,7 +158,7 @@ export class Stage {
     if (this.canvas.width !== ISO.width) this.fit();
     if (this.layout === "b") this.pan(state);
     const ctx = this.canvas.getContext("2d");
-    if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, canberraHour());
+    if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, lightAt(canberraHour()));
   }
 
   /**
