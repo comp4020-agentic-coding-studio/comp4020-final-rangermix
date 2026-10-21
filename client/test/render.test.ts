@@ -78,6 +78,44 @@ describe("the room's draw order", () => {
     expect(drawn.find((d) => d.label === "cat tora")?.lift).toBe(0);
   });
 
+  // Slice 09's review, findings 2, 3 and 7.
+
+  it("draws a cat asleep on someone's lap over them, on the sofa and on a chair", () => {
+    for (const seat of [piece(3, "chair", 9, 4, 1, 1), null]) {
+      const w = welcome();
+      const at = seat ? { x: seat.x, y: seat.y } : { x: 1, y: 5 };
+      if (seat) w.snapshot.room.furniture.push(seat);
+      w.snapshot.people[0] = { ...w.snapshot.people[0], at, sitting: true };
+      w.snapshot.cats[0] = { ...w.snapshot.cats[0], at, pose: "nap" };
+      const order = drawOrder(fromWelcome(w, 10_000), 10_000).map((d) => d.label);
+      expect(order.indexOf("cat mochi"), `on ${seat ? "the chair" : "the sofa"}`).toBeGreaterThan(order.indexOf("person 1"));
+    }
+  });
+
+  it("draws someone just behind the sofa's far end before the sofa", () => {
+    const w = welcome();
+    w.snapshot.people[0] = { ...w.snapshot.people[0], at: { x: 2, y: 4 } };
+    const order = drawOrder(fromWelcome(w, 10_000), 10_000).map((d) => d.label);
+    expect(order.indexOf("person 1")).toBeLessThan(order.indexOf("piece sofa"));
+  });
+
+  it("draws the toys, a cushion and a treat put on the rug after the rug", () => {
+    const w = welcome();
+    w.snapshot.room.furniture.push(piece(4, "toys", 4, 4, 1, 1), { ...piece(5, "cushion", 6, 5, 1, 1), blocks: false });
+    w.snapshot.treats = [{ id: 1, at: { x: 5, y: 6 } }];
+    const order = drawOrder(fromWelcome(w, 10_000), 10_000).map((d) => d.label);
+    for (const what of ["piece toys", "piece cushion", "treat 1"]) expect(order.indexOf(what), what).toBeGreaterThan(order.indexOf("piece rug"));
+  });
+
+  it("draws a cat walking over a piece up on top of it", () => {
+    const w = welcome();
+    w.snapshot.room.furniture.push(piece(3, "cat_tower", 0, 1, 2, 2));
+    // Half-way across the tower, walking.
+    w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 0, y: 1 }, pose: "walk", walk: { path: [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }], start: 10_000, speed: 1 } };
+    const drawn = drawOrder(fromWelcome(w, 10_500), 10_500);
+    expect(drawn.find((d) => d.label === "cat mochi")?.lift).toBe(44);
+  });
+
   it("draws a held cat with its holder, not on its own", () => {
     expect(order).not.toContain("cat burakku");
     expect(order).toContain("person 2");

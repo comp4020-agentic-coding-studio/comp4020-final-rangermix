@@ -146,6 +146,7 @@ export interface Drawn {
   y: number;
   w: number;
   h: number;
+  layer: number;
   lift: number;
   paint: (ctx: Ctx, sprites: Sprites) => void;
 }
@@ -160,14 +161,20 @@ function standingOn(state: CafeState, spot: { x: number; y: number }): Furniture
   return state.room.furniture.find((f) => !f.toppled && !f.under && HEIGHT[f.kind] > 4 && x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h) ?? null;
 }
 
+/** What's drawn later on the same spot: a piece, a treat on it, a cat, a person, a cat on their lap. */
+const LAYER = { piece: 0, treat: 1, cat: 2, person: 3, lap: 4 } as const;
+
 /**
- * Everything on the floor, in the order it's drawn: what lies flat (the rug,
- * the cushion) first, then what stands, nothing nearer the viewer first.
+ * Everything in the room, in the order it's drawn: what things stand on (the
+ * rug) first, then everything else, nothing nearer the viewer first. Each
+ * thing keeps its true footprint; things on the same spot go by their layer.
+ * Something up on a standing piece takes the piece's footprint, one layer
+ * up, so it's drawn just after the piece and before what's in front of it.
  */
 export function drawOrder(state: CafeState, localNow: number): Drawn[] {
   const now = serverNow(state, localNow);
-  const flat: Drawn[] = [];
-  const standing: Drawn[] = [];
+  const under: Drawn[] = [];
+  const rest: Drawn[] = [];
   for (const f of state.room.furniture) {
     const item: Drawn = {
       label: `piece ${f.kind}`,
@@ -175,6 +182,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       y: f.y,
       w: f.w,
       h: f.h,
+      layer: LAYER.piece,
       lift: 0,
       paint: (ctx, sprites) => {
         drawPiece(ctx, f);
@@ -186,7 +194,23 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
         }
       },
     };
-    (f.under || HEIGHT[f.kind] <= 4 ? flat : standing).push(item);
+    (f.under ? under : rest).push(item);
+  }
+  // Treats on the floor, or on the rug or the cushion they were put on.
+  for (const [id, at] of state.treats) {
+    rest.push({
+      label: `treat ${id}`,
+      x: at.x,
+      y: at.y,
+      w: 1,
+      h: 1,
+      layer: LAYER.treat,
+      lift: 0,
+      paint: (ctx, sprites) => {
+        const p = toCanvas(at.x + 0.5, at.y + 0.5);
+        blit(ctx, sprites.emote("treat"), p.x - 4, p.y - 6);
+      },
+    });
   }
   // A held cat is drawn in its holder's arms, not on the floor.
   const inArms = new Map<number, Cat>();
@@ -197,10 +221,10 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     }
     const spot = positionAt(cat.walk, cat.at, now);
     // A cat asleep on someone's lap is drawn over them, as a held cat is.
-    const onLap = lapOf(state, cat) !== null;
-    const under = spot.moving ? null : standingOn(state, spot);
-    const lift = under ? HEIGHT[under.kind] : 0;
-    standing.push({ label: `cat ${cat.id}`, ...onTop(spot, under, onLap ? 0.3 : 0), lift, paint: (ctx, sprites) => drawCat(ctx, sprites, cat, spot, now, lift) });
+    const layer = lapOf(state, cat) !== null ? LAYER.lap : LAYER.cat;
+    const on = standingOn(state, spot);
+    const lift = on ? HEIGHT[on.kind] : 0;
+    rest.push({ label: `cat ${cat.id}`, ...footprint(spot, on), layer, lift, paint: (ctx, sprites) => drawCat(ctx, sprites, cat, spot, now, lift) });
   }
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;
@@ -210,11 +234,12 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     const carried = state.held.get(person.id) ?? null;
     const held = inArms.get(person.id) ?? null;
     // Sitting, they're up on the seat, and sink a little into it.
-    const under = spot.moving ? null : standingOn(state, spot);
-    const lift = under ? Math.max(0, HEIGHT[under.kind] - 4) : 0;
-    standing.push({
+    const on = spot.moving ? null : standingOn(state, spot);
+    const lift = on ? Math.max(0, HEIGHT[on.kind] - 4) : 0;
+    rest.push({
       label: `person ${person.id}`,
-      ...onTop(spot, under, 0.15),
+      ...footprint(spot, on),
+      layer: LAYER.person,
       lift,
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
@@ -223,17 +248,12 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       },
     });
   }
-  return [...inDrawOrder(flat), ...inDrawOrder(standing)];
+  return [...inDrawOrder(under), ...inDrawOrder(rest)];
 }
 
-/**
- * The footprint something standing at `spot` sorts by: its own tile, nudged
- * toward the viewer by `nudge`, or on top of the piece `under` it, sorting
- * just in front of that piece so it's drawn after it.
- */
-function onTop(spot: { x: number; y: number }, under: FurnitureView | null, nudge: number): { x: number; y: number; w: number; h: number } {
-  if (!under) return { x: spot.x + nudge, y: spot.y + nudge, w: 1, h: 1 };
-  return { x: Math.max(spot.x, under.x + under.w - 1) + 0.5, y: Math.max(spot.y, under.y + under.h - 1) + 0.5, w: 0.5, h: 0.5 };
+/** The footprint something at `spot` sorts by: its own tile, or the piece it's up on. */
+function footprint(spot: { x: number; y: number }, on: FurnitureView | null): { x: number; y: number; w: number; h: number } {
+  return on ? { x: on.x, y: on.y, w: on.w, h: on.h } : { x: spot.x, y: spot.y, w: 1, h: 1 };
 }
 
 export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, hour: number): void {
@@ -245,12 +265,6 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
 
   drawFloor(ctx, room);
   drawWalls(ctx, state, sprites);
-
-  // Treats on the floor.
-  for (const at of state.treats.values()) {
-    const p = toCanvas(at.x + 0.5, at.y + 0.5);
-    blit(ctx, sprites.emote("treat"), p.x - 4, p.y - 6);
-  }
 
   for (const item of drawOrder(state, localNow)) item.paint(ctx, sprites);
 

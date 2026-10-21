@@ -73,6 +73,19 @@ describe("the isometric camera", () => {
     }
   });
 
+  it("draws things on the same spot by their layer, whatever order they come in", () => {
+    const seat = { name: "chair", x: 9, y: 4, w: 1, h: 1, layer: 0 };
+    const sitter = { name: "sitter", x: 9, y: 4, w: 1, h: 1, layer: 2 };
+    const lapCat = { name: "lap cat", x: 9, y: 4, w: 1, h: 1, layer: 3 };
+    for (const items of [
+      [lapCat, sitter, seat],
+      [sitter, seat, lapCat],
+      [seat, lapCat, sitter],
+    ]) {
+      expect(inDrawOrder(items).map((i) => i.name)).toEqual(["chair", "sitter", "lap cat"]);
+    }
+  });
+
   it("draws a whole room in an order where nothing nearer comes first", () => {
     // The starting room's footprints and two cats between them.
     const items = [

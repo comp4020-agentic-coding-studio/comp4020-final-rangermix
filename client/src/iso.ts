@@ -49,6 +49,11 @@ export interface Footprint {
   y: number;
   w: number;
   h: number;
+  /**
+   * Among things neither behind the other at the same distance, what's drawn
+   * later: a seat, then whoever sits on it, then a cat on their lap.
+   */
+  layer?: number;
 }
 
 /** Whether `a` lies wholly behind `b`, further from the viewer along either axis. */
@@ -61,11 +66,11 @@ function behind(a: Footprint, b: Footprint): boolean {
  * behind another before it, so nothing nearer the viewer is painted over. A
  * single number for depth can't do it: a cat by the far end of a long sofa
  * and one beside it would tie. Among things neither behind the other, nearer
- * footprint centres come later.
+ * footprint centres come later, then higher layers.
  */
 export function inDrawOrder<T extends Footprint>(items: T[]): T[] {
   const centre = (f: Footprint) => f.x + f.w / 2 + f.y + f.h / 2;
-  const left = [...items].sort((a, b) => centre(a) - centre(b));
+  const left = [...items].sort((a, b) => centre(a) - centre(b) || (a.layer ?? 0) - (b.layer ?? 0));
   const out: T[] = [];
   while (left.length > 0) {
     // The first, by centre, with nothing still to draw wholly behind it.
