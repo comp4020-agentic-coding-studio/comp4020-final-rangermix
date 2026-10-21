@@ -274,6 +274,58 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.getByRole("button", { name: "Close" }).click();
   });
 
+  it("opens a cat's menu by a click or tap where it's drawn, up on the window seat, at both sizes", async () => {
+    // Slice 09's review, finding 1: at an angle a cat on a piece is drawn
+    // up off its tile, over the wall behind, and a click there used to walk
+    // to the wall. The page is shown one napping on the window seat at (3,1),
+    // as the low menu check below pins one, and held there.
+    const SEAT = { x: 3, y: 1 };
+    const napping = (page: Page) =>
+      page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        let pinned: string | null = null;
+        server.onMessage((m) => {
+          const f = JSON.parse(String(m));
+          if (f.type === "welcome") {
+            const cat = f.snapshot.cats[0];
+            pinned = cat.id;
+            Object.assign(cat, { at: SEAT, walk: null, pose: "nap", heldBy: null });
+            ws.send(JSON.stringify(f));
+          } else if (f.cat !== pinned) ws.send(m);
+        });
+      });
+    for (const [viewport, touch] of [
+      [{ width: 1920, height: 1080 }, false],
+      [{ width: 390, height: 844 }, true],
+    ] as const) {
+      const v = await visit(viewport, touch, { prepare: napping });
+      const name = v.frames.find((f) => f.type === "welcome")!.snapshot.cats[0].name;
+      if (touch) {
+        // In the bigger room the seat can be off screen: the keyboard's
+        // pointer onto it pulls the view there, and the view stays when
+        // the pointer is put away.
+        await v.page.locator("#room").focus();
+        await v.page.keyboard.press("ArrowRight");
+        for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
+        for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowUp");
+        for (let i = 0; i < SEAT.x; i++) await v.page.keyboard.press("ArrowRight");
+        await v.page.waitForTimeout(400);
+      }
+      // The sprite's middle: 12 px up the seat, then half its 16 px, from feet
+      // 2 px below the tile's centre; times the room's scale.
+      const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
+      const floor = await tileAt(v.page, SEAT);
+      const at = { x: floor.x, y: floor.y - (12 + 8 - 2) * scale };
+      expect(at.x, "the cat is on screen").toBeGreaterThan(0);
+      expect(at.x).toBeLessThan(viewport.width);
+      if (touch) await v.page.touchscreen.tap(at.x, at.y);
+      else await v.page.mouse.click(at.x, at.y);
+      await expect.poll(() => v.page.locator(".menu").getAttribute("aria-label"), { timeout: 3000 }).toBe(name);
+      expect(v.sent.some((f) => f.type === "walkTo"), "no walk to the wall behind it").toBe(false);
+      await v.page.keyboard.press("Escape");
+    }
+  });
+
   it("keeps a cat's menu opened low in the room whole on screen, by mouse and by keyboard, at both desktop sizes", async () => {
     // A cat's menu is tall, and opened on the bottom row it ran off the
     // room's bottom, under the talk bar. Cats wander, so this page is shown

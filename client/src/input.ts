@@ -124,7 +124,12 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
 
   const onPointer = (e: PointerEvent) => {
     if (e.button !== 0) return;
-    const tile = stage.cssToTile(e.clientX, e.clientY);
+    // What's drawn under the pointer, where it's drawn (a cat up on the
+    // window seat, a head over the tile behind); carrying something, the
+    // floor where it would go.
+    const state = cafe.state;
+    const carrying = state !== null && state.held.has(state.you);
+    const tile = carrying ? stage.cssToTile(e.clientX, e.clientY) : stage.whatsDrawnAt(e.clientX, e.clientY);
     if (!tile) return;
     pointer.visible = false;
     actAt(tile);

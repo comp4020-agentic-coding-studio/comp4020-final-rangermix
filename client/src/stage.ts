@@ -3,7 +3,7 @@ import { canberraHour } from "./canberra";
 import { type Layout, panOffset } from "./layout";
 import { positionAt } from "./motion";
 import { ISO, pickTile, toCanvas } from "./iso";
-import { type Pointer, draw } from "./render";
+import { type Pointer, draw, hitAt } from "./render";
 import { fitScale } from "./scale";
 import { Sprites } from "./sprites";
 import { serverNow } from "./state";
@@ -76,12 +76,24 @@ export class Stage {
     return { x: feet.left, head: feet.top - FIGURE * this.scale, feet: feet.top };
   }
 
-  /** The tile under a pointer, or null outside the room. */
+  /** The floor's tile under a pointer (or the street wall's, for row 0), or null outside the room. */
   cssToTile(clientX: number, clientY: number): { x: number; y: number } | null {
     const room = this.cafe.state?.room;
     if (!room) return null;
     const r = this.canvas.getBoundingClientRect();
     return pickTile((clientX - r.left) / this.scale, (clientY - r.top) / this.scale, room);
+  }
+
+  /**
+   * The tile of what's drawn under a pointer: a cat, person, piece or treat
+   * where it's drawn, which stands up off its tile at an angle; else the
+   * floor's tile under it (slice 09's review, finding 1).
+   */
+  whatsDrawnAt(clientX: number, clientY: number): { x: number; y: number } | null {
+    const state = this.cafe.state;
+    if (!state) return null;
+    const r = this.canvas.getBoundingClientRect();
+    return hitAt(state, (clientX - r.left) / this.scale, (clientY - r.top) / this.scale, Date.now()) ?? this.cssToTile(clientX, clientY);
   }
 
   /**

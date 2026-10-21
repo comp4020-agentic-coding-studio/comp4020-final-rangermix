@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
-import { drawOrder } from "../src/render";
+import { toCanvas } from "../src/iso";
+import { drawOrder, hitAt } from "../src/render";
 import { fromWelcome } from "../src/state";
 
 // What's drawn, in order, in the room at an angle (slice 09): what lies flat
@@ -114,6 +115,41 @@ describe("the room's draw order", () => {
     w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 0, y: 1 }, pose: "walk", walk: { path: [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }], start: 10_000, speed: 1 } };
     const drawn = drawOrder(fromWelcome(w, 10_500), 10_500);
     expect(drawn.find((d) => d.label === "cat mochi")?.lift).toBe(44);
+  });
+
+  // Slice 09's review, finding 1: a click lands on what's drawn there.
+
+  it("finds a cat napping on the window seat where it's drawn, not the wall behind it", () => {
+    const w = welcome();
+    w.snapshot.room.furniture.push(piece(3, "window_seat", 2, 1, 2, 1));
+    w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 3, y: 1 }, pose: "nap" };
+    const s = fromWelcome(w, 10_000);
+    // The middle of the cat's sprite: feet 2 px below the tile's centre, raised by the seat's 12 px, 16 px tall.
+    const c = toCanvas(3.5, 1.5);
+    expect(hitAt(s, c.x, c.y + 2 - 12 - 8, 10_000)).toEqual({ x: 3, y: 1 });
+  });
+
+  it("finds a cat on the floor by its head, over the tile behind it", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    // Tora at (5,5): the top of its sprite is over (4,4)'s diamond.
+    const c = toCanvas(5.5, 5.5);
+    expect(hitAt(s, c.x, c.y + 2 - 14, 10_000)).toEqual({ x: 5, y: 5 });
+  });
+
+  it("finds a piece by the top of its block, and a cat in front of a piece before the piece", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    // The sofa's top face over (1,5), 16 px up.
+    const top = toCanvas(1.5, 5.5);
+    expect(hitAt(s, top.x, top.y - 16, 10_000)).toEqual({ x: 1, y: 5 });
+    // Someone at (1,6), in front of the sofa: their body covers the sofa's front face.
+    const me = toCanvas(1.5, 6.5);
+    expect(hitAt(s, me.x, me.y - 8, 10_000)).toEqual({ x: 1, y: 6 });
+  });
+
+  it("finds nothing drawn over bare floor, so the floor's tile is picked", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    const c = toCanvas(10.5, 2.5);
+    expect(hitAt(s, c.x, c.y, 10_000)).toBeNull();
   });
 
   it("draws a held cat with its holder, not on its own", () => {

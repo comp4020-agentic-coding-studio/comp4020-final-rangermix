@@ -1,7 +1,7 @@
 import heights from "../../content/sprites/heights.json";
 import palettes from "../../content/sprites/palettes.json";
 import { nightTint } from "./canberra";
-import { ISO, inDrawOrder, toCanvas } from "./iso";
+import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
 import type { Look } from "./protocol/Look";
@@ -149,6 +149,75 @@ export interface Drawn {
   layer: number;
   lift: number;
   paint: (ctx: Ctx, sprites: Sprites) => void;
+  /** The tile a canvas point on this thing as drawn stands for, or null if the point isn't on it. */
+  hit?: (px: number, py: number) => { x: number; y: number } | null;
+}
+
+/** Whether (px, py) is inside the convex polygon `pts`. */
+function inside(pts: Pt[], px: number, py: number): boolean {
+  let sign = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const cross = (b.x - a.x) * (py - a.y) - (b.y - a.y) * (px - a.x);
+    if (cross === 0) continue;
+    if (sign === 0) sign = Math.sign(cross);
+    else if (Math.sign(cross) !== sign) return false;
+  }
+  return true;
+}
+
+/**
+ * The tile of a piece's footprint that a point on its block stands for: the
+ * point taken down to the block's top, or to the floor for its faces, and
+ * kept within the footprint.
+ */
+function blockTile(f: FurnitureView, z: number, px: number, py: number): { x: number; y: number } {
+  const onTop = fromCanvasAt(px, py + z);
+  const g = onTop.gx >= f.x && onTop.gx < f.x + f.w && onTop.gy >= f.y && onTop.gy < f.y + f.h ? onTop : fromCanvasAt(px, py);
+  const clamp = (v: number, lo: number, n: number) => Math.min(lo + n - 1, Math.max(lo, Math.floor(v)));
+  return { x: clamp(g.gx, f.x, f.w), y: clamp(g.gy, f.y, f.h) };
+}
+
+/** Where a piece's block is drawn: its outline, top and two faces together. */
+function blockOutline(f: FurnitureView): Pt[] {
+  const z = HEIGHT[f.kind] ?? 8;
+  const i = INSET[f.kind] ?? 0.06;
+  const [x, y, w, h] = [f.x + i, f.y + i, f.w - 2 * i, f.h - 2 * i];
+  if (f.toppled) {
+    const along = Math.min(f.w - 0.1, w * 1.8);
+    const lz = Math.max(2, Math.round(z / 3));
+    const [bx, by, bw, bh] = [f.x + (f.w - along) / 2, y + h * 0.25, along, h * 0.5];
+    return [up(bx, by, lz), up(bx + bw, by, lz), up(bx + bw, by), up(bx + bw, by + bh), up(bx, by + bh), up(bx, by + bh, lz)];
+  }
+  return [up(x, y, z), up(x + w, y, z), up(x + w, y), up(x + w, y + h), up(x, y + h), up(x, y + h, z)];
+}
+
+/** A figure's sprite box, `lift` pixels up, as a polygon. */
+function spriteBox(spot: { x: number; y: number }, lift: number): Pt[] {
+  const at = feetAt(spot);
+  const top = at.y - lift;
+  return [
+    { x: at.x, y: top },
+    { x: at.x + TILE, y: top },
+    { x: at.x + TILE, y: top + TILE },
+    { x: at.x, y: top + TILE },
+  ];
+}
+
+/**
+ * The tile of whatever is drawn at canvas point (px, py), the nearest the
+ * viewer first: a cat or person by their sprite, a piece by its block, a
+ * treat. Null over bare floor, the rug or the walls, where the floor's own
+ * diamond (or the street wall) is what's under the pointer.
+ */
+export function hitAt(state: CafeState, px: number, py: number, localNow: number): { x: number; y: number } | null {
+  const order = drawOrder(state, localNow);
+  for (let i = order.length - 1; i >= 0; i--) {
+    const tile = order[i].hit?.(px, py);
+    if (tile) return tile;
+  }
+  return null;
 }
 
 /**
@@ -184,6 +253,8 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       h: f.h,
       layer: LAYER.piece,
       lift: 0,
+      // What others stand on is the floor, as far as a click goes.
+      hit: f.under ? undefined : (px, py) => (inside(blockOutline(f), px, py) ? blockTile(f, HEIGHT[f.kind] ?? 8, px, py) : null),
       paint: (ctx, sprites) => {
         drawPiece(ctx, f);
         if (f.kind === "bowls" && state.bowls > 0) {
@@ -206,6 +277,10 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       h: 1,
       layer: LAYER.treat,
       lift: 0,
+      hit: (px, py) => {
+        const p = toCanvas(at.x + 0.5, at.y + 0.5);
+        return px >= p.x - 4 && px < p.x + 4 && py >= p.y - 6 && py < p.y + 2 ? { x: at.x, y: at.y } : null;
+      },
       paint: (ctx, sprites) => {
         const p = toCanvas(at.x + 0.5, at.y + 0.5);
         blit(ctx, sprites.emote("treat"), p.x - 4, p.y - 6);
@@ -224,7 +299,15 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     const layer = lapOf(state, cat) !== null ? LAYER.lap : LAYER.cat;
     const on = standingOn(state, spot);
     const lift = on ? HEIGHT[on.kind] : 0;
-    rest.push({ label: `cat ${cat.id}`, ...footprint(spot, on), layer, lift, paint: (ctx, sprites) => drawCat(ctx, sprites, cat, spot, now, lift) });
+    const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
+    rest.push({
+      label: `cat ${cat.id}`,
+      ...footprint(spot, on),
+      layer,
+      lift,
+      hit: (px, py) => (inside(spriteBox(spot, lift), px, py) ? tile : null),
+      paint: (ctx, sprites) => drawCat(ctx, sprites, cat, spot, now, lift),
+    });
   }
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;
@@ -236,11 +319,13 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     // Sitting, they're up on the seat, and sink a little into it.
     const on = spot.moving ? null : standingOn(state, spot);
     const lift = on ? Math.max(0, HEIGHT[on.kind] - 4) : 0;
+    const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
     rest.push({
       label: `person ${person.id}`,
       ...footprint(spot, on),
       layer: LAYER.person,
       lift,
+      hit: (px, py) => (inside(spriteBox(spot, lift), px, py) ? tile : null),
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
