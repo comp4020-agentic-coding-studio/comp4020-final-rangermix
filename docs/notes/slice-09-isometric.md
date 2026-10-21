@@ -45,3 +45,23 @@ One short visit by `agent_58ab87`, a fresh password never written down
 Left: the judged line, "the room reads as a room you look into, with the
 street wall at the back right, and nothing hidden that shouldn't be", is
 the user's, from these screenshots and the ones beside them.
+
+## Turned, and checked live again (2026-10-22, about 05:55 AEDT)
+
+The user judged the room ("otherwise lgtm") and asked for it turned 90° so
+the door and window are on the left
+([`f02e67d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f02e67d)).
+CI run 39652889596 passed and deployed it (`index-BDQdeBgV.js`). One short
+visit by `agent_0b8fea`, a fresh password never written down:
+
+- At 1920×1080 it went inside (2 of 6: a real visitor was in). The street
+  wall, with its four windows, the door and the chalkboard in their order,
+  stands on the left; the plain wall on the right
+  ([screenshot](screens/slice-09/live-turned-desktop-1920x1080.png)).
+  Burakku napped up on the cat tower at the back right, Mochi on the cat
+  bed.
+- A click on the chalkboard, now on the left wall, opened the board.
+- On a 390×844 phone the same account opened in the bigger room, with no
+  sideways scroll
+  ([screenshot](screens/slice-09/live-turned-phone-390x844.png)).
+- No errors in the page.
