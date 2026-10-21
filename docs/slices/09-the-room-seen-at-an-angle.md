@@ -1,6 +1,6 @@
 # 09. The room seen at an angle
 
-- **Status:** Reviewed, every finding answered ([findings](../notes/reviews/slice-09-findings.md)), and merged to `main` 2026-10-21 (approved, planned and built the same day, with the proposed default for its open question: the arrows move along the room's axes). Its judged line waits for the user, from [the screenshots](../notes/screens/slice-09/)
+- **Status:** Reviewed, every finding answered ([findings](../notes/reviews/slice-09-findings.md)), and deployed 2026-10-21, checked live ([notes](../notes/slice-09-isometric.md)); approved, planned and built the same day, with the proposed default for its open question (the arrows move along the room's axes). `Live` once the user has judged the room from [the screenshots](../notes/screens/slice-09/)
 - **Plan:** [`docs/notes/plan-slice-09-isometric.md`](../notes/plan-slice-09-isometric.md)
 - **Design:** The room (12 by 10 tiles); The client ("Phone", "Drawing",
   "The look");

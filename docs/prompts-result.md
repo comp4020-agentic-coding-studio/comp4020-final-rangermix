@@ -1522,3 +1522,14 @@ then test first, task by task:
 - **Merged to `main`** once fmt, clippy, `cargo test`, the 127 client
   tests and 65 of 67 spec checks passed locally (the two left are slice
   07's waking checks, which time out on this machine on `main` too).
+- **Deployed, after one red run.** The merge's first CI run failed two
+  browser checks, so nothing deployed. On a fresh café, as CI runs one: a
+  tap that opened the board was closed by the phone's click after it,
+  landing on the backdrop (hidden before by where the board's tile sat),
+  and the touch pick-up check skipped cats napping on furniture. Fixed
+  ([`0b0fddd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0b0fddd));
+  CI run 39586448040 passed and deployed. Checked live with one short
+  `agent_` visit: the angled room at 3× on the desktop, the board opened
+  from the street wall, a phone in the bigger room, no errors
+  ([notes](notes/slice-09-isometric.md)). The judged line, whether the
+  room reads as a room you look into, is the user's.
