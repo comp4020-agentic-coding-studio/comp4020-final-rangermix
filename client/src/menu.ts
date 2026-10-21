@@ -31,11 +31,18 @@ function freeArea(overlay: HTMLElement): { left: number; top: number; right: num
 /** Lays a ring's buttons out round `anchor`, clear of the bars floating over the room. */
 function placeRing(menu: HTMLElement, overlay: HTMLElement, anchor: { left: number; top: number }): void {
   const buttons = [...menu.querySelectorAll<HTMLButtonElement>("button")];
-  const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, ringRadius(buttons.length, 88), freeArea(overlay), 88);
+  const radius = ringRadius(buttons.length, 88);
+  const free = freeArea(overlay);
+  const spots = ringPositions(buttons.length, { x: anchor.left, y: anchor.top }, radius, free, 88);
   buttons.forEach((b, i) => {
     b.style.left = `${spots[i].x}px`;
     b.style.top = `${spots[i].y}px`;
   });
+  // Where the ring is round, on the page: one button's spot doesn't say.
+  const centre = ringCentre({ x: anchor.left, y: anchor.top }, radius, free, 88);
+  const box = overlay.getBoundingClientRect();
+  menu.dataset.centreX = String(Math.round(box.left + centre.x));
+  menu.dataset.centreY = String(Math.round(box.top + centre.y));
 }
 
 /** The room moved under an open ring: it follows its tile to `anchor`. */

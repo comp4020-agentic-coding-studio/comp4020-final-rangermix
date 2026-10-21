@@ -163,14 +163,18 @@ async function tabToCat(v: Visit, ok: (c: CatSeen) => boolean = () => true): Pro
   return null;
 }
 
-/** How far the open ring's middle is from a tile's centre on screen, and how wide a tile is, in CSS pixels. */
+/**
+ * How far the open ring's centre is from a tile's centre on screen, and how
+ * wide a tile is, in CSS pixels. The ring says where its centre is: with
+ * one button, that button's spot is a radius away from it.
+ */
 async function ringFromTile(page: Page, tile: Tile): Promise<{ off: number; px: number }> {
   const room = (await page.locator("#room").boundingBox())!;
   // A tile's diamond is 32 of the canvas's 336 pixels across.
   const px = (room.width * 32) / 336;
   const at = await tileAt(page, tile);
-  const boxes = await Promise.all((await page.locator(".menu.ring").getByRole("menuitem").all()).map((b) => b.boundingBox()));
-  const centre = boxes.reduce((c, b) => ({ x: c.x + (b!.x + b!.width / 2) / boxes.length, y: c.y + (b!.y + b!.height / 2) / boxes.length }), { x: 0, y: 0 });
+  const ring = page.locator(".menu.ring");
+  const centre = { x: Number(await ring.getAttribute("data-centre-x")), y: Number(await ring.getAttribute("data-centre-y")) };
   return { off: Math.hypot(centre.x - at.x, centre.y - at.y), px };
 }
 
@@ -584,29 +588,43 @@ describe("in a browser", { timeout: 30_000 }, () => {
   });
 
   it("in the bigger room, moves the room over so a ring fits round something by its edge", async () => {
-    // The view stops at the room's edges, so the end of the sofa against the
-    // left wall sits at the screen's edge, where a ring round it would hang
-    // off the screen. The ring used to slide inwards off its tile, onto the
-    // thing it was for (CI caught it on a cat napping on the cat bed,
-    // 2026-10-13); the room moves over instead while the ring is open.
-    // A phone opens in the bigger room (slice 09).
+    // The view stops at the room's edges, so what's in the room's left
+    // corner on screen sits at the screen's edge, where a ring round it
+    // would hang off the screen. The ring used to slide inwards off its
+    // tile, onto the thing it was for (CI caught it on a cat napping on the
+    // cat bed, 2026-10-13); the room moves over instead while the ring is
+    // open. At an angle that corner is the box at (1,9) (slice 09's review,
+    // finding 5: the sofa's end is no longer at an edge).
     const v = await visit({ width: 390, height: 844 }, true);
     await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
     const welcome = v.frames.find((f) => f.type === "welcome")!;
-    const sofa = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "sofa");
-    expect(sofa.x, "the sofa stands against the left wall").toBe(0);
-    // The pointer out, then left and up into the corner whatever the arrows
-    // are clamped to, then down to the sofa's end.
+    const box = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "box");
+    expect(box, "the box stands in the room's front-left corner").toMatchObject({ x: 1, y: 9 });
+    // The pointer out, then left and down into the corner whatever the
+    // arrows are clamped to, then onto the box.
     await v.page.locator("#room").focus();
     await v.page.keyboard.press("ArrowRight");
     for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
-    for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowUp");
-    for (let i = 1; i < sofa.y; i++) await v.page.keyboard.press("ArrowDown");
+    for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowDown");
+    await v.page.keyboard.press("ArrowRight");
+    // The view has followed the pointer as far as it goes before Enter.
+    const leftOf = () => v.page.evaluate(() => document.getElementById("room")!.style.left);
+    let settled = await leftOf();
+    for (let i = 0; i < 20; i++) {
+      await v.page.waitForTimeout(100);
+      const now = await leftOf();
+      if (now === settled) break;
+      settled = now;
+    }
+    expect(settled, "the view stops at the room's left edge").toBe("0px");
     await v.page.keyboard.press("Enter");
     await v.page.locator(".menu.ring").waitFor({ timeout: 3000 });
     await v.page.waitForTimeout(500);
-    const { off, px } = await ringFromTile(v.page, { x: sofa.x, y: sofa.y });
-    expect(off, "the ring is round the sofa's end").toBeLessThanOrEqual(px * 1.5);
+    const { off } = await ringFromTile(v.page, { x: box.x, y: box.y });
+    // Round the box itself: the room moved over by just as much as the ring
+    // would otherwise have slid (about 20 px here), so its centre is on the
+    // box's to the pixel, give or take rounding.
+    expect(off, "the ring is round the box").toBeLessThanOrEqual(3);
     await expectRingClear(v.page);
   });
 
@@ -735,6 +753,46 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await board.waitFor();
     await v.page.locator("#board-close").tap();
     await board.waitFor({ state: "hidden" });
+    // And by keyboard in the whole room too (slice 09's review, finding 6):
+    // the board by Shift+Tab, then a menu from the sheet by Tab and Enter.
+    await v.page.locator("#room").focus();
+    await v.page.keyboard.press("ArrowRight");
+    await v.page.keyboard.press("Shift+Tab");
+    await v.page.keyboard.press("Enter");
+    await board.waitFor();
+    expect(await focused(v.page)).toBe("board-close");
+    await v.page.keyboard.press("Escape");
+    await board.waitFor({ state: "hidden" });
+    await v.page.locator("#room").focus();
+    await v.page.keyboard.press("ArrowRight");
+    await v.page.keyboard.press("Tab");
+    await v.page.keyboard.press("Enter");
+    const sheet = v.page.locator(".menu.sheet");
+    await sheet.waitFor();
+    expect(await focused(v.page)).toBe("menuitem");
+    await v.page.keyboard.press("Escape");
+    await sheet.waitFor({ state: "detached" });
+    expect(await focused(v.page)).toBe("room");
+  });
+
+  it("in the bigger room, Tab and Shift+Tab from the room reach only what's on screen (slice 09's review, finding 4)", async () => {
+    const v = await visit({ width: 390, height: 844 }, true);
+    await v.page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    for (const key of ["Tab", "Shift+Tab"]) {
+      await v.page.locator("#room").focus();
+      for (let i = 0; i < 6; i++) {
+        await v.page.keyboard.press(key);
+        const seen = await v.page.evaluate(() => {
+          const el = document.activeElement as HTMLElement | null;
+          if (!el || el === document.body || el.id === "room") return { what: "the room", on: true };
+          const r = el.getBoundingClientRect();
+          // Wholly on the 390 by 844 screen, not clipped away to a pixel.
+          const shown = r.width > 2 && r.height > 2 && r.left >= 0 && r.top >= 0 && r.right <= 390 && r.bottom <= 844;
+          return { what: el.id || el.textContent || el.tagName, on: shown };
+        });
+        expect(seen.on, `${key} reached ${seen.what}, which isn't on screen`).toBe(true);
+      }
+    }
   });
 
   it("opens the board by tapping the chalkboard on a phone, where the panel's copy is out of sight but read", async () => {
