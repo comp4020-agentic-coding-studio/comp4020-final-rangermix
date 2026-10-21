@@ -1,5 +1,5 @@
 import { positionAt } from "./motion";
-import { windowSpot } from "./render";
+import { personLift, windowSpot } from "./render";
 import type { Stage } from "./stage";
 import { type CafeState, pruneBubbles, serverNow } from "./state";
 
@@ -74,8 +74,12 @@ export class Bubbles {
         this.overlay.append(el);
         this.shown.set(b.id, el);
       }
-      // Inside, over their head; waiting, over their face in the window, up the street wall.
-      const at = speaker.place === "inside" ? this.stage.figureToCss(positionAt(speaker.walk, speaker.at, now)) : this.windowFace(windowSpot(state, speaker.id).x);
+      // Inside, over their head, as high as they're drawn; waiting, over
+      // their face in the window, or under the window, never on the face.
+      const at =
+        speaker.place === "inside"
+          ? this.stage.figureToCss(positionAt(speaker.walk, speaker.at, now), personLift(state, speaker, localNow))
+          : this.stage.windowFaceToCss(windowSpot(state, speaker.id).x);
       const stack = lift.get(b.from) ?? 0;
       const size = { width: el.offsetWidth, height: el.offsetHeight };
       const { left, top } = placeBubble(at, stack, size, room);
@@ -89,11 +93,5 @@ export class Bubbles {
         this.shown.delete(id);
       }
     }
-  }
-
-  /** A face in the window over column `x`: halfway up the street wall. */
-  private windowFace(x: number): { x: number; head: number; feet: number } {
-    const face = this.stage.wallToCss(x + 0.5);
-    return { x: face.left, head: face.top, feet: face.top };
   }
 }

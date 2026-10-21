@@ -10,6 +10,9 @@ import { serverNow } from "./state";
 
 /** How tall someone stands, in canvas pixels at 1x: today's 16-px sprites, till slice 11. */
 const FIGURE = 16;
+/** A face in the window is drawn from 30 to 39 px up the street wall, over a sill at 20 (render.ts). */
+const FACE_TOP = 39;
+const SILL = 20;
 
 /** The room on screen: sized to the largest whole-number scale that fits, drawn every frame. */
 export class Stage {
@@ -69,11 +72,23 @@ export class Stage {
 
   /**
    * Where someone standing at `spot` is, in CSS pixels within the stage box:
-   * their feet on the tile's centre, their head a figure's height above.
+   * their feet on the tile's centre, raised by `lift` canvas pixels if
+   * they're up on a seat, their head a figure's height above.
    */
-  figureToCss(spot: { x: number; y: number }): { x: number; head: number; feet: number } {
-    const feet = this.tileToCss(spot.x + 0.5, spot.y + 0.5);
-    return { x: feet.left, head: feet.top - FIGURE * this.scale, feet: feet.top };
+  figureToCss(spot: { x: number; y: number }, lift = 0): { x: number; head: number; feet: number } {
+    const centre = this.tileToCss(spot.x + 0.5, spot.y + 0.5);
+    const feet = centre.top - lift * this.scale;
+    return { x: centre.left, head: feet - FIGURE * this.scale, feet };
+  }
+
+  /**
+   * A face peeking in through the window over column `x`, in CSS pixels
+   * within the stage box: its top and the window's sill below it, so a
+   * bubble goes above the face, or below the window, never over it.
+   */
+  windowFaceToCss(x: number): { x: number; head: number; feet: number } {
+    const foot = this.tileToCss(x + 0.5, 1);
+    return { x: foot.left, head: foot.top - FACE_TOP * this.scale, feet: foot.top - SILL * this.scale };
   }
 
   /** The floor's tile under a pointer (or the street wall's, for row 0), or null outside the room. */

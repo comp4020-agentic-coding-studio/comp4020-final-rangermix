@@ -61,6 +61,27 @@ describe("the stage on the isometric camera", () => {
     expect(head).toBe(centre.top - 16 * 3);
   });
 
+  // Slice 09's review, finding 8.
+
+  it("raises someone's head and feet by how high they're drawn, as on a seat", () => {
+    const stage = stageAt(3, 100, 50);
+    const floor = stage.figureToCss({ x: 9, y: 4 });
+    const seated = stage.figureToCss({ x: 9, y: 4 }, 10);
+    expect(seated.head).toBe(floor.head - 10 * 3);
+    expect(seated.feet).toBe(floor.feet - 10 * 3);
+  });
+
+  it("puts a face in the window between the window's top and its sill, so a bubble clears it", () => {
+    const stage = stageAt(3, 100, 50);
+    const { x, head, feet } = stage.windowFaceToCss(3);
+    const sill = stage.tileToCss(3.5, 1).top - 20 * 3;
+    // The face is drawn from 30 to 39 px up the wall.
+    expect(head).toBeLessThanOrEqual(stage.tileToCss(3.5, 1).top - 39 * 3);
+    expect(feet).toBeGreaterThanOrEqual(stage.tileToCss(3.5, 1).top - 30 * 3);
+    expect(feet).toBeLessThanOrEqual(sill + 1);
+    expect(x).toBe(stage.tileToCss(3.5, 1).left);
+  });
+
   it("puts a tile's centre where the camera draws it", () => {
     const stage = stageAt(3, 100, 50);
     // (0,1)'s centre is (0.5, 1.5) on the grid: (160 + 16(0.5 - 1.5), 56 + 8(0.5 + 1.5)) at 1x.

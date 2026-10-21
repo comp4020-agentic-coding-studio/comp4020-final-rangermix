@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
 import { toCanvas } from "../src/iso";
-import { drawOrder, hitAt } from "../src/render";
+import { drawOrder, hitAt, personLift } from "../src/render";
 import { fromWelcome } from "../src/state";
 
 // What's drawn, in order, in the room at an angle (slice 09): what lies flat
@@ -150,6 +150,15 @@ describe("the room's draw order", () => {
     const s = fromWelcome(welcome(), 10_000);
     const c = toCanvas(10.5, 2.5);
     expect(hitAt(s, c.x, c.y, 10_000)).toBeNull();
+  });
+
+  it("says how high someone is drawn, for their bubble: up on a seat, or on the floor", () => {
+    const w = welcome();
+    w.snapshot.people[0] = { ...w.snapshot.people[0], at: { x: 1, y: 5 }, sitting: true };
+    const s = fromWelcome(w, 10_000);
+    // The sofa is 16 px tall; someone on it sinks 4 px in.
+    expect(personLift(s, s.people.get(1)!, 10_000)).toBe(12);
+    expect(personLift(s, s.people.get(2)!, 10_000)).toBe(0);
   });
 
   it("draws a held cat with its holder, not on its own", () => {

@@ -7,6 +7,7 @@ import type { FurnitureView } from "./protocol/FurnitureView";
 import type { Look } from "./protocol/Look";
 import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
+import type { Walk } from "./protocol/Walk";
 import { TILE } from "./scale";
 import type { AvatarFrame, CatFrame, EmoteName, Sprites } from "./sprites";
 import { type CafeState, type Cat, lapOf, serverNow } from "./state";
@@ -316,9 +317,8 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
     const carried = state.held.get(person.id) ?? null;
     const held = inArms.get(person.id) ?? null;
-    // Sitting, they're up on the seat, and sink a little into it.
     const on = spot.moving ? null : standingOn(state, spot);
-    const lift = on ? Math.max(0, HEIGHT[on.kind] - 4) : 0;
+    const lift = personLift(state, person, localNow);
     const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
     rest.push({
       label: `person ${person.id}`,
@@ -334,6 +334,16 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     });
   }
   return [...inDrawOrder(under), ...inDrawOrder(rest)];
+}
+
+/**
+ * How far up someone inside is drawn, in canvas pixels: up on the seat
+ * they're on, sinking a little into it; on the floor, or walking, nothing.
+ */
+export function personLift(state: CafeState, person: { walk: Walk | null; at: { x: number; y: number } }, localNow: number): number {
+  const spot = positionAt(person.walk, person.at, serverNow(state, localNow));
+  const on = spot.moving ? null : standingOn(state, spot);
+  return on ? Math.max(0, HEIGHT[on.kind] - 4) : 0;
 }
 
 /** The footprint something at `spot` sorts by: its own tile, or the piece it's up on. */
