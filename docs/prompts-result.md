@@ -1549,3 +1549,40 @@ then test first, task by task:
   were rewritten for the new corners and seen failing on the old camera;
   picking, the draw order and the browser checks followed the module.
   Slice 09 is `Live`.
+- **The turned room checked live** with one short `agent_` visit: the
+  street wall on the left, the board opened from it, a phone in the bigger
+  room ([notes](notes/slice-09-isometric.md)).
+- **Slice 10, Catppuccin by day and by night**, planned
+  ([`0ae465f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0ae465f))
+  and built test first:
+  - **The colours as data**
+    ([`0a666a5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0a666a5)):
+    `palettes.json` holds a day set and a night set, written by
+    `scripts/palettes.ts` from Catppuccin's published values (MIT,
+    credited in `content/sprites/CREDITS.md`). By day the study's
+    Catppuccin-led mix; at night everything pulled toward Mocha's base,
+    and the windows lit yellow. The light steps by the Canberra hour,
+    halfway in the evening, in place of the grey wash.
+  - **The page in Latte and Mocha**
+    ([`05cad2b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/05cad2b)),
+    every text and control at 4.5:1 or better, held by a test that reads
+    the stylesheet; it found the old light theme's link at 4.496:1.
+  - **The review**
+    ([findings](notes/reviews/slice-10-findings.md),
+    [`f2e5ced`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f2e5ced)):
+    1 major and 5 minor. The major: nothing held that the page draws in
+    the hour's light, and one slip would have painted the café in night
+    colours all day. Fixed with a `Light` type and a browser check that
+    reads the canvas's own pixels at 10:00 and 22:00 on one page
+    ([`c8e2f62`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c8e2f62)).
+    The minors: the placeholder's contrast, the toys' fixed colours, a
+    backdrop check that couldn't fail
+    ([`87e2c1b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/87e2c1b)),
+    coats back in data with `palettes.json` held to its script
+    ([`cbc7bee`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/cbc7bee)),
+    and the README's credit proposed to the user
+    ([`3f2de37`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3f2de37)).
+    Answered in
+    [`6c7a0d8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6c7a0d8).
+  - **Merged to `main`** after the whole spec passed on a fresh café, 69
+    of 69.
