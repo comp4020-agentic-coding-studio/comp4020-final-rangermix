@@ -1459,3 +1459,45 @@ Mocha".
   checks and the other 43 spec checks pass. The two slice 07 waking checks
   that route the socket time out on this machine with or without the fix,
   so they're CI's to hold.
+
+*Sent 2026-10-21 16:41:28 AEDT*
+
+> I don't see the redesign being deployed. is it merged or not?
+
+**Answer.** Not built yet, so nothing to deploy: what was on `main` was the
+decision (ADR 0017) and the slice specs, which waited for approval under
+AGENTS.md. Asked and answered: "Approve the redesign slices so I can start
+building?" — "Approve 09–11, start 09", with each spec's proposed default
+([`aff9e71`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/aff9e71)).
+
+**Result.** Slice 09, the room seen at an angle, planned and built on its
+own branch, `slice-09-isometric`, so a half-built room never reaches
+`main`, which deploys every push. Plan
+([`f420577`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f420577)),
+then test first, task by task:
+- **The camera** as a pure module
+  ([`23ab0f5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/23ab0f5)):
+  where a tile lands on a 336×232 canvas, which tile a point picks (row 0,
+  the street wall, on the wall's face), and the draw order. A single depth
+  number tied a cat beside the sofa with the sofa, so the order became a
+  sort on "wholly behind".
+- **The stage** on it
+  ([`5af5571`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5af5571)):
+  menus, rings, bubbles and picking through one transform; 3× on the
+  desktop.
+- **The room drawn at an angle**
+  ([`32cbf7f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/32cbf7f)):
+  floor diamonds, the two back walls, furniture as blocks as tall as
+  `content/sprites/heights.json` says. The first screenshot showed cats
+  napping inside the blocks; they now sit on top.
+- **A phone opens in the bigger room**
+  ([`7bbcd4e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7bbcd4e)).
+- **The browser checks find tiles through the page**
+  ([`4fd3746`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4fd3746)).
+  B by default had hidden the chalkboard's copy from screen readers on
+  every phone, which slice 02's check caught; fixed.
+- **Screenshots and the execution log**
+  ([`b805c70`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b805c70)),
+  and the review brief
+  ([`00b859b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/00b859b)).
+  A fresh reviewer is reading it.
