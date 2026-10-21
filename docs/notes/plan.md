@@ -43,10 +43,13 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 02 | What the night left behind | The chalkboard over a rolling 24 hours, readable on both layouts; scattered toys as traces until tidied | [02](../slices/02-what-the-night-left-behind.md) | live 2026-10-21, its judged line passed by the user on the board slice 08's night test prints ([plan](plan-slice-02-chalkboard.md), [findings](reviews/slice-02-findings.md), [notes](slice-02-board.md)) |
 | 03 | Keeping it kind | Mute, the slur blocklist, the admin ban | [03](../slices/03-keeping-it-kind.md) | spec proposed |
 | 04 | The showcase room | A load check at forty connections inside 256 MB; the window's count | [04](../slices/04-the-showcase-room.md) | spec proposed |
-| 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | spec proposed |
+| 05 | The art pass | Every sprite reads at both scales; a pose for every behaviour | [05](../slices/05-the-art-pass.md) | superseded 2026-10-21 by 09 to 11, when the user chose the look ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) |
 | 06 | The accessibility pass | Every action by keyboard, touch and screen reader, held by browser checks | [06](../slices/06-the-accessibility-pass.md) | spec proposed |
 | 07 | Getting in while the café wakes | The port opens at once; the page and accounts work during a replay; the café shows "Dusting off the café…" until it's ready; a dead world task restarts the machine | [07](../slices/07-getting-in-while-the-cafe-wakes.md) | reviewed and live ([plan](plan-slice-07-waking.md), [findings](reviews/slice-07-findings.md), [notes](slice-07-waking.md)) |
 | 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | live 2026-10-21 ([plan](plan-slice-08-mocked-time.md), [findings](reviews/slice-08-findings.md)) |
+| 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | spec proposed |
+| 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | spec proposed |
+| 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | spec proposed |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -76,27 +79,32 @@ rehearsed isn't recorded. There's still no `crit-9` or `crit-10` tag.
 
 ## Where it stands (2026-10-21)
 
-Updated by session `6753d63d`. CI on `main` is green through `06727de`, and
-the live café runs build `mvhfoihc` on the wall clock.
+Updated by session `6753d63d`. CI on `main` is green through `075a558`
+(run 39547349911: rust, check and deploy).
 
 - **Done and live:** phases 1 to 3, and slices 01, 02, 07 and 08.
-- **The café's look is being rethought** (asked 2026-10-17): a judgement on
-  Catppuccin colours, pixel density and an isometric camera is in
-  [visual-direction.md](visual-direction.md), waiting on the user's four
-  choices. It decides what slice 05 becomes.
-- **Specs waiting for the user's approval:** slices 03 to 06. None is planned.
+- **The look is chosen** (2026-10-21,
+  [ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)):
+  an isometric camera, 32-px tiles with 24-px cats, Catppuccin-led day and
+  night palettes, layout B the phone's default, sprites drawn by the agent,
+  and the page in Latte and Mocha. It's built as slices 09 to 11, which
+  replace slice 05.
+- **Specs waiting for the user's approval:** slices 03, 04, 06, 09, 10 and
+  11. None is planned.
 
 ## What's left, in order
 
-1. **The visual direction:** the user's choices in
-   [visual-direction.md](visual-direction.md), then an ADR, and slice 05
-   rewritten (probably split into the camera, the palette and the art).
+1. **Approve and build slices 09, 10 and 11**, in that order: the camera
+   decides every sprite's shape, so it comes first, then the palette, then
+   the art. Each ships on its own and leaves the café working.
 2. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the
-   agent's suggestion; the user hasn't chosen one.
-3. **Approve and build slices 05 and 06**, the art and accessibility passes.
+   agent's suggestion; the user hasn't chosen one, nor where these fall
+   against the look.
+3. **Approve and build slice 06**, the accessibility pass, after the camera,
+   since its browser checks find tiles the way slice 09 makes them.
 4. **Final submission (Mon 9 Nov, 12:00).** `PROCESS.md` rewritten again,
    and the user's `README.md`. The README still promises soothing music the
-   design doesn't have (slice 05's open question) and has no sources yet;
+   design doesn't have (slice 11's open question) and has no sources yet;
    [readme-material.md](readme-material.md) gathers them.
