@@ -1,7 +1,7 @@
 # 09. The room seen at an angle
 
-- **Status:** Approved 2026-10-21, with the proposed default for its open question (the arrows move along the room's axes)
-- **Plan:** written when the slice starts, as `docs/notes/plan-slice-09-isometric.md`
+- **Status:** Planned 2026-10-21 (approved the same day, with the proposed default for its open question: the arrows move along the room's axes)
+- **Plan:** [`docs/notes/plan-slice-09-isometric.md`](../notes/plan-slice-09-isometric.md)
 - **Design:** The room (12 by 10 tiles); The client ("Phone", "Drawing",
   "The look");
   [ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
@@ -31,10 +31,12 @@ their real footprints, as in the study, until slice 11 draws them.
   orders everything that stands by `x + y`. A piece several tiles long is
   ordered so a cat or person behind it isn't drawn in front. The line's
   faces still show through the window.
-- **Placeholder sprites for the new camera**, in `content/sprites/`, at the
-  new sizes: each piece of furniture a shaded block at its footprint, with a
-  lying-down block for each piece that can be knocked over; a cat and a
-  person as plain silhouettes. Slice 11 replaces them.
+- **Placeholders for the new camera**: each piece of furniture a shaded
+  block at its footprint, as tall as its kind's `height` in
+  `content/furniture.toml`, lying down when knocked over; cats and people as
+  today's sprites stood on their tile. Slice 11 replaces them. (The plan's
+  decision 4: blocks drawn from data, not text sprites slice 11 would throw
+  away.)
 - **The keyboard.** The arrows move the pointer along the room's axes, and
   the pointer is drawn as a diamond.
 - **The phone's default becomes layout B** (`chooseLayout`), with A as the
@@ -62,7 +64,7 @@ their real footprints, as in the study, until slice 11 draws them.
 | Every action the browser checks already do still passes, by keyboard, touch and mouse, at 390×844 and 1920×1080, through a resize, with tiles found through the stage | browser check (`spec/browser.test.ts`) |
 | A phone that hasn't chosen opens in layout B; one that chose A keeps A | client unit tests (`chooseLayout`), browser check |
 | No placement is allowed, and no walk ends, anywhere the server didn't already allow it: the walkway, the cap and the line are unchanged | `spec/` and `cargo test`, unchanged and passing |
-| Every placeholder sprite is at its size for the new camera, and a piece that can be knocked over has a lying-down one | `cargo test` (the content loader) |
+| Every kind of furniture has a height to draw its block at | `cargo test` (the content loader) |
 | The room reads as a room you look into, with the street wall at the back right, and nothing hidden that shouldn't be | judged: by the user, from screenshots at both sizes in `docs/notes/screens/` |
 
 ## Rules it touches
