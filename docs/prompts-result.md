@@ -1366,3 +1366,47 @@ rendered from `content/` by throwaway scripts kept beside them
   default.
 - Slice 05 now notes that it waits on the user's choice. Nothing is
   decided, so there is no ADR yet.
+
+---
+
+## Final submission (due Mon 9 November 2026, 12:00 AEDT)
+
+### 12. After crit 10: where it stands, slice 02, and the look
+
+*Session `6753d63d`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-10-21 15:50:49 AEDT*
+
+> check the current project status
+
+**Result.** A read, nothing changed. Phases 1 to 3 and slices 01, 07 and 08
+were live, CI green on every recent run, and the live café answered on `/`
+and `/readme/`. Crit 10's reflection and `PROCESS.md` rewrite both landed
+before its cutoff (13:08 and 13:10). Open: slice 02's judged line, slices 03
+to 06 waiting for approval, the visual direction judgement still on its own
+branch, a root plan that still listed crit 10's work as undone, and no
+`crit-9` or `crit-10` tag.
+
+*Sent 2026-10-21 15:57:49 AEDT*
+
+> 1. Slice 2 lgtm, merge it
+> 2. continue the visual redesign, or show me if it is done
+
+**Result.**
+- **Slice 02 is `Live`**
+  ([`95b5a7e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/95b5a7e)).
+  Its code was already on `main` and deployed, so "merge it" meant the
+  user's reading of the board a mocked night leaves: the judged line passed.
+  The reviewer's three notes (repeated plants, times with no day, meetings
+  crowding out the night) stay noted, not asked for.
+- **The visual redesign wasn't done: it was a judgement, not a build.** It
+  is now merged onto `main`
+  ([`e5dd18b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e5dd18b)),
+  with the prompt log keeping session 10's entries whole, then session 11's.
+  It stops at four choices for the user: which of the colours, the camera
+  and the density to take; the phone's default layout if the camera is
+  angled; who draws the sprites; and whether the page follows Catppuccin.
+- **The root plan brought to after crit 10**
+  ([`49f1927`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/49f1927)):
+  slice 02 live, crit 10's work recorded, and the visual direction first in
+  what's left, since it decides what slice 05 becomes.
