@@ -1,6 +1,10 @@
 import { type Browser, type BrowserContext, type Page, type WebSocketRoute, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { baseUrl, meetACat, signUp, uniqueName, Visitor } from "./helpers";
+import heights from "../content/sprites/heights.json" with { type: "json" };
+
+/** How tall each kind of furniture is drawn, in canvas pixels (slice 09): a cat on one is drawn that high. */
+const HEIGHTS = heights as Record<string, number>;
 
 // Browser checks (design.md, "Checks"): the keyboard-only pass at both
 // marking sizes with a resize mid-use, the phone by touch, the layout switch,
@@ -516,15 +520,19 @@ describe("in a browser", { timeout: 30_000 }, () => {
     for (let attempt = 0; attempt < 6 && !asked; attempt++) {
       // In the bigger room part of the room is off screen. The keyboard's
       // pointer onto a still cat pulls the view to it, and the view stays
-      // when the pointer steps aside for the touch.
-      // A cat on the floor, not up on a piece, so the tap is on its sprite.
+      // when the pointer steps aside for the touch. Cats nap up on the
+      // furniture, drawn as high as the piece is tall, so the tap goes there.
       const welcome = v.frames.find((f) => f.type === "welcome")!;
-      const onAPiece = (t: Tile) => welcome.snapshot.room.furniture.some((f: Frame) => !f.under && t.x >= f.x && t.x < f.x + f.w && t.y >= f.y && t.y < f.y + f.h);
-      const cat = [...catsSeen(v.frames).values()].find((c) => !c.walking && c.heldBy === null && !onAPiece(c.at)) ?? null;
+      const still = [...catsSeen(v.frames).values()].filter((c) => !c.walking && c.heldBy === null);
+      const cat = still[attempt % Math.max(1, still.length)] ?? null;
       if (!cat) {
         await v.page.waitForTimeout(500);
         continue;
       }
+      const under = welcome.snapshot.room.furniture.find(
+        (f: Frame) => !f.under && !f.toppled && HEIGHTS[f.kind] > 4 && cat.at.x >= f.x && cat.at.x < f.x + f.w && cat.at.y >= f.y && cat.at.y < f.y + f.h,
+      );
+      const lift = under ? HEIGHTS[under.kind] : 0;
       await v.page.locator("#room").focus();
       await v.page.keyboard.press("ArrowRight");
       for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
@@ -532,10 +540,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
       for (let i = 0; i < cat.at.x; i++) await v.page.keyboard.press("ArrowRight");
       for (let i = 1; i < cat.at.y; i++) await v.page.keyboard.press("ArrowDown");
       await v.page.waitForTimeout(400);
-      // The middle of its sprite, half its 16 px up from feet 2 px below the tile's centre.
+      // The middle of its sprite, half its 16 px up from feet 2 px below the
+      // tile's centre, and up on whatever it's on.
       const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
       const floor = await tileAt(v.page, cat.at);
-      await v.page.touchscreen.tap(floor.x, floor.y - 6 * scale);
+      await v.page.touchscreen.tap(floor.x, floor.y - (6 + lift) * scale);
       const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
       if (!(await pick.isVisible({ timeout: 1000 }).catch(() => false))) {
         // It moved just as it was tapped.

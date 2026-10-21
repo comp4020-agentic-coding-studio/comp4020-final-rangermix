@@ -166,7 +166,16 @@ function enter(me: ApiMe): void {
     canvas.focus();
   };
   $("board-close").onclick = hideBoard;
-  backdrop.onclick = hideBoard;
+  // Only a press that began on the backdrop closes the board. A tap on the
+  // chalkboard opens it as the finger lifts, and the click a phone sends
+  // after that tap lands on the backdrop now under the finger; it isn't a
+  // click beside the board (seen once the board's tile moved, slice 09).
+  let pressedBeside = false;
+  backdrop.addEventListener("pointerdown", () => (pressedBeside = true));
+  backdrop.onclick = () => {
+    if (pressedBeside) hideBoard();
+    pressedBeside = false;
+  };
   board.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
