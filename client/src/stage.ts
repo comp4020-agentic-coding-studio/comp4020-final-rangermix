@@ -1,6 +1,6 @@
 import type { Cafe } from "./cafe";
 import { canberraHour } from "./canberra";
-import { type Layout, panOffset } from "./layout";
+import { type Layout, PHONE, panOffset } from "./layout";
 import { positionAt } from "./motion";
 import { ISO, pickTile, toCanvas } from "./iso";
 import { type Pointer, draw, hitAt } from "./render";
@@ -136,7 +136,7 @@ export class Stage {
       this.scale = 3;
     } else {
       // On a phone the page scrolls, so only the width limits the room.
-      const phone = matchMedia("(max-width: 700px)").matches;
+      const phone = matchMedia(PHONE).matches;
       this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight);
       this.canvas.style.left = "";
       this.canvas.style.top = "";

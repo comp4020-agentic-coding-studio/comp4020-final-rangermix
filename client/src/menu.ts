@@ -1,4 +1,4 @@
-import { menuSpot, ringCentre, ringPositions, ringRadius } from "./layout";
+import { PHONE, menuSpot, ringCentre, ringPositions, ringRadius } from "./layout";
 
 // A small menu of what you can do: beside the thing on a desktop, a sheet from
 // the bottom on a phone, a ring round it in phone layout B. Real buttons, so
@@ -126,7 +126,7 @@ export function openMenu(
     heading.className = "sr-only";
     menu.querySelector(".note")?.classList.add("sr-only");
     placeRing(menu, overlay, anchor);
-  } else if (matchMedia("(max-width: 700px)").matches) {
+  } else if (matchMedia(PHONE).matches) {
     menu.classList.add("sheet");
   }
   overlay.append(menu);

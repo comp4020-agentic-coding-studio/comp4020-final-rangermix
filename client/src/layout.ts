@@ -4,6 +4,14 @@
 
 export type Layout = "a" | "b";
 
+/**
+ * Narrower than this, the page is laid out as on a phone. The desktop's
+ * panels take about 624 px, and the room at an angle needs 336 more at 1x,
+ * so below 960 it's a phone's layouts, with the switch (slice 09's review,
+ * finding 10). Kept in step with style.css's media queries.
+ */
+export const PHONE = "(max-width: 959px)";
+
 const KEY = "cafe.layout";
 
 /**

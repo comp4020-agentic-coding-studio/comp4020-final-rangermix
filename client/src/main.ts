@@ -9,7 +9,7 @@ import { type Target, attachInput } from "./input";
 import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats } from "./panels";
-import { chooseLayout, saveLayout, savedLayout } from "./layout";
+import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
@@ -112,7 +112,7 @@ function enter(me: ApiMe): void {
     return { left: centre.left - 16 * stage.scale, top: centre.top - 8 * stage.scale, right: centre.left + 16 * stage.scale };
   };
   // The phone's two layouts: B unless this device chose A, remembered (slice 09).
-  const phoneQuery = matchMedia("(max-width: 700px)");
+  const phoneQuery = matchMedia(PHONE);
   const applyLayout = () => {
     const layout = chooseLayout(savedLayout(), phoneQuery.matches);
     document.body.classList.toggle("layout-b", layout === "b");

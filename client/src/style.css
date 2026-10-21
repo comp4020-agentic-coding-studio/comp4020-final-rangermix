@@ -141,7 +141,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .toast { position: absolute; left: 50%; bottom: 0.75rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.9rem; pointer-events: none; }
 
 /* The café on a phone, layout A: the whole room on top, full width, the rest below */
-@media (max-width: 700px) {
+@media (max-width: 959px) {
   .cafe {
     height: auto;
     min-height: 100vh;
@@ -166,7 +166,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 /* The phone's layout switch, and layout B: the room fills the screen at 3x and
    pans to follow you, the controls float over it, and actions open as a ring. */
 .phone-only, .b-only { display: none; }
-@media (max-width: 700px) { .phone-only { display: inline-block; } }
+@media (max-width: 959px) { .phone-only { display: inline-block; } }
 .layout-b .b-only { display: inline-block; }
 .layout-b .cafe { display: block; height: 100vh; padding: 0; }
 .layout-b .stage { position: fixed; inset: 0; display: block; overflow: hidden; z-index: 0; }

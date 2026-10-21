@@ -514,25 +514,28 @@ describe("in a browser", { timeout: 30_000 }, () => {
     let asked: CatSeen | null = null;
     let from = 0;
     for (let attempt = 0; attempt < 6 && !asked; attempt++) {
-      // In the bigger room part of the room is off screen: a still cat whose
-      // tile is on screen, clear of the bars floating over it.
-      const bars = await v.page.evaluate(() => [document.querySelector(".status")!.getBoundingClientRect().bottom, document.querySelector(".talk")!.getBoundingClientRect().top]);
-      let cat: CatSeen | null = null;
-      let at = { x: 0, y: 0 };
-      for (const c of catsSeen(v.frames).values()) {
-        if (c.walking || c.heldBy !== null) continue;
-        const p = await tileAt(v.page, c.at);
-        if (p.x > 8 && p.x < 382 && p.y > bars[0] + 8 && p.y < bars[1] - 8) {
-          cat = c;
-          at = p;
-          break;
-        }
-      }
+      // In the bigger room part of the room is off screen. The keyboard's
+      // pointer onto a still cat pulls the view to it, and the view stays
+      // when the pointer steps aside for the touch.
+      // A cat on the floor, not up on a piece, so the tap is on its sprite.
+      const welcome = v.frames.find((f) => f.type === "welcome")!;
+      const onAPiece = (t: Tile) => welcome.snapshot.room.furniture.some((f: Frame) => !f.under && t.x >= f.x && t.x < f.x + f.w && t.y >= f.y && t.y < f.y + f.h);
+      const cat = [...catsSeen(v.frames).values()].find((c) => !c.walking && c.heldBy === null && !onAPiece(c.at)) ?? null;
       if (!cat) {
         await v.page.waitForTimeout(500);
         continue;
       }
-      await v.page.touchscreen.tap(at.x, at.y);
+      await v.page.locator("#room").focus();
+      await v.page.keyboard.press("ArrowRight");
+      for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
+      for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowUp");
+      for (let i = 0; i < cat.at.x; i++) await v.page.keyboard.press("ArrowRight");
+      for (let i = 1; i < cat.at.y; i++) await v.page.keyboard.press("ArrowDown");
+      await v.page.waitForTimeout(400);
+      // The middle of its sprite, half its 16 px up from feet 2 px below the tile's centre.
+      const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
+      const floor = await tileAt(v.page, cat.at);
+      await v.page.touchscreen.tap(floor.x, floor.y - 6 * scale);
       const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
       if (!(await pick.isVisible({ timeout: 1000 }).catch(() => false))) {
         // It moved just as it was tapped.
@@ -773,6 +776,27 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.keyboard.press("Escape");
     await sheet.waitFor({ state: "detached" });
     expect(await focused(v.page)).toBe("room");
+  });
+
+  it("reaches every floor tile on a tablet upright, between the phone's and the desktop's sizes (slice 09's review, finding 10)", async () => {
+    // At 820 wide the desktop's panels left the room a 196-px stage, too
+    // narrow for the room at 1x, and a third of the floor was cut off.
+    const v = await visit({ width: 820, height: 1180 }, true);
+    const welcome = v.frames.find((f) => f.type === "welcome")!;
+    // Whichever layout it opens in, the whole room is a tap away.
+    if (await v.page.evaluate(() => document.body.classList.contains("layout-b"))) {
+      await v.page.locator("#layout-switch").tap();
+      await v.page.waitForFunction(() => !document.body.classList.contains("layout-b"));
+    }
+    const missed: string[] = [];
+    for (let y = 1; y < welcome.snapshot.room.height; y++) {
+      for (let x = 0; x < welcome.snapshot.room.width; x++) {
+        const at = await tileAt(v.page, { x, y });
+        const on = await v.page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.id === "room", [at.x, at.y]);
+        if (!on) missed.push(`(${x},${y})`);
+      }
+    }
+    expect(missed, "floor tiles that can't be clicked or tapped").toEqual([]);
   });
 
   it("in the bigger room, Tab and Shift+Tab from the room reach only what's on screen (slice 09's review, finding 4)", async () => {
