@@ -47,7 +47,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 06 | The accessibility pass | Every action by keyboard, touch and screen reader, held by browser checks | [06](../slices/06-the-accessibility-pass.md) | spec proposed |
 | 07 | Getting in while the café wakes | The port opens at once; the page and accounts work during a replay; the café shows "Dusting off the café…" until it's ready; a dead world task restarts the machine | [07](../slices/07-getting-in-while-the-cafe-wakes.md) | reviewed and live ([plan](plan-slice-07-waking.md), [findings](reviews/slice-07-findings.md), [notes](slice-07-waking.md)) |
 | 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | live 2026-10-21 ([plan](plan-slice-08-mocked-time.md), [findings](reviews/slice-08-findings.md)) |
-| 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | reviewed and deployed 2026-10-21, checked live ([plan](plan-slice-09-isometric.md), [findings](reviews/slice-09-findings.md), [notes](slice-09-isometric.md)); live once the user has judged the room from the screenshots |
+| 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | live 2026-10-22, turned 90° at the user's asking so the street wall is on the left ([plan](plan-slice-09-isometric.md), [findings](reviews/slice-09-findings.md), [notes](slice-09-isometric.md)) |
 | 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | approved 2026-10-21 |
 | 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21 |
 
@@ -77,23 +77,23 @@ instruments and mocked time
 Both landed before the cutoff. Whether the demo by the logs alone was
 rehearsed isn't recorded. There's still no `crit-9` or `crit-10` tag.
 
-## Where it stands (2026-10-21)
+## Where it stands (2026-10-22)
 
-Updated by session `6753d63d`. CI on `main` is green through `0b0fddd`
-(run 39586448040: rust, check and deploy), with slice 09 live.
+Updated by session `6753d63d`.
 
-- **Done and live:** phases 1 to 3, and slices 01, 02, 07 and 08.
+- **Done and live:** phases 1 to 3, and slices 01, 02, 07, 08 and 09.
 - **The look is chosen** (2026-10-21,
   [ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)):
   an isometric camera, 32-px tiles with 24-px cats, Catppuccin-led day and
   night palettes, layout B the phone's default, sprites drawn by the agent,
   and the page in Latte and Mocha. It's built as slices 09 to 11, which
   replace slice 05.
-- **Slice 09, the room at an angle:** built, reviewed (3 major and 9 minor
-  findings, all fixed), deployed and checked live on 2026-10-21
-  ([notes](slice-09-isometric.md)). Its judged line ("the room reads as a
-  room you look into") is the user's, from the screenshots.
-- **Approved, not yet built:** slices 10 and 11.
+- **Slice 09, the room at an angle:** live. The user judged it on
+  2026-10-22 and had it turned 90°, so the street wall stands on the left
+  ([notes](slice-09-isometric.md)).
+- **Slice 10, Catppuccin by day and by night:** being built, asked for on
+  2026-10-22.
+- **Approved, not yet built:** slice 11.
 - **Specs waiting for the user's approval:** slices 03, 04 and 06. None is
   planned.
 

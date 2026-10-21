@@ -1533,3 +1533,19 @@ then test first, task by task:
   from the street wall, a phone in the bigger room, no errors
   ([notes](notes/slice-09-isometric.md)). The judged line, whether the
   room reads as a room you look into, is the user's.
+
+*Sent 2026-10-22 05:15:21 AEDT*
+
+> rotate the room angle 90 degree, so the door and window is on the left side, otherwise lgtm. finish this part and slice 10
+
+**Result.**
+- **Slice 09 judged, and turned**
+  ([`f02e67d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f02e67d)).
+  The camera now looks from the room's front-right corner on the same
+  canvas, so the street wall, with the windows, door and chalkboard in
+  their order from the left, stands up the back left, and a plain wall up
+  the back right. Only one 90° turn does that: the other would have put
+  the street wall in front, hiding the room. The camera module's tests
+  were rewritten for the new corners and seen failing on the old camera;
+  picking, the draw order and the browser checks followed the module.
+  Slice 09 is `Live`.
