@@ -1335,3 +1335,34 @@ design and the stack are condensed. Two new sections:
   and the mocked time it led to (ADR 0016), with what slice 08's review
   found.
 Crit 9's quiet-seat section was cut for room. ADR 0009 still records it.
+
+### 11. Rethinking the look
+
+*Session `9c19684c`, Claude Code (Opus 5.5), run as a background job. It ran
+alongside session 10, on its own branch.*
+
+*Sent 2026-10-17 18:05:47 AEDT*
+
+> let's rethink about the visual design of the game. currently the visual is a bit... normal, not standing out. more specifically, I think a better colour setting direction is the https://catppuccin.com/, and the current sprites can be more refined pixel arts. I need your help to judge on whether you think the catppuccin colour can be used, and how dense the pixel art should be. Also I want the camera of the cafe work in an angled view, like [a Neko Atsume yard screenshot] and [a Hades room screenshot] . help me judge on that as well.
+
+**Result.** A judgement, not a build:
+[`docs/notes/visual-direction.md`](notes/visual-direction.md), with studies
+rendered from `content/` by throwaway scripts kept beside them
+([`ab144ea`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ab144ea)).
+- **Catppuccin: yes, but as a source, not a strict palette.** It has no
+  brown, so snapping the room to it turns the wood flat salmon or peach.
+  Its hues as anchors, with browns mixed from its peach and rosewater, keep
+  the café warm. The bigger idea is a day palette and a Mocha-dark night
+  palette, with the window lit, in place of today's grey overlay.
+- **The recolour alone still looked ordinary.** The plainness comes mostly
+  from flat, evenly lit, square-on drawing, so a palette alone won't fix
+  it.
+- **Density: 32-px tiles, 24-px cats.** At 16 px a cat is a silhouette; at
+  24 it gets a face, markings and readable poses; 32 crowds the people.
+- **Camera: isometric, as in Hades, not Neko Atsume's single picture.** It
+  keeps the tile grid, so the server and protocol don't change; the client's
+  renderer, picking and browser checks do. The cost is the phone: the room
+  is 336 px wide at 1×, so layout B (3×, panned) would become the phone's
+  default.
+- Slice 05 now notes that it waits on the user's choice. Nothing is
+  decided, so there is no ADR yet.
