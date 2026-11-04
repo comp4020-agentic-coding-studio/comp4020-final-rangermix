@@ -1,7 +1,7 @@
 import { boardLines, chalkTime, chalkWords } from "./chalk";
 import type { CafeState } from "./state";
 
-// The panels beside (or under) the room: your cats, who's here, and what was
+// The panels over (or under) the room: your cats, who's here, and what was
 // said this visit. Built from DOM nodes: names and words are text, never markup.
 
 const LEVEL_WORDS = { stranger: "doesn't know you yet", familiar: "knows you", friend: "is your friend", devoted: "adores you" } as const;
@@ -29,7 +29,7 @@ export function renderYourCats(box: HTMLElement, state: CafeState): void {
     rows = el("div", "cat-rows");
     count = el("span", "treats-left");
     bowls = el("p", "hint bowls");
-    box.replaceChildren(el("h2", null, "Your cats"), rows, el("p", "treats", count), bowls);
+    box.replaceChildren(rows, el("p", "treats", count), bowls);
   }
   rows.replaceChildren(...catRows(state));
   count.textContent = state.yourTreats > 0 ? `Treats today: ${state.yourTreats}` : "No treats left today.";
@@ -86,8 +86,8 @@ export function renderHere(box: HTMLElement, state: CafeState): void {
   const name = (p: { id: number; name: string }) => (p.id === state.you ? `${p.name} (you)` : p.name);
   const inside = people.filter((p) => p.place === "inside");
   const waiting = people.filter((p) => p.place === "window");
-  const parts: Node[] = [el("h2", null, `Here (${inside.length}/${state.cap})`), el("p", null, inside.map(name).join(" · ") || "Nobody yet.")];
-  if (waiting.length > 0) parts.push(el("h2", null, `At the window (${waiting.length})`), el("p", null, waiting.map(name).join(" · ")));
+  const parts: Node[] = [el("h3", null, `Inside (${inside.length}/${state.cap})`), el("p", null, inside.map(name).join(" · ") || "Nobody yet.")];
+  if (waiting.length > 0) parts.push(el("h3", null, `At the window (${waiting.length})`), el("p", null, waiting.map(name).join(" · ")));
   box.replaceChildren(...parts);
 }
 
@@ -95,6 +95,6 @@ export function renderSaid(list: HTMLElement, state: CafeState): void {
   list.replaceChildren(
     ...state.said.slice(-30).map((line) => el("li", null, el("span", "who", line.toName ? `${line.name} to ${line.toName}: ` : `${line.name}: `), line.text)),
   );
-  const scroller = list.closest(".panel");
+  const scroller = list.closest(".panel-body");
   if (scroller) scroller.scrollTop = scroller.scrollHeight;
 }

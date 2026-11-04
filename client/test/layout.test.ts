@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseLayout, menuSpot, panOffset, ringCentre, ringPositions, ringRadius, saveLayout, savedLayout } from "../src/layout";
+import { chooseLayout, menuSpot, panelAt, panOffset, ringCentre, ringPositions, ringRadius, saveLayout, savedLayout } from "../src/layout";
 
 describe("phone layout B", () => {
   it("is a phone's unless it chose the whole room, and never a desktop's", () => {
@@ -155,5 +155,29 @@ describe("the camera following a walker", () => {
       seen.add(`${feet.x * scale - off.x}`);
     }
     expect([...seen]).toHaveLength(1);
+  });
+});
+
+describe("panels over the room (slice 14)", () => {
+  // A 1904 by 966 stage, 8 px from the window's left and 56 from its top.
+  const stage = { left: 8, top: 56, width: 1904, height: 966 };
+  const size = { w: 288, h: 300 };
+
+  it("puts a panel at its spot, measured from the stage's nearer sides", () => {
+    expect(panelAt({ h: "left", x: 8, v: "top", y: 8 }, size, stage)).toEqual({ left: 16, top: 64 });
+    expect(panelAt({ h: "right", x: 8, v: "top", y: 8 }, size, stage)).toEqual({ left: 8 + 1904 - 8 - 288, top: 64 });
+    expect(panelAt({ h: "left", x: 8, v: "bottom", y: 8 }, size, stage)).toEqual({ left: 16, top: 56 + 966 - 8 - 300 });
+  });
+
+  it("keeps a panel inside the stage, whatever its spot says, and at the stage's corner if it's bigger than the stage", () => {
+    expect(panelAt({ h: "left", x: 5000, v: "top", y: -40 }, size, stage)).toEqual({ left: 8 + 1904 - 288, top: 56 });
+    expect(panelAt({ h: "right", x: -100, v: "bottom", y: 5000 }, size, stage)).toEqual({ left: 8 + 1904 - 288, top: 56 });
+    expect(panelAt({ h: "right", x: 8, v: "bottom", y: 8 }, { w: 3000, h: 2000 }, stage)).toEqual({ left: 8, top: 56 });
+  });
+
+  it("keeps a panel in its corner when the stage changes size", () => {
+    const spot = { h: "right", x: 8, v: "bottom", y: 8 } as const;
+    const small = { left: 8, top: 56, width: 1264, height: 606 };
+    expect(panelAt(spot, size, small)).toEqual({ left: 8 + 1264 - 8 - 288, top: 56 + 606 - 8 - 300 });
   });
 });

@@ -229,8 +229,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
   it("does everything by keyboard at both sizes, through a resize mid-use", async () => {
     const { page } = await visit({ width: 1920, height: 1080 });
     expect(await focused(page)).toBe("room");
-    // The room at an angle, 336 pixels wide at 1x, at 3x (slice 09).
-    expect(await roomWidth(page)).toBe("1008px");
+    // The room at an angle, 336 pixels wide at 1x, at 4x with the panels
+    // floating over it (slice 14).
+    expect(await roomWidth(page)).toBe("1344px");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
@@ -251,7 +252,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Enter");
     await page.locator(".bubble", { hasText: "hello by keyboard" }).waitFor();
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1008px");
+    await page.waitForFunction(() => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1344px");
     await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("room");
     // Forward from the talk box, past Say and the emotes, to the treat
@@ -266,6 +267,46 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Enter");
     await page.locator("#left-cafe").waitFor();
     expect(await focused(page)).toBe("come-back");
+  });
+
+  it("floats the chalkboard, your cats and who's here in the room's corners at 1920×1080, the room at 4× and every tile clear (slice 14)", async () => {
+    const { page } = await visit({ width: 1920, height: 1080 });
+    expect(await roomWidth(page)).toBe("1344px");
+    const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+    const stage = await box("#stage");
+    const panels = { chalkboard: await box("#chalkboard"), cats: await box("#cats-panel"), here: await box("#here-panel") };
+    for (const [name, p] of Object.entries(panels)) {
+      expect(p.x, `${name} inside the stage`).toBeGreaterThanOrEqual(stage.x - 0.5);
+      expect(p.y, `${name} inside the stage`).toBeGreaterThanOrEqual(stage.y - 0.5);
+      expect(p.x + p.width, `${name} inside the stage`).toBeLessThanOrEqual(stage.x + stage.width + 0.5);
+      expect(p.y + p.height, `${name} inside the stage`).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
+    }
+    const mid = { x: stage.x + stage.width / 2, y: stage.y + stage.height / 2 };
+    const centre = (p: { x: number; y: number; width: number; height: number }) => ({ x: p.x + p.width / 2, y: p.y + p.height / 2 });
+    // The chalkboard top left, your cats bottom left, who's here top right.
+    expect(centre(panels.chalkboard).x).toBeLessThan(mid.x);
+    expect(centre(panels.chalkboard).y).toBeLessThan(mid.y);
+    expect(centre(panels.cats).x).toBeLessThan(mid.x);
+    expect(centre(panels.cats).y).toBeGreaterThan(mid.y);
+    expect(centre(panels.here).x).toBeGreaterThan(mid.x);
+    expect(centre(panels.here).y).toBeLessThan(mid.y);
+    // Two on the left never overlap.
+    expect(panels.chalkboard.y + panels.chalkboard.height).toBeLessThanOrEqual(panels.cats.y + 0.5);
+    // Nothing important under them where they start: every tile's middle, and the chalkboard's, is the room's.
+    const tiles = [{ x: 8, y: 0 }, ...Array.from({ length: 9 * 12 }, (_, i) => ({ x: i % 12, y: 1 + Math.floor(i / 12) }))];
+    for (const t of tiles) {
+      const at = await tileAt(page, t);
+      expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [at.x, at.y]), `the tile (${t.x}, ${t.y})`).toBe("room");
+    }
+    // Each says what it is, and can be moved and pinned.
+    for (const [sel, name] of [["#chalkboard", "the chalkboard"], ["#cats-panel", "your cats"], ["#here-panel", "who's here"]]) {
+      expect(await page.locator(sel).getByRole("button", { name: `Move ${name}` }).isVisible()).toBe(true);
+      expect(await page.locator(sel).getByRole("button", { name: `Pin ${name}` }).isVisible()).toBe(true);
+    }
+    // On a phone the panels are as they were: no grips, no pins.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    expect(await page.locator(".panel-bar button:visible").count()).toBe(0);
   });
 
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {

@@ -6,7 +6,10 @@ describe("whole-number scaling", () => {
   it("fits the room at 1× across a 390-pixel phone, which is why a phone opens in layout B", () => {
     expect(fitScale(390, Infinity)).toBe(1);
   });
-  it("fits it at 3× in the middle of a 1920×1080 desktop", () => {
+  it("fits it at 4× across a 1920×1080 desktop, once the panels float over the room instead of standing beside it (slice 14)", () => {
+    // The window less the page's padding, the status bar and the talk bar.
+    expect(fitScale(1896, 950)).toBe(4);
+    // Beside two columns of panels, as before slice 14, it was 3×.
     expect(fitScale(1296, 947)).toBe(3);
   });
   it("uses an exact fit and never drops below 1×", () => {

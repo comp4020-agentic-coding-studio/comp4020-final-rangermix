@@ -123,3 +123,30 @@ export function ringPositions(n: number, centre: { x: number; y: number }, radiu
     return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
   });
 }
+
+/**
+ * Where a floating panel is (slice 14): how far it stands from the stage's
+ * nearer side on each axis, so one in the top-right corner stays there when
+ * the window widens.
+ */
+export interface PanelSpot {
+  h: "left" | "right";
+  x: number;
+  v: "top" | "bottom";
+  y: number;
+}
+
+/**
+ * A panel's top-left corner in the window, for a panel `size` big at `spot`
+ * over `stage` (the stage's box in the window): always inside the stage,
+ * and at its top-left if the panel is bigger than it, so no panel covers
+ * the status bar or the talk box, or is lost off the window after a resize.
+ */
+export function panelAt(spot: PanelSpot, size: { w: number; h: number }, stage: { left: number; top: number; width: number; height: number }): { left: number; top: number } {
+  const left = spot.h === "left" ? stage.left + spot.x : stage.left + stage.width - spot.x - size.w;
+  const top = spot.v === "top" ? stage.top + spot.y : stage.top + stage.height - spot.y - size.h;
+  return {
+    left: Math.round(clamp(left, stage.left, Math.max(stage.left, stage.left + stage.width - size.w))),
+    top: Math.round(clamp(top, stage.top, Math.max(stage.top, stage.top + stage.height - size.h))),
+  };
+}

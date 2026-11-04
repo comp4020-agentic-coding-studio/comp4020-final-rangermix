@@ -69,13 +69,38 @@
         <button type="button" id="layout-switch" class="phone-only" aria-pressed="false">Bigger room</button>
         <button type="button" id="leave">Leave</button>
       </header>
-      <aside class="panel left" aria-label="The chalkboard and your cats">
-        <section id="chalkboard" class="chalkboard" aria-labelledby="chalkboard-heading">
+      <!-- The panels (slice 14): on a desktop they float over the room, each
+           with a bar to move it by and a pin; on a phone they stand under the
+           room (layout A) or come with the drawer (layout B). They come before
+           the room, as on screen, so Tab from the room goes to the talk box. -->
+      <section id="chalkboard" class="panel chalkboard" aria-labelledby="chalkboard-heading">
+        <div class="panel-bar">
           <h2 id="chalkboard-heading">The chalkboard</h2>
-          <ol id="chalk-lines" class="chalk-lines"></ol>
-        </section>
-        <section id="your-cats" aria-label="Your cats"></section>
-      </aside>
+          <button type="button" class="grip" aria-label="Move the chalkboard">⠿</button>
+          <button type="button" class="pin" aria-label="Pin the chalkboard">Pin</button>
+        </div>
+        <ol id="chalk-lines" class="chalk-lines panel-body"></ol>
+      </section>
+      <section id="cats-panel" class="panel cats-panel" aria-labelledby="cats-heading">
+        <div class="panel-bar">
+          <h2 id="cats-heading">Your cats</h2>
+          <button type="button" class="grip" aria-label="Move your cats">⠿</button>
+          <button type="button" class="pin" aria-label="Pin your cats">Pin</button>
+        </div>
+        <div id="your-cats" class="panel-body"></div>
+      </section>
+      <section id="here-panel" class="panel here-panel" aria-labelledby="here-heading">
+        <div class="panel-bar">
+          <h2 id="here-heading">Who's here</h2>
+          <button type="button" class="grip" aria-label="Move who's here">⠿</button>
+          <button type="button" class="pin" aria-label="Pin who's here">Pin</button>
+        </div>
+        <div class="panel-body">
+          <div id="here"></div>
+          <h3 id="said-heading">Said this visit</h3>
+          <ol id="said" class="said" aria-labelledby="said-heading"></ol>
+        </div>
+      </section>
       <div id="stage" class="stage">
         <canvas
           id="room"
@@ -93,13 +118,6 @@
           <p>Dusting off the café…</p>
         </div>
       </div>
-      <aside class="panel right">
-        <section id="here" aria-label="Who's here"></section>
-        <section aria-labelledby="said-heading">
-          <h2 id="said-heading">Said this visit</h2>
-          <ol id="said" class="said"></ol>
-        </section>
-      </aside>
       <form id="talk" class="talk">
         <button type="button" id="talk-to" class="talk-to" hidden></button>
         <input id="talk-input" autocomplete="off" placeholder="Say something…" aria-label="Say something" />

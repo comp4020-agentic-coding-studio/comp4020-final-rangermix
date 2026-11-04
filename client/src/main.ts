@@ -10,6 +10,7 @@ import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
+import { Floating } from "./floating";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
@@ -83,6 +84,8 @@ function enter(me: ApiMe): void {
   document.addEventListener("keydown", touched);
   document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
+  // On a desktop the panels float over the room's corners (slice 14).
+  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel")]);
   const bubbles = new Bubbles(overlay, stage);
   const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"), (why) => {
     toast(overlay, why);
@@ -342,6 +345,7 @@ function enter(me: ApiMe): void {
     if (!board.hidden) renderChalkboard($("board-lines"), s);
   });
   function stop(): void {
+    floating.dispose();
     detach();
     talk.dispose();
     unsubscribe();

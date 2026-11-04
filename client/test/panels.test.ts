@@ -95,7 +95,7 @@ describe("panels", () => {
   it("show who's inside and who's at the window", () => {
     const box = document.createElement("div");
     renderHere(box, s);
-    expect(box.textContent).toContain("Here (1/6)");
+    expect(box.textContent).toContain("Inside (1/6)");
     expect(box.textContent).toContain("me (you)");
     expect(box.textContent).toContain("At the window (1)");
   });

@@ -72,25 +72,38 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .error { color: var(--error); min-height: 1.5em; margin: 0.5rem 0 0; }
 .left-cafe { min-height: 100vh; display: grid; place-content: center; text-align: center; gap: 1rem; padding: 16px; }
 
-/* The café, on a desktop: the room in the middle, panels either side */
+/* The café, on a desktop: the room across the window, the panels floating
+   over its empty corners (slice 14), the status bar above and talk below. */
 .cafe {
   height: 100vh;
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr) 19rem;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "status status status" "left stage right" "left talk right";
-  gap: 12px;
-  padding: 12px;
+  grid-template-areas: "status" "stage" "talk";
+  gap: 8px;
+  padding: 8px;
 }
 .status { grid-area: status; display: flex; align-items: center; gap: 0.75rem; }
 #status-text { flex: 1; color: var(--muted); }
 .carrying { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .status { flex-wrap: wrap; }
 .outdated { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.3rem 0.2rem 0.8rem; border: 1px solid var(--accent); border-radius: 999px; }
-.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 1rem; overflow: auto; min-height: 0; }
-.panel h2 { font-size: 0.95rem; margin: 0.25rem 0 0.5rem; }
-.left { grid-area: left; }
-.right { grid-area: right; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0.5rem; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem 1rem 0.75rem; min-height: 0; display: flex; flex-direction: column; }
+.panel h2 { font-size: 0.95rem; margin: 0; }
+.panel h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
+.panel-bar { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.4rem; }
+.panel-bar h2 { flex: 1; }
+.panel-bar button { padding: 0.1rem 0.5rem; font-size: 0.85rem; line-height: 1.4; }
+.panel-bar .grip { cursor: grab; touch-action: none; }
+.panel-body { overflow: auto; min-height: 0; }
+.panel-body > :first-child, #here > :first-child { margin-top: 0; }
+@media (min-width: 960px) {
+  /* Fixed over the stage, where floating.ts puts them, and kept inside it. */
+  .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 18rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+  .chalkboard { max-height: calc((100vh - 140px) * 0.55); }
+  .cats-panel { max-height: calc((100vh - 140px) * 0.4); }
+  .here-panel { max-height: calc((100vh - 140px) * 0.6); }
+}
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }
 #room { display: block; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); touch-action: manipulation; }
 #room.placing { cursor: crosshair; }
@@ -130,8 +143,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   .waking .mote { opacity: 0.45; }
 }
 
-/* The chalkboard (slice 02): in the left panel on a desktop, a dialog from the room's board anywhere */
-.chalkboard { margin-bottom: 1rem; }
+/* The chalkboard (slice 02): a panel on a desktop, a dialog from the room's board anywhere */
 .chalk-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; font-size: 0.92rem; overflow-wrap: anywhere; }
 .chalk-lines time { font-variant-numeric: tabular-nums; color: var(--muted); }
 .chalk-lines .empty { color: var(--muted); }
@@ -145,14 +157,14 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .trust-bar > span { display: block; height: 100%; background: var(--accent); }
 
 /* Bubbles, menus and notes over the room */
-.bubble { position: absolute; width: max-content; max-width: 14rem; background: #fffdf9; color: #2b2230; border: 2px solid #2b2230; border-radius: 10px; padding: 0.3rem 0.55rem; font-size: 0.9rem; line-height: 1.3; pointer-events: none; overflow-wrap: anywhere; box-shadow: 0 2px 0 #2b2230; }
+.bubble { position: absolute; z-index: 2; width: max-content; max-width: 14rem; background: #fffdf9; color: #2b2230; border: 2px solid #2b2230; border-radius: 10px; padding: 0.3rem 0.55rem; font-size: 0.9rem; line-height: 1.3; pointer-events: none; overflow-wrap: anywhere; box-shadow: 0 2px 0 #2b2230; }
 .bubble .to { display: block; font-size: 0.75rem; color: #6d6170; }
 .menu { position: absolute; min-width: 11rem; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem; display: grid; gap: 0.35rem; box-shadow: 0 10px 30px rgb(0 0 0 / 0.2); z-index: 2; }
 .menu h2 { font-size: 1rem; margin: 0 0 0.25rem; }
 .menu .note { color: var(--muted); font-size: 0.85rem; margin: 0 0 0.25rem; }
 .still-there { position: fixed; left: 50%; top: 20%; transform: translateX(-50%); z-index: 7; background: var(--card); border: 2px solid var(--accent); border-radius: 16px; padding: 1rem 1.25rem; display: grid; gap: 0.75rem; justify-items: center; box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); width: min(22rem, calc(100vw - 32px)); text-align: center; }
 .still-there p { margin: 0; font-weight: 600; }
-.toast { position: absolute; left: 50%; bottom: 0.75rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.9rem; pointer-events: none; }
+.toast { position: absolute; z-index: 2; left: 50%; bottom: 0.75rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.9rem; pointer-events: none; }
 
 /* The café on a phone, layout A: the whole room on top, full width, the rest below */
 @media (max-width: 959px) {
@@ -161,13 +173,16 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
     min-height: 100vh;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto auto auto;
-    grid-template-areas: "status" "stage" "talk" "right" "left";
+    grid-template-areas: "status" "stage" "talk" "here" "cats";
     gap: 8px;
     padding: 8px 0;
   }
   .status, .panel, .talk { margin: 0 8px; }
+  .here-panel { grid-area: here; }
+  .cats-panel { grid-area: cats; }
+  /* Below 960 px the panels stand still: nothing to move or pin. */
+  .panel-bar button { display: none; }
   .stage { place-items: start center; }
-  .right { grid-template-rows: auto auto; }
   .talk { flex-wrap: wrap; }
   .talk input { flex: 1 1 10rem; }
   /* The emotes and the treat button share a row under the talk box (slice 14). */
@@ -176,6 +191,10 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   /* On a phone the board is read by tapping the chalkboard in the room; the
      panel's copy is out of sight but still there for a screen reader. */
   .chalkboard { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  /* Its list doesn't scroll out of sight: a scrolling box is a Tab stop in
+     Chrome, and Tab must never reach what nobody can see (slice 09's review,
+     finding 4). */
+  .chalkboard .panel-body { overflow: visible; }
 }
 
 /* The phone's layout switch, and layout B: the room fills the screen at 3x and
@@ -190,13 +209,12 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .layout-b .talk { position: fixed; bottom: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; }
 .layout-b .panel { display: none; }
 /* The chalkboard's copy stays for a screen reader while the drawer is shut,
-   as it does in layout A, now that a phone opens in B (slice 09); the rest
-   of the panel, your cats and the treat button, goes with the drawer, so Tab
-   never reaches what nobody can see (slice 09's review, finding 4). */
-.layout-b:not(.drawer-open) .panel.left { display: block; position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.layout-b:not(.drawer-open) .panel.left #your-cats { display: none; }
-.layout-b.drawer-open .panel { display: block; position: fixed; left: 8px; right: 8px; z-index: 4; margin: 0; }
-.layout-b.drawer-open .panel.right { top: 72px; max-height: 40vh; }
-.layout-b.drawer-open .panel.left { bottom: 132px; max-height: 25vh; }
+   as it does in layout A, now that a phone opens in B (slice 09); your cats
+   and who's here come with the drawer, so Tab never reaches what nobody can
+   see (slice 09's review, finding 4). */
+.layout-b .panel.chalkboard { display: block; }
+.layout-b.drawer-open .cats-panel, .layout-b.drawer-open .here-panel { display: flex; position: fixed; left: 8px; right: 8px; z-index: 4; margin: 0; }
+.layout-b.drawer-open .here-panel { top: 72px; max-height: 40vh; }
+.layout-b.drawer-open .cats-panel { bottom: 132px; max-height: 25vh; }
 .menu.ring { position: absolute; inset: 0; display: block; min-width: 0; padding: 0; background: none; border: none; box-shadow: none; pointer-events: none; }
 .menu.ring button { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 88px; min-height: 44px; border-radius: 999px; font-size: 0.85rem; padding: 0.3rem; box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }
