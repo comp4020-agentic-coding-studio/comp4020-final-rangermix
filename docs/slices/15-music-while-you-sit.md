@@ -1,6 +1,6 @@
 # 15. Music while you sit
 
-- **Status:** Proposed; read by a builder 2026-11-05 ([questions](../notes/reviews/slice-15-builder-check.md)), its four questions settled as the agent's calls at the end
+- **Status:** Approved 2026-11-05 by the user ("merge slice 11 first, then work on music"), with its proposed defaults; read by a builder 2026-11-05 ([questions](../notes/reviews/slice-15-builder-check.md)), its four questions settled as the agent's calls at the end
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-15-music.md`
 - **Design:** The client ("Music"),
   [ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md);
