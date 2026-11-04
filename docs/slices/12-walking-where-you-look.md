@@ -1,6 +1,6 @@
 # 12. Walking where you look
 
-- **Status:** Proposed
+- **Status:** Approved 2026-11-04, with the proposed default for its open question (standing still, a figure faces the way it last walked; someone arriving faces into the room)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-12-walking.md`
 - **Design:** The client ("The look": walkers face where they go);
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
@@ -64,5 +64,6 @@ at a time, instead of stalling and jumping.
 
 ## Open questions
 
-- **Standing still, which way does a figure face?** Proposed default: the
-  way they last walked. Someone who arrives faces into the room.
+- **Standing still, which way does a figure face?** Settled 2026-11-04,
+  the default: the way they last walked. Someone who arrives faces into
+  the room.

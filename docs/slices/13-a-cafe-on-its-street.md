@@ -1,6 +1,6 @@
 # 13. A café on its street
 
-- **Status:** Proposed
+- **Status:** Approved 2026-11-04, with the proposed defaults for its open questions (the same shadows by night; the street pans with the room)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-13-street.md`
 - **Design:** The client ("The look": the room is a diorama on its street;
   crisp, with outlines and shadows);
@@ -76,8 +76,9 @@ behind it, the windows' light falling across the floor.
   self outline, cast shadows and ambient occlusion (ADR 0019).
 - **The shadows at night.** The windows are lit at night with the
   street's lamplight (slice 10), so the light still comes from them.
-  Proposed default: the same shadows by night as by day, in the night
-  palette, as in [the study's night picture](../notes/screens/art-style/1b-edges.png)
+  Settled 2026-11-04, the default: the same shadows by night as by day,
+  in the night palette, as in [the study's night picture](../notes/screens/art-style/1b-edges.png)
   the user chose from.
-- **Does the street move with the phone's pan in layout B?** Proposed
-  default: yes, as part of the room, so it never slides against it.
+- **Does the street move with the phone's pan in layout B?** Settled
+  2026-11-04, the default: yes, as part of the room, so it never slides
+  against it.
