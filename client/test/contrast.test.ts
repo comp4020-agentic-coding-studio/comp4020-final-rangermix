@@ -69,3 +69,98 @@ describe("the page's colours", () => {
     expect(css).toMatch(/\.trust-bar\s*\{[^}]*background:\s*var\(--track\)/);
   });
 });
+
+// Slice 14: a panel floats over the room, half see-through, and its text
+// must hold 4.5:1 whatever is behind it. A plain see-through colour can't:
+// over the street's sky and the night the background swings too far. So
+// the panel first squeezes what's behind it into a narrow band at its own
+// end of the scale, with a backdrop filter, then lays its glass over that
+// at 50% (20% dimmed). This computes what the browser draws, as Chrome was
+// measured to (plan-slice-14-panels.md, decision 3), and checks every text
+// colour on it over black, white and every colour the room and street use.
+
+import palettes from "../../content/sprites/palettes.json";
+
+/** The tokens for one theme, glass and filter included, as strings. */
+function raw(theme: "light" | "dark"): Record<string, string> {
+  const dark = css.indexOf("@media (prefers-color-scheme: dark)");
+  const block = theme === "light" ? css.slice(0, dark) : css.slice(dark, css.indexOf("}\n}", dark));
+  const out: Record<string, string> = {};
+  for (const m of block.matchAll(/--([a-z-]+):\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+  return out;
+}
+
+/** `contrast(c) brightness(b)`, as the filter's two numbers. */
+function filterOf(value: string): { c: number; b: number } {
+  const c = /contrast\(([\d.]+)\)/.exec(value);
+  const b = /brightness\(([\d.]+)\)/.exec(value);
+  expect(c && b, `the glass's filter is "${value}"`).toBeTruthy();
+  return { c: Number(c![1]), b: Number(b![1]) };
+}
+
+const channels = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255);
+const toHex = (c: number[]) => `#${c.map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0")).join("")}`;
+
+/** What shows through a panel over `behind`: the filter, then the glass at `alpha`. */
+function through(behind: string, glass: string, alpha: number, f: { c: number; b: number }): string {
+  const filtered = channels(behind).map((v) => Math.max(0, Math.min(1, Math.max(0, Math.min(1, (v - 0.5) * f.c + 0.5)) * f.b)));
+  return toHex(channels(glass).map((g, i) => alpha * g + (1 - alpha) * filtered[i]));
+}
+
+/** Every colour the room and street are drawn in, by day and by night, and black and white. */
+const behindColours = (): string[] => {
+  const out = new Set(["#000000", "#ffffff"]);
+  const walk = (v: unknown) => {
+    if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) out.add(v.toLowerCase());
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(palettes);
+  return [...out];
+};
+
+describe("the panels over the room (slice 14)", () => {
+  for (const theme of ["light", "dark"] as const) {
+    it(`keeps a panel's text at 4.5:1 over anything behind it, normally and dimmed, in the ${theme} theme`, () => {
+      const t = raw(theme);
+      const colours = tokens(theme);
+      for (const [state, alphaToken] of [
+        ["normally", "glass-alpha"],
+        ["dimmed", "glass-alpha-dim"],
+      ] as const) {
+        expect(t[alphaToken], `--${alphaToken}`).toBeTruthy();
+        expect(t["glass-filter"], "--glass-filter").toBeTruthy();
+        const alpha = Number(t[alphaToken]);
+        const f = filterOf(t["glass-filter"]);
+        for (const behind of behindColours()) {
+          const bg = through(behind, colours.card, alpha, f);
+          // A panel's words are text and muted text; its buttons have their
+          // own opaque card behind them, and it holds no links.
+          for (const [what, fg] of [
+            ["text", colours.ink],
+            ["muted text", colours.muted],
+          ] as const) {
+            expect(contrast(fg, bg), `${what} ${state} over ${behind} (${fg} on ${bg})`).toBeGreaterThanOrEqual(4.5);
+          }
+        }
+      }
+    });
+  }
+
+  it("is half see-through normally and about a fifth dimmed, as the spec's numbers say", () => {
+    for (const theme of ["light", "dark"] as const) {
+      const t = raw(theme);
+      expect(Number(t["glass-alpha"])).toBeCloseTo(0.5, 2);
+      expect(Number(t["glass-alpha-dim"])).toBeCloseTo(0.2, 2);
+    }
+  });
+
+  it("draws the panels' glass from the tokens, and is opaque where a browser can't filter what's behind", () => {
+    const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
+    expect(desktop).toMatch(/@supports \(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)/);
+    const glass = desktop.slice(desktop.indexOf("@supports"));
+    expect(glass).toMatch(/\.panel\s*\{[^}]*backdrop-filter:\s*var\(--glass-filter\)/);
+    expect(glass).toMatch(/\.panel\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha\)\)/);
+    expect(glass).toMatch(/\.panel\.dim\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha-dim\)\)/);
+  });
+});

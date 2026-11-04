@@ -230,3 +230,23 @@ Files: `client/src/floating.ts`, `client/test/floating.test.ts`,
 ## Execution log
 
 Where the build departed from this plan, as it happened.
+
+- **Task 1: who's here gets its own heading.** The panel's title is now
+  "Who's here", in its bar, so the count under it reads "Inside (1/6)"
+  rather than repeating "Here". On a phone the emotes and the treat
+  button share a row under the talk box.
+- **Task 2: the chalkboard's hidden copy stopped being a Tab stop.** On a
+  phone the chalkboard is clipped to a pixel for a screen reader; once
+  its list scrolled by itself (`.panel-body`), Chrome made the list a Tab
+  stop, and the layout B check that Tab reaches only what's on screen
+  caught it. The hidden copy's list doesn't scroll. The two slice 07
+  waking checks failed on the long-running local café again and passed
+  on a fresh one (`/tmp` data, port 18820): spec 71 passed, 1 skipped.
+- **Task 3: the glass checked against Chrome.** The real stylesheet's
+  panel over black and over white, read from a screenshot, against the
+  test's arithmetic: Latte normally `#ececec`/`#ffffff` (the model says
+  the same), dimmed `#e1e1e1` (model `#e0e0e0`); Mocha normally
+  `#191922`/`#393942` (model `#393a43`), dimmed `#0b0b0f`/`#3e3e42`
+  (model `#0b0b0e`/`#3e3e42`). Within one step of 255 everywhere. The
+  test checks text and muted text, not links: a panel holds none, and
+  its buttons have their own opaque card.
