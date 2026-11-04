@@ -144,8 +144,9 @@ mod tests {
             }
         }
         let avatar = sprite_sizes("avatar.txt");
+        // People at 32 px (slice 11), with back views (slice 12).
         for frame in ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"] {
-            assert_eq!(avatar.get(frame), Some(&(16, 16)), "{frame}");
+            assert_eq!(avatar.get(frame), Some(&(32, 32)), "{frame}");
         }
         let emotes = sprite_sizes("emotes.txt");
         for emote in ["heart", "question", "dots", "zzz", "sniff"] {

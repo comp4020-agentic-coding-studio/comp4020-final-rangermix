@@ -142,9 +142,10 @@ describe("the room's draw order", () => {
 
   it("finds a piece by the top of its block, and a cat in front of a piece before the piece", () => {
     const s = fromWelcome(welcome(), 10_000);
-    // The sofa's top face over (1,5), 16 px up.
-    const top = toCanvas(1.5, 5.5);
-    expect(hitAt(s, top.x, top.y - 16, 10_000)).toEqual({ x: 1, y: 5 });
+    // The sofa's top face over (2,5), 16 px up, clear of the person at
+    // (1,6), who at 32 px tall (slice 11) stands in front of (1,5)'s top.
+    const top = toCanvas(2.5, 5.5);
+    expect(hitAt(s, top.x, top.y - 16, 10_000)).toEqual({ x: 2, y: 5 });
     // Someone at (1,6), in front of the sofa: their body covers the sofa's front face.
     const me = toCanvas(1.5, 6.5);
     expect(hitAt(s, me.x, me.y - 8, 10_000)).toEqual({ x: 1, y: 6 });

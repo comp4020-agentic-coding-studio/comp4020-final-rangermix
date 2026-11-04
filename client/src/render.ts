@@ -241,8 +241,9 @@ function onBlock(f: FurnitureView, px: number, py: number): boolean {
   return false;
 }
 
-/** How big a cat is drawn, in room pixels (slice 11). */
+/** How big a cat and a person are drawn, in room pixels (slice 11). */
 export const CAT = 24;
+export const PERSON = 32;
 
 /** A figure's sprite box, `size` pixels square and `lift` pixels up, as a polygon. */
 function spriteBox(spot: { x: number; y: number }, lift: number, size = TILE): Pt[] {
@@ -393,7 +394,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       ...footprint(spot, on),
       layer: LAYER.person,
       lift,
-      hit: (px, py) => (inside(spriteBox(spot, lift), px, py) ? tile : null),
+      hit: (px, py) => (inside(spriteBox(spot, lift, PERSON), px, py) ? tile : null),
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
@@ -718,7 +719,8 @@ function drawCat(ctx: Ctx, sprites: Sprites, state: CafeState, cat: Cat, spot: S
 
 /** A carried piece, held up over its carrier's head: a small block. */
 function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): void {
-  const lift = TILE + 6 + standing;
+  // Over the carrier's head, 32 px tall since slice 11.
+  const lift = PERSON - 4 + standing;
   const colour = colourOf(piece.kind);
   const z = Math.min(HEIGHT[piece.kind] ?? 8, 14);
   const s = 0.6;
@@ -739,17 +741,20 @@ function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: num
   const step = Math.floor(now / 180) % 2 ? "walk_a" : "walk_b";
   const frame: AvatarFrame = spot.moving ? (back ? `back_${step}` : step) : back ? "back" : "stand";
   const img = sprites.avatar(look, frame);
-  const feet = feetAt(spot);
+  // As big as its image (32 px since slice 11), its feet on the tile.
+  const size = img ? img.width : PERSON;
+  const feet = feetAt(spot, size);
   const at = { x: feet.x, y: feet.y - lift };
-  if (img) drawFlipped(ctx, img, at, spot.mirror);
-  // The marker and emote move with the sprite, by the same screen pixels.
-  const x = onScreen(ctx, at.x);
+  if (img) drawFlipped(ctx, img, at, spot.mirror, size);
+  // The marker and emote move with the sprite, by the same screen pixels,
+  // over the middle of its head.
+  const x = onScreen(ctx, at.x + size / 2);
   const y = onScreen(ctx, at.y);
   if (isYou) {
     // A small marker over your own head.
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x + 6, y - 4, 4, 2);
-    ctx.fillRect(x + 7, y - 2, 2, 1);
+    ctx.fillRect(x - 2, y - 4, 4, 2);
+    ctx.fillRect(x - 1, y - 2, 2, 1);
   }
-  if (emote) blit(ctx, sprites.emote(emote), x + 4, y - 13);
+  if (emote) blit(ctx, sprites.emote(emote), x - 4, y - 13);
 }

@@ -58,7 +58,8 @@ describe("the stage on the isometric camera", () => {
     const { x, head, feet } = stage.figureToCss({ x: 4, y: 6 });
     const centre = stage.tileToCss(4.5, 6.5);
     expect({ x, feet }).toEqual({ x: centre.left, feet: centre.top });
-    expect(head).toBe(centre.top - 16 * 3);
+    // A figure about 30 px tall at 1x (slice 11), times the scale.
+    expect(head).toBe(centre.top - 30 * 3);
   });
 
   // Slice 09's review, finding 8.

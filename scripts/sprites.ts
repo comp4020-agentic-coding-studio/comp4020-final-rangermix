@@ -19,6 +19,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
 import coats from "../content/sprites/coats.json" with { type: "json" };
+import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
 /** content/sprites/, from this script's own place (or the working directory's, under a test runner that isn't on file URLs). */
 const root = (() => {
@@ -82,9 +83,16 @@ export function decodePng(bytes: Buffer): { width: number; height: number; pixel
 const SLOTS = "0123456789abcdef";
 const hex = (r: number, g: number, b: number) => `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 
-/** One PNG as rows of the sheet's characters: a slot by its colour in the key coat, or "." where clear. */
-function grid(name: string, bytes: Buffer): string[] {
-  const key = coats.white_grey.map((c) => c.toLowerCase());
+/** The cats' key: each slot's colour in the white-grey coat by day. */
+const CAT_KEY = coats.white_grey.map((c) => c.toLowerCase());
+/** The people's key: avatar 0 with shirt 0 by day (outline, skin, hair, shirt, trousers, shoes, white). */
+const PERSON_KEY = (() => {
+  const a = palettes.day.avatars;
+  return [a.base[0], a.skins[0], a.hair[0], a.colours[0], a.base[1], a.base[2], a.base[3]].map((c) => c.toLowerCase());
+})();
+
+/** One PNG as rows of the sheet's characters: a slot by its colour in `key`, or "." where clear. */
+function grid(name: string, bytes: Buffer, key: string[] = CAT_KEY): string[] {
   const { width, height, pixels } = decodePng(bytes);
   const rows: string[] = [];
   for (let y = 0; y < height; y++) {
@@ -96,7 +104,7 @@ function grid(name: string, bytes: Buffer): string[] {
         continue;
       }
       const slot = key.indexOf(hex(r, g, b));
-      if (a !== 255 || slot < 0) throw new Error(`${name} at (${x}, ${y}): ${hex(r, g, b)}${a !== 255 ? ` at alpha ${a}` : ""} is not one of the coat's slot colours (${key.join(" ")})`);
+      if (a !== 255 || slot < 0) throw new Error(`${name} at (${x}, ${y}): ${hex(r, g, b)}${a !== 255 ? ` at alpha ${a}` : ""} is not one of the coat's or look's slot colours (${key.join(" ")})`);
       row += SLOTS[slot];
     }
     rows.push(row);
@@ -134,8 +142,37 @@ export function catSheet(pngs: Record<string, Record<string, Buffer>> = readPngs
   return out;
 }
 
+/** The people's frames, in the sheet's order. */
+export const PERSON_FRAMES = ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"] as const;
+
+/**
+ * The people's sheet, as content/sprites/avatar.txt holds it: each frame
+ * of content/sprites/png/person/, in avatar 0's colours with shirt 0.
+ * Given `pngs`, from those instead of the files (for tests).
+ */
+export function personSheet(pngs?: Record<string, Buffer>): string {
+  const files =
+    pngs ??
+    Object.fromEntries(
+      readdirSync(join(root, "png/person"))
+        .filter((f) => f.endsWith(".png"))
+        .map((f) => [f.slice(0, -4), readFileSync(join(root, "png/person", f))]),
+    );
+  let out = "# Written by scripts/sprites.ts from content/sprites/png/person/: edit the PNGs, then run it.\n";
+  for (const f of [...PERSON_FRAMES, ...Object.keys(files).filter((k) => !(PERSON_FRAMES as readonly string[]).includes(k)).sort()]) {
+    if (!files[f]) continue;
+    out += `\n== ${f}\n${grid(f, files[f], PERSON_KEY).join("\n")}\n`;
+  }
+  return out;
+}
+
 if (process.argv[1]?.endsWith("sprites.ts")) {
-  const out = join(root, "cat.txt");
-  writeFileSync(out, catSheet());
-  console.log(`wrote ${out}`);
+  for (const [file, text] of [
+    ["cat.txt", catSheet()],
+    ["avatar.txt", personSheet()],
+  ] as const) {
+    const out = join(root, file);
+    writeFileSync(out, text);
+    console.log(`wrote ${out}`);
+  }
 }

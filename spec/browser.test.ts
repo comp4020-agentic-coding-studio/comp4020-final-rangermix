@@ -472,7 +472,12 @@ describe("in a browser", { timeout: 30_000 }, () => {
           if (!inPanel) continue;
           const welcome = v.frames.find((f) => f.type === "welcome")!;
           const taken = welcome.snapshot.room.furniture.some((f: Frame) => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
-          if (!taken) return { x, y, at };
+          // Nor where someone stands in front of it: a 32-px person (slice
+          // 11) covers the middle of the tiles just behind them, and a
+          // click there picks them, as it should.
+          const me = meSeen(v.frames).at;
+          const near = (p: Tile) => Math.abs(p.x - x) <= 1 && Math.abs(p.y - y) <= 1;
+          if (!taken && !near(me) && !near(CAT)) return { x, y, at };
         }
       return null;
     })();

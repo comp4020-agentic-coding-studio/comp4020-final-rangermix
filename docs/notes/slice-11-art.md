@@ -78,3 +78,22 @@ were passed as they are; they can be redrawn later as data.
   his outline is what separates him. A deeper stripe matches the floor
   even more closely (measured). Changing his coat or the floor's wood is
   a palette call, not made here.
+
+## Part 2, task 4: the people, 2026-11-05
+
+- **People at 32 px**, about 31 tall, adult proportions: standing and two
+  steps of a walk, front and back, drawn by `scripts/people.mjs` into
+  `content/sprites/png/person/` in avatar 0's colours; `scripts/sprites.ts`
+  writes `content/sprites/avatar.txt` from them, and a test holds it.
+  Each visitor's skin, hair and shirt still swap by their look
+  ([sheet](screens/slice-11/people-sheet.png)). The four looks share one
+  shape; a different hairstyle per look would be a new field on a look,
+  so an account and protocol change, not made.
+- **Sized from the image:** a person stands, is mirrored and is picked at
+  32 px; the "you" marker and emotes sit over the middle of the head; a
+  bubble goes above a 30-px head; a carried piece rides over it.
+- **What the bigger sprites changed in the checks:** a 32-px person covers
+  the middle of the tiles just behind them, so a click there picks them,
+  which is right; two checks that clicked the sofa's top behind someone,
+  and a bare tile behind the test's own visitor, now aim where nobody
+  stands.

@@ -91,10 +91,10 @@ describe("the café's colours in each light", () => {
     for (const f of ["sit", "walk_a", "walk_b", "back_sit", "back_walk_a", "back_walk_b", "nap"]) expect(sheet.has(`round:${f}`), f).toBe(true);
   });
 
-  it("draws every person frame at 16 pixels, with a back view for each (slice 12)", () => {
+  it("draws every person frame at 32 pixels, with a back view for each (slices 11 and 12)", () => {
     const sheet = parseSheet(avatarSheet);
     expect([...sheet.keys()].sort()).toEqual(["back", "back_walk_a", "back_walk_b", "stand", "walk_a", "walk_b"]);
-    for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([16, 16]);
+    for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([32, 32]);
   });
 
   it("draws every cat frame facing the same way, head on the right, so the mirroring turns them all alike (slice 12's review, finding 1)", () => {
@@ -138,8 +138,8 @@ describe("the café's colours in each light", () => {
 
   it("shows no face on a back view: no eye pixels where the front has them", () => {
     const sheet = parseSheet(avatarSheet);
-    // Slot 0 is the outline and eyes; on the front the eyes sit inside the head (rows 3 to 6).
-    const eyes = (g: number[][]) => g.slice(3, 7).flatMap((row) => row.slice(5, 11)).filter((v) => v === 0).length;
+    // Slot 0 is the outline and eyes; on the front the eyes sit inside the face, rows 4 to 6, columns 13 to 18 at 32 px.
+    const eyes = (g: number[][]) => g.slice(4, 7).flatMap((row) => row.slice(13, 19)).filter((v) => v === 0).length;
     expect(eyes(sheet.get("stand")!)).toBeGreaterThan(0);
     for (const name of ["back", "back_walk_a", "back_walk_b"]) expect(eyes(sheet.get(name)!), name).toBe(0);
   });

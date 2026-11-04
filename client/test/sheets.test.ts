@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { catSheet, decodePng } from "../../scripts/sprites";
+import { catSheet, decodePng, personSheet } from "../../scripts/sprites";
 import { parseSheet } from "../src/sprites";
 
 // Slice 11: the cats' sprites are drawn as PNGs in content/sprites/png/,
@@ -34,5 +34,14 @@ describe("the cats' sheet", () => {
     const red = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64");
     expect(decodePng(red).pixels[0]).toEqual([255, 0, 0, 255]);
     expect(() => catSheet({ round: { sit: red } })).toThrow(/round:sit.*#ff0000.*not one of the coat's/);
+  });
+
+  it("is matched by the people's sheet: exactly what scripts/sprites.ts writes, every frame 32 by 32", () => {
+    const text = readFileSync(join(repo, "content/sprites/avatar.txt"), "utf8");
+    expect(text).toBe(personSheet());
+    const sheet = parseSheet(text);
+    for (const f of ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"]) {
+      expect([sheet.get(f)![0].length, sheet.get(f)!.length], f).toEqual([32, 32]);
+    }
   });
 });

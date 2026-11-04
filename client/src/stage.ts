@@ -8,8 +8,8 @@ import { fitScale } from "./scale";
 import { Sprites } from "./sprites";
 import { serverNow } from "./state";
 
-/** How tall someone stands, in canvas pixels at 1x: today's 16-px sprites, till slice 11. */
-const FIGURE = 16;
+/** How tall someone stands, in canvas pixels at 1x: 32 since slice 11 (render.ts's PERSON). */
+const FIGURE = 30;
 /** A face in the window is drawn from 30 to 39 px up the street wall, over a sill at 20 (render.ts). */
 const FACE_TOP = 39;
 const SILL = 20;
