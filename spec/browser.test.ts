@@ -561,6 +561,58 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await dim("#cats-panel")).toBe(false);
   });
 
+  it("fits each panel in the stage at a laptop's 1366×768, the left two never overlapping, and lets a pinned one's Unpin be its only Tab stop (slice 14's review, findings 2 and 9)", async () => {
+    const v = await visit({ width: 1366, height: 768 });
+    const page = v.page;
+    const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+    const [stage, board, cats] = [await box("#stage"), await box("#chalkboard"), await box("#cats-panel")];
+    for (const [sel, p] of [["#chalkboard", board], ["#cats-panel", cats], ["#here-panel", await box("#here-panel")]] as const) {
+      expect(p.y, `${sel} inside the stage`).toBeGreaterThanOrEqual(stage.y - 0.5);
+      expect(p.y + p.height, `${sel} inside the stage`).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
+    }
+    expect(board.y + board.height, "the chalkboard above your cats").toBeLessThanOrEqual(cats.y + 0.5);
+    // Your treats are on screen in your cats, not scrolled away.
+    const treats = await box("#your-cats .treats");
+    expect(treats.y + treats.height, "the treats line inside your cats").toBeLessThanOrEqual(cats.y + cats.height + 0.5);
+    // A long visit, as the review had it: who's here's list longer than its
+    // box, said within the café's limit (a burst of five, then one in two
+    // seconds), and the panels made short enough that their bodies would
+    // scroll, so what a pinned one lets Tab reach is the pinned rule's doing.
+    for (let i = 0; i < 6; i++) {
+      await page.locator("#talk-input").fill(`line ${i} of a long visit, long enough to wrap in the panel`);
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(80);
+    }
+    await page.locator(".said li", { hasText: "line 4 of a long visit" }).waitFor();
+    // A short window: the stage, and each panel's share of it, too short for what's in them.
+    await page.setViewportSize({ width: 1366, height: 560 });
+    await page.waitForTimeout(300);
+    const said = await page.evaluate(() => {
+      const l = document.getElementById("said")!;
+      return { scrolls: l.scrollHeight > l.clientHeight || document.querySelector("#here-panel .panel-body")!.scrollHeight > document.querySelector("#here-panel .panel-body")!.clientHeight };
+    });
+    expect(said.scrolls, "who's here overflows").toBe(true);
+    const catsScroll = await page.evaluate(() => { const b = document.getElementById("your-cats")!; return b.scrollHeight > b.clientHeight; });
+    expect(catsScroll, "your cats overflows").toBe(true);
+    // Pin each panel: from Leave, Tab meets its Unpin and nothing else in it.
+    for (const [sel, name] of [["#chalkboard", "the chalkboard"], ["#cats-panel", "your cats"], ["#here-panel", "who's here"]] as const) {
+      await page.getByRole("button", { name: `Pin ${name}`, exact: true }).click();
+      await page.locator("#leave").focus();
+      const inPanel: string[] = [];
+      for (let i = 0; i < 16; i++) {
+        await page.keyboard.press("Tab");
+        const where = await page.evaluate((s) => {
+          const el = document.activeElement as HTMLElement;
+          return el.closest(s) ? el.getAttribute("aria-label") || el.id || el.tagName : null;
+        }, sel);
+        if (where) inPanel.push(where);
+        if ((await focused(page)) === "room") break;
+      }
+      expect(inPanel, `what Tab reaches in pinned ${name}`).toEqual([`Unpin ${name}`]);
+      await page.getByRole("button", { name: `Unpin ${name}`, exact: true }).click();
+    }
+  });
+
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {
     const { page, frames } = await visit({ width: 1920, height: 1080 });
     const welcome = frames.find((f) => f.type === "welcome")!;

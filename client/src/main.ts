@@ -317,6 +317,9 @@ function enter(me: ApiMe): void {
   const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
     $("waking").hidden = !cafe.waking;
+    // The panels float over the stage, under the dusting cover while the
+    // café wakes: out of Tab's reach too (slice 14's review, finding 8).
+    for (const id of ["chalkboard", "cats-panel", "here-panel"]) $(id).inert = cafe.waking;
     // Nothing to act on while it wakes (slice 07's review, finding 5).
     for (const button of document.querySelectorAll<HTMLButtonElement>("#emotes button")) button.disabled = cafe.waking;
     const s = cafe.state;

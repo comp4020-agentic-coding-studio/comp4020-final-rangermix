@@ -109,3 +109,33 @@ describe("dimming a panel left unchanged", () => {
     d.dispose();
   });
 });
+
+describe("a panel's Pin button, through leaving and coming back (slice 14's review, finding 3)", () => {
+  it("keeps its name exact when the panels are set up again over the same page", async () => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    const { Floating } = await import("../src/floating");
+    document.body.innerHTML = `<div id="stage"></div><section id="cats-panel" class="panel"><div class="panel-bar"><h2>Your cats</h2><button class="grip" aria-label="Move your cats"></button><button class="pin" aria-label="Pin your cats" data-name="your cats">Pin</button></div><div class="panel-body"></div></section>`;
+    const stage = document.getElementById("stage")!;
+    const panel = document.getElementById("cats-panel")!;
+    const pin = panel.querySelector<HTMLButtonElement>(".pin")!;
+    let f = new Floating(stage, [panel]);
+    pin.click();
+    expect(pin.getAttribute("aria-label")).toBe("Unpin your cats");
+    // Leave, and come back in: a new Floating over the same page.
+    f.dispose();
+    f = new Floating(stage, [panel]);
+    expect(pin.getAttribute("aria-label")).toBe("Unpin your cats");
+    pin.click();
+    expect(pin.getAttribute("aria-label")).toBe("Pin your cats");
+    f.dispose();
+    f = new Floating(stage, [panel]);
+    expect(pin.getAttribute("aria-label")).toBe("Pin your cats");
+    f.dispose();
+    localStorage.clear();
+  });
+});

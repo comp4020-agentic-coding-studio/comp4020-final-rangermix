@@ -14,6 +14,10 @@ export const START: Record<string, PanelSpot> = {
   "here-panel": { h: "right", x: 8, v: "top", y: 8 },
 };
 
+/** Each panel's share of the stage's height, and the room left between and round them, in CSS pixels. */
+const SHARE: Record<string, number> = { chalkboard: 0.42, "cats-panel": 0.58, "here-panel": 1 };
+const GAP = 16;
+
 /** How far an arrow moves a panel, in CSS pixels; with Shift, four times as far. */
 const STEP = 16;
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -64,10 +68,13 @@ export class Floating {
     const stage = this.stageBox();
     for (const panel of this.panels) {
       if (phone) {
-        panel.style.removeProperty("--x");
-        panel.style.removeProperty("--y");
+        for (const v of ["--x", "--y", "--most"]) panel.style.removeProperty(v);
         continue;
       }
+      // How tall it may grow, from the stage it floats in, not the window:
+      // the left two share the stage's height, so they never overlap,
+      // whatever wraps the status bar (slice 14's review, finding 9).
+      panel.style.setProperty("--most", `${Math.floor(Math.max(80, stage.height * (SHARE[panel.id] ?? 1) - GAP))}px`);
       this.show(panel, panelAt(this.saved[panel.id].spot, this.sizeOf(panel), stage));
     }
   }
@@ -146,7 +153,10 @@ export class Floating {
     const pin = panel.querySelector<HTMLButtonElement>(".pin");
     const grip = panel.querySelector<HTMLButtonElement>(".grip");
     if (!pin) return;
-    const name = (pin.getAttribute("aria-label") ?? "").replace(/^Pin /, "");
+    // The panel's name from the page, never from the label this rewrites:
+    // a second Floating over the same page (leaving and coming back) would
+    // read "Unpin your cats" (slice 14's review, finding 3).
+    const name = pin.dataset.name ?? "";
     const show = () => {
       const pinned = this.saved[panel.id].pinned;
       panel.classList.toggle("pinned", pinned);

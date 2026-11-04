@@ -129,9 +129,14 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 @media (min-width: 960px) {
   /* Fixed over the stage, where floating.ts puts them, and kept inside it. */
   .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 18rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
-  .chalkboard { max-height: calc((100vh - 140px) * 0.55); }
-  .cats-panel { max-height: calc((100vh - 140px) * 0.4); }
-  .here-panel { max-height: calc((100vh - 140px) * 0.6); }
+  /* As tall as its content, up to its share of the stage (floating.ts sets --most). */
+  .panel { max-height: var(--most, 40vh); }
+  /* Who's here keeps its headings in view; only what was said scrolls. */
+  .here-panel .panel-body { display: flex; flex-direction: column; overflow: hidden; }
+  .here-panel .said { overflow: auto; min-height: 2.5rem; }
+  /* A pinned panel lets every scroll through to the room, as every click,
+     and nothing in it but Unpin takes the focus (slice 14's review, finding 2). */
+  .panel.pinned .panel-body, .panel.pinned .said { overflow: hidden; }
   .panel { transition: background-color 0.4s; }
   @media (prefers-reduced-motion: reduce) {
     .panel { transition: none; }
