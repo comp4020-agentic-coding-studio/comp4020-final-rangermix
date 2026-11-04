@@ -477,8 +477,11 @@ describe("the room drawn crisp", () => {
       const p = pixels(336 * scale, 232 * scale);
       const w = welcome();
       w.snapshot.room.furniture = [piece(1, "sofa", 0, 5, 3, 1), piece(2, "rug", 4, 4, 4, 3, true), { ...piece(3, "plant", 6, 9, 1, 1), toppled: true }, piece(4, "toys", 7, 8, 1, 1)];
-      // Someone partway along a walk, so sprites stand between whole room pixels (slice 13's review, finding 12).
+      // Someone partway along a walk, so sprites stand between whole room
+      // pixels (slice 13's review, finding 12), carrying a box over their
+      // head (slice 12's review, finding 6).
       w.snapshot.people[0] = { ...w.snapshot.people[0], walk: { path: [{ x: 1, y: 6 }, { x: 2, y: 6 }, { x: 3, y: 6 }], start: 10_000 - 137, speed: 3 } };
+      w.snapshot.held = [{ by: w.snapshot.people[0].id, piece: piece(9, "box", 0, 0, 1, 1) }];
       const s = fromWelcome(w, 10_000);
       for (const light of [0, 0.5, 1] as Light[]) draw(p.ctx, s, new Sprites(), 10_000, { ...noPointer, visible: true, tile: { x: 3, y: 3 } }, light, scale);
       expect(p.blended).toEqual([]);
