@@ -134,11 +134,15 @@ describe("the panels over the room (slice 14)", () => {
         const f = filterOf(t["glass-filter"]);
         for (const behind of behindColours()) {
           const bg = through(behind, colours.card, alpha, f);
-          // A panel's words are text and muted text; its buttons have their
-          // own opaque card behind them, and it holds no links.
+          // A panel's words are its own text and muted text (--panel-ink,
+          // --panel-muted: darker in the light theme, brighter in the dark,
+          // so the glass can show more of the room, at the user's asking,
+          // 2026-11-05); its buttons have their own opaque card, and it
+          // holds no links.
+          expect(t["panel-ink"] && t["panel-muted"], "the panels' text tokens").toBeTruthy();
           for (const [what, fg] of [
-            ["text", colours.ink],
-            ["muted text", colours.muted],
+            ["text", t["panel-ink"]],
+            ["muted text", t["panel-muted"]],
           ] as const) {
             expect(contrast(fg, bg), `${what} ${state} over ${behind} (${fg} on ${bg})`).toBeGreaterThanOrEqual(4.5);
           }
@@ -147,17 +151,39 @@ describe("the panels over the room (slice 14)", () => {
     });
   }
 
-  it("is half see-through normally and about a fifth dimmed, as the spec's numbers say", () => {
+  it("is mostly see-through, more so dimmed, and frosted with a blur (the user, 2026-11-05: more translucent, the frost kept)", () => {
     for (const theme of ["light", "dark"] as const) {
       const t = raw(theme);
-      expect(Number(t["glass-alpha"])).toBeCloseTo(0.5, 2);
-      expect(Number(t["glass-alpha-dim"])).toBeCloseTo(0.2, 2);
+      const normal = Number(t["glass-alpha"]);
+      const dim = Number(t["glass-alpha-dim"]);
+      expect(normal, `${theme}: the glass, normally`).toBeLessThanOrEqual(0.3);
+      expect(dim, `${theme}: the glass, dimmed`).toBeLessThan(normal);
+      // A blur in the frost, so the room behind shows as soft shapes, not a flat wash.
+      expect(t["glass-filter"], `${theme}: the frost`).toMatch(/blur\(\s*[1-9]\d*px\s*\)/);
     }
+  });
+
+  it("shows the room through the frost more than before: at least a fifth of its range, normally, in either theme", () => {
+    for (const theme of ["light", "dark"] as const) {
+      const t = raw(theme);
+      const f = filterOf(t["glass-filter"]);
+      const squeeze = (v: number) => Math.max(0, Math.min(1, Math.max(0, Math.min(1, (v - 0.5) * f.c + 0.5)) * f.b));
+      const shows = (1 - Number(t["glass-alpha"])) * (squeeze(1) - squeeze(0));
+      expect(shows, `${theme}: how much of the room's range shows through the glass`).toBeGreaterThanOrEqual(0.2);
+    }
+  });
+
+  it("colours a panel's words with its own tokens on the desktop, where it floats over the room", () => {
+    const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
+    const glass = desktop.slice(desktop.indexOf("@supports"));
+    expect(glass).toMatch(/\.panel\s*\{[^}]*color:\s*var\(--panel-ink\)/);
+    expect(glass).toMatch(/\.panel \.hint[^{]*\{[^}]*color:\s*var\(--panel-muted\)/);
   });
 
   it("draws the panels' glass from the tokens, and is opaque where a browser can't filter what's behind", () => {
     const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
-    expect(desktop).toMatch(/@supports \(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)/);
+    // The filter and relative colours both, or the opaque card (slice 14's review, finding 4).
+    expect(desktop).toMatch(/@supports \(\(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)\) and \(color: rgb\(from red r g b\)\)/);
     const glass = desktop.slice(desktop.indexOf("@supports"));
     expect(glass).toMatch(/\.panel\s*\{[^}]*backdrop-filter:\s*var\(--glass-filter\)/);
     expect(glass).toMatch(/\.panel\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha\)\)/);

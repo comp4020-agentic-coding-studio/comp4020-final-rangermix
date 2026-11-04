@@ -52,7 +52,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21; after 12, since every sprite needs the back view 12 adds ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) |
 | 12 | Walking where you look | Walkers face their direction on screen, with back views, and move by screen pixels; the phone's camera follows the same way ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) | [12](../slices/12-walking-where-you-look.md) | live 2026-11-05, its judged line passed by the user ("slice 12 looks good") ([plan](plan-slice-12-walking.md), [findings](reviews/slice-12-findings.md)) |
 | 13 | A café on its street | The room as a diorama, with the street behind it by day and by night; the room crisp, with self outlines, shadows cast from the windows and ambient occlusion ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)) | [13](../slices/13-a-cafe-on-its-street.md) | reviewed and merged 2026-11-05 ([plan](plan-slice-13-street.md), [findings](reviews/slice-13-findings.md), [screens](screens/slice-13/)); judged "mostly good", clouds and a warm sky added at the user's asking; live once the user has seen them |
-| 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | built 2026-11-05 on its branch ([plan](plan-slice-14-panels.md), [screens](screens/slice-14/)); under review |
+| 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | reviewed and merged 2026-11-05 ([plan](plan-slice-14-panels.md), [findings](reviews/slice-14-findings.md), [screens](screens/slice-14/)); the glass more see-through at the user's asking; live once the user has judged the screens, the light theme's white glass, and a real Safari |
 
 | 15 | Music while you sit | Six CC0 lofi tracks by HoliznaCC0, three for day and three for night by the Canberra hour; each visitor's own player, with Play or Pause, Previous, Next and a volume in a fourth floating panel ([ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)) | [15](../slices/15-music-while-you-sit.md) | spec proposed 2026-11-05; to be built after 14 merges and before 11 |
 
@@ -105,7 +105,8 @@ Updated by session `a4e69a46` (2026-11-05).
   most fixed test first) and merged on 2026-11-05. Their judged lines are
   the user's: walks watched live, and the café on its street from
   [the screens](screens/slice-13/).
-- **Slice 14, the panels:** built on `slice-14-panels`, under review.
+- **Slice 14, the panels:** built, reviewed (4 major and 7 minor findings,
+  each answered, most fixed test first) and merged on 2026-11-05.
 - **Approved, not yet built:** slice 11, after 14.
 - **Specs waiting for the user's approval:** slices 03, 04 and 06. None is
   planned.

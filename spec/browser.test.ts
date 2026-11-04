@@ -401,12 +401,21 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.locator("#here-panel .grip").focus();
     for (let i = 0; i < 4; i++) await v.page.keyboard.press("Shift+ArrowLeft");
     expect(Math.round(start.x - (await box()).x)).toBe(256);
+    await v.page.getByRole("button", { name: "Pin who's here", exact: true }).click();
     // A resize re-places every panel from what's kept: it stays where it was put.
     await v.page.setViewportSize({ width: 1900, height: 1080 });
     await v.page.waitForTimeout(200);
     await v.page.setViewportSize({ width: 1920, height: 1080 });
     await v.page.waitForTimeout(200);
     expect(Math.round(start.x - (await box()).x)).toBe(256);
+    // Leave and come back in, the panels set up afresh from what the visit
+    // kept (slice 14's review, finding 5): still moved, still pinned, and
+    // its Unpin named exactly so (finding 3).
+    await v.page.locator("#leave").click();
+    await v.page.locator("#come-back").click();
+    await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    await expect.poll(async () => Math.round(start.x - (await box()).x)).toBe(256);
+    expect(await v.page.getByRole("button", { name: "Unpin who's here", exact: true }).count()).toBe(1);
   });
 
   it("lets a click on a pinned panel through to the café under it, walking or opening a cat's menu, and keeps it still and unselectable but for Unpin (slice 14)", async () => {
@@ -544,23 +553,84 @@ describe("in a browser", { timeout: 30_000 }, () => {
         const m = /\/\s*([\d.]+)\)$|rgba\([^)]*,\s*([\d.]+)\)$/.exec(getComputedStyle(document.querySelector(s)!).backgroundColor);
         return m ? Number(m[1] ?? m[2]) : 1;
       }, sel);
-    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(0.2, 2);
+    // The glass's two alphas, as the page's own tokens set them.
+    const glass = await page.evaluate(() => {
+      const s = getComputedStyle(document.documentElement);
+      return { normal: Number(s.getPropertyValue("--glass-alpha")), dim: Number(s.getPropertyValue("--glass-alpha-dim")) };
+    });
+    expect(glass.dim).toBeLessThan(glass.normal);
+    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(glass.dim, 2);
     // Someone arriving changes who's here: it comes back.
     await visit({ width: 1920, height: 1080 });
     await expect.poll(() => dim("#here-panel")).toBe(false);
-    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(0.5, 2);
+    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(glass.normal, 2);
     // The pointer over a dimmed panel brings it back too.
     await page.clock.fastForward(5000);
     await expect.poll(() => dim("#chalkboard")).toBe(true);
     const board = (await page.locator("#chalkboard").boundingBox())!;
     await page.mouse.move(board.x + board.width / 2, board.y + board.height / 2);
     await expect.poll(() => dim("#chalkboard")).toBe(false);
-    // A pinned panel never dims.
+    // A pinned panel never dims; the focus put back on the room, as the
+    // click leaves it on the Unpin inside the panel, which would keep it
+    // bright either way (slice 14's review, finding 6).
     await page.getByRole("button", { name: "Pin your cats" }).click();
+    await page.locator("#room").focus();
     await page.mouse.move(960, 1075);
     await page.clock.fastForward(10_000);
     await page.waitForTimeout(200);
     expect(await dim("#cats-panel")).toBe(false);
+  });
+
+  it("fits each panel in the stage at a laptop's 1366×768, the left two never overlapping, and lets a pinned one's Unpin be its only Tab stop (slice 14's review, findings 2 and 9)", async () => {
+    const v = await visit({ width: 1366, height: 768 });
+    const page = v.page;
+    const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+    const [stage, board, cats] = [await box("#stage"), await box("#chalkboard"), await box("#cats-panel")];
+    for (const [sel, p] of [["#chalkboard", board], ["#cats-panel", cats], ["#here-panel", await box("#here-panel")]] as const) {
+      expect(p.y, `${sel} inside the stage`).toBeGreaterThanOrEqual(stage.y - 0.5);
+      expect(p.y + p.height, `${sel} inside the stage`).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
+    }
+    expect(board.y + board.height, "the chalkboard above your cats").toBeLessThanOrEqual(cats.y + 0.5);
+    // Your treats are on screen in your cats, not scrolled away.
+    const treats = await box("#your-cats .treats");
+    expect(treats.y + treats.height, "the treats line inside your cats").toBeLessThanOrEqual(cats.y + cats.height + 0.5);
+    // A long visit, as the review had it: who's here's list longer than its
+    // box, said within the café's limit (a burst of five, then one in two
+    // seconds), and the panels made short enough that their bodies would
+    // scroll, so what a pinned one lets Tab reach is the pinned rule's doing.
+    for (let i = 0; i < 6; i++) {
+      await page.locator("#talk-input").fill(`line ${i} of a long visit, long enough to wrap in the panel`);
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(80);
+    }
+    await page.locator(".said li", { hasText: "line 4 of a long visit" }).waitFor();
+    // A short window: the stage, and each panel's share of it, too short for what's in them.
+    await page.setViewportSize({ width: 1366, height: 560 });
+    await page.waitForTimeout(300);
+    const said = await page.evaluate(() => {
+      const l = document.getElementById("said")!;
+      return { scrolls: l.scrollHeight > l.clientHeight || document.querySelector("#here-panel .panel-body")!.scrollHeight > document.querySelector("#here-panel .panel-body")!.clientHeight };
+    });
+    expect(said.scrolls, "who's here overflows").toBe(true);
+    const catsScroll = await page.evaluate(() => { const b = document.getElementById("your-cats")!; return b.scrollHeight > b.clientHeight; });
+    expect(catsScroll, "your cats overflows").toBe(true);
+    // Pin each panel: from Leave, Tab meets its Unpin and nothing else in it.
+    for (const [sel, name] of [["#chalkboard", "the chalkboard"], ["#cats-panel", "your cats"], ["#here-panel", "who's here"]] as const) {
+      await page.getByRole("button", { name: `Pin ${name}`, exact: true }).click();
+      await page.locator("#leave").focus();
+      const inPanel: string[] = [];
+      for (let i = 0; i < 16; i++) {
+        await page.keyboard.press("Tab");
+        const where = await page.evaluate((s) => {
+          const el = document.activeElement as HTMLElement;
+          return el.closest(s) ? el.getAttribute("aria-label") || el.id || el.tagName : null;
+        }, sel);
+        if (where) inPanel.push(where);
+        if ((await focused(page)) === "room") break;
+      }
+      expect(inPanel, `what Tab reaches in pinned ${name}`).toEqual([`Unpin ${name}`]);
+      await page.getByRole("button", { name: `Unpin ${name}`, exact: true }).click();
+    }
   });
 
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {

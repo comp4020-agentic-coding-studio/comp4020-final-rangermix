@@ -95,6 +95,9 @@ export function renderSaid(list: HTMLElement, state: CafeState): void {
   list.replaceChildren(
     ...state.said.slice(-30).map((line) => el("li", null, el("span", "who", line.toName ? `${line.name} to ${line.toName}: ` : `${line.name}: `), line.text)),
   );
+  // The said list scrolls on its own on a desktop (slice 14's review,
+  // finding 2), so the newest line shows and the headings above stay put.
+  list.scrollTop = list.scrollHeight;
   const scroller = list.closest(".panel-body");
-  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+  if (scroller && getComputedStyle(scroller).overflowY === "auto") scroller.scrollTop = scroller.scrollHeight;
 }

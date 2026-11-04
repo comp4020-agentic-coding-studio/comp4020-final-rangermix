@@ -1,6 +1,6 @@
 # 14. Panels over the room
 
-- **Status:** Built 2026-11-05 ([plan](../notes/plan-slice-14-panels.md), [screens](../notes/screens/slice-14/)); approved 2026-11-04, with the proposed defaults for its open questions (the treat button beside the emotes; panels start in the corners, unpinned; Tab reaches only a pinned panel's Unpin)
+- **Status:** Reviewed 2026-11-05 ([findings](../notes/reviews/slice-14-findings.md)); built 2026-11-05 ([plan](../notes/plan-slice-14-panels.md), [screens](../notes/screens/slice-14/)); approved 2026-11-04, with the proposed defaults for its open questions (the treat button beside the emotes; panels start in the corners, unpinned; Tab reaches only a pinned panel's Unpin)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-14-panels.md`
 - **Design:** The client ("Desktop (1920×1080)");
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
@@ -50,7 +50,7 @@ room shows through.
 
 | What must be true | Held by |
 | --- | --- |
-| At 1920×1080 the room fits at 4× | client unit tests (`scale`, `layout`) |
+| At 1920×1080 the room fits at 4× | browser checks (the room 1344 px wide at 1920×1080; slice 14's review, finding 11: the unit tests hold only `fitScale`'s arithmetic) |
 | A click on a pinned panel, anywhere but Unpin, acts on the café under it: walking to a tile, or the menu of a cat | browser check at 1920×1080 |
 | A pinned panel can't be dragged or its text selected | browser check |
 | An unpinned panel moves by mouse drag, touch drag and keyboard, stays inside the window, and stays inside it after a resize | browser check |
@@ -73,6 +73,12 @@ room shows through.
 
 - Dimming after: 4 seconds unchanged (*tunable*).
 - See-through: about 50% normally, about 20% dimmed (*tunable*).
+  Changed at the user's asking, 2026-11-05 ("more translucent, frosty
+  glass is good"): the glass at a quarter, a tenth dimmed, over a frost
+  that blurs the room 3 px and squeezes it toward the panel's end of the
+  scale; the panels' own text a shade darker (light theme) or brighter
+  (dark), so the frost can let more of the room through and still hold
+  4.5:1.
 
 ## Open questions
 

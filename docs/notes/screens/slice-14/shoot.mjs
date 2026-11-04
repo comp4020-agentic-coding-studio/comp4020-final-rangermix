@@ -26,7 +26,9 @@ async function enter(context, hour) {
   return page;
 }
 
-for (const [hour, when, scheme] of [["10:00", "day", "light"], ["22:00", "night", "dark"]]) {
+// Every pairing of the café's hour and the device's theme, since the page's
+// theme follows the device, not the hour (slice 14's review, finding 1).
+for (const [hour, when, scheme] of [["10:00", "day", "light"], ["22:00", "night", "dark"], ["22:00", "night-light", "light"], ["10:00", "day-dark", "dark"]]) {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, colorScheme: scheme });
   const page = await enter(context, hour);
   await page.mouse.move(960, 1075);

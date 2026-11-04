@@ -1,3 +1,4 @@
+import { announce } from "./announce";
 import { PHONE, type PanelSpot, type PanelsSaved, panelAt, savePanels, savedPanels, spotFor } from "./layout";
 
 // The panels over the room on a desktop (slice 14, ADR 0018): the
@@ -13,6 +14,20 @@ export const START: Record<string, PanelSpot> = {
   "cats-panel": { h: "left", x: 8, v: "bottom", y: 8 },
   "here-panel": { h: "right", x: 8, v: "top", y: 8 },
 };
+
+/** Where a spot is, in words: "top left", "bottom right", "middle left" (a third of the stage each way). */
+function whereOn(spot: PanelSpot, stage: { width: number; height: number }, size: { w: number; h: number }): string {
+  const third = (from: number, span: number, own: number) => (from + own / 2) / span;
+  const across = third(spot.x, stage.width, size.w);
+  const down = third(spot.y, stage.height, size.h);
+  const v = down < 1 / 3 ? (spot.v === "top" ? "top" : "bottom") : down > 2 / 3 ? (spot.v === "top" ? "bottom" : "top") : "middle";
+  const h = across < 1 / 3 ? spot.h : across > 2 / 3 ? (spot.h === "left" ? "right" : "left") : "middle";
+  return v === "middle" && h === "middle" ? "middle" : `${v} ${h}`;
+}
+
+/** Each panel's share of the stage's height, and the room left between and round them, in CSS pixels. */
+const SHARE: Record<string, number> = { chalkboard: 0.42, "cats-panel": 0.58, "here-panel": 1 };
+const GAP = 16;
 
 /** How far an arrow moves a panel, in CSS pixels; with Shift, four times as far. */
 const STEP = 16;
@@ -64,10 +79,13 @@ export class Floating {
     const stage = this.stageBox();
     for (const panel of this.panels) {
       if (phone) {
-        panel.style.removeProperty("--x");
-        panel.style.removeProperty("--y");
+        for (const v of ["--x", "--y", "--most"]) panel.style.removeProperty(v);
         continue;
       }
+      // How tall it may grow, from the stage it floats in, not the window:
+      // the left two share the stage's height, so they never overlap,
+      // whatever wraps the status bar (slice 14's review, finding 9).
+      panel.style.setProperty("--most", `${Math.floor(Math.max(80, stage.height * (SHARE[panel.id] ?? 1) - GAP))}px`);
       this.show(panel, panelAt(this.saved[panel.id].spot, this.sizeOf(panel), stage));
     }
   }
@@ -105,26 +123,41 @@ export class Floating {
         const grabbed = { x: e.clientX, y: e.clientY };
         handle.setPointerCapture?.(e.pointerId);
         panel.classList.add("moving");
-        const move = (m: PointerEvent) => {
-          if (m.pointerId !== e.pointerId) return;
-          this.moveTo(panel, { left: from.left + m.clientX - grabbed.x, top: from.top + m.clientY - grabbed.y });
-        };
-        const up = (u: PointerEvent) => {
-          if (u.pointerId !== e.pointerId) return;
+        const end = () => {
           panel.classList.remove("moving");
           handle.removeEventListener("pointermove", move);
           handle.removeEventListener("pointerup", up);
           handle.removeEventListener("pointercancel", up);
+          handle.removeEventListener("lostpointercapture", up);
+        };
+        const move = (m: PointerEvent) => {
+          if (m.pointerId !== e.pointerId) return;
+          // The drag is over if the button went up out of sight (no
+          // button-up came), the panel was pinned, or the page turned a
+          // phone's (slice 14's review, finding 7).
+          if ((m.pointerType === "mouse" && m.buttons === 0) || this.saved[panel.id].pinned || this.phone.matches) return end();
+          this.moveTo(panel, { left: from.left + m.clientX - grabbed.x, top: from.top + m.clientY - grabbed.y });
+        };
+        const up = (u: PointerEvent) => {
+          if (u.pointerId === e.pointerId) end();
         };
         handle.addEventListener("pointermove", move);
         handle.addEventListener("pointerup", up);
         handle.addEventListener("pointercancel", up);
+        handle.addEventListener("lostpointercapture", up);
       };
       handle.addEventListener("pointerdown", down);
       this.undo.push(() => handle.removeEventListener("pointerdown", down));
     }
     const grip = panel.querySelector<HTMLElement>(".grip");
     if (!grip) return;
+    // What the arrows do, for a screen reader, and where the panel ends up
+    // once they stop (slice 14's review, finding 10).
+    const hint = document.getElementById("grip-hint") ?? Object.assign(document.createElement("span"), { id: "grip-hint", hidden: true, textContent: "Arrow keys move it; with Shift, further." });
+    if (!hint.isConnected) document.body.append(hint);
+    grip.setAttribute("aria-describedby", hint.id);
+    const name = panel.querySelector(".pin")?.getAttribute("data-name") ?? "the panel";
+    let said = 0;
     const key = (e: KeyboardEvent) => {
       const arrow = ARROWS[e.key];
       if (!arrow || this.phone.matches || this.saved[panel.id].pinned) return;
@@ -132,6 +165,8 @@ export class Floating {
       const by = e.shiftKey ? STEP * 4 : STEP;
       const at = this.where(panel);
       this.moveTo(panel, { left: at.left + arrow[0] * by, top: at.top + arrow[1] * by });
+      window.clearTimeout(said);
+      said = window.setTimeout(() => announce(`Moved ${name} to the ${whereOn(this.saved[panel.id].spot, this.stageBox(), this.sizeOf(panel))}.`), 400);
     };
     grip.addEventListener("keydown", key);
     this.undo.push(() => grip.removeEventListener("keydown", key));
@@ -146,7 +181,10 @@ export class Floating {
     const pin = panel.querySelector<HTMLButtonElement>(".pin");
     const grip = panel.querySelector<HTMLButtonElement>(".grip");
     if (!pin) return;
-    const name = (pin.getAttribute("aria-label") ?? "").replace(/^Pin /, "");
+    // The panel's name from the page, never from the label this rewrites:
+    // a second Floating over the same page (leaving and coming back) would
+    // read "Unpin your cats" (slice 14's review, finding 3).
+    const name = pin.dataset.name ?? "";
     const show = () => {
       const pinned = this.saved[panel.id].pinned;
       panel.classList.toggle("pinned", pinned);

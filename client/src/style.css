@@ -16,12 +16,18 @@
   --placeholder: #5c5f77; /* subtext1, as muted */
   --track: #ccd0da; /* surface0: the trust bar at 3:1 */
   --focus: #1e66f5; /* blue */
-  /* A panel over the room (slice 14): what's behind is squeezed toward
-     white, then the card goes over it at half, or a fifth dimmed, so text
-     holds 4.5:1 over anything (client/test/contrast.test.ts). */
-  --glass-filter: contrast(0.45) brightness(3.09);
-  --glass-alpha: 0.5;
-  --glass-alpha-dim: 0.2;
+  /* A panel over the room (slice 14): what's behind is frosted (blurred,
+     then squeezed toward white), and the card goes over it thinly, a
+     quarter, or a tenth dimmed, so the room shows through as soft shapes
+     while text holds 4.5:1 over anything (client/test/contrast.test.ts).
+     More see-through at the user's asking, 2026-11-05. */
+  --glass-filter: blur(3px) contrast(0.62) brightness(3.45);
+  --glass-alpha: 0.25;
+  --glass-alpha-dim: 0.1;
+  /* A panel's words over the glass, a shade darker than the page's ink,
+     muted included, so the frost can let more of the room through. */
+  --panel-ink: #3c3f55;
+  --panel-muted: #3c3f55;
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -38,9 +44,12 @@
     --track: #45475a; /* surface1 */
     --focus: #89b4fa; /* blue */
     /* Squeezed toward black instead. */
-    --glass-filter: contrast(0.97) brightness(0.26);
-    --glass-alpha: 0.5;
-    --glass-alpha-dim: 0.2;
+    --glass-filter: blur(3px) contrast(1) brightness(0.37);
+    --glass-alpha: 0.25;
+    --glass-alpha-dim: 0.1;
+    /* Mocha's text, muted included, over the glass. */
+    --panel-ink: #cdd6f4;
+    --panel-muted: #cdd6f4;
   }
 }
 * { box-sizing: border-box; }
@@ -120,17 +129,27 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 @media (min-width: 960px) {
   /* Fixed over the stage, where floating.ts puts them, and kept inside it. */
   .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 18rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
-  .chalkboard { max-height: calc((100vh - 140px) * 0.55); }
-  .cats-panel { max-height: calc((100vh - 140px) * 0.4); }
-  .here-panel { max-height: calc((100vh - 140px) * 0.6); }
+  /* As tall as its content, up to its share of the stage (floating.ts sets --most). */
+  .panel { max-height: var(--most, 40vh); }
+  /* Who's here keeps its headings in view; only what was said scrolls. */
+  .here-panel .panel-body { display: flex; flex-direction: column; overflow: hidden; }
+  .here-panel .said { overflow: auto; min-height: 2.5rem; }
+  /* A pinned panel lets every scroll through to the room, as every click,
+     and nothing in it but Unpin takes the focus (slice 14's review, finding 2). */
+  .panel.pinned .panel-body, .panel.pinned .said { overflow: hidden; }
   .panel { transition: background-color 0.4s; }
   @media (prefers-reduced-motion: reduce) {
     .panel { transition: none; }
   }
   /* The glass, where the browser can filter what's behind; opaque where it can't. */
-  @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
-    .panel { background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
+  /* Only where the browser has both the filter and relative colours: one
+     with the filter but not `rgb(from …)` would get a clear background and
+     the filter alone (slice 14's review, finding 4), so it gets the opaque
+     card instead. */
+  @supports ((backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0))) and (color: rgb(from red r g b)) {
+    .panel { color: var(--panel-ink); background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
     .panel.dim { background: rgb(from var(--card) r g b / var(--glass-alpha-dim)); }
+    .panel .hint, .panel .chalk-lines time, .panel .chalk-lines .empty { color: var(--panel-muted); }
   }
 }
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }

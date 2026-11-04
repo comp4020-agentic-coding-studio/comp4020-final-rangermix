@@ -109,3 +109,136 @@ describe("dimming a panel left unchanged", () => {
     d.dispose();
   });
 });
+
+describe("a panel's Pin button, through leaving and coming back (slice 14's review, finding 3)", () => {
+  it("keeps its name exact when the panels are set up again over the same page", async () => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    const { Floating } = await import("../src/floating");
+    document.body.innerHTML = `<div id="stage"></div><section id="cats-panel" class="panel"><div class="panel-bar"><h2>Your cats</h2><button class="grip" aria-label="Move your cats"></button><button class="pin" aria-label="Pin your cats" data-name="your cats">Pin</button></div><div class="panel-body"></div></section>`;
+    const stage = document.getElementById("stage")!;
+    const panel = document.getElementById("cats-panel")!;
+    const pin = panel.querySelector<HTMLButtonElement>(".pin")!;
+    let f = new Floating(stage, [panel]);
+    pin.click();
+    expect(pin.getAttribute("aria-label")).toBe("Unpin your cats");
+    // Leave, and come back in: a new Floating over the same page.
+    f.dispose();
+    f = new Floating(stage, [panel]);
+    expect(pin.getAttribute("aria-label")).toBe("Unpin your cats");
+    pin.click();
+    expect(pin.getAttribute("aria-label")).toBe("Pin your cats");
+    f.dispose();
+    f = new Floating(stage, [panel]);
+    expect(pin.getAttribute("aria-label")).toBe("Pin your cats");
+    f.dispose();
+    localStorage.clear();
+  });
+});
+
+describe("dragging a panel (slice 14's review, finding 7)", () => {
+  async function setUp() {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    const phone = { matches: false, addEventListener() {}, removeEventListener() {} };
+    window.matchMedia = (() => phone) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    const { Floating } = await import("../src/floating");
+    document.body.innerHTML = `<div id="stage"></div><section id="chalkboard" class="panel"><div class="panel-bar"><h2>The chalkboard</h2><button class="grip" aria-label="Move the chalkboard"></button><button class="pin" aria-label="Pin the chalkboard" data-name="the chalkboard">Pin</button></div><div class="panel-body"></div></section>`;
+    const stage = document.getElementById("stage")!;
+    stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1900, height: 950, right: 1900, bottom: 950, x: 0, y: 0, toJSON: () => ({}) });
+    const panel = document.getElementById("chalkboard")!;
+    Object.defineProperty(panel, "offsetWidth", { value: 288 });
+    Object.defineProperty(panel, "offsetHeight", { value: 200 });
+    panel.getBoundingClientRect = () => {
+      const x = parseFloat(panel.style.getPropertyValue("--x")) || 0;
+      const y = parseFloat(panel.style.getPropertyValue("--y")) || 0;
+      return { left: x, top: y, width: 288, height: 200, right: x + 288, bottom: y + 200, x, y, toJSON: () => ({}) };
+    };
+    const f = new Floating(stage, [panel]);
+    const title = panel.querySelector("h2")!;
+    const ev = (type: string, x: number, buttons = 1) => title.dispatchEvent(Object.assign(new MouseEvent(type, { bubbles: true, clientX: x, clientY: 20, buttons, button: 0 }), { pointerId: 1, pointerType: "mouse" }));
+    const at = () => parseFloat(panel.style.getPropertyValue("--x"));
+    return { f, panel, ev, at, phone };
+  }
+
+  it("ends a drag when the button's no longer held, though no button-up arrived", async () => {
+    const { f, ev, at } = await setUp();
+    ev("pointerdown", 20);
+    ev("pointermove", 120);
+    const moved = at();
+    // The button-up went elsewhere: the next move has no button held.
+    ev("pointermove", 400, 0);
+    ev("pointermove", 600, 0);
+    expect(at(), "no longer following").toBe(moved);
+    f.dispose();
+  });
+
+  it("ends a drag when the panel's capture is lost", async () => {
+    const { f, ev, at } = await setUp();
+    ev("pointerdown", 20);
+    ev("pointermove", 120);
+    const moved = at();
+    ev("lostpointercapture", 120);
+    ev("pointermove", 500);
+    expect(at()).toBe(moved);
+    f.dispose();
+  });
+
+  it("stops following once the panel is pinned, or the page becomes a phone's", async () => {
+    const { f, panel, ev, at, phone } = await setUp();
+    ev("pointerdown", 20);
+    ev("pointermove", 120);
+    panel.querySelector<HTMLButtonElement>(".pin")!.click();
+    const pinnedAt = at();
+    ev("pointermove", 500);
+    expect(at(), "pinned mid-drag").toBe(pinnedAt);
+    panel.querySelector<HTMLButtonElement>(".pin")!.click();
+    ev("pointerdown", 20);
+    ev("pointermove", 80);
+    const before = at();
+    phone.matches = true;
+    ev("pointermove", 700);
+    expect(at(), "a phone's page mid-drag").toBe(before);
+    f.dispose();
+  });
+});
+
+describe("moving a panel by keyboard, heard (slice 14's review, finding 10)", () => {
+  it("says the arrows move it, and says where it went", async () => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    const { Floating } = await import("../src/floating");
+    document.body.innerHTML = `<div id="announcer"></div><div id="stage"></div><section id="here-panel" class="panel"><div class="panel-bar"><h2>Who's here</h2><button class="grip" aria-label="Move who's here"></button><button class="pin" aria-label="Pin who's here" data-name="who's here">Pin</button></div><div class="panel-body"></div></section>`;
+    const stage = document.getElementById("stage")!;
+    stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1900, height: 950, right: 1900, bottom: 950, x: 0, y: 0, toJSON: () => ({}) });
+    const panel = document.getElementById("here-panel")!;
+    Object.defineProperty(panel, "offsetWidth", { value: 288 });
+    Object.defineProperty(panel, "offsetHeight", { value: 200 });
+    panel.getBoundingClientRect = () => {
+      const x = parseFloat(panel.style.getPropertyValue("--x")) || 0;
+      const y = parseFloat(panel.style.getPropertyValue("--y")) || 0;
+      return { left: x, top: y, width: 288, height: 200, right: x + 288, bottom: y + 200, x, y, toJSON: () => ({}) };
+    };
+    const f = new Floating(stage, [panel]);
+    const grip = panel.querySelector<HTMLButtonElement>(".grip")!;
+    const hint = document.getElementById(grip.getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent, "the grip's description").toMatch(/arrow/i);
+    // Moved to the far left by keyboard: said where it is.
+    for (let i = 0; i < 30; i++) grip.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", shiftKey: true, bubbles: true }));
+    // Said once the presses stop (debounced), through the live region's own 30-ms turn.
+    await new Promise((r) => setTimeout(r, 700));
+    expect(document.getElementById("announcer")!.textContent).toMatch(/who's here.*top left/i);
+    f.dispose();
+  });
+});
