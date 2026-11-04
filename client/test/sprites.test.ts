@@ -53,6 +53,12 @@ describe("the café's colours in each light", () => {
         return z >= Math.min(x, y) - 1 && z <= Math.max(x, y) + 1;
       });
     palettes.day.room.forEach((c, i) => expect(between(c, palettes.night.room[i], evening.room[i]), `room ${i}`).toBe(true));
+    // The street too, slot by slot (slice 13's review, finding 13).
+    const street = (p: typeof palettes.day) => (p as unknown as { street: string[] }).street;
+    street(palettes.day).forEach((c, i) => {
+      expect(between(c, street(palettes.night as typeof palettes.day)[i], street(evening)[i]), `street ${i}`).toBe(true);
+      if (c !== street(palettes.night as typeof palettes.day)[i]) expect(street(evening)[i], `street ${i} is blended`).not.toBe(c);
+    });
     expect(evening.room[0]).not.toBe(palettes.day.room[0]);
     expect(evening.room[0]).not.toBe(palettes.night.room[0]);
   });

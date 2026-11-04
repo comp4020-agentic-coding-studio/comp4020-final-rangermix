@@ -150,6 +150,14 @@ mod tests {
             let h = t["height"].as_float().expect("a tower's height, as a share of the sky");
             assert!(w >= 4 && (0.05..=1.0).contains(&h), "tower {t}");
         }
+        // The windows: whole pixels, smaller than their spacing, and how
+        // many in ten are lit (slice 13's review, finding 11).
+        let windows = street["windows"].as_table().expect("[windows]");
+        let every = windows["every"].as_integer().expect("windows.every, in whole pixels");
+        let size = windows["size"].as_integer().expect("windows.size, in whole pixels");
+        let lit = windows["lit"].as_integer().expect("windows.lit, how many in ten are lit");
+        assert!(every >= 2 && size >= 1 && size < every, "windows every {every}, size {size}");
+        assert!((0..=10).contains(&lit), "windows lit {lit} in ten");
         let palettes: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("sprites/palettes.json")).unwrap()).unwrap();
         for light in ["day", "night"] {

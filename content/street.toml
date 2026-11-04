@@ -8,6 +8,12 @@
 #   at 1×; height as a share of the sky above the skyline.
 # windows: every `every` pixels across and up a tower, a window `size` pixels
 #   square; `lit` of them in 10 are lit, by a fixed pattern.
+#
+# The client reads this file with a small reader of its own (street.ts):
+# plain `key = number` lines, the one `[windows]` table and `[[towers]]`
+# tables, with comments. Write it in that much TOML only; anything else
+# (inline tables, dotted keys, strings, underscores in numbers) stops the
+# client loading, though it's valid TOML that `cargo test` reads.
 
 horizon = 0.55
 
