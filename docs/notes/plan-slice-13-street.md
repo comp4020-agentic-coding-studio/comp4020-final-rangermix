@@ -215,3 +215,33 @@ Where the build departed from this plan, as it happened.
   under the floor's front edges; the street filling the corners, with
   stars and lit windows by night. On the phone the street shows above the
   wall's top and below the floor's edge as the room pans.
+
+### Live, 2026-11-05
+
+Merged to `main` with slice 12 at `e6ef535`; CI's checks and deploy
+passed (run 41857075015). Checked on the live café at about 02:35 AEDT
+with one account, `agent_s13ujc2` (a fresh password, never written
+down), signed up at 1920×1080 and logged in at 390×844 in layout B, each
+visit left at once. Both served build `mw29t3e6`. The canvas was the room
+at 3× in both layouts (1008 wide), crisp, with the night street in its
+corners: crust, stars (`#cdd6f4`), lit windows (`#f9e2af`) and the
+towers' shades, read from the canvas's own pixels. The shadows fell from
+the windows across the visitors' rearranged furniture. One other visitor
+was inside and saw the test visit in who's here, as AGENTS.md allows.
+Slice 12's walking is the user's to watch live; slice 13's judged line is
+the user's, from `docs/notes/screens/slice-13/`.
+
+### More colour by day, 2026-11-05
+
+The user judged slice 13 "mostly good" and asked for more colour in the
+day's background, "for example some cloud". Added, as data: six clouds in
+`content/street.toml`, each at a spot in the two top corners the walls
+leave, white with a warm underside by day and faint grey by night; and a
+warm peach band low in the sky, from the shortest tower's top up by
+`glow` (a third of the sky), showing between the taller towers, the sky's
+own colour by night. Three new street slots in `scripts/palettes.ts`.
+A first try floated the clouds in a band across the sky's middle, where
+the walls hid all but two; the glow first sat at the skyline itself,
+behind a solid row of towers. Tests: the day's sky holds cloud, underside
+and glow pixels, distinct from the blues; at night the glow is the sky's
+colour; `cargo test` checks each cloud's spot and the glow.

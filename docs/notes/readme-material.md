@@ -154,6 +154,12 @@ The README as it stands on 2026-10-09, against `docs/design.md`. Each is the
 user's call: build it, or change the line.
 
 - **"soothing music".** The design has no music, and no phase plans any.
+  *Update 2026-11-05:* [slice 15](../slices/15-music-while-you-sit.md)
+  (proposed) adds it: six lofi tracks by HoliznaCC0, released under CC0
+  ([ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)).
+  A source line the user could use: "Music: six tracks from *Public
+  Domain Lofi* by HoliznaCC0, CC0 1.0, from the Free Music Archive
+  (freemusicarchive.org/music/holiznacc0/public-domain-lofi)."
 - **The template's first lines are still there.** The README opens with the
   template's `# Your app` heading and its `<!-- TEMPLATE ... Replace
   everything in it, this comment included. -->` comment, and `/readme/`

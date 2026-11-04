@@ -158,14 +158,30 @@ mod tests {
         let lit = windows["lit"].as_integer().expect("windows.lit, how many in ten are lit");
         assert!(every >= 2 && size >= 1 && size < every, "windows every {every}, size {size}");
         assert!((0..=10).contains(&lit), "windows lit {lit} in ten");
+        // The clouds (the user, 2026-11-05): each where it floats, in room
+        // pixels at 1x on the 336 by 232 backdrop, and how wide.
+        let clouds = street["clouds"].as_array().expect("[[clouds]]");
+        assert!(!clouds.is_empty(), "at least one cloud");
+        for c in clouds {
+            let x = c["x"].as_integer().expect("a cloud's x, in whole pixels");
+            let y = c["y"].as_integer().expect("a cloud's y, in whole pixels");
+            let w = c["width"].as_integer().expect("a cloud's width, in whole pixels");
+            assert!((0..336).contains(&x) && (0..232).contains(&y) && (6..=80).contains(&w), "cloud {c}");
+        }
+        let glow = street["glow"]
+            .as_float()
+            .expect("glow, how far up the sky the warm band reaches, a share of the sky");
+        assert!((0.0..=0.6).contains(&glow), "glow {glow}");
         let palettes: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("sprites/palettes.json")).unwrap()).unwrap();
         for light in ["day", "night"] {
             let colours = palettes[light]["street"]
                 .as_array()
                 .unwrap_or_else(|| panic!("no {light} street colours"));
-            // Sky top, sky bottom, tower, tower's other side, window lit, window dark, star, kerb, pavement.
-            assert_eq!(colours.len(), 9, "{light}");
+            // Sky top, sky bottom, tower, tower's other side, window lit, window
+            // dark, star, kerb, pavement, then (the user, 2026-11-05) cloud,
+            // cloud's underside, and the warm sky low by the skyline.
+            assert_eq!(colours.len(), 12, "{light}");
         }
     }
 
