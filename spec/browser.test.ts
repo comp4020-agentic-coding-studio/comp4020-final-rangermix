@@ -585,6 +585,15 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const v = await visit({ width: 1366, height: 768 });
     const page = v.page;
     const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+    // The panels are placed once their content is in (a resize observer, the
+    // frame after), so wait for them to settle inside the stage before reading.
+    await expect
+      .poll(async () => {
+        const s = await box("#stage");
+        const all = await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box));
+        return all.every((p) => p.y >= s.y - 0.5 && p.y + p.height <= s.y + s.height + 0.5);
+      }, { timeout: 3000 })
+      .toBe(true);
     const [stage, board, cats] = [await box("#stage"), await box("#chalkboard"), await box("#cats-panel")];
     for (const [sel, p] of [["#chalkboard", board], ["#cats-panel", cats], ["#here-panel", await box("#here-panel")]] as const) {
       expect(p.y, `${sel} inside the stage`).toBeGreaterThanOrEqual(stage.y - 0.5);
