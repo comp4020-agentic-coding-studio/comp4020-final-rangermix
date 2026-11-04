@@ -48,7 +48,10 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 /** One axis of the pan: follow `you`, stop at the edges, centre a room smaller than the view. */
 function axis(you: number, view: number, room: number): number {
   if (room <= view) return Math.round((room - view) / 2);
-  return Math.round(clamp(you - view / 2, 0, room - view));
+  // The view's middle as a whole pixel, so at an odd width what's followed
+  // holds one pixel rather than turning between two by its own fraction
+  // (slice 12's review, finding 7).
+  return Math.round(clamp(you - Math.floor(view / 2), 0, room - view));
 }
 
 /** How far inside the free band what's followed is kept, in CSS pixels. */
