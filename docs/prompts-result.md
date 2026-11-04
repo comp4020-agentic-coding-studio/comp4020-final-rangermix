@@ -1598,3 +1598,34 @@ then test first, task by task:
     ([`38ba731`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/38ba731)).
     The deploy was skipped while it was red, so the live café kept the
     tested build.
+
+### 13. Where the look stands, two weeks on
+
+*Session `a4e69a46`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-04 15:43:07 AEDT*
+
+> check current project status, give an overview of style migration
+
+**Result.** A read, nothing built. This clone's `main` stopped at crit 10's
+reflection
+([`385f13b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/385f13b)),
+54 commits behind `origin/main`, so it was fast-forwarded to
+[`7e00923`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7e00923)
+before reading. Nothing had been committed since 22 October. CI on `main`
+was green, and the live café served slice 10's build
+(`index-DfJqYI2S.js`).
+
+The style migration is
+[ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
+built as slices 09 to 11 in place of slice 05:
+
+- **09, the room at an angle:** live, turned 90° at the user's asking.
+- **10, Catppuccin by day and by night:** deployed and checked live. It
+  waits on the user's judgement from the screenshots, and on the README's
+  Catppuccin credit, both the user's.
+- **11, the art:** approved on 21 October, not yet planned. The room is
+  still plain blocks, with the old 16-px cats and people standing in it.
+
+Also open: slices 03, 04 and 06 are specs the user hasn't approved, and the
+final submission is Mon 9 November, 12:00, five days out.
