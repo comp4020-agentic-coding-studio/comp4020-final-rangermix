@@ -1013,17 +1013,37 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const nightOk = (c: string[]) => c.includes(night[0]) && (c.includes(star) || c.includes(lit)) && c.filter((x) => night.includes(x)).length >= 3;
     await expect.poll(async () => nightOk((seen = await corner())), { timeout: 5000 }).toBe(true).catch(() => {});
     expect(nightOk(seen), `the night's corner: ${seen.join(" ")}`).toBe(true);
-    // At 390×844, in the bigger room, a tap on the street below the floor does nothing.
-    const phone = await visit({ width: 390, height: 844 }, true);
+    // At 390×844, in the bigger room, a tap on the street does nothing. The
+    // room pans, so the taps go where the canvas shows the street now: points
+    // on screen whose canvas pixel is one of the street's colours.
+    const phone = await visit({ width: 390, height: 844 }, true, {
+      prepare: async (page) => {
+        await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
+        await page.clock.resume();
+      },
+    });
     await phone.page.waitForFunction(() => document.body.classList.contains("layout-b"));
-    const room = (await phone.page.locator("#room").boundingBox())!;
+    await phone.page.waitForTimeout(600);
+    const spots = await phone.page.evaluate((colours) => {
+      const canvas = document.getElementById("room") as HTMLCanvasElement;
+      const r = canvas.getBoundingClientRect();
+      const ctx = canvas.getContext("2d")!;
+      const found: { x: number; y: number }[] = [];
+      // Clear of the floating bars, top and bottom.
+      for (let y = 130; y < 700 && found.length < 3; y += 23) {
+        for (let x = 12; x < 380 && found.length < 3; x += 37) {
+          if (document.elementFromPoint(x, y)?.id !== "room") continue;
+          const [cr, cg, cb] = ctx.getImageData(Math.floor(((x - r.left) / r.width) * canvas.width), Math.floor(((y - r.top) / r.height) * canvas.height), 1, 1).data;
+          const hex = `#${[cr, cg, cb].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+          if (colours.includes(hex)) found.push({ x, y });
+        }
+      }
+      return found;
+      // By day; the windows' light (slot 4) left out, as the café's own window could share it.
+    }, street("day").filter((c, i) => i !== 4));
+    expect(spots.length, "street showing on the phone").toBeGreaterThan(0);
     const tapsBefore = phone.sent.length;
-    // The floor's front corner is at the room's bottom middle; beside it, low on the left and right, is street.
-    for (const fx of [0.02, 0.98]) {
-      const x = Math.min(380, Math.max(10, room.x + room.width * fx));
-      const y = Math.min(700, room.y + room.height * 0.97);
-      const what = await phone.page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [x, y]);
-      if (what !== "room") continue;
+    for (const { x, y } of spots) {
       await phone.page.touchscreen.tap(x, y);
       await phone.page.waitForTimeout(150);
     }
