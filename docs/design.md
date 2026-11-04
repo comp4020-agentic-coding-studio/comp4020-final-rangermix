@@ -113,6 +113,13 @@ under [Numbers to tune](#numbers-to-tune).
   through nearby things, Enter acts or opens the menu, Esc closes it, and Enter
   with nothing selected goes to the talk box. *Why:* one model for mouse, touch
   and keyboard means the keyboard-only pass and the phone get the whole café.
+  A piece people walk over (one that doesn't block, such as the rug or a
+  cushion) is somewhere to go: a click or tap on it walks you onto it, and a
+  click on the tile you stand on, or are already walking to, opens its menu;
+  Tab and Enter open it at once. *Why:* the rug fills twelve tiles of the
+  middle of the room, and a click there used to open a menu that only moves
+  it, so nobody could stand on it (the user's ask, 2026-11-05;
+  [notes](notes/walk-onto-rugs.md)).
 
 ## The cats
 

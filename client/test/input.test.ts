@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleOrder, nameOf, stepPointer, targetsAt, tileOf } from "../src/input";
+import { clickOn, cycleOrder, nameOf, stepPointer, targetsAt, tileOf } from "../src/input";
 import { fromWelcome } from "../src/state";
 
 function state() {
@@ -83,6 +83,42 @@ describe("pointing at things", () => {
     ]);
     expect(targetsAt(s, { x: 1, y: 5 }, 0)).toEqual([]);
     expect(cycleOrder(s, { x: 5, y: 5 }, 0).map((t) => t.id)).toEqual(["mochi", 14, 2, "tora", "board"]);
+  });
+
+  it("walks onto a rug or a cushion clicked, and opens its menu from where you stand", () => {
+    // The user's ask after slice 14: clicking the rug opened its menu, which
+    // only moves it, so nobody could walk onto it. A piece people walk over
+    // (one that doesn't block) is somewhere to go; its menu opens from the
+    // tile you're on or already walking to.
+    const s = state();
+    const rug = { id: 7, kind: "rug", x: 2, y: 2, w: 4, h: 3, movable: true, blocks: false, under: true, seats: false, toppled: false };
+    const cushion = { id: 14, kind: "cushion", x: 7, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false };
+    const chair = { id: 9, kind: "chair", x: 8, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: true, toppled: false };
+    s.room.furniture = [rug, cushion, chair];
+    const piece = (id: number, tile: { x: number; y: number }) => [{ kind: "piece" as const, id, tile }];
+    // You stand at (5,5), off the rug: a click on it walks there.
+    expect(clickOn(s, piece(7, { x: 2, y: 2 }), { x: 3, y: 3 })).toEqual({ walk: { x: 3, y: 3 } });
+    expect(clickOn(s, piece(14, { x: 7, y: 7 }), { x: 7, y: 7 })).toEqual({ walk: { x: 7, y: 7 } });
+    // Standing on it, a click on that tile opens its menu.
+    s.people.set(1, { ...s.people.get(1)!, at: { x: 3, y: 3 } });
+    expect(clickOn(s, piece(7, { x: 2, y: 2 }), { x: 3, y: 3 })).toEqual({ act: piece(7, { x: 2, y: 2 }) });
+    // Another of its tiles is still somewhere to go.
+    expect(clickOn(s, piece(7, { x: 2, y: 2 }), { x: 4, y: 3 })).toEqual({ walk: { x: 4, y: 3 } });
+    // On the way to it already, a second click there opens the menu too.
+    s.people.set(1, { ...s.people.get(1)!, at: { x: 5, y: 5 }, walk: { path: [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 7, y: 5 }, { x: 7, y: 6 }, { x: 7, y: 7 }], start: 0, speed: 2 } });
+    expect(clickOn(s, piece(14, { x: 7, y: 7 }), { x: 7, y: 7 })).toEqual({ act: piece(14, { x: 7, y: 7 }) });
+    // A piece that blocks opens its menu wherever you are, as before.
+    expect(clickOn(s, piece(9, { x: 8, y: 2 }), { x: 8, y: 2 })).toEqual({ act: piece(9, { x: 8, y: 2 }) });
+    // Something alive on the rug is what the click is for.
+    const withCat = [{ kind: "cat" as const, id: "mochi", tile: { x: 4, y: 4 } }, ...piece(7, { x: 2, y: 2 })];
+    expect(clickOn(s, withCat, { x: 4, y: 4 })).toEqual({ act: withCat });
+    // Knocked over, it's in the way until it's tidied, so its menu opens,
+    // even from across the room.
+    s.people.set(1, { ...s.people.get(1)!, at: { x: 5, y: 5 }, walk: null });
+    s.room.furniture = [{ ...cushion, toppled: true }];
+    expect(clickOn(s, piece(14, { x: 7, y: 7 }), { x: 7, y: 7 })).toEqual({ act: piece(14, { x: 7, y: 7 }) });
+    // And nothing there at all: a walk.
+    expect(clickOn(s, [], { x: 1, y: 1 })).toEqual({ walk: { x: 1, y: 1 } });
   });
 
   it("counts a held cat as in its holder's arms, not a target of its own", () => {
