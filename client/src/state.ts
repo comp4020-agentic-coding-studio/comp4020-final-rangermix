@@ -101,6 +101,13 @@ export function serverNow(state: CafeState, localNow = Date.now()): number {
 /** A fresh copy from a welcome; on a reconnect, `previous` keeps "said this visit". */
 export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeState | null = null): CafeState {
   const s = msg.snapshot;
+  // The side each walker last showed, from any walk the old state still
+  // holds, finished or not: the server ends a walk without a word, so the
+  // kept map may not know it yet (slice 12's review, finding 3).
+  if (previous) {
+    for (const p of previous.people.values()) keepFacing(previous, `p${p.id}`, p.walk, p.at, localNow);
+    for (const c of previous.cats.values()) keepFacing(previous, `c${c.id}`, c.walk, c.at, localNow);
+  }
   return {
     you: msg.you,
     build: msg.build,

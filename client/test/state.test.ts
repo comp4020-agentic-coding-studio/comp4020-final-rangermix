@@ -243,3 +243,28 @@ describe("the client's copy of the café", () => {
     expect(lapOf(s, mochi)).toBeNull();
   });
 });
+
+describe("the side a walker shows, through a reconnect (slice 12's review, finding 3)", () => {
+  it("keeps the side of a walk that ended quietly when a welcome replaces the state", () => {
+    // Sam walks toward the viewer, then is sent toward the street wall and
+    // arrives; the server ends that walk without a message.
+    const w = welcome();
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 4 }, walk: { path: [{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 4, y: 6 }], start: 10_000, speed: 1 }, sitting: false });
+    const s = fromWelcome(w, 10_000);
+    apply(s, { type: "personMoved", id: 2, walk: { path: [{ x: 4, y: 5 }, { x: 4, y: 4 }, { x: 4, y: 3 }], start: 10_600, speed: 1 } }, 10_600);
+    // The connection drops and comes back, long after: the welcome has Sam at (4,3), walk over.
+    const again = welcome();
+    again.now = 20_000;
+    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 3 }, walk: null, sitting: false });
+    const after = fromWelcome(again, 20_000, s);
+    expect(after.facing.get("p2"), "Sam faces the way the last walk went").toEqual({ view: "back", mirror: true });
+  });
+
+  it("doesn't let a reconnect's kept side outlive the walker leaving", () => {
+    const w = welcome();
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 4 }, walk: { path: [{ x: 4, y: 4 }, { x: 4, y: 3 }], start: 10_000, speed: 1 }, sitting: false });
+    const s = fromWelcome(w, 10_000);
+    apply(s, { type: "personLeft", id: 2 }, 12_000);
+    expect(fromWelcome(welcome(), 20_000, s).facing.has("p2")).toBe(false);
+  });
+});
