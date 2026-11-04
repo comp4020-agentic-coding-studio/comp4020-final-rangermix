@@ -1707,3 +1707,25 @@ proposed to build them.
   Slice 14 raises one question the panels' rules create: "Put a treat
   down" lives inside Your cats, so pinning it would lose the button; the
   default proposed is to move it beside the emotes.
+
+*Sent 2026-11-04 21:29:11 AEDT*
+
+> 9 Crisp + self outline + cast shadows + AO; agreed on 14
+
+**Result.** Both recorded, nothing built.
+- **[ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)
+  accepted** with option 9: the room crisp, a self outline, shadows cast
+  from the windows and ambient occlusion. In `docs/design.md`, and in
+  [slice 13](slices/13-a-cafe-on-its-street.md), which redraws the room's
+  frame for the street anyway, with checks that no pixel is blended and
+  that shadows are worked out when the furniture moves, not every frame.
+- **[Slice 14](slices/14-panels-over-the-room.md) approved** with its
+  proposed defaults: "Put a treat down" moves beside the emotes, the
+  panels start in the corners unpinned, and Tab reaches only a pinned
+  panel's Unpin.
+- **A claim corrected.** Writing slice 13, I had said cast shadows would
+  be wrong at night and proposed fading them. The study's night picture,
+  which the user chose from, shows otherwise: the windows are lit with the
+  street's lamplight at night (slice 10), so the shadows still fall from
+  them. Slice 13's default and ADR 0019's cost note now say so.
+- Slices 12 and 13 wait on the user's approval.

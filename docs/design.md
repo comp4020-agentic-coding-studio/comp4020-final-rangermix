@@ -396,8 +396,9 @@ renamed.
   dragged, and pinned: a pinned panel can't be moved or selected except by
   its Unpin button, and a click or tap on it reaches the café under it. An
   unpinned panel that hasn't changed for a few seconds dims and grows more
-  see-through. Until that slice is built, the panels stand in columns as
-  above.
+  see-through. "Put a treat down" moves out of Your cats to beside the
+  emotes, so a pinned panel costs nothing. Until that slice is built, the
+  panels stand in columns as above.
 - **Phone (390×844), and anything narrower than 960 px:** two layouts, with
   one button to switch between them, remembered per device (or for the visit,
   if the device won't store it). **B**, the default: the room fills the
@@ -471,10 +472,14 @@ renamed.
     behind the café, sky and towers by day, stars and lit windows by
     night, in the same hour's light as the room. It fills the corners the
     room's diamond leaves.
-  - **Crisp edges, outlines and shadows** are proposed, not decided
-    ([ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
-    today the floor, walls and blocks are canvas polygons whose edges the
-    canvas blends.
+  - **Crisp, with outlines and shadows** (decided 2026-11-04,
+    [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
+    every pixel of the room one colour, with no anti-aliasing; a one-pixel
+    outline, each piece's own colour darkened, where it meets what's
+    behind it; shadows cast from the street wall's windows, with their
+    light through the panes; and the floor darkened where it meets a wall
+    or a piece. Until slice 13 is built, the floor, walls and blocks are
+    canvas polygons whose edges the canvas blends.
 - **Sprites** are grids of palette numbers in `content/sprites/`, drawn by
   Claude as code. Cats share a base sprite with swappable coats, patterns and
   eyes, and recoloured images are cached at startup. Any sprite can be redrawn

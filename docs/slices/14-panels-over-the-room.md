@@ -1,6 +1,6 @@
 # 14. Panels over the room
 
-- **Status:** Proposed
+- **Status:** Approved 2026-11-04, with the proposed defaults for its open questions (the treat button beside the emotes; panels start in the corners, unpinned; Tab reaches only a pinned panel's Unpin)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-14-panels.md`
 - **Design:** The client ("Desktop (1920×1080)");
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
@@ -36,6 +36,8 @@ room shows through.
   content changes or the pointer comes over it.
 - **Remembered** per device, as the phone's layout is: where each panel
   is, and which are pinned.
+- **"Put a treat down" moves** out of Your cats to the talk bar, beside
+  the emotes, at every size, so pinning Your cats takes nothing away.
 
 ## Not in this slice
 
@@ -55,6 +57,7 @@ room shows through.
 | An unpinned panel dims after a few seconds unchanged and comes back when it changes | client unit tests (fake timers) and a browser check |
 | Panel text is 4.5:1 or better over the brightest and darkest the room and street can be behind it, dimmed or not | client unit tests (`contrast`, computed from the CSS and palettes) |
 | Positions and pins are remembered on reload, and a blocked storage keeps them for the visit | browser check, as the layout switch's |
+| "Put a treat down" is beside the emotes and works by keyboard, touch and mouse at both sizes | `spec/` (the treat check, moved) |
 | Every action still works by keyboard, touch and mouse at 1920×1080 and 390×844 | `spec/` (the existing checks pass) |
 | The panels sit comfortably over the room and nothing important hides under them by default | judged: by the user, from screenshots at 1920×1080, with each panel pinned and unpinned |
 
@@ -74,11 +77,12 @@ room shows through.
 ## Open questions
 
 - **"Put a treat down" is a button inside Your cats.** Pinning leaves
-  only Unpin clickable, so a pinned Your cats can't put a treat down.
-  Proposed default: the treat button moves out to the talk bar beside the
-  emotes, so pinning costs nothing.
-- **Where do the panels start?** Proposed default: the corners above,
-  each unpinned, so the first visit shows what can be done.
-- **The keyboard and a pinned panel.** Tab skips a pinned panel's text
-  but still reaches Unpin, and the chalkboard's copy stays for a screen
-  reader. Proposed default: as said.
+  only Unpin clickable, so a pinned Your cats couldn't put a treat down.
+  Settled 2026-11-04, the default: the button moves to the talk bar beside
+  the emotes.
+- **Where do the panels start?** Settled 2026-11-04, the default: the
+  corners above, each unpinned, so the first visit shows what can be
+  done.
+- **The keyboard and a pinned panel.** Settled 2026-11-04, the default:
+  Tab skips a pinned panel's text but still reaches Unpin, and the
+  chalkboard's copy stays for a screen reader.

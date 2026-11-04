@@ -1,6 +1,9 @@
 # The look, reconsidered: blur, walking, corners, density and the camera
 
-**Status:** decided 2026-11-04 20:18 AEDT, all but the edges. The user
+**Status:** decided 2026-11-04. The edges were chosen last: option 9 of
+section 1b, crisp with a self outline, cast shadows and ambient occlusion
+([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md),
+accepted). Before that, at 20:18 AEDT: The user
 chose to stay isometric at 32-px tiles, to have walkers face where they go
 and move by screen pixels, and all three corner treatments (B, C and D),
 with the panels in D half see-through, draggable, pinnable and dimming.
@@ -204,8 +207,6 @@ My read, for the user to judge:
 
 ## Left for the user
 
-Settled 2026-11-04 (ADR 0018): isometric, walk fixes 1 and 3, corners B,
-C and D, 32-px tiles. Still open:
-
-- **The edges**, from section 1b (ADR 0019, proposed).
-- **Slices 12 to 14**, proposed, each with its open questions.
+Settled 2026-11-04: isometric, walk fixes 1 and 3, corners B, C and D,
+32-px tiles (ADR 0018); the edges, option 9 (ADR 0019); slice 14,
+approved with its defaults. Still open: slices 12 and 13, proposed.

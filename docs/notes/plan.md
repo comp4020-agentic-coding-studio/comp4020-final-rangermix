@@ -51,8 +51,8 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | reviewed and deployed 2026-10-22, checked live ([plan](plan-slice-10-palette.md), [findings](reviews/slice-10-findings.md), [notes](slice-10-palette.md)); live once the user has judged it |
 | 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21; after 12, since every sprite needs the back view 12 adds ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) |
 | 12 | Walking where you look | Walkers face their direction on screen, with back views, and move by screen pixels; the phone's camera follows the same way ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) | [12](../slices/12-walking-where-you-look.md) | spec proposed |
-| 13 | A café on its street | The room as a diorama, with the street behind it by day and by night; the room's edges crisp, with outlines and shadows, once [ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md) is chosen | [13](../slices/13-a-cafe-on-its-street.md) | spec proposed |
-| 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4× | [14](../slices/14-panels-over-the-room.md) | spec proposed |
+| 13 | A café on its street | The room as a diorama, with the street behind it by day and by night; the room crisp, with self outlines, shadows cast from the windows and ambient occlusion ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)) | [13](../slices/13-a-cafe-on-its-street.md) | spec proposed; its edges chosen 2026-11-04 |
+| 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | approved 2026-11-04 |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -106,14 +106,15 @@ Updated by session `6753d63d`.
 
 1. **The look, as settled on 2026-11-04**
    ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
-   from [art-style.md](art-style.md)): isometric stays, at 32-px tiles.
-   The user chooses the room's edges from the comparison
-   ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md),
-   proposed) and approves slices 12 to 14. My suggested order: 12, the
-   walking, which every sprite's back view waits on; 13, the street and
-   the crisp room; 14, the panels; then 11, the art, at the new density
-   with back views. 12 and 13 are small; 14 changes the desktop page; 11
-   is the long one.
+   from [art-style.md](art-style.md)): isometric stays, at 32-px tiles,
+   and the room is drawn crisp with self outlines, cast shadows and
+   ambient occlusion
+   ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)).
+   Slice 14 is approved; 12 and 13 wait on the user's approval. My
+   suggested order: 12, the walking, which every sprite's back view waits
+   on; 13, the street and the crisp room; 14, the panels; then 11, the
+   art, at the new density with back views. 12 and 13 are small; 14
+   changes the desktop page; 11 is the long one.
 2. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the

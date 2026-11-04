@@ -1,6 +1,6 @@
 # 0019. Draw the room crisp, with outlines and shadows
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-04
 
 ## Context
@@ -56,23 +56,29 @@ filling shapes pixel by pixel with no anti-aliasing, a change to
 the art itself. Cast shadows are either drawn into each piece's sprite
 for one light, or worked out from the pieces' footprints and heights each
 time the furniture moves, since furniture moves. They'd be cached, not
-drawn every frame. At night the light comes from the lamps, not the
-windows, so cast shadows need a second direction or fade out.
+drawn every frame. At night the windows are lit with the street's
+lamplight (slice 10), so the light still comes through them.
 
 ## Decision
 
-Proposed, for the user to choose from the comparison: **option 9**, crisp
-edges with self outlines, shadows cast from the windows, and ambient
-occlusion. Option 4 is the smaller step if the cast shadows cost too much:
-crisp with self outlines, with blob shadows drawn into the art (option 8).
+The user chose, on 2026-11-04, **option 9**, as proposed: we will draw the
+room **crisp**, every pixel one colour with no anti-aliasing, with a
+**self outline** where a piece meets what's behind it, **shadows cast from
+the street wall's windows**, light through the panes included, and
+**ambient occlusion** where the floor meets a wall or a piece. Option 8,
+blob shadows in place of cast ones, was the fallback if cast shadows cost
+too much; it wasn't needed.
 
 ## Consequences
 
 - **The floor and walls are redrawn crisp,** which slice 11 as written
-  doesn't cover, so it joins the art slice or comes before it.
+  doesn't cover. It's built in slice 13, which redraws the room's frame
+  for the street anyway
+  ([13](../slices/13-a-cafe-on-its-street.md)).
 - **Outlines become part of every sprite's drawing,** as the study's
   selective outline: dark below and right, the shade colour on the lit
   rim.
 - **Cast shadows follow the furniture,** worked out when a piece moves and
-  cached, and fade or turn at night.
+  cached. They fall the same way by night, from the windows' lamplight,
+  in the night palette.
 - **None of it reaches the server or the protocol.**
