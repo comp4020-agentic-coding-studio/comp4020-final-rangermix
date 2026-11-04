@@ -128,3 +128,32 @@ describe("the menu beside what you clicked", () => {
     expect(menuSpot({ left: 404, right: 500, top: 200 }, menu, { w: 1296, h: 300 }).top).toBe(0);
   });
 });
+
+// Slice 12: in layout B the camera follows a walker, and both now move by
+// screen pixels, so the walker holds still in the middle of the view. Before,
+// the sprite moved by room pixels and the camera by screen pixels, and the
+// walker wobbled a pixel either side of the middle.
+
+describe("the camera following a walker", () => {
+  it("keeps a walker's sprite fixed on screen while the camera follows it along a diagonal, at 3×", async () => {
+    const { toCanvas } = await import("../src/iso");
+    const scale = 3;
+    const view = { w: 390, h: 844 };
+    const room = { w: 336 * scale, h: 232 * scale };
+    const seen = new Set<string>();
+    for (let f = 0; f < 60; f++) {
+      // A walk from (5,4) toward the street wall's far end, at 3 tiles a second.
+      const t = (f / 60) * 3;
+      const spot = { x: 5 + t * 0.6, y: 4 - t * 0.4 };
+      // The camera, as stage.ts pans: from the walker's floor point at the stage's scale.
+      const at = toCanvas(spot.x + 0.5, spot.y + 0.5);
+      const off = panOffset({ x: at.x * scale, y: at.y * scale }, view, room);
+      // The sprite's feet, as render.ts places them: rounded to a screen pixel.
+      const feet = { x: Math.round((at.x - 8) * scale) / scale, y: Math.round((at.y - 14) * scale) / scale };
+      // The room is shorter than a phone's view at 3×, so it only pans across;
+      // across, the walker stays put.
+      seen.add(`${feet.x * scale - off.x}`);
+    }
+    expect([...seen]).toHaveLength(1);
+  });
+});

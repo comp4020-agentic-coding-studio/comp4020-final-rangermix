@@ -164,3 +164,26 @@ Files: `client/src/stage.ts`, `client/src/layout.ts`, `client/test/layout.test.t
 ## Execution log
 
 Where the build departed from this plan, as it happened.
+
+- **Task 2: the cat's back views took three drawings.** The first walking
+  one read as a lump, the second as a dog (head at the far end, tail
+  curled); the third holds the tail straight up at the near end, with the
+  back of the head and its ears at the far end. Judged from a sheet of
+  every frame at 8×, at today's 16 px; slice 11 redraws them at 24.
+- **Task 3: facing is kept in `CafeState`, not render state.** The walk is
+  gone by the time it's drawn standing (`catPosed` and `personSat` clear
+  it), so `apply` records the side a walker shows, where its walk stands,
+  just before replacing or clearing it. A held cat shows its holder's
+  side.
+- **Task 4: the placement is a transform plus a rounding, not a new
+  layer.** `draw` sets `ctx.setTransform(scale, …)` and the room draws in
+  room pixels as before; sprites, the "you" marker and emotes round to
+  `1/scale` (`onScreen`). The light check in `spec/browser.test.ts` read
+  in canvas pixels, which are now screen pixels; it now counts room pixels
+  through the room's CSS size, and still fails when aimed off the cat.
+- **Task 5 needed no code.** With sprites placed to screen pixels, the
+  follow-camera's rounding and the sprite's agree: a walker it follows
+  holds one screen position across, where before it took three (170, 171,
+  172). A test holds it, and fails on the old placement. Up and down the
+  camera doesn't move at 3× on a phone (the room is shorter than the
+  view), so the walker moves there as it should.
