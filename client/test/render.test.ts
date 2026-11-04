@@ -1159,3 +1159,19 @@ describe("what's carried or held, at 32 px (slice 11's review, findings 4 and 11
     expect(catTop, `the cat's top (${catTop}) below the eyes (${eyes})`).toBeGreaterThan(eyes);
   });
 });
+
+describe("a model's parts drawn back to front (slice 11's review, finding 12)", () => {
+  it("never lists a part after one it lies wholly behind, among parts at the same heights", async () => {
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, { x: number; y: number; w: number; h: number; z0: number; z1: number }[]>;
+    // iso.ts's `behind`: `a` lies wholly behind `b` further along x, or less far along y.
+    const behind = (a: { x: number; y: number; w: number; h: number }, b: typeof a) => a.x >= b.x + b.w || a.y + a.h <= b.y;
+    for (const [kind, parts] of Object.entries(models)) {
+      parts.forEach((later, j) => {
+        for (const earlier of parts.slice(0, j)) {
+          const sameHeights = later.z0 < earlier.z1 && earlier.z0 < later.z1;
+          if (sameHeights) expect(behind(later, earlier) && !behind(earlier, later), `${kind}: part ${j} is listed after a part it lies behind`).toBe(false);
+        }
+      });
+    }
+  });
+});
