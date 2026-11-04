@@ -1,9 +1,15 @@
 # The look, reconsidered: blur, walking, corners, density and the camera
 
-**Status:** a judgement for the user, asked 2026-11-04 16:01 AEDT, five days
-before the final submission. Nothing is decided here.
-[ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)
-stands until the user chooses, and slice 11 waits on it.
+**Status:** decided 2026-11-04 20:18 AEDT, all but the edges. The user
+chose to stay isometric at 32-px tiles, to have walkers face where they go
+and move by screen pixels, and all three corner treatments (B, C and D),
+with the panels in D half see-through, draggable, pinnable and dimming.
+That's [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
+built as slices 12 to 14. For the blur they asked for outlines and
+shadows compared, each and combined: section 1b below, proposed as
+[ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md).
+The judgement, asked 2026-11-04 16:01 AEDT, stays below as it was, with
+1b added.
 
 The user, having lived with slices 09 and 10 (the isometric room in
 Catppuccin colours, still with plain blocks and the old 16-px sprites),
@@ -54,6 +60,29 @@ So **the floor and walls would stay blurred** unless they are drawn as
 tiles too, or filled pixel by pixel. That fix is small and works in either
 camera: draw the floor and walls from tile images, or fill shapes with no
 anti-aliasing (the right-hand picture above).
+
+## 1b. Outlines and shadows, each and combined
+
+Asked 2026-11-04 20:18: "what if we add outlines and shadows for objects?
+try render with each and combined".
+
+![edges](screens/art-style/1b-edges.png)
+
+The same corner, nine ways, lit from the street wall's windows. In short:
+
+- **Outlines and shadows over today's soft edges don't fix the blur**
+  (picture 2). They separate shapes, but every edge, the outlines too,
+  stays blended: 2,468 colours where today has 1,633.
+- **Crisp edges are the fix** (picture 3, 115 colours), but on their own
+  similar colours run together: the chairs into the table.
+- **A self outline** (4), each piece's own colour darkened, separates
+  them without the weight of **one dark outline** (5).
+- **Cast shadows from the windows, with ambient occlusion** (7) give the
+  room a light source: the panes' light falls on the floor, and pieces
+  throw shadows into the room. **Blob shadows** (6) only ground pieces.
+- **Combined** (8, 9): self outline with blob shadows, or with cast
+  shadows and ambient occlusion. 9 is the one I'd choose; it's proposed in
+  ADR 0019 with what each costs.
 
 ## 2. The shaking is three separate things, and all three can be fixed
 
@@ -175,9 +204,8 @@ My read, for the user to judge:
 
 ## Left for the user
 
-- **Which camera:** stay isometric and fix what's wrong with it, or switch
-  to top-down 3/4 (a new ADR superseding 0017's camera, and a new slice).
-- **If isometric:** which corner treatment (B, C, D, or B now and C later),
-  and which walk fix (2, even 2:1 steps, or 3, screen-pixel placement).
-- **Density:** 32-px tiles with 24-px cats still stands unless the user
-  wants otherwise.
+Settled 2026-11-04 (ADR 0018): isometric, walk fixes 1 and 3, corners B,
+C and D, 32-px tiles. Still open:
+
+- **The edges**, from section 1b (ADR 0019, proposed).
+- **Slices 12 to 14**, proposed, each with its open questions.

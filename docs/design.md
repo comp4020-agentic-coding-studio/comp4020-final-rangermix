@@ -389,7 +389,15 @@ renamed.
 - **Desktop (1920×1080):** the room in the middle at the largest whole-number
   scale that fits; the readable chalkboard on the left; who's inside, who's at
   the window and the current visit's bubbles on the right; the talk box under
-  the room; a small menu beside whatever you click.
+  the room; a small menu beside whatever you click. *Changing* (2026-11-04,
+  [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
+  the panels will float over the room, half see-through, in its empty
+  corners by default, so the room fits at 4× instead of 3×. Each can be
+  dragged, and pinned: a pinned panel can't be moved or selected except by
+  its Unpin button, and a click or tap on it reaches the café under it. An
+  unpinned panel that hasn't changed for a few seconds dims and grows more
+  see-through. Until that slice is built, the panels stand in columns as
+  above.
 - **Phone (390×844), and anything narrower than 960 px:** two layouts, with
   one button to switch between them, remembered per device (or for the visit,
   if the device won't store it). **B**, the default: the room fills the
@@ -424,8 +432,10 @@ renamed.
   from [notes/visual-direction.md](notes/visual-direction.md)) and built in
   slices 09 to 11. Until slice 11 is built, the sprites below stay true of
   the live café.
-  - **A 2:1 isometric camera** on the same grid (slice 09, built): 32×16
-    diamonds on a 336×232 canvas. Things are drawn so nothing wholly behind
+  - **A 2:1 isometric camera** on the same grid (slice 09, built), kept
+    over a top-down 3/4 one on 2026-11-04
+    ([ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
+    32×16 diamonds on a 336×232 canvas. Things are drawn so nothing wholly behind
     another comes after it, and things on one spot go piece, treat, cat,
     person, a cat on their lap; what stands on a piece is drawn up on it. A
     click or tap acts on what's drawn under it, up off its tile, before the
@@ -448,7 +458,23 @@ renamed.
     dark one (peach), every text and control at 4.5:1 or better.
   - **Cats about 24 px and people about 32 to 36 px tall**, drawn by Claude
     as PNGs in `content/sprites/` and turned into palette slots by the
-    client, with a pose for each thing a cat does (slice 11).
+    client, with a pose for each thing a cat does (slice 11). 32-px tiles
+    stay, judged again on 2026-11-04 against 16, 24 and 48
+    ([notes/art-style.md](notes/art-style.md)).
+  - **Walkers face where they go** (decided 2026-11-04,
+    [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
+    by their direction on screen, not on the grid, with a back view when
+    they walk away, and they move by screen pixels, not the room's, so a
+    walk on the diagonal is even. A sprite's own pixels stay whole.
+  - **The room is a diorama on its street** (decided 2026-11-04, ADR 0018):
+    the floor has a thickness and the walls a top, and the street stands
+    behind the café, sky and towers by day, stars and lit windows by
+    night, in the same hour's light as the room. It fills the corners the
+    room's diamond leaves.
+  - **Crisp edges, outlines and shadows** are proposed, not decided
+    ([ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
+    today the floor, walls and blocks are canvas polygons whose edges the
+    canvas blends.
 - **Sprites** are grids of palette numbers in `content/sprites/`, drawn by
   Claude as code. Cats share a base sprite with swappable coats, patterns and
   eyes, and recoloured images are cached at startup. Any sprite can be redrawn

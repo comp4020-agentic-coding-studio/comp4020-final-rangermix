@@ -1666,3 +1666,44 @@ pixel through either camera at 16, 24, 32 and 48-px tiles
   October, and rebuilding slice 09 would take days of the five left. My
   read: stay isometric and fix what's wrong with it. The choice is the
   user's, so ADR 0017 stands and slice 11 is on hold until they make it.
+
+*Sent 2026-11-04 20:18:14 AEDT*
+
+> nice work
+> 1. Blur: what if we add outlines and shadows for objects? try render with each and combined
+> 2. Shaking: add face where you go and move by screen pixels.
+> 3. Corners: do all B C D. for C add background for both day and night; for D make panels half translucant, movable and pinnable - pinning makes it unmovable and not selectable except for the unpin button. it will float over the cafe, and any elements in the cafe under the panel is still clickable. if not pinned the panel will dim and become more translucant if not changed for seconds.
+> 4. keep 32 for now
+> 5. stay isometric
+>
+> compare options in 1 and add others to DR
+
+**Result.** The choices recorded, the edges compared, and three slices
+proposed to build them.
+- **[ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
+  accepted**: isometric stays at 32-px tiles; walkers face their direction
+  on screen, with back views, and move by screen pixels; the corners get
+  all three treatments: a diorama, the street behind the café by day and
+  by night, and the desktop's panels floating over the room, half
+  see-through, draggable, pinnable (a pinned panel passes clicks through
+  to the café, all but its Unpin button) and dimming when idle. Recorded
+  in `docs/design.md`.
+- **The edges compared** (study section 1b,
+  [notes/art-style.md](notes/art-style.md)): the same corner nine ways,
+  lit from the windows. Outlines and shadows over today's soft edges
+  don't fix the blur: they separate shapes, but every edge stays blended
+  (2,468 colours against today's 1,633). Crisp edges do (115), and need an
+  outline so like colours don't run together. Proposed as
+  [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md):
+  crisp, a self outline, shadows cast from the windows and ambient
+  occlusion; the user chooses.
+- **The studies redrawn** for the answers: the street by day as well as
+  night, and the floating panels at half the desktop's size, one pinned,
+  one being dragged and one dimmed.
+- **Slices 12 to 14 proposed**: [walking](slices/12-walking-where-you-look.md),
+  [the street](slices/13-a-cafe-on-its-street.md) (with the crisp room
+  once ADR 0019 is chosen) and [the panels](slices/14-panels-over-the-room.md),
+  with slice 11's art after 12, since every sprite needs a back view.
+  Slice 14 raises one question the panels' rules create: "Put a treat
+  down" lives inside Your cats, so pinning it would lose the button; the
+  default proposed is to move it beside the emotes.
