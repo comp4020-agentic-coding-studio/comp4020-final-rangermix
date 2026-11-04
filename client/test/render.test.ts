@@ -446,13 +446,22 @@ describe("placing a walker by screen pixels", () => {
     });
   }
 
-  it("moves a walker evenly at 3×: every frame, by steps that differ by at most a screen pixel", () => {
-    const ps = placements(3, diagonal, 3, 36);
-    const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
-    for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
-    const xs = steps.map((s) => s.dx);
-    const ys = steps.map((s) => s.dy);
-    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
-  });
+  // At 2× and up; at 1× a person covers under a pixel some frames, so some
+  // stand still: the limit of whole pixels there (slice 12's review, finding 8).
+  for (const [scale, speed, who] of [
+    [2, 3, "a person"],
+    [3, 3, "a person"],
+    [5, 3, "a person"],
+    [3, 2, "a cat's pace"],
+  ] as const) {
+    it(`moves ${who} evenly at ${scale}×: every frame, by steps that differ by at most a screen pixel`, () => {
+      const ps = placements(scale, diagonal, speed, 36);
+      const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
+      for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
+      const xs = steps.map((s) => s.dx);
+      const ys = steps.map((s) => s.dy);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
+      expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
+    });
+  }
 });

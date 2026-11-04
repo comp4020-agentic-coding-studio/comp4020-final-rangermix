@@ -11,8 +11,8 @@
 Someone crossing the café walks the way they're going: walking toward the
 street wall they show their back, walking toward you their face, turning
 left or right as the path does. A cat trotting to the bowls does the same.
-And they glide: on the room's diagonals they move evenly, one screen pixel
-at a time, instead of stalling and jumping.
+And they glide: on the room's diagonals they move evenly, by screen
+pixels, instead of stalling and jumping.
 
 ## In this slice
 
@@ -24,7 +24,10 @@ at a time, instead of stalling and jumping.
   back. Slice 11 redraws both at the new density.
 - **Placed by screen pixels**: a walker's sprite is drawn at its exact
   position on screen, rounded to the screen's pixels, not the room's. Its
-  own pixels stay whole and square. The room behind it is drawn as now.
+  own pixels stay whole and square. The room behind it is drawn as now,
+  but into a canvas at the room's scale, so its blended edges are blended
+  at that scale, finer than before (slice 12's review, finding 5); slice
+  13 draws them crisp.
 - **The phone's follow-camera** (layout B) moves the same way, so the
   walker it follows stays still in the middle of the screen.
 - **What it's built on**: the room, furniture and floor stay one canvas at
@@ -46,8 +49,8 @@ at a time, instead of stalling and jumping.
 | What must be true | Held by |
 | --- | --- |
 | A step toward the street wall shows the walker's back; a step away from it, their face; left and right mirror as the path turns on screen | client unit tests (`motion`: the direction for each of the four steps) |
-| A walker on a diagonal moves on screen every frame, by steps that differ from frame to frame by at most one screen pixel on either axis: even, never standing still then jumping. (Written first as "at most one screen pixel per frame", which no walk at 3 tiles a second can meet at 3×; corrected in the plan, decision 1.) | client unit tests (positions at 60 frames a second at 3×) |
-| In layout B the walker the camera follows stays within a pixel of the screen's middle while walking | client unit tests (`layout`) |
+| A walker on a diagonal moves on screen every frame, by steps that differ from frame to frame by at most one screen pixel on either axis: even, never standing still then jumping. At 1×, whole pixels can't move every frame, so it holds from 2× up. (Written first as "at most one screen pixel per frame", which no walk at 3 tiles a second can meet at 3×; corrected in the plan, decision 1, and told to the user after the review, finding 8.) | client unit tests (positions at 60 frames a second at 2×, 3× and 5×, and at a cat's pace) |
+| In layout B the walker the camera follows stays on one screen pixel across while walking, at even and odd widths | client unit tests (`stage`: the real stage and renderer together, at 390 and 393 wide) |
 | Every sprite the client draws has a front and a back view | `cargo test` (the content loader) |
 | The browser checks that click a walker or a tile still pass at 390×844 and 1920×1080 | `spec/` |
 | Walks read as walking, not shaking, at both sizes | judged: by the user, live, by watching a cat and a person cross the room |

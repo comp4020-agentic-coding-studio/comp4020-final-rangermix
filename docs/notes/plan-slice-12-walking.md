@@ -194,3 +194,28 @@ Where the build departed from this plan, as it happened.
   172). A test holds it, and fails on the old placement. Up and down the
   camera doesn't move at 3× on a phone (the room is shorter than the
   view), so the walker moves there as it should.
+
+### After the review
+
+- **The cat walked away tail first** (finding 1): its back walking
+  frames were drawn head on the left, the opposite of every other frame,
+  and the mirroring treated them like the rest. Redrawn head right; a
+  test holds every frame's head right of the middle, and another holds
+  the mirroring itself on all four diagonals, which nothing did.
+- **The camera test held arithmetic, not the café** (finding 2): it's
+  now the real `Stage` and `draw` together in jsdom, painting a walk in
+  layout B. It caught odd widths turning between two pixels (finding 7),
+  fixed by rounding the view's middle once, and it fails on both of the
+  reviewer's mutants.
+- **Facing through a reconnect** (finding 3) and **arriving into the
+  room** (finding 4): a welcome records each walker's side from the walk
+  the old state still holds; a walk in from the door, over, faces front,
+  by the same rule in `facingOf` and `keepFacing`.
+- **A carried piece moves with its carrier** (finding 6), by the screen
+  pixels the sprite is placed at.
+- **The evenness line** holds from 2× up, tested at 2×, 3×, 5× and a
+  cat's pace; at 1× whole pixels can't move every frame. The story says
+  "by screen pixels" now. The changed line goes to the user (finding 8).
+- **The screenshots** (finding 9) shoot "away" while the walk is under
+  way, as the café's own messages say, after letting the walk toward the
+  viewer finish; all six now differ.
