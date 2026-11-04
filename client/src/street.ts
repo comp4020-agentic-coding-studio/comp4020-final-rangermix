@@ -7,23 +7,28 @@ import streetFile from "../../content/street.toml?raw";
 
 export interface Street {
   horizon: number;
+  /** How far up the sky the warm band by the skyline reaches, as a share of it. */
+  glow: number;
   windows: { every: number; size: number; lit: number };
   towers: { width: number; height: number }[];
+  clouds: { x: number; y: number; width: number }[];
 }
 
 /** The street's slots in the palette's "street" list. */
-export const STREET = { skyTop: 0, sky: 1, tower: 2, towerSide: 3, lit: 4, dark: 5, star: 6, kerb: 7, pavement: 8 } as const;
+export const STREET = { skyTop: 0, sky: 1, tower: 2, towerSide: 3, lit: 4, dark: 5, star: 6, kerb: 7, pavement: 8, cloud: 9, cloudShade: 10, glow: 11 } as const;
 
 /**
- * Reads street.toml: top-level `key = number` lines, one `[windows]` table
- * and `[[towers]]` tables of numbers. Enough TOML for this one file, which
- * the server's tests also read with a real parser.
+ * Reads street.toml: top-level `key = number` lines, one `[windows]`
+ * table, and `[[towers]]` and `[[clouds]]` tables of numbers. Enough TOML
+ * for this one file, which the server's tests also read with a real parser.
  */
 export function parseStreet(text: string): Street {
-  const top: Record<string, number> = {};
-  const windows: Record<string, number> = {};
-  const towers: Record<string, number>[] = [];
-  let into: Record<string, number> = top;
+  type Table = Record<string, number>;
+  const top: Table = {};
+  const windows: Table = {};
+  const towers: Table[] = [];
+  const clouds: Table[] = [];
+  let into: Table = top;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.replace(/#.*/, "").trim();
     if (!line) continue;
@@ -32,6 +37,9 @@ export function parseStreet(text: string): Street {
       towers.push(into);
     } else if (line === "[windows]") {
       into = windows;
+    } else if (line === "[[clouds]]") {
+      into = {};
+      clouds.push(into);
     } else {
       const m = /^(\w+)\s*=\s*(-?[\d.]+)$/.exec(line);
       if (!m) throw new Error(`street.toml: can't read ${JSON.stringify(raw)}`);
@@ -40,8 +48,10 @@ export function parseStreet(text: string): Street {
   }
   return {
     horizon: top.horizon,
+    glow: top.glow,
     windows: { every: windows.every, size: windows.size, lit: windows.lit },
     towers: towers.map((t) => ({ width: t.width, height: t.height })),
+    clouds: clouds.map((c) => ({ x: c.x, y: c.y, width: c.width })),
   };
 }
 
@@ -94,8 +104,42 @@ export function streetSlot(x: number, y: number, w: number, h: number, night: bo
     // Each tower lit on its left, in shade on its right, as the room is.
     return at >= tower.width - 3 ? STREET.towerSide : STREET.tower;
   }
+  const cloud = cloudAt(x, y, w, horizon);
+  if (cloud !== null) return cloud;
   if (night && isStar(x, y) && y < horizon * 0.7) return STREET.star;
-  // Sky, darker at the top, in dithered bands down to the skyline.
+  // Sky, darker at the top, in dithered bands down to the towers, warming
+  // low down where the sky meets them (the user, 2026-11-05).
   const t = y / horizon;
-  return t * 4 + BAYER[(y & 3) * 4 + (x & 3)] / 16 - 0.5 < 2 ? STREET.skyTop : STREET.sky;
+  const d = BAYER[(y & 3) * 4 + (x & 3)] / 16 - 0.5;
+  // The towers stand over the sky's lowest part, so the warm band starts at
+  // the shortest tower's top and reaches up by `glow` of the sky, its top
+  // edge dithered: it shows between the taller towers.
+  const lowest = Math.min(...street.towers.map((tw) => tw.height));
+  const above = (1 - lowest - t) / street.glow;
+  if (street.glow > 0 && above + d < 0.5) return STREET.glow;
+  return t * 4 + d < 2 ? STREET.skyTop : STREET.sky;
+}
+
+/**
+ * A cloud's slot at backdrop pixel (x, y), or null for clear sky: each
+ * cloud of street.toml where it floats, three soft lumps over a flat
+ * underside, the underside's last row in its shade. Drawn at the
+ * backdrop's 1×, whatever its size, since its spots are in those pixels.
+ */
+function cloudAt(x: number, y: number, _w: number, _horizon: number): number | null {
+  for (const c of street.clouds) {
+    const cw = c.width;
+    const ch = Math.max(5, Math.round(cw * 0.32));
+    const left = c.x - cw / 2;
+    const base = c.y + Math.round(ch / 2);
+    const u = x + 0.5 - left;
+    const v = y + 0.5;
+    if (u < 0 || u >= cw || v > base || v < base - ch) continue;
+    // Three lumps across the cloud, the middle one tallest, on a flat underside.
+    const lump = (cx: number, r: number) => ((u - cx) / r) ** 2 + ((v - (base - r * 0.7)) / (r * 0.8)) ** 2 <= 1;
+    const inside = lump(cw * 0.28, cw * 0.2) || lump(cw * 0.52, cw * 0.27) || lump(cw * 0.76, cw * 0.19) || (v > base - ch * 0.4 && u > cw * 0.1 && u < cw * 0.9);
+    if (!inside) continue;
+    return v > base - 1.5 ? STREET.cloudShade : STREET.cloud;
+  }
+  return null;
 }

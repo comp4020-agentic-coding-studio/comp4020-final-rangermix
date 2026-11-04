@@ -8,6 +8,12 @@
 #   at 1×; height as a share of the sky above the skyline.
 # windows: every `every` pixels across and up a tower, a window `size` pixels
 #   square; `lit` of them in 10 are lit, by a fixed pattern.
+# clouds: each one where it floats, `x` and `y` its middle in room pixels
+#   at 1x on the 336 by 232 backdrop, and `width` across; drawn behind the
+#   towers. The sky that shows is the two top corners the room's walls leave
+#   (above the street wall on the left, the plain wall on the right), so
+#   that's where they float. White with a warm underside by day, faint by
+#   night.
 #
 # The client reads this file with a small reader of its own (street.ts):
 # plain `key = number` lines, the one `[windows]` table and `[[towers]]`
@@ -16,6 +22,11 @@
 # client loading, though it's valid TOML that `cargo test` reads.
 
 horizon = 0.55
+
+# The sky warms low down by the skyline, as the sun does on a café's street:
+# how far up the sky the warm band reaches, dithered into the blue above it,
+# 0 to 0.6. By night its colour is the sky's own, so nothing warm shows.
+glow = 0.3
 
 [windows]
 every = 4
@@ -49,3 +60,33 @@ height = 0.58
 [[towers]]
 width = 16
 height = 0.88
+
+[[clouds]]
+x = 30
+y = 18
+width = 40
+
+[[clouds]]
+x = 92
+y = 34
+width = 28
+
+[[clouds]]
+x = 14
+y = 52
+width = 22
+
+[[clouds]]
+x = 262
+y = 16
+width = 44
+
+[[clouds]]
+x = 318
+y = 36
+width = 30
+
+[[clouds]]
+x = 236
+y = 30
+width = 20

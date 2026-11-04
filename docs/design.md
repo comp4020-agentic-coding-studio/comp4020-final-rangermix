@@ -478,9 +478,11 @@ renamed.
     [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
     the floor has a thickness and the walls a top, and the street stands
     behind the café, sky and towers by day, stars and lit windows by
-    night, in the same hour's light as the room. It fills the corners the
-    room's diamond leaves. The street is data, `content/street.toml` (the
-    skyline's height, the towers' widths and heights, the windows), with
+    night, in the same hour's light as the room, with clouds in the day's
+    sky and a warm band low between the towers (faint clouds by night). It
+    fills the corners the room's diamond leaves. The street is data,
+    `content/street.toml` (the skyline's height, the towers' widths and
+    heights, the windows, each cloud's spot, the warm band), with
     its colours in the palette's "street" slots by day and by night; it
     takes no click.
   - **Crisp, with outlines and shadows** (slice 13, built;
