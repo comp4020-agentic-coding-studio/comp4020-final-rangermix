@@ -467,8 +467,9 @@ renamed.
     by their direction on screen, not on the grid: up the screen shows
     their back, down it their face, and going left mirrors the sprite.
     Standing, they keep the side they last walked with; someone who's just
-    arrived faces into the room. The client remembers the side, since the
-    server's messages don't carry it. They move by screen pixels: the
+    walked in from the door faces into the room. The client remembers the
+    side, since the server's messages don't carry it, and keeps it through
+    a reconnect. They move by screen pixels: the
     canvas holds the room at its scale, the room is drawn into it in room
     pixels, and a figure is placed to the canvas's own pixels, so a walk
     on the diagonal is even and the phone's camera holds a walker still
@@ -489,9 +490,13 @@ renamed.
     one-pixel outline, each piece's own colour darkened, where it meets
     what's behind it; shadows cast from the street wall's windows, with
     their light through the panes; and the floor darkened where it meets
-    a wall or a piece. The shadows are worked out over the room's pixels
-    when the furniture changes, not every frame, and are the same by
-    night.
+    a wall or a piece, the plain wall shading the strip beside it. Each
+    piece casts the shadow of the block it's drawn as, and cats and people
+    on the floor cast a small one. The street, the floor, its seams and the
+    rug are one layer, shaded pixel by pixel and worked out when the light
+    or the furniture changes, not every frame; the shadows are the same by
+    night. Blocks are lit from the windows: the left face a little shaded,
+    the front, turned away from them, most.
 - **Sprites** are grids of palette numbers in `content/sprites/`, drawn by
   Claude as code. Cats share a base sprite with swappable coats, patterns and
   eyes, and recoloured images are cached at startup. Any sprite can be redrawn

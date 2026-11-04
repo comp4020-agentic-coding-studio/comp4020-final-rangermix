@@ -1,6 +1,6 @@
 # 12. Walking where you look
 
-- **Status:** Built 2026-11-04 ([plan](../notes/plan-slice-12-walking.md), [screens](../notes/screens/slice-12/)); approved 2026-11-04, with the proposed default for its open question (standing still, a figure faces the way it last walked; someone arriving faces into the room)
+- **Status:** Reviewed 2026-11-05 ([findings](../notes/reviews/slice-12-findings.md)); built 2026-11-04 ([plan](../notes/plan-slice-12-walking.md), [screens](../notes/screens/slice-12/)); approved 2026-11-04, with the proposed default for its open question (standing still, a figure faces the way it last walked; someone arriving faces into the room)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-12-walking.md`
 - **Design:** The client ("The look": walkers face where they go);
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
