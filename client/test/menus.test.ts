@@ -20,8 +20,8 @@ function state() {
           door: { x: 7, y: 0 },
           walkway: [],
           furniture: [
-            { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false },
-            { id: 15, kind: "plant", x: 2, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false },
+            { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, perch: false, toppled: false },
+            { id: 15, kind: "plant", x: 2, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false },
           ],
           catalogue: [],
         },
@@ -71,7 +71,7 @@ describe("the menu for what's on a tile", () => {
   it("offers no treat with none left, and no picking up with full arms", () => {
     const s = state();
     s.yourTreats = 0;
-    s.held.set(1, { id: 15, kind: "plant", x: 2, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false });
+    s.held.set(1, { id: 15, kind: "plant", x: 2, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false });
     const m = menuFor(s, [{ kind: "cat", id: "mochi", tile: { x: 6, y: 5 } }]);
     expect(labels(m)).toEqual(["Pet Mochi", "Call Mochi", "Play with Mochi"]);
   });

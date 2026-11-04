@@ -183,6 +183,9 @@ pub struct FurnitureView {
     /// Other pieces can stand on it, as on a rug.
     pub under: bool,
     pub seats: bool,
+    /// Cats perch here to watch the line at the window (slice 11's review,
+    /// finding 20: the client draws them perched by this, not by a kind's name).
+    pub perch: bool,
     /// Knocked over by a cat, until someone stands it back up.
     pub toppled: bool,
 }

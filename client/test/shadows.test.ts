@@ -22,6 +22,7 @@ const piece = (kind: string, x: number, y: number, w = 1, h = 1, extra: Partial<
   blocks: kind !== "rug",
   under: kind === "rug",
   seats: false,
+  perch: false,
   toppled: false,
   ...extra,
 });

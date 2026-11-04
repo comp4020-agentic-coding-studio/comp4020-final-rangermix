@@ -6,6 +6,11 @@ export type FurnitureView = { id: number, kind: string, x: number, y: number, w:
  */
 under: boolean, seats: boolean, 
 /**
+ * Cats perch here to watch the line at the window (slice 11's review,
+ * finding 20: the client draws them perched by this, not by a kind's name).
+ */
+perch: boolean, 
+/**
  * Knocked over by a cat, until someone stands it back up.
  */
 toppled: boolean, };

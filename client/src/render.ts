@@ -710,7 +710,8 @@ export function catFrame(state: CafeState, cat: Cat, spot: Spot, now: number): C
   if (cat.pose === "nap") return lapOf(state, cat) !== null ? `${b}:lap` : `${b}:nap`;
   if (cat.pose === "eat") return `${b}:eat`;
   if (cat.pose === "held") return `${b}:held`;
-  if (standingOn(state, spot)?.kind === "window_seat") return `${b}:perch`;
+  // Up on a piece the content marks for perching (slice 11's review, finding 20).
+  if (standingOn(state, spot)?.perch) return `${b}:perch`;
   return `${b}:${back ? "back_" : ""}sit`;
 }
 

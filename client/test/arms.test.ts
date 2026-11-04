@@ -51,7 +51,7 @@ describe("the bar for what's in your arms", () => {
 
   it("offers to put a piece back or away while you carry one", () => {
     const s = state();
-    s.held.set(1, { id: 9, kind: "lamp", x: 3, y: 3, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false });
+    s.held.set(1, { id: 9, kind: "lamp", x: 3, y: 3, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false });
     const b = bar();
     showArms(b, s);
     expect(b.text.textContent).toBe("Carrying the lamp. Choose where it goes.");

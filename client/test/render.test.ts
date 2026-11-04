@@ -12,7 +12,7 @@ import { apply, fromWelcome } from "../src/state";
 // first, then everything standing, nothing nearer the viewer painted over.
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
-const piece = (id: number, kind: string, x: number, y: number, w: number, h: number, under = false) => ({ id, kind, x, y, w, h, movable: true, blocks: !under, under, seats: false, toppled: false });
+const piece = (id: number, kind: string, x: number, y: number, w: number, h: number, under = false) => ({ id, kind, x, y, w, h, movable: true, blocks: !under, under, seats: false, perch: false, toppled: false });
 
 function welcome(): Welcome {
   return {
@@ -919,7 +919,8 @@ describe("the frame for what a cat is doing (slice 11)", () => {
   it("shows held in someone's arms, on a lap where someone sits, and perched up on the window seat", async () => {
     expect(await frameFor("held")).toBe("round:held");
     expect(await frameFor("nap", { sitter: true })).toBe("round:lap");
-    expect(await frameFor("sit", { at: { x: 3, y: 1 }, furniture: [piece(1, "window_seat", 2, 1, 4, 1)] })).toBe("round:perch");
+    // The window seat, flagged for perching as content/furniture.toml has it.
+    expect(await frameFor("sit", { at: { x: 3, y: 1 }, furniture: [{ ...piece(1, "window_seat", 2, 1, 4, 1), perch: true }] })).toBe("round:perch");
   });
 
   it("scratches and greets someone, and plays with someone, for a moment, when the café says so", async () => {
@@ -1244,5 +1245,21 @@ describe("the sizes the café draws and picks at (slice 11's review, finding 13)
     expect(hitAt(s, c.x - 12 + farX + 0.5, top + best.y + 0.5, 10_000), "the cat's far side").toEqual({ x: 6, y: 6 });
     // Well past it, the floor.
     expect(hitAt(s, c.x - 12 + farX + 3.5, top + best.y + 0.5, 10_000), "past the cat").toBeNull();
+  });
+});
+
+describe("perched where the content says cats perch (slice 11's review, finding 20)", () => {
+  it("draws a cat perched on any piece flagged perch, and sitting on one that isn't", async () => {
+    const { catFrame } = await import("../src/render");
+    const { positionAt } = await import("../src/motion");
+    for (const [kind, flag, want] of [["box", true, "round:perch"], ["window_seat", false, "round:sit"]] as const) {
+      const w = welcome();
+      w.snapshot.room.furniture = [{ ...piece(1, kind, 4, 4, 1, 1), perch: flag }];
+      w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], at: { x: 4, y: 4 }, pose: "sit", walk: null, heldBy: null }];
+      const s = fromWelcome(w, 10_000);
+      const cat = { ...s.cats.get("mochi")!, reaction: null };
+      expect(catFrame(s, cat, positionAt(null, cat.at, 10_000), 10_000), `a cat on a ${kind} flagged ${flag}`).toBe(want);
+    }
   });
 });

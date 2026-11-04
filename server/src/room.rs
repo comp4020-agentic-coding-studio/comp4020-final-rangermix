@@ -546,6 +546,7 @@ impl Piece {
             blocks: self.spec.blocks,
             under: self.spec.under,
             seats: self.spec.seats,
+            perch: self.spec.perch,
             toppled: self.toppled,
         }
     }

@@ -74,8 +74,8 @@ describe("pointing at things", () => {
   it("finds a piece that moves, after any cat on it, and steps to it too", () => {
     const s = state();
     s.room.furniture = [
-      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false },
-      { id: 3, kind: "bowls", x: 0, y: 5, w: 3, h: 1, movable: false, blocks: true, under: false, seats: false, toppled: false },
+      { id: 14, kind: "cushion", x: 6, y: 5, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, perch: false, toppled: false },
+      { id: 3, kind: "bowls", x: 0, y: 5, w: 3, h: 1, movable: false, blocks: true, under: false, seats: false, perch: false, toppled: false },
     ];
     expect(targetsAt(s, { x: 6, y: 5 }, 0)).toEqual([
       { kind: "cat", id: "mochi", tile: { x: 6, y: 5 } },

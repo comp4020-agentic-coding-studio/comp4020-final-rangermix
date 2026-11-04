@@ -84,7 +84,7 @@ describe("the client's copy of the café", () => {
 
   it("follows a piece from the floor into someone's hands and down again", () => {
     const w = welcome();
-    const cushion = { id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false };
+    const cushion = { id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, perch: false, toppled: false };
     w.snapshot.room.furniture = [cushion];
     const s = fromWelcome(w, 10_000);
     s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
@@ -127,7 +127,7 @@ describe("the client's copy of the café", () => {
 
   it("knows what's knocked over, and who stood it back up", () => {
     const w = welcome();
-    w.snapshot.room.furniture = [{ id: 7, kind: "plant", x: 1, y: 1, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false }];
+    w.snapshot.room.furniture = [{ id: 7, kind: "plant", x: 1, y: 1, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false }];
     const s = fromWelcome(w, 10_000);
     s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
     expect(apply(s, { type: "furnitureToppled", id: 7, toppled: true, by: null })).toEqual([{ kind: "announce", text: "The plant got knocked over." }]);
@@ -138,7 +138,7 @@ describe("the client's copy of the café", () => {
 
   it("says the toys got scattered, and who gathered them up", () => {
     const w = welcome();
-    w.snapshot.room.furniture = [{ id: 8, kind: "toys", x: 7, y: 8, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false }];
+    w.snapshot.room.furniture = [{ id: 8, kind: "toys", x: 7, y: 8, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false }];
     const s = fromWelcome(w, 10_000);
     s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
     expect(apply(s, { type: "furnitureToppled", id: 8, toppled: true, by: null })).toEqual([{ kind: "announce", text: "The toys got scattered." }]);
@@ -203,7 +203,7 @@ describe("the client's copy of the café", () => {
     const s = fromWelcome(welcome(), 10_000);
     s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
     apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000);
-    s.held.set(2, { id: 9, kind: "lamp", x: 0, y: 0, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, toppled: false });
+    s.held.set(2, { id: 9, kind: "lamp", x: 0, y: 0, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false });
     apply(s, { type: "personLeft", id: 2 });
     expect(s.emotes.has(2)).toBe(false);
     expect(s.held.has(2)).toBe(false);
