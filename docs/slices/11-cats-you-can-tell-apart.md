@@ -1,6 +1,6 @@
 # 11. Cats you can tell apart
 
-- **Status:** Mochi judged and approved by the user 2026-11-05 ([sheet](../notes/screens/slice-11/mochi-sheet.png), [notes](../notes/slice-11-art.md)), so the rest follow in her style; approved 2026-10-21, with the proposed defaults for its open questions (one cat first; the README's music promise comes out)
+- **Status:** Reviewed 2026-11-05 ([findings](../notes/reviews/slice-11-findings.md)); the held pose a princess hug at the user's asking; the builds' shared outlines asleep, on a lap and eating, held and perched alike, and Tora on the wood floor accepted by the user "for now" (2026-11-05); Mochi judged and approved by the user 2026-11-05 ([sheet](../notes/screens/slice-11/mochi-sheet.png), [notes](../notes/slice-11-art.md)), so the rest follow in her style; approved 2026-10-21, with the proposed defaults for its open questions (one cat first; the README's music promise comes out)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-11-art.md`
 - **Design:** The client ("Sprites", "The look"); The room (the starting
   furniture); "Cats change through `content/`, not code";
