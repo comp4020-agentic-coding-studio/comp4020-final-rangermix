@@ -129,8 +129,12 @@ function up(gx: number, gy: number, z = 0): Pt {
  * then its top.
  */
 function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string): void {
-  poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.3));
-  poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.14));
+  // Lit from the street wall's windows, a little from +x (shadows.ts): the
+  // left face (toward -x) turns from the light a little, the front face
+  // (toward +y) most, as in the study the look was chosen from (slice 13's
+  // review, finding 7).
+  poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.12));
+  poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.28));
   poly(ctx, [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x, y + h, z)], colour);
   // The self outline (slice 13, ADR 0019): the block's silhouette, a room
   // pixel wide, in its own colour darkened, so it stands off what's behind.

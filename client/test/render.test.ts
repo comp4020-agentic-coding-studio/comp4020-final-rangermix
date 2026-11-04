@@ -430,6 +430,25 @@ describe("a piece's self outline", () => {
   });
 });
 
+describe("a block lit from the windows (slice 13's review, finding 7)", () => {
+  it("shades its front face, turned away from the windows, darker than its left face, which they light a little", async () => {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "cat_tower", 6, 5, 1, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    // Halfway up the tower (44 px), a little in from each face's middle.
+    const left = toCanvas(6.06, 5.5);
+    const front = toCanvas(6.5, 5.94);
+    const lum = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).reduce((a, b) => a + b, 0);
+    const l = p.at(Math.round(left.x) + 2, Math.round(left.y) - 22)!;
+    const f = p.at(Math.round(front.x) + 1, Math.round(front.y) - 22)!;
+    expect(lum(f), `the front face ${f} against the left ${l}`).toBeLessThan(lum(l));
+  });
+});
+
 // Slice 13 (ADR 0019): the floor in the windows' shadows and at walls' feet
 // is drawn darker, in the hour's colours.
 
