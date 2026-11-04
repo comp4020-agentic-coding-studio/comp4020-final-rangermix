@@ -359,3 +359,26 @@ touched.
   - `client/src/protocol/` is untouched.
 - **Not checked:** Firefox (it wouldn't start here), real Safari, a real
   screen reader, and Windows' classic scrollbars.
+
+---
+
+## Answers
+
+By the builder, 2026-11-05, on `slice-14-merge` (slice 14 merged with
+`main`, so with slices 12 and 13 and the user's later asks: clouds, and a
+more see-through glass). Each fix was tested first, or on the review's own
+mutants put back.
+
+| # | Severity | Answer | Commit |
+| --- | --- | --- | --- |
+| 1 | major | Answered, the trade-off taken to the user. The record was wrong: the light theme follows the device, not the hour, so its panels show the room as white at any hour. design.md and the plan log say so; the screens take all four pairings of hour and theme. At the user's ask since the review, the glass is thinner over a blurred frost, with the panels' own text darker (Latte) or brighter (Mocha), and the see-through test now computes how much of the room's range shows through (at least a fifth), not the alphas; in the dark theme it reads as frosted glass. In the light theme only a dark tint would let the room show while holding 4.5:1, which is the user's call. | [`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2), [`0065fa7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0065fa7) |
+| 2 | major | Fixed. The panels are as tall as their content, up to a share of the stage (the left two splitting its height); who's here keeps its headings and only the said list scrolls; a pinned panel's bodies don't scroll, so Tab reaches only its Unpin. A check at 1366×768, with who's here overflowing and the window then made short, pins each panel and holds that; without the pinned rule it found `your-cats` a Tab stop. | [`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0) |
+| 3 | major | Fixed. The name comes from a `data-name` on the Pin button, never from the label it rewrites. A unit test sets the panels up twice over one page, as Leave and Come back in do (it saw "Unpin Unpin your cats" before); the storage check leaves, comes back and finds "Unpin who's here" exactly. | [`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0), [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
+| 4 | major | Partly fixed, partly for the user. The glass needs relative colours as well as the backdrop filter, or a panel stays opaque, so the "filter alone" case can't happen. Whether real Safari and Firefox draw the frost is a judged check this machine can't run (no WebKit or Firefox for Playwright here, and an iPad's Safari is the case that matters): asked of the user. | [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
+| 5 | minor | Fixed. The blocked-storage check pins, leaves and comes back; with the visit fallback removed (M1) it fails. | [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
+| 6 | minor | Fixed. The focus goes to the room after pinning; with pinned panels dimming (M2) the check fails. | [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
+| 7 | minor | Fixed. A drag ends on lost capture, on a mouse move with no button held, once the panel is pinned, and once the page is a phone's. Three unit tests failed before. | [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
+| 8 | minor | Fixed. The panels are `inert` while the café wakes. | [`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0) |
+| 9 | minor | Fixed. Each panel's height comes from the stage, the left two sharing it, so they never overlap whatever wraps the status bar; the 1366×768 check holds both panels inside the stage, apart, and the treats line visible. The corners at other laptop sizes are in the user's judged screens. | [`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0) |
+| 10 | minor | Fixed. The grip is described as moved by the arrows, and a move by keyboard is announced once the presses stop ("Moved who's here to the top left"). | [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
+| 11 | minor | Fixed in the spec: the 4× line is held by the browser checks that find the room 1344 px wide. | [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643) |
