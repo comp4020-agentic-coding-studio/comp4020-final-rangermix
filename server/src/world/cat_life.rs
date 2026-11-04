@@ -598,7 +598,7 @@ impl World {
         plan = match plan {
             Plan::Eat(food) if self.eat(i, food, out) => plan,
             Plan::Eat(_) => Plan::Idle,
-            Plan::Knock(piece) if self.knock_over(piece, end, out) => plan,
+            Plan::Knock(piece) if self.knock(i, piece, end, out) => plan,
             Plan::Knock(_) => Plan::Idle,
             Plan::Lap(person)
                 if self.person(person).is_some_and(|p| p.sitting.is_some() && p.at == end)

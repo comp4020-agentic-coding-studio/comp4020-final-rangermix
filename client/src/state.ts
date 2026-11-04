@@ -179,6 +179,8 @@ const REACTION_WORDS: Record<Reaction["kind"], (cat: string) => string> = {
   scratch: (cat) => `${cat} scratches you!`,
   eat: (cat) => `${cat} eats from your hand.`,
   play: (cat) => `${cat} plays with you.`,
+  // Aimed at nobody (reactionTarget), so never said to you: the piece's fall is announced instead.
+  knock: (cat) => `${cat} knocks something over.`,
 };
 
 const EMOTE_WORDS: Record<Emote, string> = { wave: "waves", laugh: "laughs", heart: "sends a heart", yawn: "yawns" };
@@ -193,6 +195,9 @@ function reactionTarget(r: Reaction): number {
       return r.from;
     case "play":
       return r.with;
+    case "knock":
+      // At no one: the piece falling is announced to everyone (slice 11's review, finding 7).
+      return -1;
     default:
       return r.by;
   }

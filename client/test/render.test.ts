@@ -927,6 +927,9 @@ describe("the frame for what a cat is doing (slice 11)", () => {
     expect(await frameFor("sit", { reaction: { reaction: { kind: "scratch", by: 2 }, at: 10_400 } })).toBe("round:scratch");
     expect(await frameFor("sit", { reaction: { reaction: { kind: "greet", to: 2 }, at: 10_400 } })).toBe("round:greet");
     expect(await frameFor("sit", { reaction: { reaction: { kind: "play", with: 2 }, at: 10_400 }, now: 10_000 + 400 })).toMatch(/^round:play_[ab]$/);
+    // Knocking something over, and eating a treat from a hand (slice 11's review, finding 7).
+    expect(await frameFor("idle", { reaction: { reaction: { kind: "knock", piece: 7 }, at: 10_400 } })).toBe("round:knock");
+    expect(await frameFor("sit", { reaction: { reaction: { kind: "eat", from: 2 }, at: 10_400 } })).toBe("round:eat");
     // Long after, back to sitting.
     expect(await frameFor("sit", { reaction: { reaction: { kind: "scratch", by: 2 }, at: 1_000 } })).toBe("round:sit");
   });

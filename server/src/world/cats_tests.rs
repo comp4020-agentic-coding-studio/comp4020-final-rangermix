@@ -971,3 +971,30 @@ async fn picking_up_a_knocked_over_piece_saves_it_standing() {
         .expect("an arrangement");
     assert!(!saved.contains(r#""toppled":true"#), "{saved}");
 }
+
+/// Slice 11's review, finding 7: a cat that knocks something over says so,
+/// as a reaction, so every visitor sees it in its knocking-over pose; the
+/// piece falling alone doesn't say which cat did it.
+#[test]
+fn a_cat_knocking_a_piece_over_reacts_with_the_piece() {
+    let mut w = world();
+    let plant = w.room.pieces.iter().find(|p| p.kind == "plant").unwrap();
+    let (id, at) = (plant.id, T(plant.x, plant.y));
+    let mut out = Vec::new();
+    assert!(w.knock(0, id, at, &mut out), "the plant goes over");
+    let cat = w.cats[0].def.id.clone();
+    assert!(
+        out.iter()
+            .any(|o| matches!(&o.msg, ServerMsg::CatReacted { cat: c, reaction: Reaction::Knock { piece } } if *c == cat && *piece == id)),
+        "the cat says it knocked the plant over"
+    );
+    assert!(
+        out.iter()
+            .any(|o| matches!(o.msg, ServerMsg::FurnitureToppled { toppled: true, .. })),
+        "and the plant falls"
+    );
+    // A piece already down: nothing to say.
+    let mut again = Vec::new();
+    assert!(!w.knock(0, id, at, &mut again));
+    assert!(again.is_empty());
+}

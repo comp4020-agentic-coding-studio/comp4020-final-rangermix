@@ -114,6 +114,11 @@ pub enum Reaction {
     Annoyed {
         by: u32,
     },
+    /// Knocked a piece over (slice 11's review, finding 7): the piece's id,
+    /// so the client shows the cat that did it in its knocking-over pose.
+    Knock {
+        piece: u32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]

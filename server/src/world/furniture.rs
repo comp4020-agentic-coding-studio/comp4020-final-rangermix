@@ -4,7 +4,7 @@
 //! one message at a time, so the first grab wins. Also sitting, which shares
 //! the walk-then-act shape.
 use super::{Out, Pending, To, World, error, walk_tile};
-use crate::protocol::{ErrorCode, HeldView, ServerMsg, Tile};
+use crate::protocol::{ErrorCode, HeldView, Reaction, ServerMsg, Tile};
 use crate::room::{Piece, Placed, Saved, Walker, chebyshev};
 use std::collections::HashMap;
 
@@ -297,6 +297,22 @@ impl World {
     }
 
     /// A cat at a small piece knocks it over, if it's still standing there.
+    /// Cat `i` knocks a piece over: it falls, and the cat says it did it
+    /// (slice 11's review, finding 7). True if it fell.
+    pub(super) fn knock(&mut self, i: usize, piece_id: u32, at: Tile, out: &mut Vec<Out>) -> bool {
+        if !self.knock_over(piece_id, at, out) {
+            return false;
+        }
+        out.push(Out {
+            to: To::All,
+            msg: ServerMsg::CatReacted {
+                cat: self.cats[i].def.id.clone(),
+                reaction: Reaction::Knock { piece: piece_id },
+            },
+        });
+        true
+    }
+
     pub(super) fn knock_over(&mut self, piece_id: u32, at: Tile, out: &mut Vec<Out>) -> bool {
         let Some(piece) = self
             .room

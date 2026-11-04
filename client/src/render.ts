@@ -44,6 +44,7 @@ const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
   scratch: "scratch",
   eat: "heart",
   play: "heart",
+  knock: "dots",
 };
 
 /** This frame's colours, in the hour's light (slice 10); `draw` sets them. */
@@ -706,6 +707,9 @@ export function catFrame(state: CafeState, cat: Cat, spot: Spot, now: number): C
   const reaction = cat.reaction && now - cat.reaction.at < REACTION_POSE_MS ? cat.reaction.reaction.kind : null;
   if (reaction === "scratch") return `${b}:scratch`;
   if (reaction === "greet") return `${b}:greet`;
+  // Knocking a piece over, and a treat taken from a hand (slice 11's review, finding 7).
+  if (reaction === "knock") return `${b}:knock`;
+  if (reaction === "eat") return `${b}:eat`;
   if (reaction === "play" || cat.pose === "play") return `${b}:play_${step}`;
   if (cat.pose === "nap") return lapOf(state, cat) !== null ? `${b}:lap` : `${b}:nap`;
   if (cat.pose === "eat") return `${b}:eat`;
