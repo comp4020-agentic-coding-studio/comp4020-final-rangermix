@@ -33,9 +33,18 @@ fn load_cats(dir: &Path) -> anyhow::Result<Vec<CatDef>> {
         .collect();
     files.sort();
     let mut cats: Vec<CatDef> = Vec::new();
+    // Each build is a folder of drawings beside the cats (slice 11's review, finding 18).
+    let builds = dir.parent().map(|c| c.join("sprites/png/cat")).unwrap_or_default();
     for file in files {
         let cat: CatDef = read_toml(&file)?;
         cat.validate()?;
+        anyhow::ensure!(
+            builds.join(&cat.build).is_dir(),
+            "{}: its build {:?} has no drawings in {}",
+            cat.id,
+            cat.build,
+            builds.display()
+        );
         anyhow::ensure!(!cats.iter().any(|c| c.id == cat.id), "two cats are called {:?}", cat.id);
         cats.push(cat);
     }
@@ -70,6 +79,23 @@ mod tests {
         let mut ids: Vec<&str> = c.cats.iter().map(|cat| cat.id.as_str()).collect();
         ids.dedup();
         assert_eq!(ids.len(), c.cats.len());
+    }
+
+    /// A cat names a build the sprites have (slice 11's review, finding 18):
+    /// one with no drawings stops the café at once, naming it, as a bad cat
+    /// file does, rather than drawing the cat as another build.
+    #[test]
+    fn a_cat_naming_a_build_with_no_drawings_stops_the_cafe() {
+        let dir = tempfile::tempdir().unwrap();
+        let cats = dir.path().join("cats");
+        std::fs::create_dir_all(&cats).unwrap();
+        std::fs::create_dir_all(dir.path().join("sprites/png/cat/round")).unwrap();
+        let mochi = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/cats/mochi.toml")).unwrap();
+        std::fs::write(cats.join("mochi.toml"), &mochi).unwrap();
+        assert!(load_cats(&cats).is_ok(), "a known build loads");
+        std::fs::write(cats.join("mochi.toml"), mochi.replace("build = \"round\"", "build = \"fluffy\"")).unwrap();
+        let err = load_cats(&cats).err().expect("an unknown build").to_string();
+        assert!(err.contains("fluffy"), "{err}");
     }
 
     #[test]

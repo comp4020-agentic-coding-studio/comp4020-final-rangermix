@@ -14,6 +14,8 @@ import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pal = JSON.parse(fs.readFileSync(path.join(repo, "content/sprites/palettes.json"), "utf8"));
+/** The art's own fixed key, one colour per slot (scripts/sprites.ts; slice 11's review, finding 16). */
+const PERSON_KEY = ["#332e46", "#f5e0dc", "#494060", "#f38ba8", "#45475a", "#765a52", "#ffffff"];
 
 // Slots: 0 outline and eyes, 1 skin, 2 hair, 3 shirt, 4 trousers, 5 shoes, 6 white.
 const [O, SK, HA, SH, TR, SO, WH] = [0, 1, 2, 3, 4, 5, 6];
@@ -99,7 +101,8 @@ const lookColours = (light, avatar, colour) => {
 // The art, in avatar 0 with shirt 0 by day: the key scripts/sprites.ts reads.
 const dir = path.join(repo, "content/sprites/png/person");
 fs.mkdirSync(dir, { recursive: true });
-const key = lookColours("day", 0, 0);
+// The art's own fixed key (scripts/sprites.ts), not a look's colours (slice 11's review, finding 16).
+const key = PERSON_KEY;
 for (const [name, g] of FRAMES) {
   const rgba = Buffer.alloc(N * N * 4);
   g.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) rgba.set([...rgbOf(key[v]), 255], (y * N + x) * 4); }));

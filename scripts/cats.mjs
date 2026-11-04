@@ -20,6 +20,8 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..");
 const screens = path.join(repo, "docs/notes/screens/slice-11");
+/** The art's own fixed key, one colour per slot (scripts/sprites.ts; slice 11's review, finding 16). */
+const CAT_KEY = ["#332e46", "#cdd6f4", "#7f849c", "#ffffff", "#89b4fa", "#f5c2e7"];
 const pal = JSON.parse(fs.readFileSync(path.join(repo, "content/sprites/palettes.json"), "utf8"));
 
 // Slots: 0 outline, 1 base, 2 shade, 3 light, 4 eyes, 5 pink (coats.json).
@@ -428,7 +430,7 @@ for (const [build, shape] of Object.entries(BUILDS)) {
   fs.mkdirSync(dir, { recursive: true });
   for (const [name, g] of fs16) {
     const rgba = Buffer.alloc(N * N * 4);
-    g.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) rgba.set([...rgbOf(pal.day.coats.white_grey[v]), 255], (y * N + x) * 4); }));
+    g.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) rgba.set([...rgbOf(CAT_KEY[v]), 255], (y * N + x) * 4); }));
     fs.writeFileSync(path.join(dir, `${name}.png`), png(N, N, rgba));
   }
   // The sheet to judge from, in the cat's own coat, by day and by night, at both scales.

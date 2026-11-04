@@ -5,9 +5,9 @@
 // `node scripts/sprites.ts`. A client test fails if the sheet isn't what
 // this writes, as palettes.json is held to scripts/palettes.ts.
 //
-// Each PNG is drawn in the white-grey coat's day colours
-// (content/sprites/coats.json), one colour per palette slot: outline, base,
-// shade, light, eyes, pink. A pixel is a slot by its exact colour, or clear
+// Each PNG is drawn in the art's own key colours (CAT_KEY and PERSON_KEY
+// below), one colour per palette slot: for a cat outline, base, shade,
+// light, eyes, pink. A pixel is a slot by its exact colour, or clear
 // where it's transparent; any other colour stops the script, naming it, so
 // a stray pixel can't slip in. The client colours each slot by the cat's
 // own coat and the hour's light.
@@ -18,8 +18,6 @@ import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
-import coats from "../content/sprites/coats.json" with { type: "json" };
-import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
 /** content/sprites/, from this script's own place (or the working directory's, under a test runner that isn't on file URLs). */
 const root = (() => {
@@ -83,13 +81,15 @@ export function decodePng(bytes: Buffer): { width: number; height: number; pixel
 const SLOTS = "0123456789abcdef";
 const hex = (r: number, g: number, b: number) => `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 
-/** The cats' key: each slot's colour in the white-grey coat by day. */
-const CAT_KEY = coats.white_grey.map((c) => c.toLowerCase());
-/** The people's key: avatar 0 with shirt 0 by day (outline, skin, hair, shirt, trousers, shoes, white). */
-const PERSON_KEY = (() => {
-  const a = palettes.day.avatars;
-  return [a.base[0], a.skins[0], a.hair[0], a.colours[0], a.base[1], a.base[2], a.base[3]].map((c) => c.toLowerCase());
-})();
+/**
+ * The colour each palette slot is drawn in, in the art (slice 11's review,
+ * finding 16): fixed here, the art's own key, not a coat's or a look's, so
+ * changing Mochi's coat or a look's colours in content/ changes how the
+ * café colours the slots, never what the PNGs must hold. These were the
+ * white-grey coat's and avatar 0's colours by day when the art was drawn.
+ */
+export const CAT_KEY = ["#332e46", "#cdd6f4", "#7f849c", "#ffffff", "#89b4fa", "#f5c2e7"];
+export const PERSON_KEY = ["#332e46", "#f5e0dc", "#494060", "#f38ba8", "#45475a", "#765a52", "#ffffff"];
 
 /** One PNG as rows of the sheet's characters: a slot by its colour in `key`, or "." where clear. */
 function grid(name: string, bytes: Buffer, key: string[] = CAT_KEY): string[] {
@@ -112,14 +112,17 @@ function grid(name: string, bytes: Buffer, key: string[] = CAT_KEY): string[] {
   return rows;
 }
 
-/** Every build's PNGs, read from content/sprites/png/cat/. */
-function readPngs(): Record<string, Record<string, Buffer>> {
-  const dir = join(root, "png/cat");
+/**
+ * Every build's PNGs, read from content/sprites/png/cat/ (or `dir`): only
+ * its folders, and only their `.png` files, so a Finder `.DS_Store` beside
+ * them stops nothing (slice 11's review, finding 17).
+ */
+export function readPngs(dir = join(root, "png/cat")): Record<string, Record<string, Buffer>> {
   const out: Record<string, Record<string, Buffer>> = {};
-  for (const build of readdirSync(dir).sort()) {
-    out[build] = {};
-    for (const file of readdirSync(join(dir, build))) {
-      if (file.endsWith(".png")) out[build][file.slice(0, -4)] = readFileSync(join(dir, build, file));
+  for (const entry of readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+    out[entry.name] = {};
+    for (const file of readdirSync(join(dir, entry.name))) {
+      if (file.endsWith(".png")) out[entry.name][file.slice(0, -4)] = readFileSync(join(dir, entry.name, file));
     }
   }
   return out;
