@@ -343,7 +343,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const here = await box("#here-panel");
     const grip = await box("#here-panel .grip");
     const cdp = await page.context().newCDPSession(page);
-    const touch = (type: string, x: number, y: number) =>
+    const touch = (type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number) =>
       cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
     const [gx, gy] = [grip.x + grip.width / 2, grip.y + grip.height / 2];
     await touch("touchStart", gx, gy);
@@ -383,14 +383,15 @@ describe("in a browser", { timeout: 30_000 }, () => {
 
   it("keeps a moved panel where it was put for the visit when the device won't store it (slice 14)", async () => {
     const v = await visit({ width: 1920, height: 1080 }, false, {
-      prepare: (page) =>
-        page.addInitScript(() => {
+      prepare: async (page) => {
+        await page.addInitScript(() => {
           Object.defineProperty(window, "localStorage", {
             get() {
               throw new DOMException("blocked", "SecurityError");
             },
           });
-        }),
+        });
+      },
     });
     const box = async () => (await v.page.locator("#here-panel").boundingBox())!;
     const start = await box();
