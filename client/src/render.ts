@@ -408,7 +408,9 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
-        if (held) drawCat(ctx, sprites, state, held, { ...spot, moving: false }, now, lift + 6);
+        // A held cat in their arms at the chest, below their face (slice 11's
+        // review, finding 11): a 24-px cat a little up from their feet.
+        if (held) drawCat(ctx, sprites, state, held, { ...spot, moving: false }, now, lift + 2);
       },
     });
   }
@@ -731,8 +733,10 @@ function drawCat(ctx: Ctx, sprites: Sprites, state: CafeState, cat: Cat, spot: S
 
 /** A carried piece, held up over its carrier's head: a small block. */
 function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): void {
-  // Over the carrier's head, 32 px tall since slice 11.
-  const lift = PERSON - 4 + standing;
+  // Clear above the carrier's head, 32 px tall since slice 11, never on it
+  // (slice 11's review, finding 4; a test holds its lowest pixel above the
+  // head's top).
+  const lift = PERSON + standing;
   const colour = colourOf(piece.kind);
   const z = Math.min(HEIGHT[piece.kind] ?? 8, 14);
   const s = 0.6;

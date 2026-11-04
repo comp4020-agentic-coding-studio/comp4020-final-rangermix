@@ -1099,3 +1099,63 @@ describe("standing on the part under you (slice 11's review, finding 3)", () => 
     expect(lift).toBe(5);
   });
 });
+
+describe("what's carried or held, at 32 px (slice 11's review, findings 4 and 11)", () => {
+  /** Where the person's sprite and each drawn thing land, as device rectangles, from a recording context. */
+  async function scene(extra: (w: Welcome) => void) {
+    const { pixels } = await import("./pixels");
+    const { frameGrid } = await import("../src/sprites");
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    w.snapshot.cats = [w.snapshot.cats[0]];
+    w.snapshot.people = [{ ...w.snapshot.people[0], id: 2, at: { x: 6, y: 5 } }];
+    w.you = 99;
+    extra(w);
+    const p = pixels(336, 232);
+    const images: { img: unknown; x: number; y: number }[] = [];
+    const real = p.ctx.drawImage.bind(p.ctx);
+    (p.ctx as unknown as { drawImage: (...a: unknown[]) => void }).drawImage = (img: unknown, ...a: unknown[]) => {
+      images.push({ img, x: a[0] as number, y: a[1] as number });
+      (real as (...b: unknown[]) => void)(img, ...a);
+    };
+    const avatar = document.createElement("canvas");
+    avatar.width = avatar.height = 32;
+    const cat = document.createElement("canvas");
+    cat.width = cat.height = 24;
+    const sprites = new Sprites();
+    sprites.avatar = () => avatar;
+    sprites.cat = () => cat;
+    sprites.emote = () => null;
+    draw(p.ctx, fromWelcome(w, 10_000), sprites, 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const person = images.find((i) => i.img === avatar)!;
+    // The person's top drawn row, and their eyes' row, from their frame's grid.
+    const grid = frameGrid("avatar", "stand")!;
+    const top = person.y + grid.findIndex((row) => row.some((v) => v >= 0));
+    const eyes = person.y + grid.findIndex((row, y) => y > 2 && row.some((v, x) => v === 0 && x > 10 && x < 22 && row[x - 1] === 1));
+    return { p, person, top, eyes, cat: images.find((i) => i.img === cat) };
+  }
+
+  it("carries a piece above its carrier's head, not over it", async () => {
+    const { p, top } = await scene((w) => {
+      w.snapshot.held = [{ by: 2, piece: piece(9, "chair", 0, 0, 1, 1) }];
+    });
+    // The carried chair's colours (slot 4 and 12 in its model): its lowest pixel row.
+    const chair = new Set([palettes.day.furniture[4], palettes.day.furniture[12]].map((c) => c.toLowerCase()));
+    let bottom = -1;
+    for (let y = 0; y < 232; y++) for (let x = 0; x < 336; x++) if (chair.has(p.at(x, y) ?? "")) bottom = Math.max(bottom, y);
+    expect(bottom, "the chair is drawn").toBeGreaterThan(0);
+    expect(bottom, `the chair's bottom (${bottom}) above the head's top (${top})`).toBeLessThan(top);
+  });
+
+  it("holds a cat at the chest, below its holder's eyes", async () => {
+    const { cat, eyes } = await scene((w) => {
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], heldBy: 2, pose: "held" }];
+    });
+    expect(cat, "the held cat is drawn").toBeDefined();
+    // The held frame's top drawn row.
+    const { frameGrid } = await import("../src/sprites");
+    const grid = frameGrid("cat", "round:held")!;
+    const catTop = cat!.y + grid.findIndex((row) => row.some((v) => v >= 0));
+    expect(catTop, `the cat's top (${catTop}) below the eyes (${eyes})`).toBeGreaterThan(eyes);
+  });
+});
