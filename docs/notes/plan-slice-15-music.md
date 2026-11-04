@@ -69,3 +69,11 @@ Written 2026-11-05 from `main` at `04f218d` (slices 11 to 14 merged).
 ## Execution log
 
 Where the build departed from this plan, as it happened.
+
+- **Task 1, the files** (2026-11-05). Encoded at −16.4 to −16.8 LUFS
+  and −1.7 to −5.1 dBTP, 15.5 MB together. `loudnorm` alone left One
+  Night in France at +0.3 dBTP once encoded: the 128-kbps encoder adds
+  up to about 2 dB between samples (−2.4 dBTP limited, −0.5 once
+  encoded). So the script limits 2 dB under the ceiling before encoding,
+  which keeps every file under −1.5 dBTP and takes a few tenths off the
+  loudness, still within the 1 LU the test holds.

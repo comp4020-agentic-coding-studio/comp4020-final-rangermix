@@ -1,0 +1,55 @@
+# The café's music (slice 15, ADR 0020): a day set and a night set, played
+# in this order and looping, each visitor from their own player. The night
+# set plays from 17:00 to 6:00 Canberra time, the day set otherwise.
+#
+# Each track: its title and artist as the panel shows them, its file here,
+# the page it came from and its licence. A new track is a file and an
+# entry here, never code. The files are written by scripts/music.ts from
+# the originals, re-encoded to 128 kbps at an even loudness, and
+# manifest.json records each one's hash and the loudness measured on it;
+# don't edit them by hand. Credits: CREDITS.md.
+#
+# The client reads this file with a small reader of its own: `[[day]]` and
+# `[[night]]` tables of `key = "quoted string"` lines, with comments.
+
+[[day]]
+title = "Bubbles"
+artist = "HoliznaCC0"
+file = "bubbles.mp3"
+source = "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/bubbles-lofi-bright-relaxed/"
+licence = "CC0 1.0"
+
+[[day]]
+title = "Ocean Breeze"
+artist = "HoliznaCC0"
+file = "ocean-breeze.mp3"
+source = "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/ocean-breeze-lofi-ukulele-peaceful-mp3/"
+licence = "CC0 1.0"
+
+[[day]]
+title = "Tranquil Mindscape"
+artist = "HoliznaCC0"
+file = "tranquil-mindscape.mp3"
+source = "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/tranquil-mindscape-lofi-happy-reflection/"
+licence = "CC0 1.0"
+
+[[night]]
+title = "Moon Unit"
+artist = "HoliznaCC0"
+file = "moon-unit.mp3"
+source = "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/moon-unit-lofi-reflection-dreamy/"
+licence = "CC0 1.0"
+
+[[night]]
+title = "Ease into Night"
+artist = "HoliznaCC0"
+file = "ease-into-night.mp3"
+source = "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/ease-into-night-lofi-relax-chill/"
+licence = "CC0 1.0"
+
+[[night]]
+title = "One Night in France"
+artist = "HoliznaCC0"
+file = "one-night-in-france.mp3"
+source = "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/one-night-in-france-lofi-nostalgic-chill/"
+licence = "CC0 1.0"
