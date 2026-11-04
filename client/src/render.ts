@@ -250,12 +250,13 @@ function standingOn(state: CafeState, spot: { x: number; y: number }): Furniture
 }
 
 /**
- * A walker's spot, facing the way they last went once their walk is over
- * (slice 12): a walk in progress says which way it goes; standing, the side
- * kept when the walk ended, or the front.
+ * A walker's spot, facing the way they last went (slice 12). A walk the
+ * client holds, under way or finished, says which way it went: the server
+ * never says a walk is over, so a finished one stays. With no walk, the side
+ * kept when one was cleared, or the front.
  */
-function facingOf(state: CafeState, key: string, spot: Spot): Spot {
-  if (spot.moving) return spot;
+function facingOf(state: CafeState, key: string, walk: Walk | null, spot: Spot): Spot {
+  if (walk && walk.path.length > 1) return spot;
   const kept = state.facing.get(key);
   return kept ? { ...spot, ...kept } : spot;
 }
@@ -324,7 +325,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       inArms.set(cat.heldBy, cat);
       continue;
     }
-    const spot = facingOf(state, `c${cat.id}`, positionAt(cat.walk, cat.at, now));
+    const spot = facingOf(state, `c${cat.id}`, cat.walk, positionAt(cat.walk, cat.at, now));
     // A cat asleep on someone's lap is drawn over them, as a held cat is.
     const layer = lapOf(state, cat) !== null ? LAYER.lap : LAYER.cat;
     const on = standingOn(state, spot);
@@ -341,7 +342,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
   }
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;
-    const spot = facingOf(state, `p${person.id}`, positionAt(person.walk, person.at, now));
+    const spot = facingOf(state, `p${person.id}`, person.walk, positionAt(person.walk, person.at, now));
     const emote = state.emotes.get(person.id);
     const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
     const carried = state.held.get(person.id) ?? null;

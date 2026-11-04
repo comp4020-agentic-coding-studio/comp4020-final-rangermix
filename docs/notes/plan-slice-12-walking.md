@@ -181,6 +181,13 @@ Where the build departed from this plan, as it happened.
   `1/scale` (`onScreen`). The light check in `spec/browser.test.ts` read
   in canvas pixels, which are now screen pixels; it now counts room pixels
   through the room's CSS size, and still fails when aimed off the cat.
+- **A bug the screenshots caught.** Someone sent the other way mid-walk,
+  then arriving, stood facing the way the *replaced* walk went. The
+  server never tells the client a walk is over, so a finished walk stays
+  in the client's state; the side kept when a walk is replaced was
+  winning over that finished walk's own last step. Now a walk the client
+  holds, under way or finished, decides the side; the kept side is only
+  for when there's no walk. A test reproduces it and failed first.
 - **Task 5 needed no code.** With sprites placed to screen pixels, the
   follow-camera's rounding and the sprite's agree: a walker it follows
   holds one screen position across, where before it took three (170, 171,

@@ -270,6 +270,14 @@ describe("the side a walker shows", () => {
     expect(framesAsked(s, 12_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey back_sit"]);
   });
 
+  it("faces the way the last walk went once it's over, not the way a walk it replaced went", () => {
+    // Walking toward the viewer, then sent the other way before arriving:
+    // the server never says a walk is over, so it stays, finished.
+    const s = walking(1);
+    apply(s, { type: "personMoved", id: 2, walk: { path: [{ x: 9, y: 6 }, { x: 9, y: 5 }], start: 10_600, speed: 1 } }, 10_600);
+    expect(framesAsked(s, 13_000).filter((f) => f.startsWith("person 1"))).toEqual(["person 1 back"]);
+  });
+
   it("faces the viewer when nobody has walked yet", () => {
     const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
     expect(asked).toContain("person 0 stand");
