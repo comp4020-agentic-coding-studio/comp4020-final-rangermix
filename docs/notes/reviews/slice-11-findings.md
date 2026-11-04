@@ -433,3 +433,34 @@ Reviewed cold, from [the brief](slice-11-brief.md), on `6057aea` (slice 11's own
   - The cat tower's parts draw in a sensible order.
   - A kind with no model, or knocked over, keeps its one block, and the
     block's hit stays consistent with it.
+
+---
+
+## Answers
+
+By the builder, 2026-11-05, on `slice-11-wip`. Each fix was tested first,
+or on the review's own mutants put back.
+
+| # | Severity | Answer | Commit |
+| --- | --- | --- | --- |
+| 1 | major | Fixed. A piece is picked on its parts, a pixel round each; a cat on the window seat beside the tower is picked, and the floor between a table's legs picks nothing. Tests failed first. | [`e31d2ce`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e31d2ce) |
+| 2 | major | Fixed. A figure is picked on its frame's own pixels (a pixel round them), mirrored as drawn, so the floor up-right of someone picks that floor. | [`e31d2ce`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e31d2ce) |
+| 3 | major | Fixed. What's up on a piece stands on the part under its tile's middle (`topAt`): a cat on the tower's base at 4 px, someone on the sofa's seat at 5. A test per tile of the tower. | [`9e81d91`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9e81d91) |
+| 4 | major | Fixed and held: a test finds the carried piece's lowest pixel above the carrier's head; it failed at the old 16-px lift. Lifted to clear the head by its full height. | [`9080ed6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9080ed6) |
+| 5 | major | Fixed. Each look's preview canvas is the sprite's own size; a test failed at 16. | [`bb2ce5b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bb2ce5b) |
+| 6 | major | Fixed. The pane shows the head of a 32-px sprite, columns 8 to 23; a test failed on the half head. | [`bb2ce5b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bb2ce5b) |
+| 7 | major | Fixed. The server sends a `knock` reaction from the cat that knocked a piece over (a protocol change, regenerated), and the cat shows its knocking-over pose; a treat taken from a hand shows eating. Rust and client tests failed first. | [`365f0ec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/365f0ec) |
+| 8 | major | Fixed: the judging material, from the café itself, `shoot-furniture.mjs`: every kind standing, and the three a cat can knock over lying down, at 1920×1080 and 390×844, by day and night; and a lap, a nap on the sofa, someone carrying and someone holding a cat, by day and night. | [`f1ee854`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f1ee854) |
+| 9 | major | Fixed. A model for every kind; the three that can be knocked over (`knocks` in the content) lie down as their parts on their side, not one bar. design.md and the plan's log record what was built and where it departed (furniture as boxes, not PNGs; six slots a coat). | [`f1ee854`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f1ee854), [`89d5180`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/89d5180) |
+| 10 | major | For the user's judgement, with the sheets: the builds differ by shape sitting, walking and greeting, and by coat alone asleep, on a lap, eating, playing, scratching and knocking. Drawing those six poses per build is more art, and the user's call. | |
+| 11 | minor | Fixed and held: a test finds a held cat's top below its holder's eyes; it failed at the old lift. The cat dangles in their arms over their body, which is how a held cat hangs: for the user's judgement, from `scene-day.png`. | [`9080ed6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9080ed6) |
+| 12 | minor | Fixed. Each model's parts are drawn back to front (the sofa's far arm before its seat, every set of legs far to near), held by a test using `iso.ts`'s `behind`. | [`bc0c1b1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bc0c1b1) |
+| 13 | minor | Fixed. Tests hold a cat and a person drawn at their own size and mirrored in place, and a cat picked out to its sides; both of the review's mutants fail them. | [`c2e5303`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c2e5303) |
+| 14 | minor | Fixed. Tests hold light passing under the window seat's raised board (where a solid block shades), and only parts on the floor darkening their feet; both of the review's mutants fail them. | [`5465d20`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5465d20) |
+| 15 | minor | Fixed. A test holds each frame drawn in one piece (a planted stray pixel fails it); the spec names the client's colour check. | [`33a5266`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/33a5266), [`89d5180`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/89d5180) |
+| 16 | minor | Fixed. The art's colour key is fixed in `scripts/sprites.ts`, not a coat's or a look's, so changing Mochi's coat changes how the café colours her, not what the PNGs hold; the drawing scripts use the same key; the README is up to date. | [`33a5266`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/33a5266), [`89d5180`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/89d5180) |
+| 17 | minor | Fixed. Only the build folders are read; a test plants `.DS_Store` files. | [`33a5266`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/33a5266) |
+| 18 | minor | Fixed. A cat naming a build with no drawings stops the café at once, naming it; a test failed first. | [`33a5266`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/33a5266) |
+| 19 | minor | Fixed. A test holds that no cat's back view has eye pixels. | [`33a5266`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/33a5266) |
+| 20 | minor | Fixed. Each piece carries its `perch` flag (a protocol change, regenerated), and a cat on any piece flagged so shows perched. | [`abe3135`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/abe3135) |
+| 21 | minor | Fixed. The sheet the user judged is kept as `mochi-judged-sheet.png`; the deleted script is cited as what it became; the "every build" test loops over all three. | [`f1ee854`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f1ee854), [`89d5180`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/89d5180) |
