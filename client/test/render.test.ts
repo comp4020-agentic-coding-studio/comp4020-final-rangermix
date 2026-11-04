@@ -1019,3 +1019,48 @@ describe("a face at the window, at 32 px (slice 11's review, finding 6)", () => 
     expect(sh, "down past the eyes and chin").toBeGreaterThanOrEqual(10);
   });
 });
+
+// Slice 11's review, findings 1 and 2: a click or tap acts on what's drawn
+// under it, so a figure is picked on its sprite's own pixels and a piece on
+// its parts, not on a box round them.
+describe("picking what's drawn, at the bigger sizes", () => {
+  it("picks the tile behind someone, not them, where only floor shows past their sprite", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], id: 2, at: { x: 6, y: 5 } }];
+    w.you = 99;
+    const s = fromWelcome(w, 10_000);
+    // Up-right of their head, on the tile (7,5): floor, outside the sprite's pixels.
+    const c = toCanvas(7.5, 5.3);
+    expect(hitAt(s, c.x, c.y, 10_000), "floor up-right of them").toBeNull();
+    // On their shirt: them.
+    const me = toCanvas(6.5, 5.5);
+    expect(hitAt(s, me.x, me.y - 12, 10_000)).toEqual({ x: 6, y: 5 });
+  });
+
+  it("picks a cat perched on the window seat beside the tower, where it shows between the tower's parts", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "cat_tower", 0, 1, 2, 2), piece(2, "window_seat", 2, 1, 2, 1)];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    w.snapshot.cats = [{ ...w.snapshot.cats[0], at: { x: 2, y: 1 }, pose: "nap", walk: null, heldBy: null }];
+    const s = fromWelcome(w, 10_000);
+    // The cat's middle, up on the seat (12 px): the cat.
+    const c = toCanvas(2.5, 1.5);
+    expect(hitAt(s, c.x, c.y - 12 - 6, 10_000)).toEqual({ x: 2, y: 1 });
+  });
+
+  it("picks nothing on bare floor between a table's legs, under its top", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "table", 6, 5, 2, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    const s = fromWelcome(w, 10_000);
+    // The floor point at the table's middle, 2 px up: under the top, between the legs.
+    const c = toCanvas(7, 5.5);
+    expect(hitAt(s, c.x, c.y - 2, 10_000), "between the legs").toBeNull();
+    // Its top, 15 px up: the table.
+    const t = toCanvas(7, 5.5);
+    expect(hitAt(s, t.x, t.y - 15, 10_000)).not.toBeNull();
+  });
+});

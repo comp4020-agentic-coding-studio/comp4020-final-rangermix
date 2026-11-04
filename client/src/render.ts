@@ -13,7 +13,7 @@ import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
 import type { Walk } from "./protocol/Walk";
 import { TILE } from "./scale";
-import { type AvatarFrame, type CatFrame, type EmoteName, type Sprites, paletteAt } from "./sprites";
+import { type AvatarFrame, type CatFrame, type EmoteName, type Grid, type Sprites, frameGrid, paletteAt } from "./sprites";
 import { type CafeState, type Cat, lapOf, serverNow } from "./state";
 
 // Draws the whole café at 1:1 into the canvas, in a 2:1 isometric camera
@@ -223,12 +223,6 @@ function blockTile(f: FurnitureView, z: number, px: number, py: number): { x: nu
   return { x: clamp(g.gx, f.x, f.w), y: clamp(g.gy, f.y, f.h) };
 }
 
-/** Where a piece's block is drawn: its outline, top and two faces together, from the box it's drawn as (pieces.ts). */
-function blockOutline(f: FurnitureView): Pt[] {
-  const b = pieceBox(f, HEIGHT);
-  return silhouette(b.x, b.y, b.w, b.h, b.z);
-}
-
 /**
  * Whether canvas point (px, py) is on a piece as drawn: inside its block,
  * or on the outline traced a room pixel wide round it, which can fall a
@@ -236,26 +230,42 @@ function blockOutline(f: FurnitureView): Pt[] {
  * finding 9).
  */
 function onBlock(f: FurnitureView, px: number, py: number): boolean {
-  const pts = blockOutline(f);
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inside(pts, px + dx, py + dy)) return true;
+  // On any of its parts as drawn (slice 11's review, finding 1): a cat
+  // between the tower's platforms, the floor between a table's legs, isn't
+  // on the piece.
+  for (const part of pieceParts(f, HEIGHT)) {
+    const pts = silhouette(part.x, part.y, part.w, part.h, part.z, part.z0);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inside(pts, px + dx, py + dy)) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether canvas point (px, py) is on a figure as drawn: its frame `grid`,
+ * placed with its feet on `spot` and `lift` up, mirrored if it faces left,
+ * has a pixel there (slice 11's review, finding 2), or within a pixel of
+ * one, so its outline and a near miss on a small cat still count.
+ */
+function onSprite(grid: Grid | null, spot: Spot, lift: number, px: number, py: number): boolean {
+  if (!grid) return false;
+  const size = grid[0].length;
+  const at = feetAt(spot, size);
+  const gx = Math.floor(px - at.x);
+  const gy = Math.floor(py - (at.y - lift));
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = gx + dx;
+      const y = gy + dy;
+      if (x < 0 || y < 0 || x >= size || y >= grid.length) continue;
+      if ((grid[y][spot.mirror ? size - 1 - x : x] ?? -1) >= 0) return true;
+    }
+  }
   return false;
 }
 
 /** How big a cat and a person are drawn, in room pixels (slice 11). */
 export const CAT = 24;
 export const PERSON = 32;
-
-/** A figure's sprite box, `size` pixels square and `lift` pixels up, as a polygon. */
-function spriteBox(spot: { x: number; y: number }, lift: number, size = TILE): Pt[] {
-  const at = feetAt(spot, size);
-  const top = at.y - lift;
-  return [
-    { x: at.x, y: top },
-    { x: at.x + size, y: top },
-    { x: at.x + size, y: top + size },
-    { x: at.x, y: top + size },
-  ];
-}
 
 /**
  * The tile of whatever is drawn at canvas point (px, py), the nearest the
@@ -375,7 +385,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       ...footprint(spot, on),
       layer,
       lift,
-      hit: (px, py) => (inside(spriteBox(spot, lift, CAT), px, py) ? tile : null),
+      hit: (px, py) => (onSprite(frameGrid("cat", catFrame(state, cat, spot, now)), spot, lift, px, py) ? tile : null),
       paint: (ctx, sprites) => drawCat(ctx, sprites, state, cat, spot, now, lift),
     });
   }
@@ -394,7 +404,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       ...footprint(spot, on),
       layer: LAYER.person,
       lift,
-      hit: (px, py) => (inside(spriteBox(spot, lift, PERSON), px, py) ? tile : null),
+      hit: (px, py) => (onSprite(frameGrid("avatar", personFrame(spot, now)), spot, lift, px, py) ? tile : null),
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
@@ -738,11 +748,15 @@ function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): 
   ctx.restore();
 }
 
-function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean, emote: EmoteName | null, lift = 0): void {
+/** The frame someone shows: walking (two steps), or standing; their back going away (slice 12). */
+function personFrame(spot: Spot, now: number): AvatarFrame {
   const back = spot.view === "back";
   const step = Math.floor(now / 180) % 2 ? "walk_a" : "walk_b";
-  const frame: AvatarFrame = spot.moving ? (back ? `back_${step}` : step) : back ? "back" : "stand";
-  const img = sprites.avatar(look, frame);
+  return spot.moving ? (back ? `back_${step}` : step) : back ? "back" : "stand";
+}
+
+function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean, emote: EmoteName | null, lift = 0): void {
+  const img = sprites.avatar(look, personFrame(spot, now));
   // As big as its image (32 px since slice 11), its feet on the tile.
   const size = img ? img.width : PERSON;
   const feet = feetAt(spot, size);

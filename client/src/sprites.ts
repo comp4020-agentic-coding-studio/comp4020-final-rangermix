@@ -113,6 +113,19 @@ export function avatarPalette(look: Look, light: Light): string[] {
   return [a.base[0], a.skins[look.avatar % AVATARS], a.hair[look.avatar % AVATARS], a.colours[look.colour % COLOURS], a.base[1], a.base[2], a.base[3]];
 }
 
+const catGrids = parseSheet(catSheet);
+const avatarGrids = parseSheet(avatarSheet);
+
+/**
+ * A frame's shape, for picking what's drawn (slice 11's review, findings 1
+ * and 2): whether its pixel (x, y) is drawn. A cat's frame falls back to
+ * the round build's, as the drawing does; a person's is their frame.
+ */
+export function frameGrid(kind: "cat" | "avatar", frame: string): Grid | null {
+  if (kind === "avatar") return avatarGrids.get(frame) ?? null;
+  return catGrids.get(frame) ?? catGrids.get(`round:${frame.split(":")[1]}`) ?? null;
+}
+
 export class Sprites {
   /** How far toward night to colour them (slice 10); the stage sets it each frame. */
   light: Light = 0;
