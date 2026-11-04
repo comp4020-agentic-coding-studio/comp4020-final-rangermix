@@ -506,10 +506,10 @@ const SCATTERED: [number, number, number][] = [
   [0.8, 1.1, 1],
 ];
 
-function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, facing: 1 | -1): void {
+function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, mirror: boolean): void {
   const x = Math.round(at.x);
   const y = Math.round(at.y);
-  if (facing > 0) {
+  if (!mirror) {
     ctx.drawImage(img, x, y);
     return;
   }
@@ -530,7 +530,7 @@ function drawCat(ctx: Ctx, sprites: Sprites, cat: Cat, spot: Spot, now: number, 
   if (img) {
     ctx.save();
     if (cat.pose === "hide") ctx.globalAlpha = 0.55;
-    drawFlipped(ctx, img, at, spot.facing);
+    drawFlipped(ctx, img, at, spot.mirror);
     ctx.restore();
   }
   const fresh = cat.reaction && now - cat.reaction.at < 2500 ? EMOTE_FOR[cat.reaction.reaction.kind] : null;
@@ -557,7 +557,7 @@ function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: num
   const img = sprites.avatar(look, frame);
   const feet = feetAt(spot);
   const at = { x: feet.x, y: feet.y - lift };
-  if (img) drawFlipped(ctx, img, at, spot.facing);
+  if (img) drawFlipped(ctx, img, at, spot.mirror);
   const x = Math.round(at.x);
   const y = Math.round(at.y);
   if (isYou) {
