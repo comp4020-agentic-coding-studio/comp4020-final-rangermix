@@ -1,6 +1,6 @@
 # 14. Panels over the room
 
-- **Status:** Approved 2026-11-04, with the proposed defaults for its open questions (the treat button beside the emotes; panels start in the corners, unpinned; Tab reaches only a pinned panel's Unpin)
+- **Status:** Built 2026-11-05 ([plan](../notes/plan-slice-14-panels.md), [screens](../notes/screens/slice-14/)); approved 2026-11-04, with the proposed defaults for its open questions (the treat button beside the emotes; panels start in the corners, unpinned; Tab reaches only a pinned panel's Unpin)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-14-panels.md`
 - **Design:** The client ("Desktop (1920×1080)");
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),

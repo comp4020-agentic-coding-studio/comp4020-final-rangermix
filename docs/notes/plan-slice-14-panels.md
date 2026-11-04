@@ -275,3 +275,16 @@ Where the build departed from this plan, as it happened.
   from the computed colour, which Chrome reports as `oklab(… / 0.2)` for a
   relative colour; it polls past the 0.4 s fade. Without the dimming code
   it fails; with it, 3 runs in 3 pass.
+- **Task 7: what the glass shows by day, measured.** In the screenshots
+  (`docs/notes/screens/slice-14/`, from `shoot.mjs` against a fresh local
+  café), a pixel of who's here over the sky and over a tower is pure white
+  by day both normally and dimmed: the light glass squeezes everything
+  above about mid-grey to white, and the day's street and walls are all
+  above it. So by day a panel looks solid and dimming shows little; only
+  the room's darker parts (the counter's shade, the floor's seams) show
+  through. By night the dimmed panel goes from about `#1d1d28` to
+  `#111118` and the room shows faintly. That's what holding text at 4.5:1
+  over anything the café can show costs; loosening it (contrast checked
+  over the colours actually behind each panel's spot, or a lighter
+  squeeze with bolder text) is the user's call, raised with the
+  screenshots, not built.

@@ -386,19 +386,27 @@ renamed.
 
 - **Logged out,** `/` shows the sign-up and log-in card over a still picture of
   the café, with a link to `/readme/`.
-- **Desktop (1920×1080):** the room in the middle at the largest whole-number
-  scale that fits; the readable chalkboard on the left; who's inside, who's at
-  the window and the current visit's bubbles on the right; the talk box under
-  the room; a small menu beside whatever you click. *Changing* (2026-11-04,
+- **Desktop (1920×1080), and anything 960 px wide or more** (slice 14,
+  2026-11-05,
   [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
-  the panels will float over the room, half see-through, in its empty
-  corners by default, so the room fits at 4× instead of 3×. Each can be
-  dragged, and pinned: a pinned panel can't be moved or selected except by
-  its Unpin button, and a click or tap on it reaches the café under it. An
-  unpinned panel that hasn't changed for a few seconds dims and grows more
-  see-through. "Put a treat down" moves out of Your cats to beside the
-  emotes, so a pinned panel costs nothing. Until that slice is built, the
-  panels stand in columns as above.
+  the room spans the window at the largest whole-number scale that fits,
+  4× at 1920×1080, with the status bar above and the talk box under it,
+  and a small menu beside whatever you click. The chalkboard, your cats
+  and who's here (who's inside, who's at the window and what was said
+  this visit) float over the room's empty corners, top left, bottom left
+  and top right, half see-through and kept inside the stage. Each moves
+  by dragging its title or grip, by mouse or finger, or by its grip and
+  the arrows, and can be pinned: a pinned panel can't be moved or
+  selected, its grip goes, and a click, tap or hover on it reaches the
+  café under it, except on its Unpin. An unpinned panel unchanged for 4
+  seconds, with the pointer and the focus elsewhere, dims and grows more
+  see-through. Where each is and which are pinned are remembered per
+  device, or for the visit. Their glass is frosted: what's behind is
+  squeezed toward the panel's end of the scale before the card goes over
+  it at half (a fifth dimmed), so their text holds 4.5:1 over anything
+  the room and street can show; by day that leaves the bright sky and
+  walls showing as white. "Put a treat down" is in the talk bar beside
+  the emotes, at every size, so a pinned panel costs nothing.
 - **Phone (390×844), and anything narrower than 960 px:** two layouts, with
   one button to switch between them, remembered per device (or for the visit,
   if the device won't store it). **B**, the default: the room fills the
