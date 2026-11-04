@@ -7,7 +7,7 @@
 // come sixty times a second.
 
 import { ISO, fromCanvas } from "./iso";
-import { pieceBox } from "./pieces";
+import { pieceParts } from "./pieces";
 import type { FurnitureView } from "./protocol/FurnitureView";
 
 /** What the floor shows at a pixel: lit, in a cast shadow, or darkened where it meets something. */
@@ -39,18 +39,19 @@ interface Room {
   tiles: string[];
 }
 
-/** A standing piece as a box, in tiles, as it's drawn (pieces.ts): a toppled one lies lower and longer. */
-function boxOf(f: FurnitureView, heights: Record<string, number>): { x0: number; y0: number; x1: number; y1: number; z: number } | null {
-  if (f.under) return null;
-  const b = pieceBox(f, heights);
-  const z = b.z / TILE_HEIGHT;
-  if (z <= 0.1) return null;
-  return { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h, z };
+type Shadow = { x0: number; y0: number; x1: number; y1: number; z0: number; z: number };
+
+/** A piece's parts as boxes, in tiles, as they're drawn (pieces.ts): a toppled one lies lower and longer; a raised part (slice 11) lets light under it. */
+function boxesOf(f: FurnitureView, heights: Record<string, number>): Shadow[] {
+  if (f.under) return [];
+  return pieceParts(f, heights)
+    .map((b) => ({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h, z0: b.z0 / TILE_HEIGHT, z: b.z / TILE_HEIGHT }))
+    .filter((b) => b.z - b.z0 > 0.02 && b.z > 0.1);
 }
 
-/** Whether the ray from floor point (x, y) toward the light meets the box before rising over it. */
-function blocks(b: { x0: number; y0: number; x1: number; y1: number; z: number }, x: number, y: number): boolean {
-  let lo = 0;
+/** Whether the ray from floor point (x, y) toward the light passes through the box, between its bottom and its top. */
+function blocks(b: Shadow, x: number, y: number): boolean {
+  let lo = b.z0;
   let hi = b.z;
   for (const [p, d, a0, a1] of [
     [x, TOWARD.x, b.x0, b.x1],
@@ -100,7 +101,9 @@ let last: { key: string; mask: ShadowMask } | null = null;
 export function shadowMask(room: Room, furniture: FurnitureView[], heights: Record<string, number>): ShadowMask {
   const key = `${room.width}x${room.height}:${room.tiles[0]}:${furniture.map((f) => `${f.kind}@${f.x},${f.y},${f.w},${f.h}${f.toppled ? "t" : ""}`).join(";")}`;
   if (last?.key === key) return last.mask;
-  const boxes = furniture.map((f) => boxOf(f, heights)).filter((b) => b !== null);
+  const boxes = furniture.flatMap((f) => boxesOf(f, heights));
+  // A piece's foot darkens the floor only where a part stands on it.
+  const feet = boxes.filter((b) => b.z0 === 0);
   const grid = new Uint8Array(ISO.width * ISO.height);
   for (let py = 0; py < ISO.height; py++) {
     for (let px = 0; px < ISO.width; px++) {
@@ -108,7 +111,7 @@ export function shadowMask(room: Room, furniture: FurnitureView[], heights: Reco
       if (gx < 0 || gx > room.width || gy < 1 || gy > room.height) continue;
       let shade: Shade = SHADE.lit;
       if (wallShades(room, gx, gy) || plainWallShades(room, gx) || boxes.some((b) => blocks(b, gx, gy))) shade = SHADE.shadow;
-      else if (gy - 1 < FOOT || room.width - gx < FOOT || boxes.some((b) => Math.max(b.x0 - gx, gx - b.x1, b.y0 - gy, gy - b.y1) < FOOT)) shade = SHADE.occluded;
+      else if (gy - 1 < FOOT || room.width - gx < FOOT || feet.some((b) => Math.max(b.x0 - gx, gx - b.x1, b.y0 - gy, gy - b.y1) < FOOT)) shade = SHADE.occluded;
       grid[py * ISO.width + px] = shade;
     }
   }

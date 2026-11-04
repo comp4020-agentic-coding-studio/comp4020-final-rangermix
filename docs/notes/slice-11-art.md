@@ -97,3 +97,22 @@ were passed as they are; they can be redrawn later as data.
   which is right; two checks that clicked the sofa's top behind someone,
   and a bare tile behind the test's own visitor, now aim where nobody
   stands.
+
+## Part 2, task 4: the furniture, 2026-11-05
+
+- **Each piece as its parts**, data in `content/sprites/furniture-models.json`:
+  boxes within a kind's footprint, each from `z0` to `z1` and in its own
+  furniture colour, listed in the order they're drawn (back to front,
+  bottom to top: whoever draws a kind knows what's in front of what). A
+  sofa has its back, arms and seat; the table and chairs stand on legs;
+  the plant is a pot with leaves; the cat tower a base, a post, a low
+  platform, a high one and a cubby; the cat bed a rim round a soft middle.
+- **Crit 8's notes:** the window seat is a cushion on a board on legs, so
+  the floor shows under it, not a shelf; the cushion is low and plump, not
+  a box.
+- **The same boxes cast the shadows** (slice 13): a raised part lets the
+  light under it, and only parts on the floor darken it at their feet. A
+  kind with no model, and any piece knocked over, stays the one block.
+- A first try sorted the parts by a computed key, which a post through
+  two platforms defeats; the cat tower came out a jumble. The model's own
+  order fixed it.

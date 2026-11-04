@@ -2,6 +2,7 @@
 // finding 4): the drawing and the shadows both work from it, so a thin
 // piece casts the shadow of what's drawn, not of its whole tile.
 
+import models from "../../content/sprites/furniture-models.json";
 import type { FurnitureView } from "./protocol/FurnitureView";
 
 /** How far in from its footprint's edges a small piece's block stands, in tiles. */
@@ -28,4 +29,28 @@ export function pieceBox(f: FurnitureView, heights: Record<string, number>): Box
   if (!f.toppled) return { x, y, w, h, z };
   const along = Math.min(f.w - 0.1, w * 1.8);
   return { x: f.x + (f.w - along) / 2, y: y + h * 0.25, w: along, h: h * 0.5, z: Math.max(2, Math.round(z / 3)) };
+}
+
+/** A part of a piece, as drawn: a box from `z0` to `z` room pixels up, in a furniture palette slot (or the kind's own colour). */
+export interface Part extends Box {
+  z0: number;
+  slot: number | null;
+}
+
+type Model = { x: number; y: number; w: number; h: number; z0: number; z1: number; slot: number }[];
+const MODELS = models as Record<string, Model>;
+
+/**
+ * The parts a piece is drawn as (slice 11): its kind's model
+ * (content/sprites/furniture-models.json), boxes placed within its
+ * footprint, in the order the model lists them; or, with no model or knocked over,
+ * the one block `pieceBox` gives, in the kind's own colour.
+ */
+export function pieceParts(f: FurnitureView, heights: Record<string, number>): Part[] {
+  const model = MODELS[f.kind];
+  if (!model || f.toppled) return [{ ...pieceBox(f, heights), z0: 0, slot: null }];
+  // In the model's own order: whoever draws a kind knows what's in front of
+  // what (a post through two platforms isn't one sort), so the parts are
+  // listed back to front and bottom to top, and drawn so.
+  return model.map((m) => ({ x: f.x + m.x * f.w, y: f.y + m.y * f.h, w: m.w * f.w, h: m.h * f.h, z0: m.z0, z: m.z1, slot: m.slot }));
 }

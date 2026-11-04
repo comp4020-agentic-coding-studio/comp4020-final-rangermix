@@ -108,9 +108,9 @@ describe("shadows as the pieces are drawn (slice 13's review)", () => {
 
   it("darkens the floor at a thin piece's own foot, not a ring a tile wide round it (finding 4)", () => {
     const mask = shadowMask(room, [piece("plant", 3, 7)], { plant: 22 });
-    // A plant stands 0.28 in from its tile's edges: 3.28 to 3.72.
-    expect(at(mask, 3.24, 7.5), "just off its left foot").not.toBe(SHADE.lit);
-    expect(at(mask, 3.1, 7.5), "a ring 0.18 out from its foot").toBe(SHADE.lit);
+    // A plant's foot is its pot (slice 11's model: 0.3 to 0.7 of its tile).
+    expect(at(mask, 3.26, 7.5), "just off the pot's left side").not.toBe(SHADE.lit);
+    expect(at(mask, 3.1, 7.5), "a ring 0.2 out from it").toBe(SHADE.lit);
   });
 
   it("lies a toppled piece's shadow along it as it lies, longer and lower (finding 4)", () => {

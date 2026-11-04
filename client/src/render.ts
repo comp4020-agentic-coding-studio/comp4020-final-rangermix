@@ -1,7 +1,7 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
-import { pieceBox } from "./pieces";
+import { pieceBox, pieceParts } from "./pieces";
 import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
 import { streetSlot } from "./street";
@@ -128,17 +128,17 @@ function up(gx: number, gy: number, z = 0): Pt {
  * street wall's near end, at x, and the one toward the front, at y + h),
  * then its top.
  */
-function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string): void {
+function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string, z0 = 0): void {
   // Lit from the street wall's windows, a little from +x (shadows.ts): the
   // left face (toward -x) turns from the light a little, the front face
   // (toward +y) most, as in the study the look was chosen from (slice 13's
-  // review, finding 7).
-  poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.12));
-  poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.28));
+  // review, finding 7). A part raised off the floor (slice 11) starts at z0.
+  poly(ctx, [up(x, y, z0), up(x, y + h, z0), up(x, y + h, z), up(x, y, z)], shade(colour, 0.12));
+  poly(ctx, [up(x, y + h, z0), up(x + w, y + h, z0), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.28));
   poly(ctx, [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x, y + h, z)], colour);
   // The self outline (slice 13, ADR 0019): the block's silhouette, a room
   // pixel wide, in its own colour darkened, so it stands off what's behind.
-  outline(ctx, silhouette(x, y, w, h, z), shade(colour, OUTLINE));
+  outline(ctx, silhouette(x, y, w, h, z, z0), shade(colour, OUTLINE));
 }
 
 /** How much a piece's outline darkens its own colour. */
@@ -148,8 +148,8 @@ const OUTLINE = 0.45;
  * A block's outline as seen from the front-right corner: its top's back
  * three corners, then down its two visible faces to the floor.
  */
-function silhouette(x: number, y: number, w: number, h: number, z: number): Pt[] {
-  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h), up(x, y + h), up(x, y)];
+function silhouette(x: number, y: number, w: number, h: number, z: number, z0 = 0): Pt[] {
+  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h, z0), up(x, y + h, z0), up(x, y, z0)];
 }
 
 function diamond(x: number, y: number, w = 1, h = 1): Pt[] {
@@ -630,10 +630,10 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
 
 /** A piece where it stands, as a shaded block; knocked over, lying on its side. */
 function drawPiece(ctx: Ctx, f: FurnitureView): void {
-  // The block it's drawn as, standing or fallen toward the viewer, is the
-  // one its shadow is cast from (pieces.ts).
-  const b = pieceBox(f, HEIGHT);
-  block(ctx, b.x, b.y, b.w, b.h, b.z, colourOf(f.kind));
+  // Its parts as its kind's model has them (slice 11), standing, or one
+  // block fallen toward the viewer; the same boxes its shadow is cast from
+  // (pieces.ts).
+  for (const part of pieceParts(f, HEIGHT)) block(ctx, part.x, part.y, part.w, part.h, part.z, part.slot === null ? colourOf(f.kind) : FURNITURE[part.slot], part.z0);
   if (!f.toppled) return;
   // Scattered toys (slice 02): a couple more balls of yarn strewn beside it,
   // where a cat batted them, until someone gathers them up.

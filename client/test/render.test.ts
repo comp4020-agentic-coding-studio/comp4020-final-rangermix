@@ -925,3 +925,70 @@ describe("the frame for what a cat is doing (slice 11)", () => {
     expect(await frameFor("sit", { reaction: { reaction: { kind: "scratch", by: 2 }, at: 1_000 } })).toBe("round:sit");
   });
 });
+
+// Slice 11: each piece reads as what it is. A kind's parts are data
+// (content/sprites/furniture-models.json): boxes within its footprint, each
+// its own colour, so a sofa has a seat, a back and arms, and the window seat
+// is a cushion on legs, not a shelf (crit 8's note).
+describe("furniture drawn as its parts (slice 11)", () => {
+  async function drawnPiece(kind: string, w: number, h: number) {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const wl = welcome();
+    wl.snapshot.room.furniture = [piece(1, kind, 4, 5, w, h)];
+    wl.snapshot.cats = [];
+    wl.snapshot.people = [{ ...wl.snapshot.people[0], place: "window" }];
+    draw(p.ctx, fromWelcome(wl, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    return p;
+  }
+  const shadeOf = (hex: string, k: number) => {
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+    return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+  };
+  /** How many pixels of each of a piece's model's colours (their tops) are drawn. */
+  const tops = (p: { colours(): Map<string, number> }, slots: number[]) => slots.map((sl) => p.colours().get(palettes.day.furniture[sl].toLowerCase()) ?? 0);
+
+  it("draws a sofa's seat and its back and arms in their own colours", async () => {
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, { slot: number }[]>;
+    expect(models.sofa.length, "the sofa's parts").toBeGreaterThanOrEqual(4);
+    const slots = [...new Set(models.sofa.map((m) => m.slot))];
+    expect(slots.length, "the sofa in more than one colour").toBeGreaterThanOrEqual(2);
+    const p = await drawnPiece("sofa", 3, 1);
+    for (const [i, n] of tops(p, slots).entries()) expect(n, `slot ${slots[i]}'s top`).toBeGreaterThan(10);
+  });
+
+  it("stands the window seat on legs, so the floor shows under its cushion (crit 8: not a shelf)", async () => {
+    const { shadowMask } = await import("../src/shadows");
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, { z0: number }[]>;
+    expect(models.window_seat.some((m) => m.z0 > 0), "a part raised off the floor").toBe(true);
+    const p = await drawnPiece("window_seat", 2, 1);
+    // Under the cushion, between the legs, the floor shows: a pixel of the floor's own colours at the seat's middle, low down.
+    const mid = toCanvas(5, 5.5);
+    const floor = new Set([...palettes.day.room.slice(0, 3)].flatMap((c) => [c.toLowerCase(), shadeOf(c, 0.2), shadeOf(c, 0.12)]));
+    let seen = 0;
+    for (let dy = -2; dy <= 1; dy++) for (let dx = -4; dx <= 4; dx++) if (floor.has(p.at(Math.round(mid.x) + dx, Math.round(mid.y) + dy) ?? "")) seen++;
+    expect(seen, "floor pixels under the seat").toBeGreaterThan(4);
+    void shadowMask;
+  });
+
+  it("draws the cushion low and soft, not as a box: a top wider than its sides are tall", async () => {
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, { w: number; h: number; z1: number }[]>;
+    const top = Math.max(...models.cushion.map((m) => m.z1));
+    expect(top, "the cushion's height in room pixels").toBeLessThanOrEqual(5);
+    expect(models.cushion.length, "a cushion and its plumped middle").toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps a piece with no model as one block, and every model inside its footprint", async () => {
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, { x: number; y: number; w: number; h: number; z0: number; z1: number; slot: number }[]>;
+    for (const [kind, parts] of Object.entries(models)) {
+      for (const m of parts) {
+        expect(m.x >= 0 && m.y >= 0 && m.x + m.w <= 1.0001 && m.y + m.h <= 1.0001, `${kind}: a part inside its footprint`).toBe(true);
+        expect(m.z1 > m.z0 && m.z0 >= 0, `${kind}: a part with height`).toBe(true);
+        expect(palettes.day.furniture[m.slot], `${kind}: slot ${m.slot}`).toBeDefined();
+      }
+    }
+    // The lamp keeps its one block.
+    const p = await drawnPiece("lamp", 1, 1);
+    expect(p.colours().get(palettes.day.furniture[5].toLowerCase()) ?? 0).toBeGreaterThan(10);
+  });
+});
