@@ -507,3 +507,92 @@ describe("shadows on the floor", () => {
     expect(seen[2], "seams in shade").toBeGreaterThan(5);
   });
 });
+
+// Slice 13 (ADR 0018): the room stands on its street, the sky and towers
+// behind it in the corners its diamond leaves, by day and by night.
+
+describe("the street behind the café", () => {
+  async function drawn(light: Light) {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, light, 1);
+    return p;
+  }
+  const street = (light: "day" | "night") => new Set((palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase()));
+
+  for (const [light, name] of [
+    [0, "day"],
+    [1, "night"],
+  ] as const) {
+    it(`fills the corners round the room with the street's ${name} colours, and leaves none of the old backdrop`, async () => {
+      const p = await drawn(light);
+      const colours = street(name);
+      // The top-left and top-right corners are sky and towers; the bottom corners the street's foot.
+      for (const [x, y] of [
+        [4, 4],
+        [330, 4],
+        [4, 228],
+        [330, 228],
+      ]) {
+        expect(colours.has(p.at(x, y) ?? ""), `(${x},${y}) is ${p.at(x, y)} at ${name}`).toBe(true);
+      }
+      // Not one flat fill, as the backdrop was: the corners hold several of the street's colours.
+      const corners = new Set<string>();
+      for (let y = 0; y < 60; y++) for (let x = 0; x < 60; x++) corners.add(p.at(x, y) ?? "");
+      expect([...corners].filter((c) => colours.has(c)).length, `colours in the top-left corner at ${name}`).toBeGreaterThanOrEqual(2);
+    });
+  }
+
+  it("draws the street in the evening between its day and its night", async () => {
+    const day = street("day");
+    const night = street("night");
+    const p = await drawn(0.5);
+    const c = p.at(4, 4)!;
+    expect(day.has(c) || night.has(c), `the evening's sky ${c}`).toBe(false);
+  });
+});
+
+describe("the room as a diorama", () => {
+  it("stands the floor on a slab, seen under its front edges, and tops the walls with a light edge", async () => {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.room.furniture = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const street = new Set((palettes.day as unknown as { street: string[] }).street.map((c) => c.toLowerCase()));
+    const room = new Set(palettes.day.room.map((c) => c.toLowerCase()));
+    // Just under the floor's front corner, and under the middle of each front edge: the slab, not street.
+    for (const [gx, gy] of [
+      [0, 10],
+      [6, 10],
+      [0, 5.5],
+    ]) {
+      const c = toCanvas(gx, gy);
+      const under = p.at(Math.round(c.x), Math.round(c.y) + 3);
+      expect(street.has(under ?? ""), `under (${gx},${gy}) is ${under}, the street`).toBe(false);
+      expect(under, `under (${gx},${gy})`).not.toBeNull();
+    }
+    // The top two rows of each wall are its top edge, lighter than the wall
+    // below it; the row above is sky.
+    const lum = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).reduce((a, b) => a + b, 0);
+    for (const [gx, gy] of [
+      [12, 5.5],
+      [6, 1],
+    ]) {
+      const c = toCanvas(gx, gy);
+      const x = Math.round(c.x) - (gx === 12 ? 1 : 0);
+      // Down from the sky to the first pixel that isn't street: the wall's top edge.
+      let y = Math.round(c.y) - 70;
+      while (y < c.y && street.has(p.at(x, y) ?? "")) y++;
+      const edge = p.at(x, y)!;
+      const wallBelow = p.at(x, y + 6)!;
+      expect(room.has(edge), `the top of the wall at (${gx},${gy}) is ${edge}`).toBe(false);
+      expect(lum(edge), `the wall's top ${edge} is lighter than the wall ${wallBelow}`).toBeGreaterThan(lum(wallBelow));
+    }
+  });
+});

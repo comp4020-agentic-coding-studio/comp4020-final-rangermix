@@ -132,6 +132,35 @@ mod tests {
         }
     }
 
+    /// The street behind the café (slice 13) is data the client draws: its
+    /// shape in content/street.toml, its colours in palettes.json by day and
+    /// by night, one per slot the client draws.
+    #[test]
+    fn the_street_is_data_with_colours_by_day_and_night() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content");
+        let street: toml::Value = read_toml(&dir.join("street.toml")).expect("content/street.toml");
+        let horizon = street["horizon"]
+            .as_float()
+            .expect("horizon, how far down the backdrop the street's skyline stands");
+        assert!((0.3..=0.9).contains(&horizon), "horizon {horizon}");
+        let towers = street["towers"].as_array().expect("towers");
+        assert!(towers.len() >= 4, "at least four towers");
+        for t in towers {
+            let w = t["width"].as_integer().expect("a tower's width in pixels");
+            let h = t["height"].as_float().expect("a tower's height, as a share of the sky");
+            assert!(w >= 4 && (0.05..=1.0).contains(&h), "tower {t}");
+        }
+        let palettes: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("sprites/palettes.json")).unwrap()).unwrap();
+        for light in ["day", "night"] {
+            let colours = palettes[light]["street"]
+                .as_array()
+                .unwrap_or_else(|| panic!("no {light} street colours"));
+            // Sky top, sky bottom, tower, tower's other side, window lit, window dark, star, kerb, pavement.
+            assert_eq!(colours.len(), 9, "{light}");
+        }
+    }
+
     #[test]
     fn every_cat_coat_has_a_palette() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/palettes.json");

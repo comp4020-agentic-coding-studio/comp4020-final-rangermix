@@ -111,6 +111,20 @@ export const day = {
     base: [outline, m.surface1, mix(m.peach, m.base, 0.6), "#ffffff"],
   },
   emotes: [outline, m.red, "#ffffff", m.yellow, m.blue],
+  // The street behind the café (slice 13), in the slots the client draws:
+  // sky at the top, sky at the skyline, a tower, a tower's other side, a
+  // window lit, a window dark, a star, the kerb, the pavement.
+  street: [
+    m.blue,
+    m.lavender,
+    mix(m.lavender, m.overlay1, 0.45),
+    mix(m.lavender, m.overlay1, 0.7),
+    m.rosewater,
+    mix(m.lavender, m.text, 0.4),
+    m.lavender,
+    m.overlay1,
+    mix(m.subtext0, m.overlay2, 0.5),
+  ],
 };
 
 /** Night's pull on a colour: toward Mocha's base, with a touch of lavender. */
@@ -127,6 +141,9 @@ export const night = {
   avatars: Object.fromEntries(Object.entries(day.avatars).map(([k, v]) => [k, all(v, 0.3)])),
   // Emotes stay bright: they're what someone says.
   emotes: all(day.emotes, 0.1),
+  // The street at night is its own: a dark sky with stars, the towers near
+  // the base, and their windows lit with the street's lamplight.
+  street: [m.crust, m.base, mix(m.base, m.surface0, 0.5), m.surface0, m.yellow, m.surface1, m.text, m.surface0, m.mantle],
 };
 
 if (process.argv[1]?.endsWith("palettes.ts")) {

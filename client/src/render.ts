@@ -2,6 +2,7 @@ import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
 import { SHADE, type ShadowMask, shadowMask } from "./shadows";
+import { streetSlot } from "./street";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -67,8 +68,34 @@ const colourOf = (kind: string): string => FURNITURE[SLOT[kind] ?? 3];
 /** How far in from its footprint's edges a small piece's block stands, in tiles. */
 const INSET: Record<string, number> = { plant: 0.28, toys: 0.32, bowls: 0.18, chair: 0.2, cat_bed: 0.12, box: 0.15, cushion: 0.15, scratching_post: 0.3, lamp: 0.3 };
 const HEIGHT = heights as Record<string, number>;
-/** Around the room, beyond its walls. */
-const BACKDROP = "#1e1e2e";
+/**
+ * The street's runs of one slot along each row of the backdrop, worked out
+ * once for each light (stars show only at night): the street doesn't move.
+ */
+const streetRuns = new Map<boolean, { y: number; x: number; w: number; slot: number }[]>();
+
+function drawStreet(ctx: Ctx, colours: string[], light: Light): void {
+  const night = light >= 1;
+  let runs = streetRuns.get(night);
+  if (!runs) {
+    runs = [];
+    for (let y = 0; y < ISO.height; y++) {
+      let x = 0;
+      while (x < ISO.width) {
+        const slot = streetSlot(x, y, ISO.width, ISO.height, night);
+        let end = x + 1;
+        while (end < ISO.width && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
+        runs.push({ y, x, w: end - x, slot });
+        x = end;
+      }
+    }
+    streetRuns.set(night, runs);
+  }
+  for (const r of runs) {
+    ctx.fillStyle = colours[r.slot];
+    ctx.fillRect(r.x, r.y, r.w, 1);
+  }
+}
 
 /** The window's tiles, left to right. */
 export function windowTiles(room: RoomView): { x: number; y: number }[] {
@@ -139,8 +166,8 @@ function diamond(x: number, y: number, w = 1, h = 1): Pt[] {
 }
 
 /** A polygon's edge traced crisp, `width` room pixels wide (slice 13). */
-function outline(ctx: Ctx, pts: Pt[], colour: string, width = 1): void {
-  strokeCrisp(ctx, pts, colour, width);
+function outline(ctx: Ctx, pts: Pt[], colour: string, width = 1, closed = true): void {
+  strokeCrisp(ctx, pts, colour, width, closed);
 }
 
 /**
@@ -403,9 +430,8 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   FURNITURE = palette.furniture;
   sprites.light = light;
   ctx.imageSmoothingEnabled = false;
-  // Night outside the room's walls, as in the study the look was chosen from.
-  ctx.fillStyle = BACKDROP;
-  ctx.fillRect(0, 0, ISO.width, ISO.height);
+  // The street behind the café, round the room's diamond (slice 13).
+  drawStreet(ctx, palette.street, light);
 
   drawFloor(ctx, room);
   drawShadows(ctx, shadowMask(room, room.furniture, HEIGHT), room);
@@ -439,7 +465,18 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
 /** How deep the seam along each tile's far edge is, in tiles. */
 const SEAM = 0.06;
 
+/** How deep the floor's slab shows under its front edges, in room pixels (slice 13): the room as a diorama. */
+const SLAB = 6;
+
 function drawFloor(ctx: Ctx, room: RoomView): void {
+  // The slab the floor stands on, seen under its two front edges: lit on
+  // the left, toward the windows, darker on the right, as the pieces are.
+  const W = room.width;
+  const H = room.height;
+  const wood = ROOM[2];
+  poly(ctx, [up(0, 1), up(0, H), up(0, H, -SLAB), up(0, 1, -SLAB)], shade(wood, 0.25));
+  poly(ctx, [up(0, H), up(W, H), up(W, H, -SLAB), up(0, H, -SLAB)], shade(wood, 0.45));
+  outline(ctx, [up(0, 1, -SLAB), up(0, H, -SLAB), up(W, H, -SLAB)], shade(wood, 0.65), 1, false);
   for (let y = 1; y < room.height; y++) {
     for (let x = 0; x < room.width; x++) {
       poly(ctx, diamond(x, y), (x + y) % 2 ? ROOM[0] : ROOM[1]);
@@ -511,6 +548,10 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
   // The street wall, up the back left.
   poly(ctx, [up(0, 1), up(W, 1), up(W, 1, H), up(0, 1, H)], shade(wall, 0.08));
   poly(ctx, [up(0, 1), up(W, 1), up(W, 1, 14), up(0, 1, 14)], wainscot);
+  // The walls' tops (slice 13): a light edge along each, two room pixels
+  // deep, so the walls read as cut away, the room as a diorama.
+  poly(ctx, [up(0, 1, H), up(W, 1, H), up(W, 1, H - 2), up(0, 1, H - 2)], shade(wall, -0.35));
+  poly(ctx, [up(W, 1, H), up(W, room.height, H), up(W, room.height, H - 2), up(W, 1, H - 2)], shade(wall, -0.2));
   const panel = (x0: number, x1: number, z0: number, z1: number, colour: string) => poly(ctx, [up(x0, 1, z0), up(x1, 1, z0), up(x1, 1, z1), up(x0, 1, z1)], colour);
   const tiles = room.tiles[0] ?? "";
   const line = [...state.people.values()].filter((p) => p.place === "window");

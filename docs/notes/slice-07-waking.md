@@ -69,3 +69,10 @@ cause it. In CI on the same push (run 39549878399) both passed, in 3.7 s and
 6.7 s. Both route the café's socket and hold back its welcome; something in
 that differs on this Mac's local run, not on the image CI starts. Not looked
 into further: CI holds them, and they don't touch the menu.
+
+Narrowed on 2026-11-04 (session `a4e69a46`, building slice 13): the two
+checks failed the same way on slice 12's client and on slice 13's,
+against a local café that had run for hours through many test visits, and
+both passed on a fresh `DATA_DIR` with slice 13's client. So it's the
+long-run local café, not the client: a fresh café, as CI starts, passes
+them. Run the spec against a fresh café.

@@ -184,4 +184,24 @@ Where the build departed from this plan, as it happened.
   first 0.06. The first test of it passed either way (it only counted
   colours); the second checks every shaded pixel against what's under it,
   and fails on the wrong rule at the pixel it gets wrong.
+- **Task 4: the street's colours are nine slots, its shapes data.**
+  `content/street.toml` holds the skyline's height and the towers' widths
+  and heights; the client reads that one flat file itself (`street.ts`),
+  and `cargo test` reads it with a real TOML parser. The towers went
+  taller than first written, once seen: at the first heights most of them
+  stood behind the walls. The pavement below the room steps darker in a
+  dither, so it reads as ground, not a slab of grey.
+- **A stray line, found by zooming in.** The slab's outline is an open
+  line under the floor's two front edges, but `strokeCrisp` closed every
+  shape, drawing back from the last point to the first, across the room;
+  the floor hid most of it, and a stub showed past the floor's left
+  corner. `strokeCrisp` now takes `closed`, and a test holds an open line
+  open.
+- **The night's sky has the old backdrop's colour** (Mocha's base), so the
+  street test checks the corners hold the street's colours, several of
+  them, not that one colour is absent.
+- **Two slice 07 waking checks failed locally,** on slice 12's client too,
+  against a café that had run for hours; both pass on a fresh one. Added
+  to [slice-07-waking.md](slice-07-waking.md). The full spec passes on a
+  fresh café: 70, one skipped (restart, which needs Docker).
 

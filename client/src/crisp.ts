@@ -47,12 +47,14 @@ export function fillCrisp(ctx: CanvasRenderingContext2D, pts: Pt[], colour: stri
 }
 
 /**
- * Traces a closed polygon's edge `width` room pixels wide, by whole pixels:
- * a step along each side, one pixel square at a time.
+ * Traces a polygon's edge `width` room pixels wide, by whole pixels: a step
+ * along each side, one pixel square at a time. Closed, it runs from the last
+ * point back to the first; open, it's a line through the points.
  */
-export function strokeCrisp(ctx: CanvasRenderingContext2D, pts: Pt[], colour: string, width = 1): void {
+export function strokeCrisp(ctx: CanvasRenderingContext2D, pts: Pt[], colour: string, width = 1, closed = true): void {
   ctx.fillStyle = colour;
-  for (let i = 0; i < pts.length; i++) {
+  const sides = closed ? pts.length : pts.length - 1;
+  for (let i = 0; i < sides; i++) {
     const a = pts[i];
     const b = pts[(i + 1) % pts.length];
     const n = Math.max(1, Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y))));
