@@ -16,12 +16,18 @@
   --placeholder: #5c5f77; /* subtext1, as muted */
   --track: #ccd0da; /* surface0: the trust bar at 3:1 */
   --focus: #1e66f5; /* blue */
-  /* A panel over the room (slice 14): what's behind is squeezed toward
-     white, then the card goes over it at half, or a fifth dimmed, so text
-     holds 4.5:1 over anything (client/test/contrast.test.ts). */
-  --glass-filter: contrast(0.45) brightness(3.09);
-  --glass-alpha: 0.5;
-  --glass-alpha-dim: 0.2;
+  /* A panel over the room (slice 14): what's behind is frosted (blurred,
+     then squeezed toward white), and the card goes over it thinly, a
+     quarter, or a tenth dimmed, so the room shows through as soft shapes
+     while text holds 4.5:1 over anything (client/test/contrast.test.ts).
+     More see-through at the user's asking, 2026-11-05. */
+  --glass-filter: blur(3px) contrast(0.62) brightness(3.45);
+  --glass-alpha: 0.25;
+  --glass-alpha-dim: 0.1;
+  /* A panel's words over the glass, a shade darker than the page's ink,
+     muted included, so the frost can let more of the room through. */
+  --panel-ink: #3c3f55;
+  --panel-muted: #3c3f55;
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -38,9 +44,12 @@
     --track: #45475a; /* surface1 */
     --focus: #89b4fa; /* blue */
     /* Squeezed toward black instead. */
-    --glass-filter: contrast(0.97) brightness(0.26);
-    --glass-alpha: 0.5;
-    --glass-alpha-dim: 0.2;
+    --glass-filter: blur(3px) contrast(1) brightness(0.37);
+    --glass-alpha: 0.25;
+    --glass-alpha-dim: 0.1;
+    /* Mocha's text, muted included, over the glass. */
+    --panel-ink: #cdd6f4;
+    --panel-muted: #cdd6f4;
   }
 }
 * { box-sizing: border-box; }
@@ -129,8 +138,9 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   }
   /* The glass, where the browser can filter what's behind; opaque where it can't. */
   @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
-    .panel { background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
+    .panel { color: var(--panel-ink); background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
     .panel.dim { background: rgb(from var(--card) r g b / var(--glass-alpha-dim)); }
+    .panel .hint, .panel .chalk-lines time, .panel .chalk-lines .empty { color: var(--panel-muted); }
   }
 }
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }

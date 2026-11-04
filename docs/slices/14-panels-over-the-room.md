@@ -73,6 +73,12 @@ room shows through.
 
 - Dimming after: 4 seconds unchanged (*tunable*).
 - See-through: about 50% normally, about 20% dimmed (*tunable*).
+  Changed at the user's asking, 2026-11-05 ("more translucent, frosty
+  glass is good"): the glass at a quarter, a tenth dimmed, over a frost
+  that blurs the room 3 px and squeezes it toward the panel's end of the
+  scale; the panels' own text a shade darker (light theme) or brighter
+  (dark), so the frost can let more of the room through and still hold
+  4.5:1.
 
 ## Open questions
 

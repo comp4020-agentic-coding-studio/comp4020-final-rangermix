@@ -288,3 +288,16 @@ Where the build departed from this plan, as it happened.
   over the colours actually behind each panel's spot, or a lighter
   squeeze with bolder text) is the user's call, raised with the
   screenshots, not built.
+- **More translucent, at the user's asking (2026-11-05).** "The panel
+  background should be more translucent, frosty glass is good." Solved
+  first for thinner glass alone: under 4.5:1 over anything, the filter,
+  not the glass, decides how much of the room shows, so a quarter-thick
+  glass showed little more (10% of the room's range in Latte, from 7.5%).
+  What moved it: a 3-px blur in the frost, and the panels' own text a
+  shade darker in Latte (`#3c3f55`, muted too) and Mocha's bright text
+  for muted in the dark, which let the filter open to 26% (Latte) and 28%
+  (Mocha). Chrome's colours matched the model within a step of 255. By
+  night it reads as glass; by day the bright room still shows mostly as
+  white, which only a dark panel tint in the light theme would change:
+  asked of the user, not built. The dimming check now reads the glass's
+  alphas from the page's tokens.

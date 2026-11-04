@@ -536,11 +536,17 @@ describe("in a browser", { timeout: 30_000 }, () => {
         const m = /\/\s*([\d.]+)\)$|rgba\([^)]*,\s*([\d.]+)\)$/.exec(getComputedStyle(document.querySelector(s)!).backgroundColor);
         return m ? Number(m[1] ?? m[2]) : 1;
       }, sel);
-    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(0.2, 2);
+    // The glass's two alphas, as the page's own tokens set them.
+    const glass = await page.evaluate(() => {
+      const s = getComputedStyle(document.documentElement);
+      return { normal: Number(s.getPropertyValue("--glass-alpha")), dim: Number(s.getPropertyValue("--glass-alpha-dim")) };
+    });
+    expect(glass.dim).toBeLessThan(glass.normal);
+    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(glass.dim, 2);
     // Someone arriving changes who's here: it comes back.
     await visit({ width: 1920, height: 1080 });
     await expect.poll(() => dim("#here-panel")).toBe(false);
-    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(0.5, 2);
+    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(glass.normal, 2);
     // The pointer over a dimmed panel brings it back too.
     await page.clock.fastForward(5000);
     await expect.poll(() => dim("#chalkboard")).toBe(true);

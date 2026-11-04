@@ -402,10 +402,13 @@ renamed.
   seconds, with the pointer and the focus elsewhere, dims and grows more
   see-through. Where each is and which are pinned are remembered per
   device, or for the visit. Their glass is frosted: what's behind is
-  squeezed toward the panel's end of the scale before the card goes over
-  it at half (a fifth dimmed), so their text holds 4.5:1 over anything
-  the room and street can show; by day that leaves the bright sky and
-  walls showing as white. "Put a treat down" is in the talk bar beside
+  blurred and squeezed toward the panel's end of the scale before the
+  card goes over it thinly, a quarter (a tenth dimmed), and the panels'
+  own text is a shade darker (light) or brighter (dark) than the page's,
+  so their text holds 4.5:1 over anything the room and street can show
+  while the room shows through as soft shapes. By night that reads as
+  glass; by day the bright room still shows mostly as white, the cost of
+  4.5:1 over anything in a light panel. "Put a treat down" is in the talk bar beside
   the emotes, at every size, so a pinned panel costs nothing.
 - **Phone (390×844), and anything narrower than 960 px:** two layouts, with
   one button to switch between them, remembered per device (or for the visit,
