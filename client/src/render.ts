@@ -2,7 +2,7 @@ import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
 import { INSET, pieceBox } from "./pieces";
-import { Raster, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
+import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
 import { streetSlot } from "./street";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
@@ -431,6 +431,7 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   const layer = floorLayer(room, light);
   drawLayer(ctx, layer, () => layerImage(layer));
   drawWalls(ctx, state, sprites);
+  drawFigureShadows(ctx, state, localNow, layer);
 
   for (const item of drawOrder(state, localNow)) if (!item.inLayer) item.paint(ctx, sprites);
 
@@ -507,6 +508,51 @@ export function floorLayer(room: RoomView, light: Light, shaded = true): Raster 
   [ROOM, FURNITURE] = [room0, furn0];
   layerCache = { key, layer };
   return layer;
+}
+
+/**
+ * How a figure's shadow lies, in tiles from the middle of its feet: a small
+ * oval a little away from the windows (toward +y), as the light falls
+ * (shadows.ts), the study's sprite shadow (slice 13's review, finding 5).
+ */
+const FIGURE_SHADOW = { dx: -0.04, dy: 0.16, rx: 0.2, ry: 0.3 };
+
+/**
+ * A small shadow under each cat and person standing on the floor (slice
+ * 13's review, finding 5): the floor under it darkened, pixel by pixel, as
+ * the floor's own shadows are. Worked out every frame, since figures move;
+ * nobody up on a piece or in someone's arms casts one on the floor.
+ */
+function drawFigureShadows(ctx: Ctx, state: CafeState, localNow: number, layer: Raster): void {
+  const now = serverNow(state, localNow);
+  const spots: Pt[] = [];
+  for (const cat of state.cats.values()) {
+    if (cat.heldBy !== null) continue;
+    const spot = positionAt(cat.walk, cat.at, now);
+    if (!standingOn(state, spot) && lapOf(state, cat) === null) spots.push(spot);
+  }
+  for (const person of state.people.values()) {
+    if (person.place !== "inside") continue;
+    const spot = positionAt(person.walk, person.at, now);
+    if (spot.moving || !standingOn(state, spot)) spots.push(spot);
+  }
+  const { dx, dy, rx, ry } = FIGURE_SHADOW;
+  for (const s of spots) {
+    const [cx, cy] = [s.x + 0.5 + dx, s.y + 0.5 + dy];
+    const corners = [toCanvas(cx - rx, cy - ry), toCanvas(cx + rx, cy - ry), toCanvas(cx + rx, cy + ry), toCanvas(cx - rx, cy + ry)];
+    const [x0, x1] = [Math.floor(Math.min(...corners.map((c) => c.x))), Math.ceil(Math.max(...corners.map((c) => c.x)))];
+    const [y0, y1] = [Math.floor(Math.min(...corners.map((c) => c.y))), Math.ceil(Math.max(...corners.map((c) => c.y)))];
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const { gx, gy } = fromCanvasAt(x + 0.5, y + 0.5);
+        if (((gx - cx) / rx) ** 2 + ((gy - cy) / ry) ** 2 > 1 || gy < 1) continue;
+        const under = layer.at(x, y);
+        if (!under) continue;
+        ctx.fillStyle = darken(under, SHADOW);
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
 }
 
 /** The layer as an image to lay on in one go, made once per layer. */

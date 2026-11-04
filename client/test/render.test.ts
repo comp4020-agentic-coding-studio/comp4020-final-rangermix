@@ -430,6 +430,47 @@ describe("a piece's self outline", () => {
   });
 });
 
+describe("a figure's shadow (slice 13's review, finding 5)", () => {
+  /** The room at 1× with only `cats` and `people` in it, and the floor layer as it is under them. */
+  async function scene(cats: Welcome["snapshot"]["cats"], people: Welcome["snapshot"]["people"]) {
+    const { pixels } = await import("./pixels");
+    const { floorLayer } = await import("../src/render");
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    w.snapshot.cats = cats;
+    w.snapshot.people = people;
+    const s = fromWelcome(w, 10_000);
+    const p = pixels(336, 232);
+    draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    return { p, floor: floorLayer(s.room, 0) };
+  }
+  const shadeOf = (hex: string, k: number) => {
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+    return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+  };
+  /** How many floor pixels near (gx, gy) are the floor under them darkened as a shadow, not the floor itself. */
+  const darkened = (p: { at(x: number, y: number): string | null }, floor: { at(x: number, y: number): string | null }, gx: number, gy: number) => {
+    const c = toCanvas(gx + 0.5, gy + 0.5);
+    let n = 0;
+    for (let y = Math.round(c.y) - 6; y <= Math.round(c.y) + 8; y++)
+      for (let x = Math.round(c.x) - 12; x <= Math.round(c.x) + 12; x++) {
+        const under = floor.at(x, y);
+        if (under && p.at(x, y) === shadeOf(under, 0.2)) n++;
+      }
+    return n;
+  };
+
+  it("casts a small shadow from a cat and a person standing on the open floor, away from the windows", async () => {
+    const cat = { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 3, y: 6 }, pose: "sit" as const, walk: null, heldBy: null };
+    const me = { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 8, y: 6 }, walk: null, sitting: false };
+    const { p, floor } = await scene([cat], [me]);
+    expect(darkened(p, floor, 3, 6), "under the cat").toBeGreaterThan(6);
+    expect(darkened(p, floor, 8, 6), "under the person").toBeGreaterThan(6);
+    // Nobody stands at (5,6): no shadow there.
+    expect(darkened(p, floor, 5.5, 6)).toBe(0);
+  });
+});
+
 describe("a block lit from the windows (slice 13's review, finding 7)", () => {
   it("shades its front face, turned away from the windows, darker than its left face, which they light a little", async () => {
     const { pixels } = await import("./pixels");
