@@ -1,7 +1,7 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
-import { pieceBox, pieceParts } from "./pieces";
+import { pieceBox, pieceParts, topAt } from "./pieces";
 import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
 import { streetSlot } from "./street";
@@ -378,7 +378,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
     // A cat asleep on someone's lap is drawn over them, as a held cat is.
     const layer = lapOf(state, cat) !== null ? LAYER.lap : LAYER.cat;
     const on = standingOn(state, spot);
-    const lift = on ? HEIGHT[on.kind] : 0;
+    const lift = on ? topAt(on, HEIGHT, Math.round(spot.x), Math.round(spot.y)) : 0;
     const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
     rest.push({
       label: `cat ${cat.id}`,
@@ -422,7 +422,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
 export function personLift(state: CafeState, person: { walk: Walk | null; at: { x: number; y: number } }, localNow: number): number {
   const spot = positionAt(person.walk, person.at, serverNow(state, localNow));
   const on = spot.moving ? null : standingOn(state, spot);
-  return on ? Math.max(0, HEIGHT[on.kind] - 4) : 0;
+  return on ? Math.max(0, topAt(on, HEIGHT, Math.round(spot.x), Math.round(spot.y)) - 4) : 0;
 }
 
 /** The footprint something at `spot` sorts by: its own tile, or the piece it's up on. */

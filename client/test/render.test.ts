@@ -118,7 +118,12 @@ describe("the room's draw order", () => {
     // Half-way across the tower, walking.
     w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 0, y: 1 }, pose: "walk", walk: { path: [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }], start: 10_000, speed: 1 } };
     const drawn = drawOrder(fromWelcome(w, 10_500), 10_500);
-    expect(drawn.find((d) => d.label === "cat mochi")?.lift).toBe(44);
+    // At (0,1), half-way, it's over the tower's base (4 px) and under its
+    // low platform's front-left reach (22 px): up on the part under it
+    // (slice 11's review, finding 3), not at the cubby's 44.
+    const lift = drawn.find((d) => d.label === "cat mochi")?.lift ?? 0;
+    expect(lift).toBeGreaterThan(0);
+    expect(lift).toBeLessThan(44);
   });
 
   // Slice 09's review, finding 1: a click lands on what's drawn there.
@@ -161,8 +166,8 @@ describe("the room's draw order", () => {
     const w = welcome();
     w.snapshot.people[0] = { ...w.snapshot.people[0], at: { x: 1, y: 5 }, sitting: true };
     const s = fromWelcome(w, 10_000);
-    // The sofa is 16 px tall; someone on it sinks 4 px in.
-    expect(personLift(s, s.people.get(1)!, 10_000)).toBe(12);
+    // The sofa's seat is 9 px (slice 11's model; its back is 16); someone on it sinks 4 px in.
+    expect(personLift(s, s.people.get(1)!, 10_000)).toBe(5);
     expect(personLift(s, s.people.get(2)!, 10_000)).toBe(0);
   });
 
@@ -1062,5 +1067,35 @@ describe("picking what's drawn, at the bigger sizes", () => {
     // Its top, 15 px up: the table.
     const t = toCanvas(7, 5.5);
     expect(hitAt(s, t.x, t.y - 15, 10_000)).not.toBeNull();
+  });
+});
+
+describe("standing on the part under you (slice 11's review, finding 3)", () => {
+  it("lifts a cat by the part of the tower under its tile, not the tower's tallest point", async () => {
+    const { pieceParts } = await import("../src/pieces");
+    const tower = piece(1, "cat_tower", 8, 5, 2, 2);
+    /** The highest part top over the tile's middle, as the test's own reckoning from the model. */
+    const under = (x: number, y: number) =>
+      Math.max(0, ...pieceParts(tower, heights).filter((p) => x + 0.5 >= p.x && x + 0.5 <= p.x + p.w && y + 0.5 >= p.y && y + 0.5 <= p.y + p.h).map((p) => p.z));
+    for (const [x, y] of [[8, 5], [9, 5], [8, 6], [9, 6]]) {
+      const w = welcome();
+      w.snapshot.room.furniture = [tower];
+      w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], at: { x, y }, pose: "nap", walk: null, heldBy: null }];
+      const item = drawOrder(fromWelcome(w, 10_000), 10_000).find((d) => d.label.startsWith("cat"))!;
+      expect(item.lift, `a cat on the tower at (${x},${y})`).toBe(under(x, y));
+    }
+    // And they differ: the tower isn't one height.
+    expect(new Set([[8, 5], [9, 5], [8, 6], [9, 6]].map(([x, y]) => under(x, y))).size).toBeGreaterThan(1);
+  });
+
+  it("sits someone on the sofa's seat, not up on its back", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "sofa", 4, 5, 3, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], at: { x: 5, y: 5 }, sitting: true }];
+    const lift = personLift(fromWelcome(w, 10_000), { walk: null, at: { x: 5, y: 5 } }, 10_000);
+    // The seat is 9 px; sinking 4 into it.
+    expect(lift).toBe(5);
   });
 });

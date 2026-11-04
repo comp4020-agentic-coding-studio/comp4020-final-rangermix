@@ -54,3 +54,17 @@ export function pieceParts(f: FurnitureView, heights: Record<string, number>): P
   // listed back to front and bottom to top, and drawn so.
   return model.map((m) => ({ x: f.x + m.x * f.w, y: f.y + m.y * f.h, w: m.w * f.w, h: m.h * f.h, z0: m.z0, z: m.z1, slot: m.slot }));
 }
+
+/**
+ * How high the piece is under the middle of tile (x, y), in room pixels:
+ * the top of the highest of its parts there (slice 11's review, finding 3),
+ * so a cat on the tower's base sits on the base, not up at its cubby, and
+ * someone on the sofa sits on its seat, not its back.
+ */
+export function topAt(f: FurnitureView, heights: Record<string, number>, x: number, y: number): number {
+  const [cx, cy] = [x + 0.5, y + 0.5];
+  const tops = pieceParts(f, heights)
+    .filter((p) => cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h)
+    .map((p) => p.z);
+  return tops.length ? Math.max(...tops) : 0;
+}
