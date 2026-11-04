@@ -992,3 +992,30 @@ describe("furniture drawn as its parts (slice 11)", () => {
     expect(p.colours().get(palettes.day.furniture[5].toLowerCase()) ?? 0).toBeGreaterThan(10);
   });
 });
+
+describe("a face at the window, at 32 px (slice 11's review, finding 6)", () => {
+  it("shows the whole head in the pane, both eyes, not half of it", () => {
+    const w = welcome();
+    w.snapshot.people = [{ ...w.snapshot.people[0], id: 2, place: "window", at: { x: 7, y: 0 } }];
+    w.you = 99;
+    w.snapshot.cats = [];
+    const s = fromWelcome(w, 10_000);
+    // Record which part of the avatar image is cut out for the pane.
+    let crop: number[] | null = null;
+    const img = document.createElement("canvas");
+    img.width = 32;
+    img.height = 32;
+    const sprites = new Sprites();
+    sprites.avatar = () => img;
+    sprites.cat = () => null;
+    const ctx = new Proxy({}, { get: (_t, k) => (k === "drawImage" ? (i: unknown, ...a: number[]) => i === img && a.length === 8 && (crop = a.slice(0, 4)) : k === "getTransform" ? () => ({ a: 1 }) : () => {}), set: () => true }) as unknown as CanvasRenderingContext2D;
+    draw(ctx, s, sprites, 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0);
+    expect(crop, "the face is cut from the avatar").not.toBeNull();
+    const [sx, sy, sw, sh] = crop!;
+    // The head runs across columns 10 to 21 and down rows 1 to 9 of the 32-px sprite.
+    expect(sx, "from the head's left").toBeLessThanOrEqual(10);
+    expect(sx + sw, "to the head's right").toBeGreaterThanOrEqual(22);
+    expect(sy).toBe(0);
+    expect(sh, "down past the eyes and chin").toBeGreaterThanOrEqual(10);
+  });
+});

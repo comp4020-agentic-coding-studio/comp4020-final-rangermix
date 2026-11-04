@@ -606,7 +606,9 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
       if (who) {
         const img = sprites.avatar(who.look, "stand");
         const face = up(x + 0.5, 1, 30);
-        if (img) ctx.drawImage(img, 0, 0, TILE, 9, Math.round(face.x - TILE / 2), Math.round(face.y - 9), TILE, 9);
+        // The head of a 32-px sprite (slice 11), its columns 8 to 23, rows 0
+        // to 11, centred in the pane (slice 11's review, finding 6).
+        if (img) ctx.drawImage(img, 8, 0, 16, 12, Math.round(face.x - 8), Math.round(face.y - 10), 16, 12);
       }
     } else if (ch === "D") {
       panel(x + 0.08, x + 0.92, 0, 42, ROOM[5]);

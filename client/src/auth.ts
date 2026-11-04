@@ -93,7 +93,9 @@ function buildLookPicker(): void {
     return input;
   };
   for (let a = 0; a < AVATARS; a++) {
-    const canvas = Object.assign(document.createElement("canvas"), { width: 16, height: 16 });
+    // As big as the avatar's sprite (32 since slice 11); CSS shows it at 48 px.
+    const size = sprites.avatar({ avatar: a, colour: 0 }, "stand")?.width ?? 32;
+    const canvas = Object.assign(document.createElement("canvas"), { width: size, height: size });
     previews.push(canvas);
     const label = document.createElement("label");
     label.append(radio("avatar", a, `Look ${a + 1}`), canvas);
@@ -117,7 +119,7 @@ function buildLookPicker(): void {
       const ctx = canvas.getContext("2d");
       const img = sprites.avatar({ avatar, colour }, "stand");
       if (ctx && img) {
-        ctx.clearRect(0, 0, 16, 16);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
       }
     });

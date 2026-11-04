@@ -143,4 +143,19 @@ describe("the café's colours in each light", () => {
     expect(eyes(sheet.get("stand")!)).toBeGreaterThan(0);
     for (const name of ["back", "back_walk_a", "back_walk_b"]) expect(eyes(sheet.get(name)!), name).toBe(0);
   });
+
+  it("previews each look at the sprite's own size on the sign-up page (slice 11's review, finding 5)", async () => {
+    const { showAuth } = await import("../src/auth");
+    document.body.innerHTML = `<main id="auth"><form id="signup"><div id="look-picker"></div></form><form id="login"></form><form id="recover"></form><section id="code"></section><p id="auth-error"></p><button id="tab-signup"></button><button id="tab-login"></button><button id="show-recover"></button><button id="hide-recover"></button><button id="copy-code"></button><button id="code-done"></button><code id="code-text"></code></main>`;
+    try {
+      showAuth(() => {});
+    } catch {
+      // The rest of the page isn't here; the picker is built first.
+    }
+    const canvases = [...document.querySelectorAll<HTMLCanvasElement>("#look-picker canvas")];
+    expect(canvases.length).toBeGreaterThan(0);
+    const sheet = parseSheet(avatarSheet);
+    const size = sheet.get("stand")![0].length;
+    for (const c of canvases) expect([c.width, c.height]).toEqual([size, size]);
+  });
 });
