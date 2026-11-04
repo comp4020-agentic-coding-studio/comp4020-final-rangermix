@@ -4,6 +4,7 @@
 id = "mochi"
 name = "Mochi"
 coat = "white_grey"
+build = "round"   # its shape, in content/sprites/png/cat/round/ (slice 11)
 
 [traits]
 sociability = 0.9

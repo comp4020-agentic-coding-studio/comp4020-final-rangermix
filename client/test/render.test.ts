@@ -38,9 +38,9 @@ function welcome(): Welcome {
         { id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 9, y: 8 }, walk: null, sitting: false },
       ],
       cats: [
-        { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 2, y: 4 }, pose: "sit", walk: null, heldBy: null },
-        { id: "tora", name: "Tora", coat: "orange_tabby", at: { x: 5, y: 5 }, pose: "sit", walk: null, heldBy: null },
-        { id: "burakku", name: "Burakku", coat: "black", at: { x: 9, y: 8 }, pose: "sit", walk: null, heldBy: 2 },
+        { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 2, y: 4 }, pose: "sit", walk: null, heldBy: null },
+        { id: "tora", name: "Tora", coat: "orange_tabby", build: "striped", at: { x: 5, y: 5 }, pose: "sit", walk: null, heldBy: null },
+        { id: "burakku", name: "Burakku", coat: "black", build: "slim", at: { x: 9, y: 8 }, pose: "sit", walk: null, heldBy: 2 },
       ],
       yourTrust: [],
       held: [],
@@ -266,9 +266,9 @@ describe("the side a walker shows", () => {
     const w = welcome();
     w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 2, y: 6 }, pose: "walk", walk: { path: [{ x: 2, y: 6 }, { x: 2, y: 5 }, { x: 2, y: 4 }], start: 10_000, speed: 1 } };
     const s = fromWelcome(w, 10_000);
-    expect(framesAsked(s, 10_500).filter((f) => f.startsWith("cat white_grey"))[0]).toMatch(/^cat white_grey back_walk_[ab]$/);
+    expect(framesAsked(s, 10_500).filter((f) => f.startsWith("cat white_grey"))[0]).toMatch(/^cat white_grey round:back_walk_[ab]$/);
     apply(s, { type: "catPosed", cat: "mochi", pose: "sit", at: { x: 2, y: 4 } }, 12_500);
-    expect(framesAsked(s, 12_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey back_sit"]);
+    expect(framesAsked(s, 12_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey round:back_sit"]);
   });
 
   it("faces the way the last walk went once it's over, not the way a walk it replaced went", () => {
@@ -341,7 +341,7 @@ describe("the side a walker shows", () => {
   it("faces the viewer when nobody has walked yet", () => {
     const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
     expect(asked).toContain("person 0 stand");
-    expect(asked).toContain("cat white_grey sit");
+    expect(asked).toContain("cat white_grey round:sit");
   });
 
   it("naps the same way round whichever way the cat last walked", () => {
@@ -349,7 +349,7 @@ describe("the side a walker shows", () => {
     w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 2, y: 6 }, pose: "walk", walk: { path: [{ x: 2, y: 6 }, { x: 2, y: 5 }], start: 10_000, speed: 1 } };
     const s = fromWelcome(w, 10_000);
     apply(s, { type: "catPosed", cat: "mochi", pose: "nap", at: { x: 2, y: 5 } }, 11_500);
-    expect(framesAsked(s, 11_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey nap"]);
+    expect(framesAsked(s, 11_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey round:nap"]);
   });
 });
 
@@ -613,7 +613,7 @@ describe("a figure's shadow (slice 13's review, finding 5)", () => {
   };
 
   it("casts a small shadow from a cat and a person standing on the open floor, away from the windows", async () => {
-    const cat = { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 3, y: 6 }, pose: "sit" as const, walk: null, heldBy: null };
+    const cat = { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 3, y: 6 }, pose: "sit" as const, walk: null, heldBy: null };
     const me = { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 8, y: 6 }, walk: null, sitting: false };
     const { p, floor } = await scene([cat], [me]);
     expect(darkened(p, floor, 3, 6), "under the cat").toBeGreaterThan(6);
@@ -904,7 +904,8 @@ describe("the frame for what a cat is doing (slice 11)", () => {
   });
 
   it("walks in two steps, and plays in two frames", async () => {
-    expect(await frameFor("walk", { walk: true })).toMatch(/^round:walk_[ab]$/);
+    // Along +x the walk goes up the screen, so it shows the back (slice 12).
+    expect(await frameFor("walk", { walk: true })).toMatch(/^round:back_walk_[ab]$/);
     const play = new Set([await frameFor("play", { now: 10_000 }), await frameFor("play", { now: 10_200 }), await frameFor("play", { now: 10_400 })]);
     expect([...play].sort()).toEqual(["round:play_a", "round:play_b"]);
   });

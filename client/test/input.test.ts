@@ -20,8 +20,8 @@ function state() {
           { id: 3, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false },
         ],
         cats: [
-          { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 6, y: 5 }, pose: "sit", walk: null, heldBy: null },
-          { id: "tora", name: "Tora", coat: "orange_tabby", at: { x: 1, y: 8 }, pose: "idle", walk: null, heldBy: null },
+          { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 6, y: 5 }, pose: "sit", walk: null, heldBy: null },
+          { id: "tora", name: "Tora", coat: "orange_tabby", build: "striped", at: { x: 1, y: 8 }, pose: "idle", walk: null, heldBy: null },
         ],
         yourTrust: [],
         held: [],

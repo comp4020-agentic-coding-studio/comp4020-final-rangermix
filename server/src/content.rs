@@ -122,8 +122,22 @@ mod tests {
         let cat = sprite_sizes("cat.txt");
         for c in &c.cats {
             for frame in [
-                "sit", "walk_a", "walk_b", "back_sit", "back_walk_a", "back_walk_b", "nap", "eat", "play_a", "play_b", "perch", "held", "lap",
-                "scratch", "knock", "greet",
+                "sit",
+                "walk_a",
+                "walk_b",
+                "back_sit",
+                "back_walk_a",
+                "back_walk_b",
+                "nap",
+                "eat",
+                "play_a",
+                "play_b",
+                "perch",
+                "held",
+                "lap",
+                "scratch",
+                "knock",
+                "greet",
             ] {
                 let name = format!("{}:{frame}", c.build);
                 assert_eq!(cat.get(&name), Some(&(24, 24)), "{}'s build has {name}", c.id);

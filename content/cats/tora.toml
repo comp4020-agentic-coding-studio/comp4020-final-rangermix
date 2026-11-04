@@ -4,6 +4,7 @@
 id = "tora"
 name = "Tora"
 coat = "orange_tabby"
+build = "striped"   # its shape, in content/sprites/png/cat/striped/ (slice 11)
 
 [traits]
 sociability = 0.6

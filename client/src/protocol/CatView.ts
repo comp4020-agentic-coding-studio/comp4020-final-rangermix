@@ -3,4 +3,8 @@ import type { Pose } from "./Pose";
 import type { Tile } from "./Tile";
 import type { Walk } from "./Walk";
 
-export type CatView = { id: string, name: string, coat: string, at: Tile, pose: Pose, walk: Walk | null, heldBy: number | null, };
+export type CatView = { id: string, name: string, coat: string, 
+/**
+ * The sprites' build the cat is drawn with (slice 11).
+ */
+build: string, at: Tile, pose: Pose, walk: Walk | null, heldBy: number | null, };

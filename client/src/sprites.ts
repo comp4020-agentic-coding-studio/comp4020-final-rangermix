@@ -14,8 +14,12 @@ import type { Look } from "./protocol/Look";
 /** Palette slots; -1 is transparent. */
 export type Grid = number[][];
 export type TileName = "floor" | "wall" | "window" | "door" | "board";
-/** A cat's frames; the back_ ones show it walking or sitting away from the viewer (slice 12). */
-export type CatFrame = "sit" | "walk_a" | "walk_b" | "nap" | "back_sit" | "back_walk_a" | "back_walk_b";
+/**
+ * A cat's frame, by its build and pose (slice 11): `round:sit`. The back_
+ * ones show it walking or sitting away from the viewer (slice 12).
+ */
+export type CatPose = "sit" | "walk_a" | "walk_b" | "back_sit" | "back_walk_a" | "back_walk_b" | "nap" | "eat" | "play_a" | "play_b" | "perch" | "held" | "lap" | "scratch" | "knock" | "greet";
+export type CatFrame = `${string}:${CatPose}`;
 /** A person's frames; the back ones show them walking or standing away from the viewer (slice 12). */
 export type AvatarFrame = "stand" | "walk_a" | "walk_b" | "back" | "back_walk_a" | "back_walk_b";
 export type EmoteName = "heart" | "question" | "dots" | "zzz" | "sniff" | "wave" | "laugh" | "yawn" | "scratch" | "treat" | "food";
@@ -129,9 +133,11 @@ export class Sprites {
     return this.get(`furniture:${kind}`, this.sheets.furniture.get(kind), paletteAt(this.light).furniture);
   }
 
+  /** A cat's frame in its coat; a build without the frame falls back to the round one's, so a new build can be drawn a pose at a time. */
   cat(coat: string, frame: CatFrame): HTMLCanvasElement | null {
     const coats = paletteAt(this.light).coats as Record<string, string[]>;
-    return this.get(`cat:${coat}:${frame}`, this.sheets.cat.get(frame), coats[coat] ?? coats.white_grey);
+    const grid = this.sheets.cat.get(frame) ?? this.sheets.cat.get(`round:${frame.split(":")[1]}`);
+    return this.get(`cat:${coat}:${frame}`, grid, coats[coat] ?? coats.white_grey);
   }
 
   avatar(look: Look, frame: AvatarFrame): HTMLCanvasElement | null {

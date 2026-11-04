@@ -241,15 +241,18 @@ function onBlock(f: FurnitureView, px: number, py: number): boolean {
   return false;
 }
 
-/** A figure's sprite box, `lift` pixels up, as a polygon. */
-function spriteBox(spot: { x: number; y: number }, lift: number): Pt[] {
-  const at = feetAt(spot);
+/** How big a cat is drawn, in room pixels (slice 11). */
+export const CAT = 24;
+
+/** A figure's sprite box, `size` pixels square and `lift` pixels up, as a polygon. */
+function spriteBox(spot: { x: number; y: number }, lift: number, size = TILE): Pt[] {
+  const at = feetAt(spot, size);
   const top = at.y - lift;
   return [
     { x: at.x, y: top },
-    { x: at.x + TILE, y: top },
-    { x: at.x + TILE, y: top + TILE },
-    { x: at.x, y: top + TILE },
+    { x: at.x + size, y: top },
+    { x: at.x + size, y: top + size },
+    { x: at.x, y: top + size },
   ];
 }
 
@@ -371,8 +374,8 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       ...footprint(spot, on),
       layer,
       lift,
-      hit: (px, py) => (inside(spriteBox(spot, lift), px, py) ? tile : null),
-      paint: (ctx, sprites) => drawCat(ctx, sprites, cat, spot, now, lift),
+      hit: (px, py) => (inside(spriteBox(spot, lift, CAT), px, py) ? tile : null),
+      paint: (ctx, sprites) => drawCat(ctx, sprites, state, cat, spot, now, lift),
     });
   }
   for (const person of state.people.values()) {
@@ -394,7 +397,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
-        if (held) drawCat(ctx, sprites, held, { ...spot, moving: false }, now, lift + 6);
+        if (held) drawCat(ctx, sprites, state, held, { ...spot, moving: false }, now, lift + 6);
       },
     });
   }
@@ -656,7 +659,7 @@ const SCATTERED: [number, number, number][] = [
   [0.8, 1.1, 1],
 ];
 
-function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, mirror: boolean): void {
+function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, mirror: boolean, size = TILE): void {
   const x = onScreen(ctx, at.x);
   const y = onScreen(ctx, at.y);
   if (!mirror) {
@@ -664,29 +667,53 @@ function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, mirror: boolean):
     return;
   }
   ctx.save();
-  ctx.translate(x + TILE, y);
+  ctx.translate(x + size, y);
   ctx.scale(-1, 1);
   ctx.drawImage(img, 0, 0);
   ctx.restore();
 }
 
-function drawCat(ctx: Ctx, sprites: Sprites, cat: Cat, spot: Spot, now: number, lift = 0): void {
-  // Playing, a cat bats about on the spot; eating, grooming and held, it sits.
-  const busy = spot.moving || cat.pose === "play";
-  const back = spot.view === "back" ? "back_" : "";
-  const frame: CatFrame = cat.pose === "nap" ? "nap" : busy ? `${back}${Math.floor(now / 160) % 2 ? "walk_a" : "walk_b"}` : `${back}sit`;
-  const img = sprites.cat(cat.coat, frame);
-  const feet = feetAt(spot);
+/** How long a cat shows a reaction's own pose (scratching, greeting, playing with someone), in milliseconds. */
+const REACTION_POSE_MS = 1200;
+
+/**
+ * The frame a cat shows (slice 11): its build's, for what it's doing.
+ * Walking, its two steps, its back if going away; a moment after the café
+ * says it scratched, greeted or played with someone, that pose; then by
+ * its pose: asleep (on a lap if someone sits there), eating, playing in
+ * two frames, held, perched up on the window seat, else sitting.
+ */
+export function catFrame(state: CafeState, cat: Cat, spot: Spot, now: number): CatFrame {
+  const b = cat.build;
+  const back = spot.view === "back";
+  const step = Math.floor(now / 160) % 2 ? "a" : "b";
+  if (spot.moving) return `${b}:${back ? "back_" : ""}walk_${step}`;
+  const reaction = cat.reaction && now - cat.reaction.at < REACTION_POSE_MS ? cat.reaction.reaction.kind : null;
+  if (reaction === "scratch") return `${b}:scratch`;
+  if (reaction === "greet") return `${b}:greet`;
+  if (reaction === "play" || cat.pose === "play") return `${b}:play_${step}`;
+  if (cat.pose === "nap") return lapOf(state, cat) !== null ? `${b}:lap` : `${b}:nap`;
+  if (cat.pose === "eat") return `${b}:eat`;
+  if (cat.pose === "held") return `${b}:held`;
+  if (standingOn(state, spot)?.kind === "window_seat") return `${b}:perch`;
+  return `${b}:${back ? "back_" : ""}sit`;
+}
+
+function drawCat(ctx: Ctx, sprites: Sprites, state: CafeState, cat: Cat, spot: Spot, now: number, lift = 0): void {
+  const img = sprites.cat(cat.coat, catFrame(state, cat, spot, now));
+  // A sprite as big as its image (24 px for a cat since slice 11), its feet on the tile.
+  const size = img ? img.width : TILE;
+  const feet = feetAt(spot, size);
   const at = { x: feet.x, y: feet.y - lift };
   if (img) {
     ctx.save();
     if (cat.pose === "hide") ctx.globalAlpha = 0.55;
-    drawFlipped(ctx, img, at, spot.mirror);
+    drawFlipped(ctx, img, at, spot.mirror, size);
     ctx.restore();
   }
   const fresh = cat.reaction && now - cat.reaction.at < 2500 ? EMOTE_FOR[cat.reaction.reaction.kind] : null;
   const emote = fresh ?? (cat.pose === "nap" ? "zzz" : null);
-  if (emote) blit(ctx, sprites.emote(emote), at.x + 4, at.y - 8);
+  if (emote) blit(ctx, sprites.emote(emote), at.x + size / 2 - 4, at.y - 8);
 }
 
 /** A carried piece, held up over its carrier's head: a small block. */

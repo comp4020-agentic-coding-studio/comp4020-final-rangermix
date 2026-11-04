@@ -1,22 +1,25 @@
-// Slice 11, part 1: Mochi at 24 px in every pose the café shows, front and
-// back, for the user to judge before any other sprite is drawn (the spec's
-// settled order: one cat first). Not yet the café's code: each frame is a
-// grid of the coat's six palette slots, drawn from shapes the way the
-// study's 24-px cats were (docs/notes/screens/art-style/scripts/study.html,
-// catSit, catNap, catWalk, TWEAK.mochi), then written as
-//   mochi/<frame>.txt   the grid, in content/sprites' text format, 24x24
-//   mochi/<frame>.png   the grid in the day's colours, 1 px a pixel
-//   ../mochi-sheet.png  every frame at the desktop's 4x and the phone's 3x,
-//                       by day and by night, on the floor's own colours,
-//                       beside today's 16-px cat
-// Usage, from the repo root: node docs/notes/screens/slice-11/scripts/mochi.mjs
+// The cats' sprites (slice 11): every pose the café shows, front and back,
+// at 24 px, for each build (round, slim, striped), drawn from shapes the
+// way the study's 24-px cats were (docs/notes/screens/art-style/scripts/
+// study.html, catSit, catNap, catWalk, TWEAK). Mochi (round) was judged by
+// the user first, as the spec settled; the others follow her style.
+//
+// Each frame is a grid of a coat's six palette slots, written as
+//   content/sprites/png/cat/<build>/<frame>.png  in the white-grey coat's
+//     day colours, 1 px a pixel: the art scripts/sprites.ts turns into
+//     content/sprites/cat.txt
+//   docs/notes/screens/slice-11/<build>-sheet.png  every frame at the
+//     desktop's 4x and the phone's 3x, by day and by night, in that cat's
+//     own coat, on the floor's colours, to judge from
+// Usage, from the repo root: node scripts/cats.mjs, then node scripts/sprites.ts
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repo = path.resolve(here, "../../../../..");
+const repo = path.resolve(here, "..");
+const screens = path.join(repo, "docs/notes/screens/slice-11");
 const pal = JSON.parse(fs.readFileSync(path.join(repo, "content/sprites/palettes.json"), "utf8"));
 
 // Slots: 0 outline, 1 base, 2 shade, 3 light, 4 eyes, 5 pink (coats.json).
@@ -59,7 +62,13 @@ function paint(parts, { chest = null, inner = null, feet = null } = {}) {
         let c = B;
         if (lit > 0.75) c = S;
         if (lit < -0.95 && name !== "tail") c = L;
-        if (chest && name === "body" && chest(u, v)) c = lit > 0.95 ? B : L;
+        const onChest = chest && name === "body" && chest(u, v);
+        if (onChest) c = lit > 0.95 ? B : L;
+        // A tabby's stripes: bands of the shade across the coat (study.html's Tora).
+        if (T.stripes && !onChest && c === B) {
+          const band = name === "tail" ? Math.sin((u + v) * 58) : name === "head" ? (v < p.light[1] - 0.02 ? Math.sin(u * 64) : -1) : Math.sin((u * 0.55 + v) * 36);
+          if (band > 0.5) c = S;
+        }
         if (inner && name === "head" && inner(u, v)) c = K;
         if (feet && feet(u, v)) c = L;
         g[y][x] = c;
@@ -96,8 +105,18 @@ function put(g, u, v, c, w = 1, h = 1) {
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if ((g[y0 + j]?.[x0 + i] ?? -1) >= 0) g[y0 + j][x0 + i] = c;
 }
 
-// Mochi: round, a big white chest, short ears, a medium tail (study.html, TWEAK.mochi).
-const T = { f: 1.06, tip: 0.07, bw: 0.25, chest: 0.135, tail: 0.42 };
+/**
+ * Each build's shape (study.html, TWEAK): Mochi round, a big white chest,
+ * short ears, a medium tail; Burakku slim, tall ears, a long tail; Tora
+ * the round shape with stripes. `stripes` bands the shade across the coat.
+ */
+const BUILDS = {
+  round: { f: 1.06, tip: 0.07, bw: 0.25, chest: 0.135, tail: 0.42, stripes: false },
+  slim: { f: 0.97, tip: 0.02, bw: 0.215, chest: 0.085, tail: 0.58, stripes: false },
+  striped: { f: 1.0, tip: 0.06, bw: 0.255, chest: 0.11, tail: 0.44, stripes: true },
+};
+/** The build being drawn; each frame reads it. */
+let T = BUILDS.round;
 
 /** Sitting, facing right: the study's catSit. `tailUp` curls it higher, `lookUp` raises the head. */
 function sit({ tailUp = 0, lookUp = 0, eyesShut = false, mouth = false } = {}) {
@@ -340,30 +359,27 @@ function knock() {
  */
 const right = (g) => g.map((row) => row.slice().reverse());
 
-/** Mochi's frames, in the order the sheet shows them, with what each is for. */
-const FRAMES = [
-  ["sit", right(sit()), "sitting (idle, sit, groom)"],
-  ["walk_a", walk(0), "walking"],
-  ["walk_b", walk(1), "walking, the other step"],
-  ["back_sit", backSit(), "sitting, back turned"],
-  ["back_walk_a", walkAway(0), "walking away"],
-  ["back_walk_b", walkAway(1), "walking away, the other step"],
-  ["nap", right(nap()), "asleep"],
-  ["eat", eat(), "eating from the bowl"],
-  ["play_a", play(0), "playing"],
-  ["play_b", play(1), "playing, batting"],
-  ["perch", perch(), "perched on the window seat"],
-  ["held", held(), "held in someone's arms"],
-  ["lap", right(lap()), "on a lap"],
-  ["scratch", scratch(), "scratching the post"],
-  ["knock", knock(), "knocking something over"],
-  ["greet", right(sit({ tailUp: 0.12, lookUp: 0.03, mouth: true })), "greeting someone, tail up"],
+/** A build's frames, in the sheet's order, drawn in the build `T` holds now. */
+const frames = () => [
+  ["sit", right(sit())],
+  ["walk_a", walk(0)],
+  ["walk_b", walk(1)],
+  ["back_sit", backSit()],
+  ["back_walk_a", walkAway(0)],
+  ["back_walk_b", walkAway(1)],
+  ["nap", right(nap())],
+  ["eat", eat()],
+  ["play_a", play(0)],
+  ["play_b", play(1)],
+  ["perch", perch()],
+  ["held", held()],
+  ["lap", right(lap())],
+  ["scratch", scratch()],
+  ["knock", knock()],
+  ["greet", right(sit({ tailUp: 0.12, lookUp: 0.03, mouth: true }))],
 ];
 
 // ---------- writing ----------
-const SLOTS = "0123456789abcdef";
-const out = path.join(here, "../mochi");
-fs.mkdirSync(out, { recursive: true });
 
 /** A PNG of `w` by `h` RGBA bytes. */
 function png(w, h, rgba) {
@@ -377,86 +393,75 @@ function png(w, h, rgba) {
 }
 const rgbOf = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 
-let text = "";
-for (const [name, g] of FRAMES) {
-  text += `== ${name}\n${g.map((row) => row.map((v) => (v < 0 ? "." : SLOTS[v])).join("")).join("\n")}\n\n`;
-  const rgba = Buffer.alloc(N * N * 4);
-  g.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) rgba.set([...rgbOf(pal.day.coats.white_grey[v]), 255], (y * N + x) * 4); }));
-  fs.writeFileSync(path.join(out, `${name}.png`), png(N, N, rgba));
-}
-fs.writeFileSync(path.join(out, "mochi.txt"), text.trimEnd() + "\n");
-
-// ---------- the sheet ----------
-// Today's 16-px cat, for comparison.
-const old = new Map();
-{
-  let cur = null;
-  for (const line of fs.readFileSync(path.join(repo, "content/sprites/cat.txt"), "utf8").split("\n")) {
-    if (line.startsWith("== ")) { cur = line.slice(3).trim(); old.set(cur, []); }
-    else if (line.trim() && cur) old.get(cur).push([...line].map((ch) => (ch === "." ? -1 : SLOTS.indexOf(ch))));
-  }
-}
-// A 5x7 pixel font for the labels: just what the sheet needs.
+// A 5x7 pixel font for the sheet's labels.
 const FONT = {
   A: "01110100011000111111100011000110001", B: "11110100011000111110100011000111110", C: "01111100001000010000100001000001111", D: "11110100011000110001100011000111110",
-  E: "11111100001000011110100001000011111", G: "01111100001000010111100011000101111", H: "10001100011000111111100011000110001", I: "01110001000010000100001000010001110",
-  K: "10001100101010011000101001001010001", L: "10000100001000010000100001000011111", M: "10001110111010110101100011000110001", N: "10001110011010110011100011000110001",
-  O: "01110100011000110001100011000101110", P: "11110100011000111110100001000010000", R: "11110100011000111110101001001010001", S: "01111100001000001110000010000111110",
-  T: "11111001000010000100001000010000100", U: "10001100011000110001100011000101110", W: "10001100011000110101101011101110001", X: "10001100010101000100010101000110001",
-  Y: "10001100010101000100001000010000100", 0: "01110100011001110101110011000101110", 1: "00100011000010000100001000010001110", 3: "11110000010000101110000010000111110",
-  4: "00010001100101010010111110001000010", 6: "01110100001000011110100011000101110", " ": "00000000000000000000000000000000000", "-": "00000000000000011111000000000000000",
-  2: "01110100010000100010001000100011111", F: "11111100001000011110100001000010000", J: "00111000100001000010100101001001100", V: "10001100011000110001100010101000100",
-  _: "00000000000000000000000000000011111", Q: "01110100011000110001101011001001101", Z: "11111000010001000100010001000011111",
-  ",": "00000000000000000000000000110001000", ".": "00000000000000000000000000000001100", "(": "00010001000100001000010000010000010", ")": "01000001000001000010000100010001000",
+  E: "11111100001000011110100001000011111", F: "11111100001000011110100001000010000", G: "01111100001000010111100011000101111", H: "10001100011000111111100011000110001",
+  I: "01110001000010000100001000010001110", J: "00111000100001000010100101001001100", K: "10001100101010011000101001001010001", L: "10000100001000010000100001000011111",
+  M: "10001110111010110101100011000110001", N: "10001110011010110011100011000110001", O: "01110100011000110001100011000101110", P: "11110100011000111110100001000010000",
+  Q: "01110100011000110001101011001001101", R: "11110100011000111110101001001010001", S: "01111100001000001110000010000111110", T: "11111001000010000100001000010000100",
+  U: "10001100011000110001100011000101110", V: "10001100011000110001100010101000100", W: "10001100011000110101101011101110001", X: "10001100010101000100010101000110001",
+  Y: "10001100010101000100001000010000100", Z: "11111000010001000100010001000011111", 0: "01110100011001110101110011000101110", 1: "00100011000010000100001000010001110",
+  2: "01110100010000100010001000100011111", 3: "11110000010000101110000010000111110", 4: "00010001100101010010111110001000010", 6: "01110100001000011110100011000101110",
+  " ": "00000000000000000000000000000000000", "-": "00000000000000011111000000000000000", ",": "00000000000000000000000000110001000", ".": "00000000000000000000000000000001100",
+  "(": "00010001000100001000010000010000010", ")": "01000001000001000010000100010001000", _: "00000000000000000000000000000011111", ":": "00000011000110000000011000110000000",
 };
-const scales = [["DESKTOP 4X", 4], ["PHONE 3X", 3]];
-const lights = [["DAY", "day"], ["NIGHT", "night"]];
-const cellW = (s) => N * s + 12;
-const W = 16 + 70 * 1 + FRAMES.reduce((a) => a + cellW(4), 0);
-const rowH = (s) => N * s + 24 + (s === 3 ? 14 : 0);
-const H = 40 + lights.length * scales.reduce((a, [, s]) => a + rowH(s), 0) + 20;
-const sheet = Buffer.alloc(W * H * 4);
-const fill = (x0, y0, w, h, hex) => { const [r, g, b] = rgbOf(hex); for (let y = Math.max(0, y0); y < Math.min(H, y0 + h); y++) for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) sheet.set([r, g, b, 255], (y * W + x) * 4); };
-const label = (x, y, s, hex, k = 1) => { for (const ch of s.toUpperCase()) { const f = FONT[ch] ?? FONT[" "]; for (let i = 0; i < 35; i++) if (f[i] === "1") fill(x + (i % 5) * k, y + Math.floor(i / 5) * k, k, k, hex); x += 6 * k; } };
-const blit = (g, colours, x0, y0, s) => g.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) fill(x0 + x * s, y0 + y * s, s, s, colours[v]); }));
 
-fill(0, 0, W, H, "#1e1e2e");
-label(16, 12, "MOCHI AT 24 PX, EVERY POSE (SLICE 11, FOR JUDGING)", "#cdd6f4", 2);
-let y = 40;
-for (const [lname, light] of lights) {
-  const coat = pal[light].coats.white_grey;
-  const floor = [pal[light].room[0], pal[light].room[1]];
-  for (const [sname, s] of scales) {
-    label(16, y + 6, lname, "#a6adc8");
-    label(16, y + 18, sname, "#a6adc8");
-    let x = 16 + 70;
-    FRAMES.forEach(([name, g], i) => {
-      // Each frame on a patch of the floor in this light, the boards alternating.
-      fill(x, y, N * s + 8, N * s + 8, floor[i % 2]);
-      blit(g, coat, x + 4, y + 4, s);
-      // Its name under the last row of each light.
-      if (s === 3) label(x, y + N * s + 12, name.replace("back_", "bk_"), "#a6adc8");
-      x += cellW(4);
-    });
-    y += rowH(s);
+/** Which cat wears which build, and its coat, from content/cats/ (each file's `build` and `coat`). */
+function catsByBuild() {
+  const out = {};
+  for (const file of fs.readdirSync(path.join(repo, "content/cats")).sort()) {
+    const text = fs.readFileSync(path.join(repo, "content/cats", file), "utf8");
+    const field = (k) => new RegExp(`^${k}\\s*=\\s*"([^"]*)"`, "m").exec(text)?.[1];
+    const build = field("build");
+    if (build) out[build] = { name: field("name"), coat: field("coat") };
   }
+  return out;
 }
-fs.writeFileSync(path.join(here, "../mochi-sheet.png"), png(W, H, sheet));
 
-// The same frames beside today's 16-px ones, at the desktop's 4x, by day.
-{
-  const pairs = [["sit", "sit"], ["walk_a", "walk_a"], ["back_walk_a", "back_walk_a"], ["nap", "nap"]];
-  const s = 4, pw = 16 * s + N * s + 40, W2 = 16 + pairs.length * pw, H2 = N * s + 60;
-  const b2 = Buffer.alloc(W2 * H2 * 4);
-  const f2 = (x0, y0, w, h, hex) => { const [r, g, b] = rgbOf(hex); for (let yy = y0; yy < y0 + h; yy++) for (let xx = x0; xx < x0 + w; xx++) if (xx >= 0 && yy >= 0 && xx < W2 && yy < H2) b2.set([r, g, b, 255], (yy * W2 + xx) * 4); };
-  f2(0, 0, W2, H2, "#1e1e2e");
-  pairs.forEach(([a, b], i) => {
-    const x = 16 + i * pw;
-    f2(x, 20, 16 * s + 8, N * s + 8, pal.day.room[0]);
-    old.get(a)?.forEach((row, yy) => row.forEach((v, xx) => { if (v >= 0) f2(x + 4 + xx * s, 20 + 4 + (N - 16) * s + yy * s, s, s, pal.day.coats.white_grey[v]); }));
-    f2(x + 16 * s + 16, 20, N * s + 8, N * s + 8, pal.day.room[1]);
-    FRAMES.find(([n]) => n === b)[1].forEach((row, yy) => row.forEach((v, xx) => { if (v >= 0) f2(x + 16 * s + 20 + xx * s, 24 + yy * s, s, s, pal.day.coats.white_grey[v]); }));
-  });
-  fs.writeFileSync(path.join(here, "../mochi-16-and-24.png"), png(W2, H2, b2));
+const owners = catsByBuild();
+for (const [build, shape] of Object.entries(BUILDS)) {
+  T = shape;
+  const fs16 = frames();
+  // The art: PNGs in the key coat (white-grey by day), which scripts/sprites.ts reads.
+  const dir = path.join(repo, "content/sprites/png/cat", build);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, g] of fs16) {
+    const rgba = Buffer.alloc(N * N * 4);
+    g.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) rgba.set([...rgbOf(pal.day.coats.white_grey[v]), 255], (y * N + x) * 4); }));
+    fs.writeFileSync(path.join(dir, `${name}.png`), png(N, N, rgba));
+  }
+  // The sheet to judge from, in the cat's own coat, by day and by night, at both scales.
+  const owner = owners[build] ?? { name: build, coat: "white_grey" };
+  const scales = [["DESKTOP 4X", 4], ["PHONE 3X", 3]];
+  const lights = [["DAY", "day"], ["NIGHT", "night"]];
+  const cellW = N * 4 + 12;
+  const rowH = (sc) => N * sc + 24 + (sc === 3 ? 14 : 0);
+  const W = 16 + 70 + fs16.length * cellW;
+  const H = 40 + lights.length * scales.reduce((a, [, sc]) => a + rowH(sc), 0) + 20;
+  const sheet = Buffer.alloc(W * H * 4);
+  const fill = (x0, y0, w, h, hex) => { const [r, g, b] = rgbOf(hex); for (let y = Math.max(0, y0); y < Math.min(H, y0 + h); y++) for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) sheet.set([r, g, b, 255], (y * W + x) * 4); };
+  const label = (x, y, text, hex, k = 1) => { for (const ch of text.toUpperCase()) { const f = FONT[ch] ?? FONT[" "]; for (let i = 0; i < 35; i++) if (f[i] === "1") fill(x + (i % 5) * k, y + Math.floor(i / 5) * k, k, k, hex); x += 6 * k; } };
+  fill(0, 0, W, H, "#1e1e2e");
+  label(16, 12, `${owner.name} (${build}) AT 24 PX, EVERY POSE`, "#cdd6f4", 2);
+  let y = 40;
+  for (const [lname, light] of lights) {
+    const coat = pal[light].coats[owner.coat];
+    const floor = [pal[light].room[0], pal[light].room[1]];
+    for (const [sname, sc] of scales) {
+      label(16, y + 6, lname, "#a6adc8");
+      label(16, y + 18, sname, "#a6adc8");
+      let x = 16 + 70;
+      fs16.forEach(([name, g], i) => {
+        fill(x, y, N * sc + 8, N * sc + 8, floor[i % 2]);
+        g.forEach((row, yy) => row.forEach((v, xx) => { if (v >= 0) fill(x + 4 + xx * sc, y + 4 + yy * sc, sc, sc, coat[v]); }));
+        if (sc === 3) label(x, y + N * sc + 12, name.replace("back_", "bk_"), "#a6adc8");
+        x += cellW;
+      });
+      y += rowH(sc);
+    }
+  }
+  fs.mkdirSync(screens, { recursive: true });
+  fs.writeFileSync(path.join(screens, `${build}-sheet.png`), png(W, H, sheet));
 }
-console.log(`wrote ${FRAMES.length} frames to ${out}, and the sheets`);
+console.log(`drew ${Object.keys(BUILDS).length} builds into content/sprites/png/cat/, and their sheets`);

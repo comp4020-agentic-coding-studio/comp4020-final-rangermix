@@ -4,6 +4,7 @@
 id = "burakku"
 name = "Burakku"
 coat = "black"
+build = "slim"   # its shape, in content/sprites/png/cat/slim/ (slice 11)
 
 [traits]
 sociability = 0.3
