@@ -1164,6 +1164,18 @@ describe("what's carried or held, at 32 px (slice 11's review, findings 4 and 11
     const catTop = cat!.y + grid.findIndex((row) => row.some((v) => v >= 0));
     expect(catTop, `the cat's top (${catTop}) below the eyes (${eyes})`).toBeGreaterThan(eyes);
   });
+
+  it("wraps the holder's arms round a held cat, in their own skin, a princess hug (the user, 2026-11-05)", async () => {
+    const { p, cat } = await scene((w) => {
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], heldBy: 2, pose: "held" }];
+    });
+    // The holder (scene()'s person 2, with people[0]'s look: avatar 0) has skin palettes.day.avatars.skins[0].
+    const skin = palettes.day.avatars.skins[0].toLowerCase();
+    // Their forearms cross the cat's box: skin pixels drawn over where the cat is.
+    let arms = 0;
+    for (let y = Math.round(cat!.y); y < Math.round(cat!.y) + 24; y++) for (let x = Math.round(cat!.x); x < Math.round(cat!.x) + 24; x++) if (p.at(x, y) === skin) arms++;
+    expect(arms, "the holder's arms across the cat").toBeGreaterThan(12);
+  });
 });
 
 describe("a model's parts drawn back to front (slice 11's review, finding 12)", () => {

@@ -116,3 +116,16 @@ were passed as they are; they can be redrawn later as data.
 - A first try sorted the parts by a computed key, which a post through
   two platforms defeats; the cat tower came out a jumble. The model's own
   order fixed it.
+
+## The princess hug, 2026-11-05
+
+The user, at 10:13 AEDT, of the upright held cat: "no. use princess hugs
+like these", with three pictures: a cartoon cat curled in a crook of
+arms, and two people holding a cat cradled across their arms. Three
+drawings of a cat on its back across the arms didn't read at 24 px
+(a cat lying flat, then one standing on all fours); a curled cat, as the
+cartoon has it, does. So the held frame is the nap's curl lifted to the
+chest, eyes open, and the café draws the holder's arms round it in their
+own skin: one under the cat rising toward its head, a hand on its back
+(`drawHug` in render.ts). Their face shows above. A test holds the arms
+across the cat in the holder's skin, and the cat below their eyes.

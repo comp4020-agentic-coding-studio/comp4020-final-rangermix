@@ -13,7 +13,7 @@ import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
 import type { Walk } from "./protocol/Walk";
 import { TILE } from "./scale";
-import { type AvatarFrame, type CatFrame, type EmoteName, type Grid, type Sprites, frameGrid, paletteAt } from "./sprites";
+import { type AvatarFrame, type CatFrame, type EmoteName, type Grid, type Sprites, avatarPalette, frameGrid, paletteAt } from "./sprites";
 import { type CafeState, type Cat, lapOf, serverNow } from "./state";
 
 // Draws the whole café at 1:1 into the canvas, in a 2:1 isometric camera
@@ -50,6 +50,8 @@ const EMOTE_FOR: Record<Reaction["kind"], EmoteName> = {
 /** This frame's colours, in the hour's light (slice 10); `draw` sets them. */
 let ROOM = paletteAt(0).room;
 let FURNITURE = paletteAt(0).furniture;
+/** This frame's light, for colours drawn outside the sprites (a holder's arms). */
+let LIGHT: Light = 0;
 /** Each kind's block colour, as a slot in the furniture palette. */
 const SLOT: Record<string, number> = {
   cat_tower: 3,
@@ -409,10 +411,12 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
-        // A held cat in their arms, from their chest down to their waist,
-        // below their face and clear of their legs (slice 11's review,
-        // finding 11): a 24-px cat raised 8 px on a 32-px person.
-        if (held) drawCat(ctx, sprites, state, held, { ...spot, moving: false }, now, lift + 2);
+        // A held cat in a princess hug (the user, 2026-11-05): curled in
+        // their arms at the chest, below their face, their forearms round it.
+        if (held) {
+          drawCat(ctx, sprites, state, held, { ...spot, moving: false }, now, lift + 4);
+          drawHug(ctx, person.look, spot, lift + 4);
+        }
       },
     });
   }
@@ -447,6 +451,7 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   const palette = paletteAt(light);
   ROOM = palette.room;
   FURNITURE = palette.furniture;
+  LIGHT = light;
   sprites.light = light;
   ctx.imageSmoothingEnabled = false;
   // The street, the floor and the rug, with their shadows, as one layer
@@ -756,6 +761,35 @@ function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): 
   ctx.translate(onScreen(ctx, placed.x) - whole.x, onScreen(ctx, placed.y) - whole.y - lift);
   block(ctx, tile.x + 0.5 - s / 2, tile.y + 0.5 - s / 2, s, s, z, colour);
   ctx.restore();
+}
+
+/**
+ * The holder's arms round a cat they hold, in their own skin (the user,
+ * 2026-11-05: princess hugs): a forearm under the cat, cradling it, and a
+ * hand over its side, each a bar of skin with an outline, placed where the
+ * held cat is drawn (its 24-px box, `lift` up), so a curled cat reads as
+ * one in someone's arms.
+ */
+function drawHug(ctx: Ctx, look: Look, spot: Spot, lift: number): void {
+  const [, skin] = avatarPalette(look, LIGHT);
+  const edge = shade(skin, 0.3);
+  const at = feetAt(spot, CAT);
+  const x = onScreen(ctx, at.x);
+  const y = onScreen(ctx, at.y - lift);
+  /** A slim arm as runs of pixels: for each column from x0 to x1, a band 2 px tall at a height easing from y0 to y1, its lower edge a shade darker. */
+  const arm = (x0: number, x1: number, y0: number, y1: number) => {
+    for (let c = x0; c <= x1; c++) {
+      const r = Math.round(y0 + ((y1 - y0) * (c - x0)) / Math.max(1, x1 - x0));
+      ctx.fillStyle = skin;
+      ctx.fillRect(x + c, y + r, 1, 2);
+      ctx.fillStyle = edge;
+      ctx.fillRect(x + c, y + r + 2, 1, 1);
+    }
+  };
+  // The lower arm under its belly, from the holder's near side, rising toward its head.
+  arm(3, 19, 19, 16);
+  // The upper arm over its back, a hand resting on its shoulder.
+  arm(7, 14, 12, 11);
 }
 
 /** The frame someone shows: walking (two steps), or standing; their back going away (slice 12). */

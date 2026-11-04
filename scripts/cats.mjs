@@ -278,25 +278,44 @@ function perch() {
   return g;
 }
 
-/** Held: hanging in someone's arms, front paws and head over, back legs and tail dangling. */
+/**
+ * Held in a princess hug (the user, 2026-11-05): cradled on its back across
+ * someone's arms, its belly up toward their chest, its head at the elbow
+ * on the right (every frame faces right), a little raised and turned to
+ * the viewer, front paws curled up, back legs and tail hanging down on
+ * the left. Drawn low in the frame, at the arms, so the holder's face and
+ * chest show above it.
+ */
 function held() {
-  const head = ell(0.5, 0.3, 0.19 * T.f, 0.16 * T.f);
-  const earL = tri([0.32, 0.27], [0.34, 0.07], [0.46, 0.17]), earR = tri([0.54, 0.17], [0.66, 0.07], [0.68, 0.27]);
-  const body = ell(0.5, 0.6, 0.17, 0.2);
-  const hind = (u, v) => v > 0.75 && v < 0.93 && ((u > 0.38 && u < 0.45) || (u > 0.55 && u < 0.62));
-  const fore = (u, v) => v > 0.45 && v < 0.6 && ((u > 0.27 && u < 0.34) || (u > 0.66 && u < 0.73));
-  const tail = curve((s) => 0.5 + 0.06 * Math.sin(s * 3), (s) => 0.78 + 0.2 * s, 0.045);
-  const cat = paint([["tail", { shape: tail, light: [0.5, 0.88, 0.1] }], ["body", { shape: any(body, hind, fore), light: [0.5, 0.6, 0.2] }], ["head", { shape: any(head, earL, earR), light: [0.5, 0.3, 0.18] }]], {
-    chest: ell(0.5, 0.55, 0.1, 0.14),
-    inner: any(tri([0.35, 0.22], [0.36, 0.12], [0.42, 0.18]), tri([0.58, 0.18], [0.64, 0.12], [0.65, 0.22])),
-    feet: (u, v) => (hind(u, v) && v > 0.89) || (fore(u, v) && v > 0.56),
-  });
+  // Curled up in the arms, as the first reference's cartoon cat: the nap's
+  // curl (round body, head at the right, tail wrapped under), eyes open and
+  // content, lifted to the middle of the frame. The café draws the
+  // holder's forearms under and over it (render.ts, drawHug), which is
+  // what makes it a hug at this size.
+  const body = ell(0.5, 0.58, 0.3, 0.19);
+  const head = ell(0.74, 0.44, 0.16 * T.f, 0.15 * T.f);
+  const earL = tri([0.62, 0.41], [0.61, 0.22 - (0.07 - T.tip)], [0.72, 0.31]), earR = tri([0.76, 0.31], [0.87, 0.22 - (0.07 - T.tip)], [0.88, 0.4]);
+  const tail = curve((s) => 0.24 + 0.4 * s, (s) => 0.72 + 0.06 * Math.sin(Math.PI * s), 0.05);
+  const paw = (u, v) => (u > 0.58 && u < 0.66 && v > 0.6 && v < 0.67) || (u > 0.47 && u < 0.55 && v > 0.62 && v < 0.69);
+  const cat = paint(
+    [
+      ["body", { shape: body, light: [0.5, 0.58, 0.28] }],
+      ["tail", { shape: tail, light: [0.45, 0.74, 0.12] }],
+      ["head", { shape: any(head, earL, earR), light: [0.74, 0.44, 0.16] }],
+      ["body", { shape: paw, light: [0.56, 0.64, 0.1] }],
+    ],
+    {
+      chest: ell(0.6, 0.6, T.chest, 0.09),
+      inner: any(tri([0.645, 0.38], [0.635, 0.28 - (0.07 - T.tip)], [0.7, 0.33]), tri([0.79, 0.33], [0.85, 0.28 - (0.07 - T.tip)], [0.855, 0.38])),
+      feet: paw,
+    },
+  );
   const g = outline(cat);
-  put(g, 0.41, 0.29, E, 2, 2);
-  put(g, 0.55, 0.29, E, 2, 2);
-  put(g, 0.41, 0.29, O, 1, 2);
-  put(g, 0.55, 0.29, O, 1, 2);
-  put(g, 0.49, 0.36, K, 1, 1);
+  put(g, 0.68, 0.43, E, 2, 2);
+  put(g, 0.79, 0.43, E, 2, 2);
+  put(g, 0.68, 0.43, O, 1, 2);
+  put(g, 0.79, 0.43, O, 1, 2);
+  put(g, 0.74, 0.5, K, 1, 1);
   return g;
 }
 
