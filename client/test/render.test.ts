@@ -5,7 +5,7 @@ import palettes from "../../content/sprites/palettes.json";
 import { toCanvas } from "../src/iso";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
 import type { Light } from "../src/canberra";
-import { Sprites } from "../src/sprites";
+import { Sprites, frameGrid } from "../src/sprites";
 import { apply, fromWelcome } from "../src/state";
 
 // What's drawn, in order, in the room at an angle (slice 09): what lies flat
@@ -1173,5 +1173,76 @@ describe("a model's parts drawn back to front (slice 11's review, finding 12)", 
         }
       });
     }
+  });
+});
+
+describe("the sizes the café draws and picks at (slice 11's review, finding 13)", () => {
+  /** Where a figure's image is drawn, in canvas pixels, and its width. */
+  function placed(kind: "cat" | "person", mirror: boolean) {
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    // Walking along -x (mirrored) or +x, half-way, so the facing is set.
+    const path = mirror ? [{ x: 7, y: 6 }, { x: 6, y: 6 }, { x: 5, y: 6 }] : [{ x: 5, y: 6 }, { x: 6, y: 6 }, { x: 7, y: 6 }];
+    if (kind === "cat") {
+      w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], at: path[0], pose: "walk", walk: { path, start: 10_000, speed: 1 }, heldBy: null }];
+    } else {
+      w.snapshot.cats = [];
+      w.snapshot.people = [{ ...w.snapshot.people[0], id: 2, at: path[0], walk: { path, start: 10_000, speed: 1 } }];
+      w.you = 99;
+    }
+    const s = fromWelcome(w, 10_000);
+    const img = document.createElement("canvas");
+    img.width = img.height = kind === "cat" ? 24 : 32;
+    const sprites = new Sprites();
+    sprites.cat = () => (kind === "cat" ? img : null);
+    sprites.avatar = () => (kind === "person" ? img : null);
+    sprites.emote = () => null;
+    let m = [1, 0, 0, 1, 0, 0];
+    const stack: number[][] = [];
+    let left = NaN;
+    const ctx = new Proxy({}, {
+      get: (_t, k) => {
+        if (k === "save") return () => stack.push([...m]);
+        if (k === "restore") return () => (m = stack.pop() ?? m);
+        if (k === "translate") return (x: number, y: number) => (m = [m[0], m[1], m[2], m[3], m[4] + m[0] * x, m[5] + m[3] * y]);
+        if (k === "scale") return (x: number, y: number) => (m = [m[0] * x, m[1], m[2], m[3] * y, m[4], m[5]]);
+        if (k === "getTransform") return () => ({ a: m[0] < 0 ? -m[0] : m[0] });
+        if (k === "drawImage") return (i: unknown, x: number) => { if (i === img) left = Math.min(m[0] * x + m[4], m[0] * (x + img.width) + m[4]); };
+        return () => {};
+      },
+      set: () => true,
+    }) as unknown as CanvasRenderingContext2D;
+    draw(ctx, s, sprites, 11_000, { tile: null, visible: false, hover: null, ghost: null }, 0);
+    return { left, size: img.width, s };
+  }
+
+  it("draws a 24-px cat and a 32-px person centred on their spot, mirrored or not", () => {
+    for (const kind of ["cat", "person"] as const) {
+      const right = placed(kind, false);
+      const left = placed(kind, true);
+      // At (6,6) half-way along each walk: the same spot, so the same left edge whichever way it faces.
+      const centre = toCanvas(6.5, 6.5).x;
+      expect(right.left, `${kind} facing right`).toBeCloseTo(centre - right.size / 2, 0);
+      expect(left.left, `${kind} facing left, mirrored, at the same place`).toBeCloseTo(centre - left.size / 2, 0);
+    }
+  });
+
+  it("picks a 24-px cat out at its sides, beyond where a 16-px cat would have reached", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    w.snapshot.cats = [{ ...w.snapshot.cats[0], at: { x: 6, y: 6 }, pose: "sit", walk: null, heldBy: null }];
+    const s = fromWelcome(w, 10_000);
+    const c = toCanvas(6.5, 6.5);
+    // The sit frame's widest drawn row: a point on it, 10 px out from the middle, picks the cat (a 16-px cat stopped at 8).
+    const grid = frameGrid("cat", "round:sit")!;
+    let best = { y: 0, xs: [] as number[] };
+    grid.forEach((row, y) => { const xs = row.flatMap((v, x) => (v >= 0 ? [x] : [])); if (xs.length > best.xs.length) best = { y, xs }; });
+    const top = c.y - 24 + 2;
+    const farX = Math.max(...best.xs);
+    expect(hitAt(s, c.x - 12 + farX + 0.5, top + best.y + 0.5, 10_000), "the cat's far side").toEqual({ x: 6, y: 6 });
+    // Well past it, the floor.
+    expect(hitAt(s, c.x - 12 + farX + 3.5, top + best.y + 0.5, 10_000), "past the cat").toBeNull();
   });
 });
