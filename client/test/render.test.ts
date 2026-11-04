@@ -653,7 +653,7 @@ describe("the street behind the café", () => {
     [0, "day"],
     [1, "night"],
   ] as const) {
-    it(`fills the corners round the room with the street's ${name} colours, and leaves none of the old backdrop`, async () => {
+    it(`fills the corners round the room with the street's ${name} colours, several of them, not one flat fill`, async () => {
       const p = await drawn(light);
       const colours = street(name);
       // The top-left and top-right corners are sky and towers; the bottom corners the street's foot.
