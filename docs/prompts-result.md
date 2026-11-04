@@ -1993,7 +1993,7 @@ recording why HoliznaCC0 and why each visitor has their own player
 
 **Result.** The branch rebased onto `main`, which had taken slice 14 and
 the music session's entries since, and opened as a pull request
-(PR_LINK). The prompt log was the only conflict: both
+([#1](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/pull/1)). The prompt log was the only conflict: both
 sides had added to its end, and this session's entry now follows the
 music session's, numbered 16, as its prompt came after. Every check ran
 again on the rebased tree: 230 client tests, all 77 of `spec/` against a
