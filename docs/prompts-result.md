@@ -1873,6 +1873,26 @@ corrected line, slice 14's glass by day, and the judgements left.
   Flagged for the user: Tora's orange coat and the peach wood floor are
   one family, so by day he blends in.
 
+- **Slice 11's review** ([findings](notes/reviews/slice-11-findings.md), on
+  `slice-11-wip`: 10 major, 11 minor), every finding answered
+  ([`bb2ce5b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bb2ce5b) to [`b7339a7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b7339a7)):
+  - a click now acts on what's drawn: a figure on its sprite's pixels, a
+    piece on its parts, so a cat between the tower's platforms can be
+    tapped;
+  - cats and people stand on the part under them, no longer floating
+    over a moved tower;
+  - a carried piece rides clear of the head, and a held cat stays below
+    the face;
+  - the look picker and the faces at the window show whole heads;
+  - knocking over now shows its pose, the server naming the cat (a
+    protocol change), and eating from a hand shows eating;
+  - every kind of furniture has a model, and the three a cat can knock
+    over lie down as their parts;
+  - the furniture and lap, nap, carry and hold scenes are there to
+    judge, from the café itself.
+  Every gate passes. Slice 11 waits off `main` for the user's call on
+  slice 15's order.
+
 ### 15. Music in the café
 
 *Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
