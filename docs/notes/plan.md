@@ -54,6 +54,8 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 13 | A café on its street | The room as a diorama, with the street behind it by day and by night; the room crisp, with self outlines, shadows cast from the windows and ambient occlusion ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)) | [13](../slices/13-a-cafe-on-its-street.md) | reviewed and merged 2026-11-05 ([plan](plan-slice-13-street.md), [findings](reviews/slice-13-findings.md), [screens](screens/slice-13/)); live once the user has judged the screens |
 | 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | built 2026-11-05 on its branch ([plan](plan-slice-14-panels.md), [screens](screens/slice-14/)); under review |
 
+| 15 | Music while you sit | Six CC0 lofi tracks by HoliznaCC0, three for day and three for night by the Canberra hour; each visitor's own player, with Play or Pause, Previous, Next and a volume in a fourth floating panel ([ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)) | [15](../slices/15-music-while-you-sit.md) | spec proposed 2026-11-05; to be built after 14 merges and before 11 |
+
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
 
@@ -119,7 +121,11 @@ Updated by session `a4e69a46` (2026-11-05).
    Slices 12 to 14 are approved, and the user asked for 11 to 14 built
    (2026-11-04), in this order: 12, the walking, which every sprite's
    back view waits on; 13, the street and the crisp room; 14, the panels;
-   then 11, the art, at the new density with back views.
+   then 11, the art, at the new density with back views. **Slice 15, the
+   music** (spec proposed 2026-11-05,
+   [ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)),
+   goes between 14 and 11 at the user's asking, since its desktop panel
+   is one of 14's floating panels.
 2. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the
@@ -128,6 +134,8 @@ Updated by session `a4e69a46` (2026-11-05).
 3. **Approve and build slice 06**, the accessibility pass, after the camera,
    since its browser checks find tiles the way slice 09 makes them.
 4. **Final submission (Mon 9 Nov, 12:00).** `PROCESS.md` rewritten again,
-   and the user's `README.md`. The README still promises soothing music the
-   design doesn't have (slice 11's open question) and has no sources yet;
+   and the user's `README.md`. The README promises soothing music, which
+   slice 11 settled would come out and slice 15 would make true again;
+   the line, and a credit for HoliznaCC0 in its sources, are the user's
+   to write. It has no sources yet;
    [readme-material.md](readme-material.md) gathers them.

@@ -505,6 +505,20 @@ renamed.
   pixel font can't), menus (real buttons the keyboard can focus) and a
   screen-reader live region that narrates what happens ("Mochi walked over to
   you"). Reduced-motion settings are honoured.
+- **Music** (decided 2026-11-05,
+  [ADR 0020](adr/0020-play-public-domain-lofi-each-visitor-their-own.md);
+  [slice 15](slices/15-music-while-you-sit.md), proposed): quiet lofi by
+  HoliznaCC0, released under CC0, six tracks in `content/music/` with a
+  playlist and credits, three for day and three for night by the Canberra
+  hour, the night set from 17:00. Each visitor has their own player:
+  Play or Pause, Previous, Next and a volume, in a fourth floating panel
+  on a desktop and a row on a phone. Whether it was on, and how loud, is
+  remembered per device and never reaches the server. *Why not Bensound,
+  as first asked:* its free licence covers online videos, not a website's
+  background music, and a paid track's files couldn't go in the public
+  repo. *Why each their own:* pause and skip are personal, and a shared
+  radio would need the server to keep its clock for no gain in a room of
+  six.
 
 ## Logging
 
@@ -625,6 +639,7 @@ renamed.
 | Sign-up, log-in and recovery attempts | 5 a minute per name from one address, so nobody elsewhere can lock a name out; 60 a minute per IP address, since a whole venue can share one |
 | Password hashing | argon2id, 19 MiB, 2 iterations, at most 2 at once |
 | Avatar looks | 4 avatars in 6 colours |
+| Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start; about 128 kbps, loudness evened (slice 15, proposed) |
 
 ## Harness
 
