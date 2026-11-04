@@ -1893,6 +1893,32 @@ corrected line, slice 14's glass by day, and the judgements left.
   Every gate passes. Slice 11 waits off `main` for the user's call on
   slice 15's order.
 
+*Sent 2026-11-05 10:13:23 AEDT*
+
+> 1. merge slice 11 first, then work on music
+> 2. that's fine, no need for more art now
+> 3. no. use princess hugs like these [Image #1] [Image #2] [Image #3]
+> 4. accept them for now.
+
+Answering: the order of slices 11 and 15; whether to draw the six poses in
+which the builds share an outline; the held cat; and the open looks (the
+light theme's white panels, Tora on the wood floor, held and perched
+alike). The three images: a cartoon cat curled in a crook of arms, a black
+cat held cradled across someone's arms, and a long-haired cat held belly
+up against someone's chest.
+
+**Result.**
+- **The princess hug** ([`ac925af`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ac925af)): the held cat is curled at the
+  holder's chest, eyes open, and the café draws the holder's arms round it
+  in their own skin, one under it and a hand on its back, their face
+  showing above. Three drawings of a cat on its back across the arms
+  didn't read at 24 px (it came out lying flat, then standing); the
+  cartoon's curl did. Tests hold the arms in the holder's skin across the
+  cat, and the cat below their eyes.
+- **No more art** for the poses the builds share; the open looks accepted
+  for now, in the spec.
+- **Slice 11 merged first**, as asked; the music (slice 15) next.
+
 ### 15. Music in the café
 
 *Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
