@@ -112,6 +112,7 @@ impl Cat {
             id: self.def.id.clone(),
             name: self.def.name.clone(),
             coat: self.def.coat.clone(),
+            build: self.def.build.clone(),
             at: self.tile(now),
             pose: self.pose,
             walk: self.walk.clone(),

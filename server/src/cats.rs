@@ -11,6 +11,9 @@ pub struct CatDef {
     pub id: String,
     pub name: String,
     pub coat: String,
+    /// Which of the sprites' builds the cat is drawn with (slice 11): its
+    /// shape, as the coat is its colours. A folder in content/sprites/png/cat/.
+    pub build: String,
     pub traits: Traits,
     pub rhythm: Rhythm,
     #[serde(default)]
@@ -68,6 +71,11 @@ impl Default for Weights {
 
 impl CatDef {
     pub fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            !self.build.is_empty() && self.build.chars().all(|c| c.is_ascii_lowercase()),
+            "{}: build must be a lowercase name, such as round",
+            self.id
+        );
         let t = &self.traits;
         for (name, v) in [
             ("sociability", t.sociability),

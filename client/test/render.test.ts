@@ -843,3 +843,53 @@ describe("the room as a diorama", () => {
     }
   });
 });
+
+// Slice 11: each thing a cat does shows its own pose, in its build's frames.
+describe("the frame for what a cat is doing (slice 11)", () => {
+  type Cat = import("../src/state").Cat;
+  /** The frame `catFrame` picks for Mochi in `pose`, standing still at `at`, with `extra` on the cat and `furniture` in the room. */
+  async function frameFor(pose: Cat["pose"], opts: { at?: { x: number; y: number }; reaction?: Cat["reaction"]; furniture?: ReturnType<typeof piece>[]; sitter?: boolean; walk?: boolean; now?: number } = {}) {
+    const { catFrame } = await import("../src/render");
+    const w = welcome();
+    const at = opts.at ?? { x: 6, y: 6 };
+    w.snapshot.room.furniture = opts.furniture ?? [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], at: opts.sitter ? at : { x: 1, y: 6 }, sitting: !!opts.sitter }];
+    const walk = opts.walk ? { path: [at, { x: at.x + 1, y: at.y }, { x: at.x + 2, y: at.y }], start: 10_000, speed: 1 } : null;
+    w.snapshot.cats = [{ id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at, pose, walk, heldBy: null }];
+    const s = fromWelcome(w, 10_000);
+    const cat = { ...s.cats.get("mochi")!, reaction: opts.reaction ?? null };
+    const now = opts.now ?? 10_500;
+    const { positionAt } = await import("../src/motion");
+    return catFrame(s, cat, positionAt(cat.walk, cat.at, now), now);
+  }
+
+  it("names the cat's build in its frame", async () => {
+    expect(await frameFor("sit")).toBe("round:sit");
+  });
+
+  it("shows sitting for idle, sit and groom; asleep for a nap; eating at the bowls", async () => {
+    for (const pose of ["idle", "sit", "groom"] as const) expect(await frameFor(pose), pose).toBe("round:sit");
+    expect(await frameFor("nap")).toBe("round:nap");
+    expect(await frameFor("eat")).toBe("round:eat");
+  });
+
+  it("walks in two steps, and plays in two frames", async () => {
+    expect(await frameFor("walk", { walk: true })).toMatch(/^round:walk_[ab]$/);
+    const play = new Set([await frameFor("play", { now: 10_000 }), await frameFor("play", { now: 10_200 }), await frameFor("play", { now: 10_400 })]);
+    expect([...play].sort()).toEqual(["round:play_a", "round:play_b"]);
+  });
+
+  it("shows held in someone's arms, on a lap where someone sits, and perched up on the window seat", async () => {
+    expect(await frameFor("held")).toBe("round:held");
+    expect(await frameFor("nap", { sitter: true })).toBe("round:lap");
+    expect(await frameFor("sit", { at: { x: 3, y: 1 }, furniture: [piece(1, "window_seat", 2, 1, 4, 1)] })).toBe("round:perch");
+  });
+
+  it("scratches and greets someone, and plays with someone, for a moment, when the café says so", async () => {
+    expect(await frameFor("sit", { reaction: { reaction: { kind: "scratch", by: 2 }, at: 10_400 } })).toBe("round:scratch");
+    expect(await frameFor("sit", { reaction: { reaction: { kind: "greet", to: 2 }, at: 10_400 } })).toBe("round:greet");
+    expect(await frameFor("sit", { reaction: { reaction: { kind: "play", with: 2 }, at: 10_400 }, now: 10_000 + 400 })).toMatch(/^round:play_[ab]$/);
+    // Long after, back to sitting.
+    expect(await frameFor("sit", { reaction: { reaction: { kind: "scratch", by: 2 }, at: 1_000 } })).toBe("round:sit");
+  });
+});

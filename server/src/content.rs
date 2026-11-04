@@ -117,10 +117,17 @@ mod tests {
         for tile in ["floor", "wall", "window", "door", "board"] {
             assert_eq!(room[tile], (16, 16), "{tile}");
         }
-        // Each walking or standing frame has a back view, for walking away (slice 12).
+        // Every cat's build has every frame, at 24 px (slice 11), with back
+        // views for walking away (slice 12).
         let cat = sprite_sizes("cat.txt");
-        for frame in ["sit", "walk_a", "walk_b", "nap", "back_sit", "back_walk_a", "back_walk_b"] {
-            assert_eq!(cat.get(frame), Some(&(16, 16)), "{frame}");
+        for c in &c.cats {
+            for frame in [
+                "sit", "walk_a", "walk_b", "back_sit", "back_walk_a", "back_walk_b", "nap", "eat", "play_a", "play_b", "perch", "held", "lap",
+                "scratch", "knock", "greet",
+            ] {
+                let name = format!("{}:{frame}", c.build);
+                assert_eq!(cat.get(&name), Some(&(24, 24)), "{}'s build has {name}", c.id);
+            }
         }
         let avatar = sprite_sizes("avatar.txt");
         for frame in ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"] {

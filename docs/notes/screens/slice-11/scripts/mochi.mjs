@@ -333,24 +333,31 @@ function knock() {
   return g;
 }
 
+/**
+ * Mirrored left to right. Every frame faces right, head on the right, as
+ * the café mirrors a cat walking left (slice 12's review, finding 1); the
+ * study drew its sitting and sleeping cats facing left, so those turn.
+ */
+const right = (g) => g.map((row) => row.slice().reverse());
+
 /** Mochi's frames, in the order the sheet shows them, with what each is for. */
 const FRAMES = [
-  ["sit", sit(), "sitting (idle, sit, groom)"],
+  ["sit", right(sit()), "sitting (idle, sit, groom)"],
   ["walk_a", walk(0), "walking"],
   ["walk_b", walk(1), "walking, the other step"],
   ["back_sit", backSit(), "sitting, back turned"],
   ["back_walk_a", walkAway(0), "walking away"],
   ["back_walk_b", walkAway(1), "walking away, the other step"],
-  ["nap", nap(), "asleep"],
+  ["nap", right(nap()), "asleep"],
   ["eat", eat(), "eating from the bowl"],
   ["play_a", play(0), "playing"],
   ["play_b", play(1), "playing, batting"],
   ["perch", perch(), "perched on the window seat"],
   ["held", held(), "held in someone's arms"],
-  ["lap", lap(), "on a lap"],
+  ["lap", right(lap()), "on a lap"],
   ["scratch", scratch(), "scratching the post"],
   ["knock", knock(), "knocking something over"],
-  ["greet", sit({ tailUp: 0.12, lookUp: 0.03, mouth: true }), "greeting someone, tail up"],
+  ["greet", right(sit({ tailUp: 0.12, lookUp: 0.03, mouth: true })), "greeting someone, tail up"],
 ];
 
 // ---------- writing ----------

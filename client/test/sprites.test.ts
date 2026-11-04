@@ -82,10 +82,13 @@ describe("the café's colours in each light", () => {
     expect(luminance(palettes.night.room[0])).toBeLessThan(luminance(palettes.day.room[0]));
   });
 
-  it("draws every cat frame at 16 pixels, a back view for each but the nap (slice 12)", () => {
+  it("draws every cat frame at 24 pixels, for each build, with back views (slice 11)", () => {
     const sheet = parseSheet(catSheet);
-    expect([...sheet.keys()].sort()).toEqual(["back_sit", "back_walk_a", "back_walk_b", "nap", "sit", "walk_a", "walk_b"]);
-    for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([16, 16]);
+    for (const [name, grid] of sheet) {
+      expect(name, "a cat frame is named build:frame").toMatch(/^[a-z]+:[a-z_]+$/);
+      expect([grid[0].length, grid.length], name).toEqual([24, 24]);
+    }
+    for (const f of ["sit", "walk_a", "walk_b", "back_sit", "back_walk_a", "back_walk_b", "nap"]) expect(sheet.has(`round:${f}`), f).toBe(true);
   });
 
   it("draws every person frame at 16 pixels, with a back view for each (slice 12)", () => {
@@ -99,11 +102,37 @@ describe("the café's colours in each light", () => {
     // The head is the mass near the top: in rows 3 to 8, where it sits, its
     // drawn pixels lie right of the middle. A walk frame with its head on
     // the left would walk tail first once mirrored the same way as the rest.
+    // At 24 px (slice 11) the head sits in the top third, rows 2 to 11; a
+    // frame lying down (nap, lap) or with its head low (eat) is left out,
+    // and so is one whose head is in the middle by design (held, perch,
+    // play, which face the viewer).
+    // Each frame faces right: its eyes, or where none show (asleep, eating)
+    // the pink of its nose and ears, or seen from behind its head, lie
+    // right of the body's middle.
+    // Frames facing the viewer (perch, held, play) have their face in the
+    // middle by design, and are left out.
+    const centre = (pts: number[]) => pts.reduce((a, b) => a + b, 0) / pts.length;
     for (const [name, grid] of sheet) {
-      if (name === "nap") continue;
-      const cols = grid.slice(3, 9).flatMap((row) => row.flatMap((v, x) => (v >= 0 ? [x] : [])));
-      const mean = cols.reduce((a, b) => a + b, 0) / cols.length;
-      expect(mean, `${name}'s head, by the mean column of rows 3 to 8`).toBeGreaterThan(8);
+      const frame = name.split(":")[1];
+      if (["perch", "held", "play_a", "play_b"].includes(frame)) continue;
+      const drawn = grid.flatMap((row, y) => row.flatMap((v, x) => (v >= 0 ? [[x, y]] : [])));
+      const body = centre(drawn.map(([x]) => x));
+      const eyes = grid.flatMap((row) => row.flatMap((v, x) => (v === 4 ? [x] : [])));
+      if (eyes.length > 0) {
+        expect(centre(eyes), `${name}'s eyes against its body's middle`).toBeGreaterThan(body);
+        continue;
+      }
+      if (frame.startsWith("back_")) {
+        // Seen from behind: the head is the top third of what's drawn, up beyond the rump.
+        const ys = drawn.map(([, y]) => y);
+        const cut = Math.min(...ys) + (Math.max(...ys) - Math.min(...ys)) / 3;
+        expect(centre(drawn.filter(([, y]) => y <= cut).map(([x]) => x)), `${name}'s head against its body's middle`).toBeGreaterThan(body);
+        continue;
+      }
+      // No eyes showing (asleep, eating): the pink of its nose and ears (slot 5) is on its head, wherever the head is.
+      const pink = grid.flatMap((row) => row.flatMap((v, x) => (v === 5 ? [x] : [])));
+      expect(pink.length, `${name} shows its head's pink`).toBeGreaterThan(0);
+      expect(centre(pink), `${name}'s head, by its pink, against its body's middle`).toBeGreaterThan(body);
     }
   });
 

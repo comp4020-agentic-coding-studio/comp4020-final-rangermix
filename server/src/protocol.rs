@@ -123,6 +123,8 @@ pub struct CatView {
     pub id: String,
     pub name: String,
     pub coat: String,
+    /// The sprites' build the cat is drawn with (slice 11).
+    pub build: String,
     pub at: Tile,
     pub pose: Pose,
     pub walk: Option<Walk>,
