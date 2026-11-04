@@ -8,7 +8,7 @@ import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
 import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
-import { renderChalkboard, renderHere, renderSaid, renderYourCats } from "./panels";
+import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
@@ -324,6 +324,7 @@ function enter(me: ApiMe): void {
         closeMenu();
         hideBoard();
         $("carrying").hidden = true;
+        $("put-treat").hidden = true;
         $<HTMLButtonElement>("add-furniture").disabled = true;
         for (const id of ["here", "your-cats", "chalk-lines", "board-lines"]) {
           $(id).replaceChildren();
@@ -335,7 +336,8 @@ function enter(me: ApiMe): void {
     renderHere($("here"), s);
     talk.peopleChanged(new Set(s.people.keys()));
     renderSaid($("said"), s);
-    renderYourCats($("your-cats"), s, () => cafe.send({ type: "putTreat" }));
+    renderYourCats($("your-cats"), s);
+    showTreatButton($<HTMLButtonElement>("put-treat"), s, cafe.waking, () => cafe.send({ type: "putTreat" }));
     renderChalkboard($("chalk-lines"), s);
     if (!board.hidden) renderChalkboard($("board-lines"), s);
   });

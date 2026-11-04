@@ -254,13 +254,14 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.waitForFunction(() => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1008px");
     await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("room");
-    // Back past the panel's own buttons (putting a treat down) to Leave.
-    const passed: string[] = [];
-    for (let i = 0; i < 4 && (await focused(page)) !== "leave"; i++) {
-      await page.keyboard.press("Shift+Tab");
-      passed.push(await page.evaluate(() => document.activeElement?.textContent ?? ""));
-    }
-    expect(passed).toContain("Put a treat down");
+    // Forward from the talk box, past Say and the emotes, to the treat
+    // button beside them (slice 14).
+    await page.locator("#talk-input").focus();
+    for (let i = 0; i < 8 && (await focused(page)) !== "put-treat"; i++) await page.keyboard.press("Tab");
+    expect(await focused(page)).toBe("put-treat");
+    // Back to the room, then past the panels' own buttons to Leave.
+    await page.locator("#room").focus();
+    for (let i = 0; i < 8 && (await focused(page)) !== "leave"; i++) await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("leave");
     await page.keyboard.press("Enter");
     await page.locator("#left-cafe").waitFor();
@@ -446,13 +447,25 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await roomWidth(page)).toBe("1008px");
   });
 
-  it("puts a treat down from the panel, and the other visitor sees it", async () => {
+  it("puts a treat down from beside the emotes, by mouse on a desktop and by touch on a phone, and the other visitor sees it (slice 14)", async () => {
     const a = await visit({ width: 1920, height: 1080 });
-    const b = await visit({ width: 1920, height: 1080 });
-    const from = b.frames.length;
+    const b = await visit({ width: 390, height: 844 }, true);
+    // In the talk bar, right of the emotes, at both sizes.
+    for (const v of [a, b]) {
+      const [put, emotes, talk] = await Promise.all([v.page.locator("#put-treat").boundingBox(), v.page.locator("#emotes").boundingBox(), v.page.locator("#talk").boundingBox()]);
+      expect(put, "the treat button shows").not.toBeNull();
+      expect(put!.x, "right of the emotes").toBeGreaterThanOrEqual(emotes!.x + emotes!.width - 1);
+      expect(put!.y).toBeGreaterThanOrEqual(talk!.y - 1);
+      expect(put!.y + put!.height).toBeLessThanOrEqual(talk!.y + talk!.height + 1);
+      expect(await v.page.locator("#your-cats button").count(), "nothing to press in Your cats").toBe(0);
+    }
+    const fromB = b.frames.length;
     await a.page.getByRole("button", { name: "Put a treat down" }).click();
-    await expect.poll(() => b.frames.slice(from).some((f) => f.type === "treatPlaced")).toBe(true);
+    await expect.poll(() => b.frames.slice(fromB).some((f) => f.type === "treatPlaced")).toBe(true);
     await expect.poll(() => a.page.locator(".treats").textContent()).toContain("Treats today: 2");
+    const fromA = a.frames.length;
+    await b.page.getByRole("button", { name: "Put a treat down" }).tap();
+    await expect.poll(() => a.frames.slice(fromA).some((f) => f.type === "treatPlaced")).toBe(true);
   });
 
   // Phase 3's review, finding 34: the browser checks plan Task 8 asked for,

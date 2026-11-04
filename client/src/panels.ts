@@ -16,28 +16,35 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string | n
 const BOWL_WORDS = ["The bowls are empty.", "The bowls are nearly empty.", "The bowls are half full.", "The bowls are full."];
 
 /**
- * Your cats, your treats and the bowls. Built once and then updated in place,
- * since it holds a button: rebuilding it on every message would throw away
- * the keyboard's focus each time a cat moved.
+ * Your cats, your treats left and the bowls. Built once and then updated in
+ * place, so a screen reader's place in it holds while cats move. Putting a
+ * treat down is the talk bar's (slice 14): a pinned panel lets every click
+ * through, so it holds nothing to press.
  */
-export function renderYourCats(box: HTMLElement, state: CafeState, onPutTreat?: () => void): void {
+export function renderYourCats(box: HTMLElement, state: CafeState): void {
   let rows = box.querySelector<HTMLElement>(".cat-rows");
   let count = box.querySelector<HTMLElement>(".treats-left");
-  let put = box.querySelector<HTMLButtonElement>("button.put-treat");
   let bowls = box.querySelector<HTMLElement>(".bowls");
-  if (!rows || !count || !put || !bowls) {
+  if (!rows || !count || !bowls) {
     rows = el("div", "cat-rows");
     count = el("span", "treats-left");
-    put = el("button", "put-treat", "Put a treat down");
-    put.type = "button";
     bowls = el("p", "hint bowls");
-    box.replaceChildren(el("h2", null, "Your cats"), rows, el("p", "treats", count, put), bowls);
+    box.replaceChildren(el("h2", null, "Your cats"), rows, el("p", "treats", count), bowls);
   }
   rows.replaceChildren(...catRows(state));
-  count.textContent = state.yourTreats > 0 ? `Treats today: ${state.yourTreats} ` : "No treats left today.";
-  put.hidden = state.yourTreats === 0;
-  put.onclick = onPutTreat ?? null;
+  count.textContent = state.yourTreats > 0 ? `Treats today: ${state.yourTreats}` : "No treats left today.";
   bowls.textContent = BOWL_WORDS[Math.max(0, Math.min(3, state.bowls))];
+}
+
+/**
+ * The talk bar's "Put a treat down", beside the emotes (slice 14): shown
+ * while you have treats left, and like the emotes, not pressable while the
+ * café wakes. The same button throughout, so it keeps the keyboard's focus.
+ */
+export function showTreatButton(button: HTMLButtonElement, state: CafeState, waking: boolean, onPut: () => void): void {
+  button.hidden = state.yourTreats === 0;
+  button.disabled = waking;
+  button.onclick = onPut;
 }
 
 function catRows(state: CafeState): HTMLElement[] {

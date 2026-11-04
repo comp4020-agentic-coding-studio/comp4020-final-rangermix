@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderChalkboard, renderHere, renderYourCats } from "../src/panels";
+import { renderChalkboard, renderHere, renderYourCats, showTreatButton } from "../src/panels";
 import { fromWelcome } from "../src/state";
 
 const s = fromWelcome(
@@ -64,21 +64,32 @@ describe("panels", () => {
     expect(box.querySelector(".trust-bar")?.getAttribute("aria-label")).toBe("Mochi's trust in you: 23.5 of 100");
   });
 
-  it("show your treats and the bowls, with a way to put a treat down", () => {
+  it("show your treats and the bowls, and leave putting one down to the talk bar (slice 14)", () => {
     const box = document.createElement("div");
-    let put = 0;
-    renderYourCats(box, s, () => put++);
+    renderYourCats(box, { ...s, yourTreats: 3, bowls: 3 });
     expect(box.textContent).toContain("Treats today: 3");
     expect(box.textContent).toContain("The bowls are full.");
-    const button = [...box.querySelectorAll("button")].find((b) => b.textContent === "Put a treat down");
-    button?.click();
-    expect(put).toBe(1);
-    s.yourTreats = 0;
-    s.bowls = 0;
-    renderYourCats(box, s, () => put++);
+    // A pinned Your cats lets clicks through, so it holds nothing to press.
+    expect(box.querySelectorAll("button")).toHaveLength(0);
+    renderYourCats(box, { ...s, yourTreats: 0, bowls: 0 });
     expect(box.textContent).toContain("No treats left today.");
     expect(box.textContent).toContain("The bowls are empty.");
-    expect([...box.querySelectorAll("button")].every((b) => b.hidden)).toBe(true);
+  });
+
+  it("show the talk bar's treat button while you have treats, and put one down when it's pressed (slice 14)", () => {
+    const button = document.createElement("button");
+    let put = 0;
+    showTreatButton(button, { ...s, yourTreats: 3 }, false, () => put++);
+    expect(button.hidden).toBe(false);
+    expect(button.disabled).toBe(false);
+    button.click();
+    expect(put).toBe(1);
+    showTreatButton(button, { ...s, yourTreats: 0 }, false, () => put++);
+    expect(button.hidden).toBe(true);
+    // Nothing to act on while the café wakes, as the emotes (slice 07's review, finding 5).
+    showTreatButton(button, { ...s, yourTreats: 2 }, true, () => put++);
+    expect(button.hidden).toBe(false);
+    expect(button.disabled).toBe(true);
   });
 
   it("show who's inside and who's at the window", () => {
@@ -89,20 +100,16 @@ describe("panels", () => {
     expect(box.textContent).toContain("At the window (1)");
   });
 
-  it("keeps the treat button, and its focus, through every update", () => {
-    // Phase 3's review, finding 3: a cat moving mustn't take your focus away.
+  it("keeps Your cats' rows in place through every update", () => {
+    // Phase 3's review, finding 3: a cat moving mustn't rebuild the panel.
     const box = document.createElement("div");
-    document.body.append(box);
     const now = { ...s, yourTreats: 3, bowls: 3 };
-    renderYourCats(box, now, () => {});
-    const button = box.querySelector("button")!;
-    button.focus();
+    renderYourCats(box, now);
+    const rows = box.querySelector(".cat-rows");
     const later = { ...now, cats: new Map(now.cats), yourTreats: 2 };
     later.cats.set("mochi", { ...now.cats.get("mochi")!, at: { x: 7, y: 5 } });
-    renderYourCats(box, later, () => {});
-    expect(box.querySelector("button")).toBe(button);
-    expect(document.activeElement).toBe(button);
+    renderYourCats(box, later);
+    expect(box.querySelector(".cat-rows")).toBe(rows);
     expect(box.textContent).toContain("Treats today: 2");
-    box.remove();
   });
 });
