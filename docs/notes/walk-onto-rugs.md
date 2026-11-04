@@ -44,5 +44,10 @@ the same.
   it passed, as did all 71 of `spec/` (restart skipped, as it is without
   Docker).
 - `cargo test`: all pass.
-- Not yet checked on the live café: that waits on a merge to `main` and its
-  deploy.
+- Run again after rebasing onto `main` once slice 14 had merged (its
+  panels float over the room, and it changed `main.ts`): all 230 client
+  tests, all 77 of `spec/` against a local café serving the rebased
+  client (the rug check among them, with the panels in place; restart
+  skipped), and `cargo test` pass.
+- Not yet checked on the live café: that waits on the pull request's merge
+  to `main` and its deploy.

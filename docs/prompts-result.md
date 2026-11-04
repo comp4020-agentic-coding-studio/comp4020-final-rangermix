@@ -1986,3 +1986,16 @@ recording why HoliznaCC0 and why each visitor has their own player
   café serving `main`'s client and passing with the fix; all of `spec/`,
   the client's tests and `cargo test` pass. Built on a branch from `main`;
   not yet on the live café.
+
+*Sent 2026-11-05 10:03:09 AEDT*
+
+> create pr to merge
+
+**Result.** The branch rebased onto `main`, which had taken slice 14 and
+the music session's entries since, and opened as a pull request
+(PR_LINK). The prompt log was the only conflict: both
+sides had added to its end, and this session's entry now follows the
+music session's, numbered 16, as its prompt came after. Every check ran
+again on the rebased tree: 230 client tests, all 77 of `spec/` against a
+local café (the rug check with slice 14's panels over the room) and
+`cargo test`, all passing. Live once merged and deployed.
