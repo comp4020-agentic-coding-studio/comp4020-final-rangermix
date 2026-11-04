@@ -1,6 +1,6 @@
 # 11. Cats you can tell apart
 
-- **Status:** Approved 2026-10-21, with the proposed defaults for its open questions (one cat first; the README's music promise comes out)
+- **Status:** Mochi judged and approved by the user 2026-11-05 ([sheet](../notes/screens/slice-11/mochi-sheet.png), [notes](../notes/slice-11-art.md)), so the rest follow in her style; approved 2026-10-21, with the proposed defaults for its open questions (one cat first; the README's music promise comes out)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-11-art.md`
 - **Design:** The client ("Sprites", "The look"); The room (the starting
   furniture); "Cats change through `content/`, not code";

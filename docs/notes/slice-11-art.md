@@ -41,3 +41,11 @@ plan's part 2 ([plan-slice-11-art.md](plan-slice-11-art.md)) waits for
 it, and the plan's pipeline (PNGs as the source of the text sheets, a
 cat's build as data in `content/cats/`) is built once the style is
 settled.
+
+## Judged, 2026-11-05
+
+The user, at 03:53 AEDT: "Mochi looks fine. continue that way." So part 2
+goes ahead in her style: the pipeline, the café drawing 24-px cats with a
+frame for each pose, Burakku and Tora, then the people and the furniture.
+The poses I'd flagged (held and perched alike, on a lap close to asleep)
+were passed as they are; they can be redrawn later as data.
