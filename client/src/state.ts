@@ -9,6 +9,8 @@ import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
 import type { ServerMsg } from "./protocol/ServerMsg";
 import type { TrustView } from "./protocol/TrustView";
+import type { Walk } from "./protocol/Walk";
+import { type View, positionAt } from "./motion";
 
 // The client's copy of the café: built from the welcome, then kept up to date
 // by applying each message in order. The server decides; this only mirrors.
@@ -59,6 +61,12 @@ export interface CafeState {
   /** How many hours of lines the board keeps, and how many it shows. */
   chalkHours: number;
   chalkShown: number;
+  /**
+   * The side each walker last showed, kept when their walk is gone (slice 12):
+   * by "p<id>" for a person and "c<id>" for a cat. Walks aren't facing, and
+   * the server needn't know; this is only how the client draws them.
+   */
+  facing: Map<string, { view: View; mirror: boolean }>;
 }
 
 export type Effect =
@@ -112,7 +120,18 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     chalkboard: s.chalkboard,
     chalkHours: msg.chalkHours,
     chalkShown: msg.chalkShown,
+    facing: previous?.facing ?? new Map(),
   };
+}
+
+/**
+ * Remembers the side a walker shows where its walk stands now, before the
+ * walk is replaced or cleared, so they keep facing that way.
+ */
+function keepFacing(state: CafeState, key: string, walk: Walk | null, at: { x: number; y: number }, localNow: number): void {
+  if (!walk || walk.path.length < 2) return;
+  const { view, mirror } = positionAt(walk, at, serverNow(state, localNow));
+  state.facing.set(key, { view, mirror });
 }
 
 /**
@@ -199,30 +218,36 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       state.people.delete(msg.id);
       state.emotes.delete(msg.id);
       state.held.delete(msg.id);
+      state.facing.delete(`p${msg.id}`);
       return [{ kind: "announce", text: `${who} left.` }];
     }
     case "personPlaced": {
       const p = state.people.get(msg.id);
+      if (p) keepFacing(state, `p${msg.id}`, p.walk, p.at, localNow);
       if (p) state.people.set(msg.id, { ...p, place: msg.place, at: msg.at, walk: msg.walk });
       return msg.id === state.you ? [{ kind: "announce", text: "A seat came free. You're coming in." }] : [];
     }
     case "personMoved": {
       const p = state.people.get(msg.id);
+      if (p) keepFacing(state, `p${msg.id}`, p.walk, p.at, localNow);
       if (p) state.people.set(msg.id, { ...p, walk: msg.walk, sitting: false });
       return [];
     }
     case "personSat": {
       const p = state.people.get(msg.id);
+      if (p) keepFacing(state, `p${msg.id}`, p.walk, p.at, localNow);
       if (p) state.people.set(msg.id, { ...p, at: msg.at, walk: null, sitting: true });
       return [];
     }
     case "catMoved": {
       const c = state.cats.get(msg.cat);
+      if (c) keepFacing(state, `c${msg.cat}`, c.walk, c.at, localNow);
       if (c) state.cats.set(msg.cat, { ...c, walk: msg.walk, pose: "walk" });
       return [];
     }
     case "catPosed": {
       const c = state.cats.get(msg.cat);
+      if (c) keepFacing(state, `c${msg.cat}`, c.walk, c.at, localNow);
       if (c) state.cats.set(msg.cat, { ...c, pose: msg.pose, at: msg.at, walk: null });
       return [];
     }
@@ -288,6 +313,7 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     case "catHeld": {
       const c = state.cats.get(msg.cat);
       if (!c) return [];
+      keepFacing(state, `c${msg.cat}`, c.walk, c.at, localNow);
       state.cats.set(msg.cat, { ...c, heldBy: msg.by, pose: msg.by === null ? c.pose : "held", walk: null });
       if (msg.by === null) return [{ kind: "announce", text: `${c.name} got down.` }];
       return [{ kind: "announce", text: msg.by === state.you ? `You're holding ${c.name}.` : `${name(msg.by)} picked up ${c.name}.` }];

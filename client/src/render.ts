@@ -239,6 +239,17 @@ function standingOn(state: CafeState, spot: { x: number; y: number }): Furniture
   return state.room.furniture.find((f) => !f.toppled && !f.under && HEIGHT[f.kind] > 4 && x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h) ?? null;
 }
 
+/**
+ * A walker's spot, facing the way they last went once their walk is over
+ * (slice 12): a walk in progress says which way it goes; standing, the side
+ * kept when the walk ended, or the front.
+ */
+function facingOf(state: CafeState, key: string, spot: Spot): Spot {
+  if (spot.moving) return spot;
+  const kept = state.facing.get(key);
+  return kept ? { ...spot, ...kept } : spot;
+}
+
 /** What's drawn later on the same spot: a piece, a treat on it, a cat, a person, a cat on their lap. */
 const LAYER = { piece: 0, treat: 1, cat: 2, person: 3, lap: 4 } as const;
 
@@ -303,7 +314,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       inArms.set(cat.heldBy, cat);
       continue;
     }
-    const spot = positionAt(cat.walk, cat.at, now);
+    const spot = facingOf(state, `c${cat.id}`, positionAt(cat.walk, cat.at, now));
     // A cat asleep on someone's lap is drawn over them, as a held cat is.
     const layer = lapOf(state, cat) !== null ? LAYER.lap : LAYER.cat;
     const on = standingOn(state, spot);
@@ -320,7 +331,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
   }
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;
-    const spot = positionAt(person.walk, person.at, now);
+    const spot = facingOf(state, `p${person.id}`, positionAt(person.walk, person.at, now));
     const emote = state.emotes.get(person.id);
     const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
     const carried = state.held.get(person.id) ?? null;
@@ -523,7 +534,8 @@ function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, mirror: boolean):
 function drawCat(ctx: Ctx, sprites: Sprites, cat: Cat, spot: Spot, now: number, lift = 0): void {
   // Playing, a cat bats about on the spot; eating, grooming and held, it sits.
   const busy = spot.moving || cat.pose === "play";
-  const frame: CatFrame = cat.pose === "nap" ? "nap" : busy ? (Math.floor(now / 160) % 2 ? "walk_a" : "walk_b") : "sit";
+  const back = spot.view === "back" ? "back_" : "";
+  const frame: CatFrame = cat.pose === "nap" ? "nap" : busy ? `${back}${Math.floor(now / 160) % 2 ? "walk_a" : "walk_b"}` : `${back}sit`;
   const img = sprites.cat(cat.coat, frame);
   const feet = feetAt(spot);
   const at = { x: feet.x, y: feet.y - lift };
@@ -553,7 +565,9 @@ function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): 
 }
 
 function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean, emote: EmoteName | null, lift = 0): void {
-  const frame: AvatarFrame = spot.moving ? (Math.floor(now / 180) % 2 ? "walk_a" : "walk_b") : "stand";
+  const back = spot.view === "back";
+  const step = Math.floor(now / 180) % 2 ? "walk_a" : "walk_b";
+  const frame: AvatarFrame = spot.moving ? (back ? `back_${step}` : step) : back ? "back" : "stand";
   const img = sprites.avatar(look, frame);
   const feet = feetAt(spot);
   const at = { x: feet.x, y: feet.y - lift };

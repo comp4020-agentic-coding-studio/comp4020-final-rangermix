@@ -5,7 +5,7 @@ import { toCanvas } from "../src/iso";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
 import type { Light } from "../src/canberra";
 import { Sprites } from "../src/sprites";
-import { fromWelcome } from "../src/state";
+import { apply, fromWelcome } from "../src/state";
 
 // What's drawn, in order, in the room at an angle (slice 09): what lies flat
 // first, then everything standing, nothing nearer the viewer painted over.
@@ -225,5 +225,62 @@ describe("the room's draw order", () => {
   it("draws a held cat with its holder, not on its own", () => {
     expect(order).not.toContain("cat burakku");
     expect(order).toContain("person 2");
+  });
+});
+
+// Slice 12: walkers show the side they're walking toward, and keep it when
+// they stop. The camera looks from the front-right corner, so toward the
+// street wall (-y) is away from the viewer.
+
+describe("the side a walker shows", () => {
+  /** Which frames `draw` asks the sprites for, by who. */
+  function framesAsked(state: ReturnType<typeof fromWelcome>, localNow: number) {
+    const asked: string[] = [];
+    const sprites = new Sprites();
+    sprites.cat = (coat, frame) => (asked.push(`cat ${coat} ${frame}`), null);
+    sprites.avatar = (look, frame) => (asked.push(`person ${look.avatar} ${frame}`), null);
+    const ctx = new Proxy({}, { get: () => () => {}, set: () => true }) as unknown as CanvasRenderingContext2D;
+    draw(ctx, state, sprites, localNow, { tile: null, visible: false, hover: null, ghost: null }, 0);
+    return asked;
+  }
+  const walking = (dy: number) => {
+    const w = welcome();
+    w.snapshot.people[1] = { ...w.snapshot.people[1], at: { x: 9, y: 5 }, walk: { path: [{ x: 9, y: 5 }, { x: 9, y: 5 + dy }, { x: 9, y: 5 + 2 * dy }], start: 10_000, speed: 1 } };
+    return fromWelcome(w, 10_000);
+  };
+
+  it("shows someone's back while they walk toward the street wall, and their front walking toward the viewer", () => {
+    expect(framesAsked(walking(-1), 10_500).filter((f) => f.startsWith("person 1"))[0]).toMatch(/^person 1 back_walk_[ab]$/);
+    expect(framesAsked(walking(1), 10_500).filter((f) => f.startsWith("person 1"))[0]).toMatch(/^person 1 walk_[ab]$/);
+  });
+
+  it("keeps someone's back to the viewer once they've arrived, after the walk is gone", () => {
+    const s = walking(-1);
+    // They arrive and sit: the server clears the walk.
+    apply(s, { type: "personSat", id: 2, at: { x: 9, y: 3 } }, 13_000);
+    expect(framesAsked(s, 13_100).filter((f) => f.startsWith("person 1"))).toEqual(["person 1 back"]);
+  });
+
+  it("keeps a cat's back to the viewer when it settles after walking away", () => {
+    const w = welcome();
+    w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 2, y: 6 }, pose: "walk", walk: { path: [{ x: 2, y: 6 }, { x: 2, y: 5 }, { x: 2, y: 4 }], start: 10_000, speed: 1 } };
+    const s = fromWelcome(w, 10_000);
+    expect(framesAsked(s, 10_500).filter((f) => f.startsWith("cat white_grey"))[0]).toMatch(/^cat white_grey back_walk_[ab]$/);
+    apply(s, { type: "catPosed", cat: "mochi", pose: "sit", at: { x: 2, y: 4 } }, 12_500);
+    expect(framesAsked(s, 12_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey back_sit"]);
+  });
+
+  it("faces the viewer when nobody has walked yet", () => {
+    const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
+    expect(asked).toContain("person 0 stand");
+    expect(asked).toContain("cat white_grey sit");
+  });
+
+  it("naps the same way round whichever way the cat last walked", () => {
+    const w = welcome();
+    w.snapshot.cats[0] = { ...w.snapshot.cats[0], at: { x: 2, y: 6 }, pose: "walk", walk: { path: [{ x: 2, y: 6 }, { x: 2, y: 5 }], start: 10_000, speed: 1 } };
+    const s = fromWelcome(w, 10_000);
+    apply(s, { type: "catPosed", cat: "mochi", pose: "nap", at: { x: 2, y: 5 } }, 11_500);
+    expect(framesAsked(s, 11_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey nap"]);
   });
 });
