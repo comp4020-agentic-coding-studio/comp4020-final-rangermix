@@ -1834,6 +1834,45 @@ corrected line, slice 14's glass by day, and the judgements left.
   the bright pastel room still shows mostly as white,** which only a dark
   panel tint in the light theme would change: asked of the user.
 
+**Result, continued (the rest of that turn).**
+- **Slice 14's review** ([findings](notes/reviews/slice-14-findings.md):
+  4 major, 7 minor), every finding answered
+  ([`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0), [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643), [`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2), [`11aee6a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/11aee6a)):
+  - panels sized from the stage, so the left two never overlap and Your
+    cats fits a laptop;
+  - a pinned panel scrolls nothing and only its Unpin takes the focus;
+  - a Pin button's name that survives leaving and coming back;
+  - drags that end when their button or capture is lost;
+  - moves by keyboard described and announced;
+  - the panels out of reach while the café wakes.
+  **The review also caught a claim of mine that was wrong:** the light
+  theme's panels show the room as white at any hour, not just by day,
+  because the page's theme follows the device and my screens had only
+  paired day with light. The record is corrected, with screens of all
+  four pairings ([`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2)); in the dark theme the glass reads as
+  frosted, as asked.
+- **Slice 14 merged and live** ([`aeb894a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/aeb894a)), checked on the live café
+  with one `agent_` account at both sizes ([`8dbb13f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8dbb13f)): the room at 4×,
+  the panels floating in frosted glass, the treat button by the emotes.
+  Two checks made steadier on `main`, waiting for the panels to settle
+  and holding the cats away from a chair a bigger cat could cover
+  ([`4284237`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4284237), [`0e4947c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0e4947c)).
+- **Slice 11, the art, in Mochi's style**, on `slice-11-wip`, reviewed
+  fresh before it merges:
+  - the cats drawn as PNGs at 24 px, which a script turns into the sheet
+    the café reads, held equal by a test;
+  - each cat's build (round, slim, striped) as data;
+  - Burakku slim with tall ears, Tora striped;
+  - a frame for each thing a cat does: walking and walking away, sitting,
+    asleep, on a lap, eating, playing, held, perched, scratching,
+    greeting;
+  - people at 32 px, front and back;
+  - each piece of furniture drawn as its parts from data: a sofa's back
+    and arms, legs under the table, chairs and window seat (crit 8's
+    note: no longer a shelf), and a plump cushion (no longer a box).
+  Flagged for the user: Tora's orange coat and the peach wood floor are
+  one family, so by day he blends in.
+
 ### 15. Music in the café
 
 *Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
@@ -1898,42 +1937,3 @@ recording why HoliznaCC0 and why each visitor has their own player
   said so by message: this entry follows its own. Slice 14 merged to
   `main` while this was written, so 15 can be built once approved.
 - Slice 15 waits on the user's approval.
-
-**Result, continued (the rest of that turn).**
-- **Slice 14's review** ([findings](notes/reviews/slice-14-findings.md):
-  4 major, 7 minor), every finding answered
-  ([`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0), [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643), [`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2), [`11aee6a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/11aee6a)):
-  - panels sized from the stage, so the left two never overlap and Your
-    cats fits a laptop;
-  - a pinned panel scrolls nothing and only its Unpin takes the focus;
-  - a Pin button's name that survives leaving and coming back;
-  - drags that end when their button or capture is lost;
-  - moves by keyboard described and announced;
-  - the panels out of reach while the café wakes.
-  **The review also caught a claim of mine that was wrong:** the light
-  theme's panels show the room as white at any hour, not just by day,
-  because the page's theme follows the device and my screens had only
-  paired day with light. The record is corrected, with screens of all
-  four pairings ([`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2)); in the dark theme the glass reads as
-  frosted, as asked.
-- **Slice 14 merged and live** ([`aeb894a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/aeb894a)), checked on the live café
-  with one `agent_` account at both sizes ([`8dbb13f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8dbb13f)): the room at 4×,
-  the panels floating in frosted glass, the treat button by the emotes.
-  Two checks made steadier on `main`, waiting for the panels to settle
-  and holding the cats away from a chair a bigger cat could cover
-  ([`4284237`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4284237), [`0e4947c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0e4947c)).
-- **Slice 11, the art, in Mochi's style**, on `slice-11-wip`, reviewed
-  fresh before it merges:
-  - the cats drawn as PNGs at 24 px, which a script turns into the sheet
-    the café reads, held equal by a test;
-  - each cat's build (round, slim, striped) as data;
-  - Burakku slim with tall ears, Tora striped;
-  - a frame for each thing a cat does: walking and walking away, sitting,
-    asleep, on a lap, eating, playing, held, perched, scratching,
-    greeting;
-  - people at 32 px, front and back;
-  - each piece of furniture drawn as its parts from data: a sofa's back
-    and arms, legs under the table, chairs and window seat (crit 8's
-    note: no longer a shelf), and a plump cushion (no longer a box).
-  Flagged for the user: Tora's orange coat and the peach wood floor are
-  one family, so by day he blends in.
