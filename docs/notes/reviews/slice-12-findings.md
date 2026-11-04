@@ -359,4 +359,23 @@ the repo. Nothing live was touched.
 
 ## Answers
 
-To be added by the builder.
+By the builder, 2026-11-05, on `slice-12-walking`. Each fix was tested
+first: the new test was seen failing on the old code, or on a mutant put
+back to the old behaviour.
+
+| # | Severity | Answer | Commit |
+| --- | --- | --- | --- |
+| 1 | major | Fixed. Both back walking frames redrawn head right, as every other frame. A `sprites` test holds each cat frame's head right of the middle (the mean column of rows 3 to 8 above 8; the old frames were 6.9), and a `render` test holds the mirroring itself on all four diagonals, with a context that tracks `scale(-1, 1)`. It failed on "never mirror" and on the mirror reversed. | [`5edf55f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5edf55f) |
+| 2 | major | Fixed. The camera is held through the real `Stage` and `draw` together in jsdom: a walk painted frame by frame in layout B, reading the canvas's CSS left and where the sprite is drawn. It fails on both of the review's mutants (`onScreen` in room pixels; `pan` from room pixels). The old arithmetic test is gone. | [`18a53f8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/18a53f8) |
+| 3 | major | Fixed the first way: before a welcome replaces the state, each walker's side is recorded from any walk the old state still holds. The review's sequence is the test; it failed before. A walker who left isn't kept. | [`79c82f0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/79c82f0) |
+| 4 | minor | Built the settled default: a walk in from the door, over, faces front, in `facingOf` and in `keepFacing`, so a reconnect agrees. Tests for four walks in and a reconnect; both failed first. | [`96f8a9d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/96f8a9d) |
+| 5 | minor | Answered in the spec: the room is drawn as before, but into the canvas at the room's scale, so its blended edges are blended at that scale. Slice 13 draws them crisp. | [`93e12b9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/93e12b9) |
+| 6 | minor | Fixed. A carried piece is drawn from its carrier's whole tile and moved by the screen pixels the sprite was placed at. The test, one offset along a walk at 3×, saw five before. | [`93f6f3e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/93f6f3e) |
+| 7 | minor | Fixed: the view's middle is rounded down once, so an odd width holds one pixel. Found again by finding 2's test at 393 wide, which fails without it. | [`18a53f8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/18a53f8) |
+| 8 | minor | Answered. The evenness test runs at 2×, 3× and 5× and at a cat's pace; the line says it holds from 2× up, since at 1× whole pixels can't move every frame. The story reads "by screen pixels". The change to an approved line is told to the user in the prompt log and in the summary of this turn. | [`93e12b9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/93e12b9) |
+| 9 | minor | Fixed. The script lets the walk toward the viewer finish, sends the walk away, and shoots while the café's own `personMoved` says the walk is under way; it stops if not. All six screenshots now differ, and "away" shows a back mid-walk at both sizes. | [`93e12b9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/93e12b9) |
+
+Gates after the fixes, on `93e12b9`: 175 client tests, both typechecks,
+`cargo fmt --check`, clippy `-D warnings`, 316 `cargo test`s, and the
+spec against a fresh café serving this build: 69 passed, 1 skipped
+(restart, which needs Docker).
