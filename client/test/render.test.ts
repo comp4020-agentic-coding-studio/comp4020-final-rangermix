@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
+import heights from "../../content/sprites/heights.json";
 import palettes from "../../content/sprites/palettes.json";
 import { toCanvas } from "../src/iso";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
@@ -426,5 +427,83 @@ describe("a piece's self outline", () => {
     expect(rim, "the rim").not.toBe(box);
     expect(lum(rim), `the rim ${rim} is darker than the box ${box}`).toBeLessThan(lum(box));
     expect([palettes.day.room[0], palettes.day.room[1], palettes.day.room[2]].map((c) => c.toLowerCase())).not.toContain(rim);
+  });
+});
+
+// Slice 13 (ADR 0019): the floor in the windows' shadows and at walls' feet
+// is drawn darker, in the hour's colours.
+
+describe("shadows on the floor", () => {
+  it("draws the floor behind a tall piece, away from the windows, darker than the open floor of the same board", async () => {
+    const { pixels } = await import("./pixels");
+    const { shadowMask, SHADE } = await import("../src/shadows");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "cat_tower", 6, 4, 2, 2)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    const s = fromWelcome(w, 10_000);
+    draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const mask = shadowMask(s.room, s.room.furniture, heights);
+    const floor = new Set([palettes.day.room[0], palettes.day.room[1]].map((c) => c.toLowerCase()));
+    let shaded = 0;
+    let lit = 0;
+    for (let y = 0; y < 232; y++) {
+      for (let x = 0; x < 336; x++) {
+        const c = p.at(x, y);
+        if (!c) continue;
+        const m = mask.at(x, y);
+        if (m === SHADE.shadow && floor.has(c)) throw new Error(`(${x},${y}) is in shadow but drawn as the open floor, ${c}`);
+        if (m === SHADE.shadow) shaded++;
+        if (m === SHADE.lit && floor.has(c)) lit++;
+      }
+    }
+    expect(shaded, "pixels in shadow").toBeGreaterThan(100);
+    expect(lit, "open floor still drawn in its own colours").toBeGreaterThan(1000);
+  });
+
+  it("keeps the boards and seams apart in shadow: a shaded pixel is the floor colour under it, darkened", async () => {
+    const { pixels } = await import("./pixels");
+    const { shadowMask, SHADE } = await import("../src/shadows");
+    const { fromCanvas } = await import("../src/iso");
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    w.snapshot.room.furniture = [];
+    const s = fromWelcome(w, 10_000);
+    const p = pixels(336, 232);
+    draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const mask = shadowMask(s.room, [], heights);
+    // What drawFloor paints at a pixel: the seam over the first 0.06 of each
+    // row below the first (measured: seam pixels sit at 0.02 and 0.05 of a
+    // row), else a board by tile.
+    const floorAt = (x: number, y: number) => {
+      const { gx, gy } = fromCanvas(x + 0.5, y + 0.5);
+      const tx = Math.floor(gx);
+      const ty = Math.floor(gy);
+      return ty > 1 && gy - ty < 0.06 ? 2 : (tx + ty) % 2 ? 0 : 1;
+    };
+    const shadeOf = (hex: string, k: number) => {
+      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+      return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+    };
+    const floor = palettes.day.room.slice(0, 3);
+    let checked = 0;
+    const seen = [0, 0, 0];
+    for (let y = 0; y < 232; y++) {
+      for (let x = 0; x < 336; x++) {
+        const m = mask.at(x, y);
+        if (m === SHADE.lit) continue;
+        const { gx, gy } = fromCanvas(x + 0.5, y + 0.5);
+        // Clear of the floor's edges and the walls drawn over them.
+        if (gx < 0.1 || gx > 11.9 || gy < 1.1 || gy > 9.9) continue;
+        const i = floorAt(x, y);
+        expect(p.at(x, y), `(${x},${y}) over ${["light board", "dark board", "seam"][i]}`).toBe(shadeOf(floor[i], m === SHADE.shadow ? 0.2 : 0.12));
+        seen[i]++;
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+    expect(seen[2], "seams in shade").toBeGreaterThan(5);
   });
 });

@@ -1,6 +1,7 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
+import { SHADE, type ShadowMask, shadowMask } from "./shadows";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -407,6 +408,7 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   ctx.fillRect(0, 0, ISO.width, ISO.height);
 
   drawFloor(ctx, room);
+  drawShadows(ctx, shadowMask(room, room.furniture, HEIGHT), room);
   drawWalls(ctx, state, sprites);
 
   for (const item of drawOrder(state, localNow)) item.paint(ctx, sprites);
@@ -434,13 +436,62 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
 }
 
 /** The floor: rows 1 and below, boards in two shades with a seam. */
+/** How deep the seam along each tile's far edge is, in tiles. */
+const SEAM = 0.06;
+
 function drawFloor(ctx: Ctx, room: RoomView): void {
   for (let y = 1; y < room.height; y++) {
     for (let x = 0; x < room.width; x++) {
       poly(ctx, diamond(x, y), (x + y) % 2 ? ROOM[0] : ROOM[1]);
-      poly(ctx, [up(x, y + 1), up(x + 1, y + 1), up(x + 1, y + 1.06), up(x, y + 1.06)], ROOM[2]);
+      poly(ctx, [up(x, y + 1), up(x + 1, y + 1), up(x + 1, y + 1 + SEAM), up(x, y + 1 + SEAM)], ROOM[2]);
     }
   }
+}
+
+/** How much a cast shadow and a foot's occlusion darken the floor. */
+const SHADOW = 0.2;
+const OCCLUDED = 0.12;
+
+/**
+ * The floor's shadows and occlusion (slice 13), over the floor already
+ * drawn: each run of shaded pixels in a row, filled in the floor's colour
+ * there, darkened. The mask is worked out only when the furniture changes.
+ */
+function drawShadows(ctx: Ctx, mask: ShadowMask, room: RoomView): void {
+  const dark = [shade(ROOM[0], SHADOW), shade(ROOM[1], SHADOW), shade(ROOM[2], SHADOW)];
+  const dim = [shade(ROOM[0], OCCLUDED), shade(ROOM[1], OCCLUDED), shade(ROOM[2], OCCLUDED)];
+  for (let y = 0; y < ISO.height; y++) {
+    let x = 0;
+    while (x < ISO.width) {
+      const m = mask.at(x, y);
+      if (m === SHADE.lit) {
+        x++;
+        continue;
+      }
+      // The run of the same shade on the same board: the board's colour is
+      // the floor's at the run's start.
+      const board = boardAt(x, y, room);
+      let end = x + 1;
+      while (end < ISO.width && mask.at(end, y) === m && boardAt(end, y, room) === board) end++;
+      ctx.fillStyle = (m === SHADE.shadow ? dark : dim)[board];
+      ctx.fillRect(x, y, end - x, 1);
+      x = end;
+    }
+  }
+}
+
+/**
+ * Which of the floor's three colours is at canvas pixel (x, y) at 1×, as
+ * drawFloor paints them: the seam a tile draws past its far edge, over the
+ * start of the next row, or the board's two shades by tile.
+ */
+function boardAt(x: number, y: number, room: RoomView): 0 | 1 | 2 {
+  const { gx, gy } = fromCanvasAt(x + 0.5, y + 0.5);
+  const tx = Math.floor(gx);
+  const ty = Math.floor(gy);
+  // Each tile's seam lies just past its far edge, y + 1 to y + 1 + SEAM, over the next row's start.
+  if (ty > 1 && gy - ty < SEAM && ty <= room.height) return 2;
+  return (tx + ty) % 2 ? 0 : 1;
 }
 
 /**
@@ -504,7 +555,7 @@ function drawPiece(ctx: Ctx, f: FurnitureView): void {
   const y = f.y + i;
   const w = f.w - 2 * i;
   const h = f.h - 2 * i;
-  if (f.kind !== "rug" && f.kind !== "cushion") poly(ctx, diamond(x - 0.06, y + 0.06, w + 0.12, h), shade(ROOM[0], 0.25));
+  // Its shadow is cast from the windows now, with the floor's (slice 13).
   if (!f.toppled) {
     block(ctx, x, y, w, h, z, colour);
     return;

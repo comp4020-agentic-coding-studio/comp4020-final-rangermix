@@ -169,3 +169,19 @@ Where the build departed from this plan, as it happened.
   see-through draws stay on purpose: the ghost of a piece being placed,
   and a hiding cat. They're overlays, not the room's edges, and being seen
   through is what they're for.
+- **Task 3: the light through the panes lands a tile or two in front of
+  the wall, not at its foot.** The light comes down steeply, so the wall
+  below each sill shades the strip at its foot, and what comes through a
+  pane falls between about 1.9 and 2.9 tiles out. The first pane test
+  looked at the foot and failed; the model was right and the test was
+  moved. Shadows draw per frame as runs of `fillRect` over the cached
+  mask, a few hundred a frame, not a cached image: a cached canvas is
+  invisible to the pixel tests, and the runs are cheap. The old footprint
+  patch under each piece (slice 09) went: the cast shadow replaces it.
+- **A seam rule caught by measuring.** The shadow's colour has to be the
+  board or seam under it, darkened. The first rule put the seam at a
+  tile's far end; measured, `drawFloor` paints it over the *next* row's
+  first 0.06. The first test of it passed either way (it only counted
+  colours); the second checks every shaded pixel against what's under it,
+  and fails on the wrong rule at the pixel it gets wrong.
+
