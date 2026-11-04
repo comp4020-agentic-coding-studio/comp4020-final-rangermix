@@ -21,27 +21,40 @@ async function inside(viewport, touch) {
   return page;
 }
 const tileAt = (page, x, y) => page.evaluate(([x, y]) => window.cafeRoom.tileAt(x, y), [x, y]);
-/** Walk to (x, y) by clicking it, and shoot once the walk is under way. */
-async function walkAndShoot(page, from, to, name) {
-  let at = await tileAt(page, ...from);
+/**
+ * Click a tile. In layout B the room pans, so a tile is found again before
+ * each click, and must be on screen: one off it would never be clicked.
+ */
+async function walkTo(page, x, y) {
+  const at = await tileAt(page, x, y);
+  const view = page.viewportSize();
+  if (at.x < 0 || at.y < 0 || at.x > view.width || at.y > view.height) throw new Error(`(${x},${y}) is off screen at ${JSON.stringify(at)}`);
   await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(2500);
-  at = await tileAt(page, ...to);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(700);
+}
+/**
+ * Get to `from` a few tiles at a time, each in view (layout B follows you),
+ * then walk to `to` and shoot once that walk is under way.
+ */
+async function walkAndShoot(page, via, to, name) {
+  for (const tile of via) {
+    await walkTo(page, ...tile);
+    await page.waitForTimeout(2000);
+  }
+  await walkTo(page, ...to);
+  await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(out, `${name}.png`) });
 }
 
+// Column 3 is bare floor from row 2 to 8 (content/room.toml), so a tap
+// walks there rather than opening a piece's menu.
 for (const [viewport, touch, size] of [[{ width: 1920, height: 1080 }, false, "1920x1080"], [{ width: 390, height: 844 }, true, "390x844"]]) {
   const page = await inside(viewport, touch);
-  // From the front of the room toward the street wall: up the screen, back shown.
-  await walkAndShoot(page, [5, 8], [5, 2], `away-${size}`);
-  // And back: down the screen, front shown.
-  await walkAndShoot(page, [5, 2], [5, 8], `toward-${size}`);
+  // Down the screen, away from the street wall: front shown.
+  await walkAndShoot(page, [[5, 2], [3, 2]], [3, 6], `toward-${size}`);
+  // Up the screen, toward the street wall: back shown.
+  await walkAndShoot(page, [], [3, 2], `away-${size}`);
   // Standing after walking away: still the back.
-  let at = await tileAt(page, 5, 3);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(3000);
   await page.screenshot({ path: path.join(out, `stopped-away-${size}.png`) });
   await page.locator("#leave").click();
 }

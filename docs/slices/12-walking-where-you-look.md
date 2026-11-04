@@ -1,6 +1,6 @@
 # 12. Walking where you look
 
-- **Status:** Approved 2026-11-04, with the proposed default for its open question (standing still, a figure faces the way it last walked; someone arriving faces into the room)
+- **Status:** Built 2026-11-04 ([plan](../notes/plan-slice-12-walking.md), [screens](../notes/screens/slice-12/)); approved 2026-11-04, with the proposed default for its open question (standing still, a figure faces the way it last walked; someone arriving faces into the room)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-12-walking.md`
 - **Design:** The client ("The look": walkers face where they go);
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md),
@@ -46,7 +46,7 @@ at a time, instead of stalling and jumping.
 | What must be true | Held by |
 | --- | --- |
 | A step toward the street wall shows the walker's back; a step away from it, their face; left and right mirror as the path turns on screen | client unit tests (`motion`: the direction for each of the four steps) |
-| A walker on a diagonal moves on screen in steps of at most one screen pixel per frame along each axis, never standing still while their walk runs | client unit tests (positions at 60 frames a second at 3×) |
+| A walker on a diagonal moves on screen every frame, by steps that differ from frame to frame by at most one screen pixel on either axis: even, never standing still then jumping. (Written first as "at most one screen pixel per frame", which no walk at 3 tiles a second can meet at 3×; corrected in the plan, decision 1.) | client unit tests (positions at 60 frames a second at 3×) |
 | In layout B the walker the camera follows stays within a pixel of the screen's middle while walking | client unit tests (`layout`) |
 | Every sprite the client draws has a front and a back view | `cargo test` (the content loader) |
 | The browser checks that click a walker or a tile still pass at 390×844 and 1920×1080 | `spec/` |

@@ -462,11 +462,17 @@ renamed.
     client, with a pose for each thing a cat does (slice 11). 32-px tiles
     stay, judged again on 2026-11-04 against 16, 24 and 48
     ([notes/art-style.md](notes/art-style.md)).
-  - **Walkers face where they go** (decided 2026-11-04,
+  - **Walkers face where they go** (slice 12, built;
     [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
-    by their direction on screen, not on the grid, with a back view when
-    they walk away, and they move by screen pixels, not the room's, so a
-    walk on the diagonal is even. A sprite's own pixels stay whole.
+    by their direction on screen, not on the grid: up the screen shows
+    their back, down it their face, and going left mirrors the sprite.
+    Standing, they keep the side they last walked with; someone who's just
+    arrived faces into the room. The client remembers the side, since the
+    server's messages don't carry it. They move by screen pixels: the
+    canvas holds the room at its scale, the room is drawn into it in room
+    pixels, and a figure is placed to the canvas's own pixels, so a walk
+    on the diagonal is even and the phone's camera holds a walker still
+    as it follows them. A sprite's own pixels stay whole.
   - **The room is a diorama on its street** (decided 2026-11-04, ADR 0018):
     the floor has a thickness and the walls a top, and the street stands
     behind the café, sky and towers by day, stars and lit windows by
