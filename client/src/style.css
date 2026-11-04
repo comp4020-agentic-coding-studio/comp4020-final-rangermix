@@ -109,6 +109,11 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   /* The title is a handle too (slice 14). */
   .panel-bar h2 { cursor: grab; touch-action: none; user-select: none; }
   .panel.moving, .panel.moving .panel-bar * { cursor: grabbing; }
+  /* Pinned (slice 14): clicks, taps and hovers go through to the café, and
+     nothing in it can be selected, but its Unpin. */
+  .panel.pinned { pointer-events: none; user-select: none; -webkit-user-select: none; }
+  .panel.pinned .pin { pointer-events: auto; }
+  .panel.pinned .panel-bar h2 { cursor: default; }
 }
 .panel-body { overflow: auto; min-height: 0; }
 .panel-body > :first-child, #here > :first-child { margin-top: 0; }

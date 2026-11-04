@@ -406,6 +406,116 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(Math.round(start.x - (await box()).x)).toBe(256);
   });
 
+  it("lets a click on a pinned panel through to the café under it, walking or opening a cat's menu, and keeps it still and unselectable but for Unpin (slice 14)", async () => {
+    // A cat held still at (6,5) by the page's socket, as the window-seat check does.
+    const CAT = { x: 6, y: 5 };
+    const still = (page: Page) =>
+      page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        let pinned: string | null = null;
+        server.onMessage((m) => {
+          const f = JSON.parse(String(m));
+          if (f.type === "welcome") {
+            const cat = f.snapshot.cats[0];
+            pinned = cat.id;
+            Object.assign(cat, { at: CAT, walk: null, pose: "sit", heldBy: null });
+            ws.send(JSON.stringify(f));
+          } else if (f.cat !== pinned) ws.send(m);
+        });
+      });
+    const v = await visit({ width: 1920, height: 1080 }, false, { prepare: still });
+    const page = v.page;
+    const name = v.frames.find((f) => f.type === "welcome")!.snapshot.cats[0].name;
+    const panel = page.locator("#cats-panel");
+    const box = async () => (await panel.boundingBox())!;
+    // Over the cat by keyboard: the panel's middle onto the cat's middle.
+    const sprite = async () => {
+      const floor = await tileAt(page, CAT);
+      const scale = (await page.locator("#room").boundingBox())!.width / 336;
+      return { x: floor.x, y: floor.y - 8 * scale };
+    };
+    const target = await sprite();
+    await page.locator("#cats-panel .grip").focus();
+    for (let i = 0; i < 200; i++) {
+      const b = await box();
+      const [dx, dy] = [target.x - (b.x + b.width / 2), target.y - (b.y + b.height / 2)];
+      if (Math.abs(dx) < 16 && Math.abs(dy) < 16) break;
+      await page.keyboard.press(Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "ArrowRight" : "ArrowLeft") : dy > 0 ? "ArrowDown" : "ArrowUp");
+    }
+    const over = await box();
+    expect(target.x).toBeGreaterThan(over.x);
+    expect(target.x).toBeLessThan(over.x + over.width);
+    expect(target.y).toBeGreaterThan(over.y);
+    expect(target.y).toBeLessThan(over.y + over.height);
+    // Unpinned, it takes the click: no menu.
+    await page.mouse.click(target.x, target.y);
+    await page.waitForTimeout(300);
+    expect(await page.locator(".menu").count(), "an unpinned panel takes a click").toBe(0);
+    // Pinned: the click reaches the cat.
+    await page.getByRole("button", { name: "Pin your cats" }).click();
+    expect(await page.getByRole("button", { name: "Unpin your cats" }).isVisible()).toBe(true);
+    await page.mouse.click(target.x, target.y);
+    await expect.poll(() => page.locator(".menu").getAttribute("aria-label"), { timeout: 3000 }).toBe(name);
+    await page.keyboard.press("Escape");
+    // And a click over a bare tile under it walks there.
+    const sentBefore = v.sent.length;
+    const bare = await (async () => {
+      const b = await box();
+      for (let y = 1; y < 10; y++)
+        for (let x = 0; x < 12; x++) {
+          if (x === CAT.x && y === CAT.y) continue;
+          const at = await tileAt(page, { x, y });
+          const inPanel = at.x > b.x + 4 && at.x < b.x + b.width - 4 && at.y > b.y + 4 && at.y < b.y + b.height - 4;
+          if (!inPanel) continue;
+          const welcome = v.frames.find((f) => f.type === "welcome")!;
+          const taken = welcome.snapshot.room.furniture.some((f: Frame) => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
+          if (!taken) return { x, y, at };
+        }
+      return null;
+    })();
+    expect(bare, "a bare tile under the panel").not.toBeNull();
+    await page.mouse.click(bare!.at.x, bare!.at.y);
+    await expect.poll(() => v.sent.slice(sentBefore).find((f) => f.type === "walkTo")?.tile).toEqual({ x: bare!.x, y: bare!.y });
+    // A drag on its title doesn't move it; a drag across its text selects nothing.
+    const pinnedAt = await box();
+    const title = (await page.locator("#cats-heading").boundingBox())!;
+    await page.mouse.move(title.x + 10, title.y + title.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(title.x + 200, title.y + 150, { steps: 5 });
+    await page.mouse.up();
+    expect(await box()).toEqual(pinnedAt);
+    const text = (await page.locator("#your-cats .cat-row").first().boundingBox())!;
+    await page.mouse.move(text.x + 2, text.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(text.x + text.width - 2, text.y + text.height - 2, { steps: 5 });
+    await page.mouse.up();
+    expect(await page.evaluate(() => String(getSelection() ?? "")), "nothing selected in a pinned panel").toBe("");
+    // Nor by selecting the whole page: the pinned panel's text is left out.
+    await page.evaluate(() => getSelection()?.selectAllChildren(document.body));
+    expect(await page.evaluate(() => String(getSelection() ?? "")), "the pinned panel's text in a select-all").not.toContain("Treats today");
+    await page.evaluate(() => getSelection()?.removeAllRanges());
+    // Tab reaches its Unpin and not its grip; the arrows on Unpin don't move it.
+    await page.locator("#leave").focus();
+    const reached: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press("Tab");
+      reached.push(await page.evaluate(() => document.activeElement?.getAttribute("aria-label") || document.activeElement?.id || ""));
+      if (reached.at(-1) === "room") break;
+    }
+    expect(reached).toContain("Unpin your cats");
+    expect(reached).not.toContain("Move your cats");
+    // Remembered through a reload.
+    await page.reload();
+    await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    await expect.poll(async () => (await page.getByRole("button", { name: "Unpin your cats" }).count())).toBe(1);
+    await expect.poll(async () => { const b = await box(); return [Math.round(b.x), Math.round(b.y)]; }).toEqual([Math.round(pinnedAt.x), Math.round(pinnedAt.y)]);
+    // Unpinned, it can be moved again.
+    await page.getByRole("button", { name: "Unpin your cats" }).click();
+    await page.locator("#cats-panel .grip").focus();
+    await page.keyboard.press("Shift+ArrowLeft");
+    expect(Math.round(pinnedAt.x - (await box()).x)).toBe(64);
+  });
+
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {
     const { page, frames } = await visit({ width: 1920, height: 1080 });
     const welcome = frames.find((f) => f.type === "welcome")!;

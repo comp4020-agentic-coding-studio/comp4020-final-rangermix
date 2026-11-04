@@ -35,6 +35,7 @@ export class Floating {
       // A panel that grows or shrinks moves, if it stands from the bottom or right.
       this.observer.observe(panel);
       this.dragging(panel);
+      this.pinning(panel);
     }
     this.observer.observe(stage);
     window.addEventListener("resize", this.onResize);
@@ -128,6 +129,34 @@ export class Floating {
     };
     grip.addEventListener("keydown", key);
     this.undo.push(() => grip.removeEventListener("keydown", key));
+  }
+
+  /**
+   * The Pin button. A pinned panel stays put and lets every click, tap and
+   * hover through to the café under it (pointer-events in style.css), but
+   * for its Unpin; its grip goes, so Tab reaches only Unpin.
+   */
+  private pinning(panel: HTMLElement): void {
+    const pin = panel.querySelector<HTMLButtonElement>(".pin");
+    const grip = panel.querySelector<HTMLButtonElement>(".grip");
+    if (!pin) return;
+    const name = (pin.getAttribute("aria-label") ?? "").replace(/^Pin /, "");
+    const show = () => {
+      const pinned = this.saved[panel.id].pinned;
+      panel.classList.toggle("pinned", pinned);
+      pin.textContent = pinned ? "Unpin" : "Pin";
+      pin.setAttribute("aria-label", `${pinned ? "Unpin" : "Pin"} ${name}`);
+      pin.setAttribute("aria-pressed", String(pinned));
+      if (grip) grip.hidden = pinned;
+    };
+    const click = () => {
+      this.saved[panel.id] = { ...this.saved[panel.id], pinned: !this.saved[panel.id].pinned };
+      savePanels(this.saved);
+      show();
+    };
+    pin.addEventListener("click", click);
+    this.undo.push(() => pin.removeEventListener("click", click));
+    show();
   }
 
   dispose(): void {

@@ -260,3 +260,11 @@ Where the build departed from this plan, as it happened.
   with the save switched off. The drag acts by pointer capture on the
   title or grip, so a drag over the room walks nobody, which the check
   holds.
+- **Task 5: "can't be selected" needed a second probe.** A mouse drag
+  across a pinned panel's text starts on the room behind it
+  (`pointer-events: none`), so it selected nothing even with
+  `user-select` taken out: the first check couldn't fail. A select-all of
+  the page now has to leave the pinned panel's text out, which fails
+  without `user-select: none` and passes with it. The pinned panel's Unpin
+  carries `aria-pressed`, and its grip is hidden, so Tab reaches Unpin
+  only.
