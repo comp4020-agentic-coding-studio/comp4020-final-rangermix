@@ -397,3 +397,34 @@ describe("the room drawn crisp", () => {
     expect(checked).toBeGreaterThan(50);
   });
 });
+
+// Slice 13 (ADR 0019): each piece is outlined in its own colour, darkened,
+// one room pixel wide round its silhouette, where it meets what's behind.
+
+describe("a piece's self outline", () => {
+  it("rims a block's silhouette in its own colour darkened, and leaves its top's middle its own colour", async () => {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "box", 6, 6, 1, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const box = palettes.day.furniture[3].toLowerCase();
+    // The box's top: its footprint's diamond raised 12 px (heights.json), inset 0.15 tiles.
+    const centre = toCanvas(6.5, 6.5);
+    expect(p.at(Math.round(centre.x), Math.round(centre.y - 12))).toBe(box);
+    // Scan up from the top's middle to the first pixel off the box: the one
+    // before it is the rim, darker than the box and not the floor.
+    let y = Math.round(centre.y - 12);
+    while (y > 0 && p.at(Math.round(centre.x), y - 1) !== null && p.at(Math.round(centre.x), y - 1) !== p.at(Math.round(centre.x), y - 30)) {
+      if (![box].includes(p.at(Math.round(centre.x), y - 1)!)) break;
+      y--;
+    }
+    const rim = p.at(Math.round(centre.x), y - 1)!;
+    const lum = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).reduce((a, b) => a + b, 0);
+    expect(rim, "the rim").not.toBe(box);
+    expect(lum(rim), `the rim ${rim} is darker than the box ${box}`).toBeLessThan(lum(box));
+    expect([palettes.day.room[0], palettes.day.room[1], palettes.day.room[2]].map((c) => c.toLowerCase())).not.toContain(rim);
+  });
+});

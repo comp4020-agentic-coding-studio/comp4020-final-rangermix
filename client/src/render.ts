@@ -117,6 +117,20 @@ function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, 
   poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.3));
   poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.14));
   poly(ctx, [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x, y + h, z)], colour);
+  // The self outline (slice 13, ADR 0019): the block's silhouette, a room
+  // pixel wide, in its own colour darkened, so it stands off what's behind.
+  outline(ctx, silhouette(x, y, w, h, z), shade(colour, OUTLINE));
+}
+
+/** How much a piece's outline darkens its own colour. */
+const OUTLINE = 0.45;
+
+/**
+ * A block's outline as seen from the front-right corner: its top's back
+ * three corners, then down its two visible faces to the floor.
+ */
+function silhouette(x: number, y: number, w: number, h: number, z: number): Pt[] {
+  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h), up(x, y + h), up(x, y)];
 }
 
 function diamond(x: number, y: number, w = 1, h = 1): Pt[] {
