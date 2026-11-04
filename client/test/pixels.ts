@@ -11,13 +11,17 @@ export interface Pixels {
   at(x: number, y: number): string | null;
   /** Every colour drawn, by how many pixels have it. */
   colours(): Map<string, number>;
-  /** Calls that would blend: fill and stroke of paths, and fills at less than full alpha. */
+  /** Calls that would blend: fill and stroke of paths, fills at less than full alpha, and images off the grid or smoothed. */
   blended: string[];
+  /** Images drawn at less than full alpha: see-through on purpose (a hiding cat). */
+  seeThrough: string[];
 }
 
 export function pixels(width: number, height: number): Pixels {
   const grid: (string | null)[] = new Array(width * height).fill(null);
   const blended: string[] = [];
+  /** Images drawn see-through: a hiding cat, which is meant to be. */
+  const seeThrough: string[] = [];
   let m = [1, 0, 0, 1, 0, 0];
   const stack: { m: number[]; fill: string; alpha: number }[] = [];
   let fill = "#000000";
@@ -75,7 +79,18 @@ export function pixels(width: number, height: number): Pixels {
       }
     },
     clearRect() {},
-    drawImage() {},
+    // An image is drawn as-is, but a blended one is recorded (slice 13's
+    // review, finding 12): at a fraction of a device pixel, scaled to one,
+    // under alpha, or with smoothing on.
+    drawImage(img: { width?: number; height?: number }, ...args: number[]) {
+      // (img, dx, dy), (img, dx, dy, dw, dh) or (img, sx, sy, sw, sh, dx, dy, dw, dh).
+      const [x, y, w, h] = args.length === 2 ? [args[0], args[1], img?.width ?? 0, img?.height ?? 0] : args.length === 4 ? args : args.slice(4, 8);
+      const corners = [m[0] * x + m[4], m[0] * (x + w) + m[4], m[3] * y + m[5], m[3] * (y + h) + m[5]];
+      const whole = (v: number) => Math.abs(v - Math.round(v)) < 1e-6;
+      if (alpha < 1) seeThrough.push(`drawImage at alpha ${alpha}`);
+      if (!corners.every(whole)) blended.push(`drawImage off the pixel grid at (${corners.map((v) => +v.toFixed(3))})`);
+      if ((ctx as { imageSmoothingEnabled: boolean }).imageSmoothingEnabled) blended.push("drawImage with smoothing on");
+    },
     beginPath() {},
     closePath() {},
     moveTo() {},
@@ -98,5 +113,6 @@ export function pixels(width: number, height: number): Pixels {
       return seen;
     },
     blended,
+    seeThrough,
   };
 }

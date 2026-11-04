@@ -1,7 +1,9 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
-import { SHADE, type ShadowMask, shadowMask } from "./shadows";
+import { pieceBox } from "./pieces";
+import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
+import { shadowMask } from "./shadows";
 import { streetSlot } from "./street";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
@@ -65,35 +67,20 @@ const SLOT: Record<string, number> = {
   lamp: 5,
 };
 const colourOf = (kind: string): string => FURNITURE[SLOT[kind] ?? 3];
-/** How far in from its footprint's edges a small piece's block stands, in tiles. */
-const INSET: Record<string, number> = { plant: 0.28, toys: 0.32, bowls: 0.18, chair: 0.2, cat_bed: 0.12, box: 0.15, cushion: 0.15, scratching_post: 0.3, lamp: 0.3 };
 const HEIGHT = heights as Record<string, number>;
-/**
- * The street's runs of one slot along each row of the backdrop, worked out
- * once for each light (stars show only at night): the street doesn't move.
- */
-const streetRuns = new Map<boolean, { y: number; x: number; w: number; slot: number }[]>();
-
+/** The street behind the café into the floor layer (slice 13): each pixel its slot's colour in this light. */
 function drawStreet(ctx: Ctx, colours: string[], light: Light): void {
   const night = light >= 1;
-  let runs = streetRuns.get(night);
-  if (!runs) {
-    runs = [];
-    for (let y = 0; y < ISO.height; y++) {
-      let x = 0;
-      while (x < ISO.width) {
-        const slot = streetSlot(x, y, ISO.width, ISO.height, night);
-        let end = x + 1;
-        while (end < ISO.width && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
-        runs.push({ y, x, w: end - x, slot });
-        x = end;
-      }
+  for (let y = 0; y < ISO.height; y++) {
+    let x = 0;
+    while (x < ISO.width) {
+      const slot = streetSlot(x, y, ISO.width, ISO.height, night);
+      let end = x + 1;
+      while (end < ISO.width && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
+      ctx.fillStyle = colours[slot];
+      ctx.fillRect(x, y, end - x, 1);
+      x = end;
     }
-    streetRuns.set(night, runs);
-  }
-  for (const r of runs) {
-    ctx.fillStyle = colours[r.slot];
-    ctx.fillRect(r.x, r.y, r.w, 1);
   }
 }
 
@@ -142,8 +129,12 @@ function up(gx: number, gy: number, z = 0): Pt {
  * then its top.
  */
 function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string): void {
-  poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.3));
-  poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.14));
+  // Lit from the street wall's windows, a little from +x (shadows.ts): the
+  // left face (toward -x) turns from the light a little, the front face
+  // (toward +y) most, as in the study the look was chosen from (slice 13's
+  // review, finding 7).
+  poly(ctx, [up(x, y), up(x, y + h), up(x, y + h, z), up(x, y, z)], shade(colour, 0.12));
+  poly(ctx, [up(x, y + h), up(x + w, y + h), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.28));
   poly(ctx, [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x, y + h, z)], colour);
   // The self outline (slice 13, ADR 0019): the block's silhouette, a room
   // pixel wide, in its own colour darkened, so it stands off what's behind.
@@ -202,6 +193,8 @@ export interface Drawn {
   paint: (ctx: Ctx, sprites: Sprites) => void;
   /** The tile a canvas point on this thing as drawn stands for, or null if the point isn't on it. */
   hit?: (px: number, py: number) => { x: number; y: number } | null;
+  /** Drawn with the floor, in its layer, not on its own (the rug). */
+  inLayer?: boolean;
 }
 
 /** Whether (px, py) is inside the convex polygon `pts`. */
@@ -230,20 +223,22 @@ function blockTile(f: FurnitureView, z: number, px: number, py: number): { x: nu
   return { x: clamp(g.gx, f.x, f.w), y: clamp(g.gy, f.y, f.h) };
 }
 
-/** Where a piece's block is drawn: its outline, top and two faces together. */
+/** Where a piece's block is drawn: its outline, top and two faces together, from the box it's drawn as (pieces.ts). */
 function blockOutline(f: FurnitureView): Pt[] {
-  const z = HEIGHT[f.kind] ?? 8;
-  const i = INSET[f.kind] ?? 0.06;
-  const [x, y, w, h] = [f.x + i, f.y + i, f.w - 2 * i, f.h - 2 * i];
-  if (f.toppled) {
-    const along = Math.min(f.w - 0.1, w * 1.8);
-    const lz = Math.max(2, Math.round(z / 3));
-    const [bx, by, bw, bh] = [f.x + (f.w - along) / 2, y + h * 0.25, along, h * 0.5];
-    return [up(bx, by, lz), up(bx + bw, by, lz), up(bx + bw, by + bh, lz), up(bx + bw, by + bh), up(bx, by + bh), up(bx, by)];
-  }
-  // Its silhouette from the front-right: round the top's back edges, down the
-  // right, along the front base, and up the left.
-  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h), up(x, y + h), up(x, y)];
+  const b = pieceBox(f, HEIGHT);
+  return silhouette(b.x, b.y, b.w, b.h, b.z);
+}
+
+/**
+ * Whether canvas point (px, py) is on a piece as drawn: inside its block,
+ * or on the outline traced a room pixel wide round it, which can fall a
+ * pixel outside the polygon, across a corner too (slice 13's review,
+ * finding 9).
+ */
+function onBlock(f: FurnitureView, px: number, py: number): boolean {
+  const pts = blockOutline(f);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inside(pts, px + dx, py + dy)) return true;
+  return false;
 }
 
 /** A figure's sprite box, `lift` pixels up, as a polygon. */
@@ -290,6 +285,10 @@ function standingOn(state: CafeState, spot: { x: number; y: number }): Furniture
  * kept when one was cleared, or the front.
  */
 function facingOf(state: CafeState, key: string, walk: Walk | null, spot: Spot): Spot {
+  // Someone who's just come in, their walk from the door over, faces into
+  // the room, as the spec settled (slice 12's review, finding 4).
+  const door = state.room.door;
+  if (walk && walk.path.length > 1 && !spot.moving && walk.path[0].x === door.x && walk.path[0].y === door.y) return { ...spot, view: "front", mirror: false };
   if (walk && walk.path.length > 1) return spot;
   const kept = state.facing.get(key);
   return kept ? { ...spot, ...kept } : spot;
@@ -318,8 +317,10 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       h: f.h,
       layer: LAYER.piece,
       lift: 0,
-      // What others stand on is the floor, as far as a click goes.
-      hit: f.under ? undefined : (px, py) => (inside(blockOutline(f), px, py) ? blockTile(f, HEIGHT[f.kind] ?? 8, px, py) : null),
+      // What others stand on is the floor, as far as a click goes, and is
+      // drawn with it, under the shadows (slice 13's review, finding 2).
+      hit: f.under ? undefined : (px, py) => (onBlock(f, px, py) ? blockTile(f, pieceBox(f, HEIGHT).z, px, py) : null),
+      inLayer: f.under,
       paint: (ctx, sprites) => {
         drawPiece(ctx, f);
         if (f.kind === "bowls" && state.bowls > 0) {
@@ -430,14 +431,15 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   FURNITURE = palette.furniture;
   sprites.light = light;
   ctx.imageSmoothingEnabled = false;
-  // The street behind the café, round the room's diamond (slice 13).
-  drawStreet(ctx, palette.street, light);
-
-  drawFloor(ctx, room);
-  drawShadows(ctx, shadowMask(room, room.furniture, HEIGHT), room);
+  // The street, the floor and the rug, with their shadows, as one layer
+  // worked out when the light or the furniture changes (slice 13's review,
+  // findings 2, 3 and 6).
+  const layer = floorLayer(room, light);
+  drawLayer(ctx, layer, () => layerImage(layer));
   drawWalls(ctx, state, sprites);
+  drawFigureShadows(ctx, state, localNow, layer);
 
-  for (const item of drawOrder(state, localNow)) item.paint(ctx, sprites);
+  for (const item of drawOrder(state, localNow)) if (!item.inLayer) item.paint(ctx, sprites);
 
   if (pointer.ghost) {
     const { piece, at, ok } = pointer.ghost;
@@ -478,57 +480,92 @@ function drawFloor(ctx: Ctx, room: RoomView): void {
   poly(ctx, [up(0, H), up(W, H), up(W, H, -SLAB), up(0, H, -SLAB)], shade(wood, 0.45));
   outline(ctx, [up(0, 1, -SLAB), up(0, H, -SLAB), up(W, H, -SLAB)], shade(wood, 0.65), 1, false);
   for (let y = 1; y < room.height; y++) {
-    for (let x = 0; x < room.width; x++) {
-      poly(ctx, diamond(x, y), (x + y) % 2 ? ROOM[0] : ROOM[1]);
-      poly(ctx, [up(x, y + 1), up(x + 1, y + 1), up(x + 1, y + 1 + SEAM), up(x, y + 1 + SEAM)], ROOM[2]);
-    }
+    for (let x = 0; x < room.width; x++) poly(ctx, diamond(x, y), (x + y) % 2 ? ROOM[0] : ROOM[1]);
+  }
+  // The seams over the boards, after them all, so the next row's boards
+  // don't cover them (slice 13's review, finding 3).
+  for (let y = 1; y < room.height; y++) {
+    for (let x = 0; x < room.width; x++) poly(ctx, [up(x, y + 1), up(x + 1, y + 1), up(x + 1, y + 1 + SEAM), up(x, y + 1 + SEAM)], ROOM[2]);
   }
 }
 
-/** How much a cast shadow and a foot's occlusion darken the floor. */
-const SHADOW = 0.2;
-const OCCLUDED = 0.12;
+let layerCache: { key: string; layer: Raster; image?: CanvasImageSource | null } | null = null;
 
 /**
- * The floor's shadows and occlusion (slice 13), over the floor already
- * drawn: each run of shaded pixels in a row, filled in the floor's colour
- * there, darkened. The mask is worked out only when the furniture changes.
+ * The floor layer in a light (slice 13's review, findings 2, 3 and 6): the
+ * street, the slab, the boards and seams, and the pieces others stand on,
+ * at 1×, darkened where the windows' shadows and the floor's occlusion fall
+ * (unless `shaded` is false). Made again only when the light or the
+ * furniture changes.
  */
-function drawShadows(ctx: Ctx, mask: ShadowMask, room: RoomView): void {
-  const dark = [shade(ROOM[0], SHADOW), shade(ROOM[1], SHADOW), shade(ROOM[2], SHADOW)];
-  const dim = [shade(ROOM[0], OCCLUDED), shade(ROOM[1], OCCLUDED), shade(ROOM[2], OCCLUDED)];
-  for (let y = 0; y < ISO.height; y++) {
-    let x = 0;
-    while (x < ISO.width) {
-      const m = mask.at(x, y);
-      if (m === SHADE.lit) {
-        x++;
-        continue;
+export function floorLayer(room: RoomView, light: Light, shaded = true): Raster {
+  const key = `${light}:${shaded}:${room.width}x${room.height}:${room.tiles[0]}:${room.furniture.map((f) => `${f.kind}@${f.x},${f.y},${f.w},${f.h}${f.toppled ? "t" : ""}${f.under ? "u" : ""}`).join(";")}`;
+  if (layerCache?.key === key) return layerCache.layer;
+  const palette = paletteAt(light);
+  const [room0, furn0] = [ROOM, FURNITURE];
+  ROOM = palette.room;
+  FURNITURE = palette.furniture;
+  const layer = new Raster(ISO.width, ISO.height);
+  const ctx = layer.context();
+  drawStreet(ctx, palette.street, light);
+  drawFloor(ctx, room);
+  for (const f of inDrawOrder(room.furniture.filter((f) => f.under))) drawPiece(ctx, f);
+  if (shaded) shadeLayer(layer, shadowMask(room, room.furniture, HEIGHT));
+  [ROOM, FURNITURE] = [room0, furn0];
+  layerCache = { key, layer };
+  return layer;
+}
+
+/**
+ * How a figure's shadow lies, in tiles from the middle of its feet: a small
+ * oval a little away from the windows (toward +y), as the light falls
+ * (shadows.ts), the study's sprite shadow (slice 13's review, finding 5).
+ */
+const FIGURE_SHADOW = { dx: -0.04, dy: 0.16, rx: 0.2, ry: 0.3 };
+
+/**
+ * A small shadow under each cat and person standing on the floor (slice
+ * 13's review, finding 5): the floor under it darkened, pixel by pixel, as
+ * the floor's own shadows are. Worked out every frame, since figures move;
+ * nobody up on a piece or in someone's arms casts one on the floor.
+ */
+function drawFigureShadows(ctx: Ctx, state: CafeState, localNow: number, layer: Raster): void {
+  const now = serverNow(state, localNow);
+  const spots: Pt[] = [];
+  for (const cat of state.cats.values()) {
+    if (cat.heldBy !== null) continue;
+    const spot = positionAt(cat.walk, cat.at, now);
+    if (!standingOn(state, spot) && lapOf(state, cat) === null) spots.push(spot);
+  }
+  for (const person of state.people.values()) {
+    if (person.place !== "inside") continue;
+    const spot = positionAt(person.walk, person.at, now);
+    if (spot.moving || !standingOn(state, spot)) spots.push(spot);
+  }
+  const { dx, dy, rx, ry } = FIGURE_SHADOW;
+  for (const s of spots) {
+    const [cx, cy] = [s.x + 0.5 + dx, s.y + 0.5 + dy];
+    const corners = [toCanvas(cx - rx, cy - ry), toCanvas(cx + rx, cy - ry), toCanvas(cx + rx, cy + ry), toCanvas(cx - rx, cy + ry)];
+    const [x0, x1] = [Math.floor(Math.min(...corners.map((c) => c.x))), Math.ceil(Math.max(...corners.map((c) => c.x)))];
+    const [y0, y1] = [Math.floor(Math.min(...corners.map((c) => c.y))), Math.ceil(Math.max(...corners.map((c) => c.y)))];
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const { gx, gy } = fromCanvasAt(x + 0.5, y + 0.5);
+        if (((gx - cx) / rx) ** 2 + ((gy - cy) / ry) ** 2 > 1 || gy < 1) continue;
+        const under = layer.at(x, y);
+        if (!under) continue;
+        ctx.fillStyle = darken(under, SHADOW);
+        ctx.fillRect(x, y, 1, 1);
       }
-      // The run of the same shade on the same board: the board's colour is
-      // the floor's at the run's start.
-      const board = boardAt(x, y, room);
-      let end = x + 1;
-      while (end < ISO.width && mask.at(end, y) === m && boardAt(end, y, room) === board) end++;
-      ctx.fillStyle = (m === SHADE.shadow ? dark : dim)[board];
-      ctx.fillRect(x, y, end - x, 1);
-      x = end;
     }
   }
 }
 
-/**
- * Which of the floor's three colours is at canvas pixel (x, y) at 1×, as
- * drawFloor paints them: the seam a tile draws past its far edge, over the
- * start of the next row, or the board's two shades by tile.
- */
-function boardAt(x: number, y: number, room: RoomView): 0 | 1 | 2 {
-  const { gx, gy } = fromCanvasAt(x + 0.5, y + 0.5);
-  const tx = Math.floor(gx);
-  const ty = Math.floor(gy);
-  // Each tile's seam lies just past its far edge, y + 1 to y + 1 + SEAM, over the next row's start.
-  if (ty > 1 && gy - ty < SEAM && ty <= room.height) return 2;
-  return (tx + ty) % 2 ? 0 : 1;
+/** The layer as an image to lay on in one go, made once per layer. */
+function layerImage(layer: Raster): CanvasImageSource | null {
+  if (layerCache?.layer !== layer) return layerCanvas(layer);
+  if (layerCache.image === undefined) layerCache.image = layerCanvas(layer);
+  return layerCache.image;
 }
 
 /**
@@ -589,21 +626,11 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
 
 /** A piece where it stands, as a shaded block; knocked over, lying on its side. */
 function drawPiece(ctx: Ctx, f: FurnitureView): void {
-  const colour = colourOf(f.kind);
-  const z = HEIGHT[f.kind] ?? 8;
-  const i = INSET[f.kind] ?? 0.06;
-  const x = f.x + i;
-  const y = f.y + i;
-  const w = f.w - 2 * i;
-  const h = f.h - 2 * i;
-  // Its shadow is cast from the windows now, with the floor's (slice 13).
-  if (!f.toppled) {
-    block(ctx, x, y, w, h, z, colour);
-    return;
-  }
-  // Fallen toward the viewer: lower, and longer across its footprint.
-  const along = Math.min(f.w - 0.1, w * 1.8);
-  block(ctx, f.x + (f.w - along) / 2, y + h * 0.25, along, h * 0.5, Math.max(2, Math.round(z / 3)), colour);
+  // The block it's drawn as, standing or fallen toward the viewer, is the
+  // one its shadow is cast from (pieces.ts).
+  const b = pieceBox(f, HEIGHT);
+  block(ctx, b.x, b.y, b.w, b.h, b.z, colourOf(f.kind));
+  if (!f.toppled) return;
   // Scattered toys (slice 02): a couple more balls of yarn strewn beside it,
   // where a cat batted them, until someone gathers them up.
   if (f.kind === "toys") {
@@ -668,11 +695,15 @@ function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): 
   const colour = colourOf(piece.kind);
   const z = Math.min(HEIGHT[piece.kind] ?? 8, 14);
   const s = 0.6;
-  const cx = spot.x + 0.5 - s / 2;
-  const cy = spot.y + 0.5 - s / 2;
+  // Drawn over the carrier's head as if they stood on a whole tile, then
+  // moved with the sprite, by the screen pixels it was placed at, so the
+  // piece stays put on their head as they walk (slice 12's review, finding 6).
+  const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
+  const placed = feetAt(spot);
+  const whole = feetAt(tile);
   ctx.save();
-  ctx.translate(0, -lift);
-  block(ctx, cx, cy, s, s, z, colour);
+  ctx.translate(onScreen(ctx, placed.x) - whole.x, onScreen(ctx, placed.y) - whole.y - lift);
+  block(ctx, tile.x + 0.5 - s / 2, tile.y + 0.5 - s / 2, s, s, z, colour);
   ctx.restore();
 }
 

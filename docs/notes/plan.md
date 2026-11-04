@@ -50,9 +50,9 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | live 2026-10-22, turned 90° at the user's asking so the street wall is on the left ([plan](plan-slice-09-isometric.md), [findings](reviews/slice-09-findings.md), [notes](slice-09-isometric.md)) |
 | 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | reviewed and deployed 2026-10-22, checked live ([plan](plan-slice-10-palette.md), [findings](reviews/slice-10-findings.md), [notes](slice-10-palette.md)); live once the user has judged it |
 | 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21; after 12, since every sprite needs the back view 12 adds ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) |
-| 12 | Walking where you look | Walkers face their direction on screen, with back views, and move by screen pixels; the phone's camera follows the same way ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) | [12](../slices/12-walking-where-you-look.md) | approved 2026-11-04 |
-| 13 | A café on its street | The room as a diorama, with the street behind it by day and by night; the room crisp, with self outlines, shadows cast from the windows and ambient occlusion ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)) | [13](../slices/13-a-cafe-on-its-street.md) | approved 2026-11-04 |
-| 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | approved 2026-11-04 |
+| 12 | Walking where you look | Walkers face their direction on screen, with back views, and move by screen pixels; the phone's camera follows the same way ([ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)) | [12](../slices/12-walking-where-you-look.md) | reviewed and merged 2026-11-05 ([plan](plan-slice-12-walking.md), [findings](reviews/slice-12-findings.md)); live once the user has watched walks cross the room |
+| 13 | A café on its street | The room as a diorama, with the street behind it by day and by night; the room crisp, with self outlines, shadows cast from the windows and ambient occlusion ([ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)) | [13](../slices/13-a-cafe-on-its-street.md) | reviewed and merged 2026-11-05 ([plan](plan-slice-13-street.md), [findings](reviews/slice-13-findings.md), [screens](screens/slice-13/)); live once the user has judged the screens |
+| 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | built 2026-11-05 on its branch ([plan](plan-slice-14-panels.md), [screens](screens/slice-14/)); under review |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -82,7 +82,7 @@ rehearsed isn't recorded. There's still no `crit-9` or `crit-10` tag.
 
 ## Where it stands (2026-10-22)
 
-Updated by session `6753d63d`.
+Updated by session `a4e69a46` (2026-11-05).
 
 - **Done and live:** phases 1 to 3, and slices 01, 02, 07, 08 and 09.
 - **The look is chosen** (2026-10-21,
@@ -98,7 +98,13 @@ Updated by session `6753d63d`.
   5 minor findings, all fixed) and merged on 2026-10-22
   ([notes](slice-10-palette.md)); its judged line, from the screenshots, is
   the user's, and so is the README's Catppuccin credit, proposed there.
-- **Approved, not yet built:** slice 11.
+- **Slices 12 and 13, walking and the street:** built, reviewed (3 major
+  and 6 minor findings on 12, 5 major and 8 minor on 13, each answered,
+  most fixed test first) and merged on 2026-11-05. Their judged lines are
+  the user's: walks watched live, and the café on its street from
+  [the screens](screens/slice-13/).
+- **Slice 14, the panels:** built on `slice-14-panels`, under review.
+- **Approved, not yet built:** slice 11, after 14.
 - **Specs waiting for the user's approval:** slices 03, 04 and 06. None is
   planned.
 

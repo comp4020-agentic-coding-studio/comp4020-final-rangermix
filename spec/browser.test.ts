@@ -1255,43 +1255,100 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(catNight.some((c) => coatOf(day).includes(c) && !coatOf(night).includes(c)), "no day coat left at night").toBe(false);
   });
 
-  it("stands the room on its street, by day and by night, and takes no click there (slice 13)", async () => {
+  it("stands the room on its street, by day and by night, and takes no click or tap there, at both sizes (slice 13)", async () => {
     const v = await visit({ width: 1920, height: 1080 }, false, {
       prepare: async (page) => {
         await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
         await page.clock.resume();
       },
     });
-    /** The canvas's own colour at a fraction of its width and height. */
+    const street = (light: "day" | "night") => (palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
+    /**
+     * The colours in a block of the canvas's top-left corner, 12% of its
+     * width by 20% of its height, read from the canvas itself.
+     */
+    const corner = () =>
+      v.page.evaluate(() => {
+        const canvas = document.getElementById("room") as HTMLCanvasElement;
+        const w = Math.floor(canvas.width * 0.12);
+        const h = Math.floor(canvas.height * 0.2);
+        const d = canvas.getContext("2d")!.getImageData(0, 0, w, h).data;
+        const seen = new Set<string>();
+        for (let i = 0; i < d.length; i += 4) seen.add(`#${[d[i], d[i + 1], d[i + 2]].map((c) => c.toString(16).padStart(2, "0")).join("")}`);
+        return [...seen];
+      });
+    // By day: the sky, a tower's lit face and its shaded side (the day's
+    // street, slots 0, 2 and 3), which no flat fill has.
+    const [skyTop, , tower, towerSide] = street("day");
+    let seen: string[] = [];
+    await expect.poll(async () => { seen = await corner(); return [skyTop, tower, towerSide].every((s) => seen.includes(s)); }, { timeout: 5000 }).toBe(true).catch(() => {});
+    expect(seen, "the day's corner").toEqual(expect.arrayContaining([skyTop, tower, towerSide]));
+    // No click on the street does anything: its four corners, and just
+    // beside the floor's left, right and front tips. Each point is read
+    // first, to be sure it's the street that's clicked.
+    const box = (await v.page.locator("#room").boundingBox())!;
     const colourAt = (fx: number, fy: number) =>
       v.page.evaluate(
         ([fx, fy]) => {
           const canvas = document.getElementById("room") as HTMLCanvasElement;
-          const [r, g, b, a] = canvas.getContext("2d")!.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
-          return a === 0 ? "" : `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+          const [r, g, b] = canvas.getContext("2d")!.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
+          return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
         },
         [fx, fy],
       );
-    const street = (light: "day" | "night") => (palettes[light] as unknown as { street: string[] }).street;
-    /** The top-left corner, sky or tower, once a frame has painted one of `want` there. */
-    const corner = async (want: string[]) => {
-      let seen = "";
-      await expect.poll(async () => want.includes((seen = await colourAt(0.01, 0.02))), { timeout: 5000 }).toBe(true).catch(() => {});
-      return seen;
-    };
-    const day = await corner(street("day"));
-    expect(street("day"), `the corner at 10:00 is ${day}`).toContain(day);
-    // A click on the street, in the canvas's top-left corner: nobody walks, no menu opens.
     const sentBefore = v.sent.length;
-    const box = (await v.page.locator("#room").boundingBox())!;
-    await v.page.mouse.click(box.x + box.width * 0.01, box.y + box.height * 0.02);
-    await v.page.waitForTimeout(400);
-    expect(v.sent.slice(sentBefore).filter((f) => f.type !== "here").map((f) => f.type), "what a click on the street sent").toEqual([]);
-    expect(await v.page.locator(".menu").count()).toBe(0);
-    // On to 22:00 on the same page: the night's street.
+    // The floor's tips at 1×: left (0, 152), right (336, 136) and front (176, 232) of 336 by 232.
+    for (const [fx, fy] of [[0.01, 0.02], [0.99, 0.02], [0.01, 0.97], [0.99, 0.97], [0.01, 0.76], [0.99, 0.72], [0.4, 0.99]]) {
+      expect(street("day"), `the point (${fx}, ${fy}) is the street`).toContain(await colourAt(fx, fy));
+      await v.page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+      await v.page.waitForTimeout(150);
+      expect(await v.page.locator(".menu").count(), `a click on the street at (${fx}, ${fy})`).toBe(0);
+    }
+    expect(v.sent.slice(sentBefore).filter((f) => f.type !== "here").map((f) => f.type), "what clicks on the street sent").toEqual([]);
+    // On to 22:00 on the same page: the night's street, with a star or a lit
+    // window among its dark sky and towers, which a flat dark fill hasn't.
     await v.page.clock.fastForward("12:00:00");
-    const night = await corner(street("night"));
-    expect(street("night"), `the corner at 22:00 is ${night}`).toContain(night);
+    const night = street("night");
+    const [, , , , lit, , star] = night;
+    const nightOk = (c: string[]) => c.includes(night[0]) && (c.includes(star) || c.includes(lit)) && c.filter((x) => night.includes(x)).length >= 3;
+    await expect.poll(async () => nightOk((seen = await corner())), { timeout: 5000 }).toBe(true).catch(() => {});
+    expect(nightOk(seen), `the night's corner: ${seen.join(" ")}`).toBe(true);
+    // At 390×844, in the bigger room, a tap on the street does nothing. The
+    // room pans, so the taps go where the canvas shows the street now: points
+    // on screen whose canvas pixel is one of the street's colours.
+    const phone = await visit({ width: 390, height: 844 }, true, {
+      prepare: async (page) => {
+        await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
+        await page.clock.resume();
+      },
+    });
+    await phone.page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    await phone.page.waitForTimeout(600);
+    const spots = await phone.page.evaluate((colours) => {
+      const canvas = document.getElementById("room") as HTMLCanvasElement;
+      const r = canvas.getBoundingClientRect();
+      const ctx = canvas.getContext("2d")!;
+      const found: { x: number; y: number }[] = [];
+      // Clear of the floating bars, top and bottom.
+      for (let y = 130; y < 700 && found.length < 3; y += 23) {
+        for (let x = 12; x < 380 && found.length < 3; x += 37) {
+          if (document.elementFromPoint(x, y)?.id !== "room") continue;
+          const [cr, cg, cb] = ctx.getImageData(Math.floor(((x - r.left) / r.width) * canvas.width), Math.floor(((y - r.top) / r.height) * canvas.height), 1, 1).data;
+          const hex = `#${[cr, cg, cb].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+          if (colours.includes(hex)) found.push({ x, y });
+        }
+      }
+      return found;
+      // By day; the windows' light (slot 4) left out, as the café's own window could share it.
+    }, street("day").filter((c, i) => i !== 4));
+    expect(spots.length, "street showing on the phone").toBeGreaterThan(0);
+    const tapsBefore = phone.sent.length;
+    for (const { x, y } of spots) {
+      await phone.page.touchscreen.tap(x, y);
+      await phone.page.waitForTimeout(150);
+    }
+    expect(phone.sent.slice(tapsBefore).filter((f) => f.type !== "here").map((f) => f.type), "what taps on the street sent").toEqual([]);
+    expect(await phone.page.locator(".menu").count()).toBe(0);
   });
 
   it("follows the device's light or dark setting in Catppuccin Latte or Mocha, at both sizes (slice 10)", async () => {

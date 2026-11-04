@@ -7,6 +7,7 @@
 // come sixty times a second.
 
 import { ISO, fromCanvas } from "./iso";
+import { pieceBox } from "./pieces";
 import type { FurnitureView } from "./protocol/FurnitureView";
 
 /** What the floor shows at a pixel: lit, in a cast shadow, or darkened where it meets something. */
@@ -38,13 +39,13 @@ interface Room {
   tiles: string[];
 }
 
-/** A standing piece as a box, in tiles: a toppled one lies lower and longer, as it's drawn. */
+/** A standing piece as a box, in tiles, as it's drawn (pieces.ts): a toppled one lies lower and longer. */
 function boxOf(f: FurnitureView, heights: Record<string, number>): { x0: number; y0: number; x1: number; y1: number; z: number } | null {
   if (f.under) return null;
-  const z = (heights[f.kind] ?? 8) / TILE_HEIGHT;
+  const b = pieceBox(f, heights);
+  const z = b.z / TILE_HEIGHT;
   if (z <= 0.1) return null;
-  if (f.toppled) return { x0: f.x + 0.05, y0: f.y + f.h * 0.25, x1: f.x + f.w - 0.05, y1: f.y + f.h * 0.75, z: Math.max(2, z * TILE_HEIGHT / 3) / TILE_HEIGHT };
-  return { x0: f.x + 0.06, y0: f.y + 0.06, x1: f.x + f.w - 0.06, y1: f.y + f.h - 0.06, z };
+  return { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h, z };
 }
 
 /** Whether the ray from floor point (x, y) toward the light meets the box before rising over it. */
@@ -65,6 +66,17 @@ function blocks(b: { x0: number; y0: number; x1: number; y1: number; z: number }
     hi = Math.min(hi, Math.max(t0, t1));
   }
   return hi > lo;
+}
+
+/**
+ * Whether the ray from (x, y) toward the light leaves through the plain
+ * wall, along x = width, below its top (slice 13's review, finding 8): the
+ * light leans toward +x, so the floor just beside that wall is in its shade.
+ */
+function plainWallShades(room: Room, x: number): boolean {
+  if (TOWARD.x <= 0) return false;
+  const z = (room.width - x) / TOWARD.x;
+  return z >= 0 && z < WALL;
 }
 
 /** Whether the ray from (x, y) toward the light passes the street wall below its top, and not through a pane. */
@@ -95,7 +107,7 @@ export function shadowMask(room: Room, furniture: FurnitureView[], heights: Reco
       const { gx, gy } = fromCanvas(px + 0.5, py + 0.5);
       if (gx < 0 || gx > room.width || gy < 1 || gy > room.height) continue;
       let shade: Shade = SHADE.lit;
-      if (wallShades(room, gx, gy) || boxes.some((b) => blocks(b, gx, gy))) shade = SHADE.shadow;
+      if (wallShades(room, gx, gy) || plainWallShades(room, gx) || boxes.some((b) => blocks(b, gx, gy))) shade = SHADE.shadow;
       else if (gy - 1 < FOOT || room.width - gx < FOOT || boxes.some((b) => Math.max(b.x0 - gx, gx - b.x1, b.y0 - gy, gy - b.y1) < FOOT)) shade = SHADE.occluded;
       grid[py * ISO.width + px] = shade;
     }

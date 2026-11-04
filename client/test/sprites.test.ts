@@ -53,6 +53,12 @@ describe("the café's colours in each light", () => {
         return z >= Math.min(x, y) - 1 && z <= Math.max(x, y) + 1;
       });
     palettes.day.room.forEach((c, i) => expect(between(c, palettes.night.room[i], evening.room[i]), `room ${i}`).toBe(true));
+    // The street too, slot by slot (slice 13's review, finding 13).
+    const street = (p: typeof palettes.day) => (p as unknown as { street: string[] }).street;
+    street(palettes.day).forEach((c, i) => {
+      expect(between(c, street(palettes.night as typeof palettes.day)[i], street(evening)[i]), `street ${i}`).toBe(true);
+      if (c !== street(palettes.night as typeof palettes.day)[i]) expect(street(evening)[i], `street ${i} is blended`).not.toBe(c);
+    });
     expect(evening.room[0]).not.toBe(palettes.day.room[0]);
     expect(evening.room[0]).not.toBe(palettes.night.room[0]);
   });
@@ -86,6 +92,19 @@ describe("the café's colours in each light", () => {
     const sheet = parseSheet(avatarSheet);
     expect([...sheet.keys()].sort()).toEqual(["back", "back_walk_a", "back_walk_b", "stand", "walk_a", "walk_b"]);
     for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([16, 16]);
+  });
+
+  it("draws every cat frame facing the same way, head on the right, so the mirroring turns them all alike (slice 12's review, finding 1)", () => {
+    const sheet = parseSheet(catSheet);
+    // The head is the mass near the top: in rows 3 to 8, where it sits, its
+    // drawn pixels lie right of the middle. A walk frame with its head on
+    // the left would walk tail first once mirrored the same way as the rest.
+    for (const [name, grid] of sheet) {
+      if (name === "nap") continue;
+      const cols = grid.slice(3, 9).flatMap((row) => row.flatMap((v, x) => (v >= 0 ? [x] : [])));
+      const mean = cols.reduce((a, b) => a + b, 0) / cols.length;
+      expect(mean, `${name}'s head, by the mean column of rows 3 to 8`).toBeGreaterThan(8);
+    }
   });
 
   it("shows no face on a back view: no eye pixels where the front has them", () => {

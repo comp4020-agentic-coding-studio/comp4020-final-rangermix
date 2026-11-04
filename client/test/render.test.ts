@@ -279,6 +279,65 @@ describe("the side a walker shows", () => {
     expect(framesAsked(s, 13_000).filter((f) => f.startsWith("person 1"))).toEqual(["person 1 back"]);
   });
 
+  it("mirrors a cat walking up the screen to the left, and not one walking up it to the right, so it goes head first both ways (slice 12's review, finding 1)", () => {
+    /** Whether the cat's frame was drawn mirrored: a scale(-1, 1) in force when its image is drawn. */
+    const mirrored = (path: { x: number; y: number }[]) => {
+      const w = welcome();
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], at: path[0], pose: "walk", walk: { path, start: 10_000, speed: 1 } }];
+      w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+      const s = fromWelcome(w, 10_000);
+      const cat = document.createElement("canvas");
+      const sprites = new Sprites();
+      sprites.cat = () => cat;
+      sprites.avatar = () => null;
+      let flip = 1;
+      const stack: number[] = [];
+      let seen: boolean | null = null;
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, key) => {
+            if (key === "save") return () => stack.push(flip);
+            if (key === "restore") return () => (flip = stack.pop() ?? 1);
+            if (key === "scale") return (x: number) => (flip *= Math.sign(x));
+            if (key === "drawImage") return (img: unknown) => img === cat && (seen = flip < 0);
+            if (key === "getTransform") return () => ({ a: 1 });
+            return () => {};
+          },
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      draw(ctx, s, sprites, 10_500, { tile: null, visible: false, hover: null, ghost: null }, 0);
+      return seen;
+    };
+    // Along +x: up and to the right on screen, the frames' own way.
+    expect(mirrored([{ x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }]), "walking up-right").toBe(false);
+    // Toward the street wall, -y: up and to the left, so mirrored.
+    expect(mirrored([{ x: 4, y: 6 }, { x: 4, y: 5 }, { x: 4, y: 4 }]), "walking up-left").toBe(true);
+    // Toward the viewer along +y: down and to the right, unmirrored; along -x, down-left, mirrored.
+    expect(mirrored([{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 4, y: 6 }]), "walking down-right").toBe(false);
+    expect(mirrored([{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }]), "walking down-left").toBe(true);
+  });
+
+  it("faces someone who's just come in into the room, whichever way their walk in turned at the end (slice 12's review, finding 4)", () => {
+    for (const path of [
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }, { x: 9, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 6, y: 1 }],
+    ]) {
+      const w = welcome();
+      w.snapshot.people[1] = { ...w.snapshot.people[1], at: path[path.length - 1], walk: { path, start: 10_000, speed: 3 } };
+      const asked = framesAsked(fromWelcome(w, 10_000), 15_000).filter((f) => f.startsWith("person 1"));
+      expect(asked, `arrived by ${JSON.stringify(path)}`).toEqual(["person 1 stand"]);
+    }
+    // Walking in, they show the way they go.
+    const w = welcome();
+    const path = [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }, { x: 9, y: 1 }];
+    w.snapshot.people[1] = { ...w.snapshot.people[1], at: path[3], walk: { path, start: 10_000, speed: 1 } };
+    expect(framesAsked(fromWelcome(w, 10_000), 11_500).filter((f) => f.startsWith("person 1"))[0]).toMatch(/^person 1 back_walk_[ab]$/);
+  });
+
   it("faces the viewer when nobody has walked yet", () => {
     const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
     expect(asked).toContain("person 0 stand");
@@ -332,6 +391,54 @@ describe("placing a walker by screen pixels", () => {
   }
   const diagonal = [{ x: 6, y: 5 }, { x: 6, y: 6 }, { x: 6, y: 7 }];
 
+  it("carries a piece over its carrier's head at one place against them, frame by frame, at 3× (slice 12's review, finding 6)", () => {
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[1], id: 2, at: diagonal[0], walk: { path: diagonal, start: 10_000, speed: 3 } }];
+    w.snapshot.held = [{ by: 2, piece: piece(9, "box", 0, 0, 1, 1) }];
+    w.you = 2;
+    const s = fromWelcome(w, 10_000);
+    const offsets = new Set<string>();
+    for (let f = 0; f < 30; f++) {
+      let t = [1, 0, 0, 1, 0, 0];
+      let sprite: { x: number; y: number } | null = null;
+      let box: { x: number; y: number } | null = null;
+      const boxColour = palettes.day.furniture[3].toLowerCase();
+      let fill = "";
+      const stack: number[][] = [];
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, k) => {
+            if (k === "setTransform") return (...m: number[]) => (t = m);
+            if (k === "getTransform") return () => ({ a: t[0], d: t[3], e: t[4], f: t[5] });
+            if (k === "save") return () => stack.push([...t]);
+            if (k === "restore") return () => (t = stack.pop() ?? t);
+            if (k === "translate") return (x: number, y: number) => (t = [t[0], t[1], t[2], t[3], t[4] + t[0] * x, t[5] + t[3] * y]);
+            if (k === "drawImage") return (_img: unknown, x: number, y: number) => (sprite ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            // The box's top, in its own colour: the first of its points drawn,
+            // as a path (slice 12) or by whole pixels (slice 13).
+            if (k === "fillRect" || k === "moveTo") return (x: number, y: number) => fill === boxColour && sprite && (box ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            return () => {};
+          },
+          set: (_t, k, v) => {
+            if (k === "fillStyle") {
+              const m = /^rgb\((\d+) (\d+) (\d+)\)$/.exec(String(v));
+              fill = m ? `#${m.slice(1).map((c) => Number(c).toString(16).padStart(2, "0")).join("")}` : String(v).toLowerCase();
+            }
+            return true;
+          },
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const sprites = new Sprites();
+      sprites.avatar = () => ({}) as HTMLCanvasElement;
+      draw(ctx, s, sprites, 10_000 + (f * 1000) / 60, { tile: null, visible: false, hover: null, ghost: null }, 0, 3);
+      expect(sprite && box, `frame ${f}`).toBeTruthy();
+      offsets.add(`${box!.x - sprite!.x},${box!.y - sprite!.y}`);
+    }
+    expect([...offsets], "the box against its carrier, in screen pixels").toHaveLength(1);
+  });
+
   for (const scale of [1, 2, 3, 5]) {
     it(`places a walker on whole screen pixels at ${scale}×`, () => {
       for (const p of placements(scale, diagonal, 3, 30)) {
@@ -340,15 +447,24 @@ describe("placing a walker by screen pixels", () => {
     });
   }
 
-  it("moves a walker evenly at 3×: every frame, by steps that differ by at most a screen pixel", () => {
-    const ps = placements(3, diagonal, 3, 36);
-    const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
-    for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
-    const xs = steps.map((s) => s.dx);
-    const ys = steps.map((s) => s.dy);
-    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
-  });
+  // At 2× and up; at 1× a person covers under a pixel some frames, so some
+  // stand still: the limit of whole pixels there (slice 12's review, finding 8).
+  for (const [scale, speed, who] of [
+    [2, 3, "a person"],
+    [3, 3, "a person"],
+    [5, 3, "a person"],
+    [3, 2, "a cat's pace"],
+  ] as const) {
+    it(`moves ${who} evenly at ${scale}×: every frame, by steps that differ by at most a screen pixel`, () => {
+      const ps = placements(scale, diagonal, speed, 36);
+      const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
+      for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
+      const xs = steps.map((s) => s.dx);
+      const ys = steps.map((s) => s.dy);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
+      expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
+    });
+  }
 });
 
 // Slice 13 (ADR 0019): the room is drawn crisp, every pixel one colour.
@@ -361,6 +477,11 @@ describe("the room drawn crisp", () => {
       const p = pixels(336 * scale, 232 * scale);
       const w = welcome();
       w.snapshot.room.furniture = [piece(1, "sofa", 0, 5, 3, 1), piece(2, "rug", 4, 4, 4, 3, true), { ...piece(3, "plant", 6, 9, 1, 1), toppled: true }, piece(4, "toys", 7, 8, 1, 1)];
+      // Someone partway along a walk, so sprites stand between whole room
+      // pixels (slice 13's review, finding 12), carrying a box over their
+      // head (slice 12's review, finding 6).
+      w.snapshot.people[0] = { ...w.snapshot.people[0], walk: { path: [{ x: 1, y: 6 }, { x: 2, y: 6 }, { x: 3, y: 6 }], start: 10_000 - 137, speed: 3 } };
+      w.snapshot.held = [{ by: w.snapshot.people[0].id, piece: piece(9, "box", 0, 0, 1, 1) }];
       const s = fromWelcome(w, 10_000);
       for (const light of [0, 0.5, 1] as Light[]) draw(p.ctx, s, new Sprites(), 10_000, { ...noPointer, visible: true, tile: { x: 3, y: 3 } }, light, scale);
       expect(p.blended).toEqual([]);
@@ -430,6 +551,97 @@ describe("a piece's self outline", () => {
   });
 });
 
+describe("picking a piece by its outline (slice 13's review, finding 9)", () => {
+  it("finds the piece at every pixel drawn in its outline's colour, so a click on its rim isn't a click behind it", async () => {
+    const { pixels } = await import("./pixels");
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "sofa", 4, 5, 3, 1), piece(2, "box", 8, 7, 1, 1), piece(3, "lamp", 2, 3, 1, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    const s = fromWelcome(w, 10_000);
+    const p = pixels(336, 232);
+    draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const shadeOf = (hex: string, k: number) => {
+      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+      return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+    };
+    for (const f of s.room.furniture) {
+      const slot = { sofa: 1, box: 3, lamp: 5 }[f.kind as "sofa" | "box" | "lamp"];
+      const rim = shadeOf(palettes.day.furniture[slot], 0.45);
+      let rims = 0;
+      for (let y = 0; y < 232; y++)
+        for (let x = 0; x < 336; x++) {
+          if (p.at(x, y) !== rim) continue;
+          rims++;
+          const hit = hitAt(s, x + 0.5, y + 0.5, 10_000);
+          const on = hit && hit.x >= f.x && hit.x < f.x + f.w && hit.y >= f.y && hit.y < f.y + f.h;
+          expect(on, `the ${f.kind}'s rim at (${x},${y}) picks ${JSON.stringify(hit)}`).toBe(true);
+        }
+      expect(rims, `the ${f.kind}'s rim`).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe("a figure's shadow (slice 13's review, finding 5)", () => {
+  /** The room at 1× with only `cats` and `people` in it, and the floor layer as it is under them. */
+  async function scene(cats: Welcome["snapshot"]["cats"], people: Welcome["snapshot"]["people"]) {
+    const { pixels } = await import("./pixels");
+    const { floorLayer } = await import("../src/render");
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    w.snapshot.cats = cats;
+    w.snapshot.people = people;
+    const s = fromWelcome(w, 10_000);
+    const p = pixels(336, 232);
+    draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    return { p, floor: floorLayer(s.room, 0) };
+  }
+  const shadeOf = (hex: string, k: number) => {
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+    return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+  };
+  /** How many floor pixels near (gx, gy) are the floor under them darkened as a shadow, not the floor itself. */
+  const darkened = (p: { at(x: number, y: number): string | null }, floor: { at(x: number, y: number): string | null }, gx: number, gy: number) => {
+    const c = toCanvas(gx + 0.5, gy + 0.5);
+    let n = 0;
+    for (let y = Math.round(c.y) - 6; y <= Math.round(c.y) + 8; y++)
+      for (let x = Math.round(c.x) - 12; x <= Math.round(c.x) + 12; x++) {
+        const under = floor.at(x, y);
+        if (under && p.at(x, y) === shadeOf(under, 0.2)) n++;
+      }
+    return n;
+  };
+
+  it("casts a small shadow from a cat and a person standing on the open floor, away from the windows", async () => {
+    const cat = { id: "mochi", name: "Mochi", coat: "white_grey", at: { x: 3, y: 6 }, pose: "sit" as const, walk: null, heldBy: null };
+    const me = { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 8, y: 6 }, walk: null, sitting: false };
+    const { p, floor } = await scene([cat], [me]);
+    expect(darkened(p, floor, 3, 6), "under the cat").toBeGreaterThan(6);
+    expect(darkened(p, floor, 8, 6), "under the person").toBeGreaterThan(6);
+    // Nobody stands at (5,6): no shadow there.
+    expect(darkened(p, floor, 5.5, 6)).toBe(0);
+  });
+});
+
+describe("a block lit from the windows (slice 13's review, finding 7)", () => {
+  it("shades its front face, turned away from the windows, darker than its left face, which they light a little", async () => {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "cat_tower", 6, 5, 1, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    // Halfway up the tower (44 px), a little in from each face's middle.
+    const left = toCanvas(6.06, 5.5);
+    const front = toCanvas(6.5, 5.94);
+    const lum = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).reduce((a, b) => a + b, 0);
+    const l = p.at(Math.round(left.x) + 2, Math.round(left.y) - 22)!;
+    const f = p.at(Math.round(front.x) + 1, Math.round(front.y) - 22)!;
+    expect(lum(f), `the front face ${f} against the left ${l}`).toBeLessThan(lum(l));
+  });
+});
+
 // Slice 13 (ADR 0019): the floor in the windows' shadows and at walls' feet
 // is drawn darker, in the hour's colours.
 
@@ -462,49 +674,84 @@ describe("shadows on the floor", () => {
     expect(lit, "open floor still drawn in its own colours").toBeGreaterThan(1000);
   });
 
-  it("keeps the boards and seams apart in shadow: a shaded pixel is the floor colour under it, darkened", async () => {
+  /** The room drawn at 1× in the day's light, with `furniture` and nobody about. */
+  async function room(furniture: ReturnType<typeof piece>[]) {
     const { pixels } = await import("./pixels");
-    const { shadowMask, SHADE } = await import("../src/shadows");
-    const { fromCanvas } = await import("../src/iso");
     const w = welcome();
     w.snapshot.cats = [];
     w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
-    w.snapshot.room.furniture = [];
+    w.snapshot.room.furniture = furniture;
     const s = fromWelcome(w, 10_000);
     const p = pixels(336, 232);
     draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
-    const mask = shadowMask(s.room, [], heights);
-    // What drawFloor paints at a pixel: the seam over the first 0.06 of each
-    // row below the first (measured: seam pixels sit at 0.02 and 0.05 of a
-    // row), else a board by tile.
-    const floorAt = (x: number, y: number) => {
-      const { gx, gy } = fromCanvas(x + 0.5, y + 0.5);
-      const tx = Math.floor(gx);
-      const ty = Math.floor(gy);
-      return ty > 1 && gy - ty < 0.06 ? 2 : (tx + ty) % 2 ? 0 : 1;
-    };
-    const shadeOf = (hex: string, k: number) => {
-      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-      return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
-    };
-    const floor = palettes.day.room.slice(0, 3);
+    return { p, s };
+  }
+  const shadeOf = (hex: string, k: number) => {
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+    return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+  };
+
+  it("darkens what's drawn under a shadow, board, seam or rug, as it's drawn there with no shadow (slice 13's review, findings 2 and 3)", async () => {
+    const { shadowMask, SHADE } = await import("../src/shadows");
+    const { floorLayer } = await import("../src/render");
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "rug", 4, 4, 4, 3, true), piece(2, "chair", 5, 4, 1, 1), piece(3, "cat_tower", 9, 3, 2, 2), piece(4, "lamp", 2, 6, 1, 1)];
+    const s = fromWelcome(w, 10_000);
+    const shaded = floorLayer(s.room, 0);
+    const bare = floorLayer(s.room, 0, false);
+    const mask = shadowMask(s.room, s.room.furniture, heights);
+    const seam = palettes.day.room[2].toLowerCase();
+    const rug = palettes.day.furniture[9].toLowerCase();
     let checked = 0;
-    const seen = [0, 0, 0];
+    const over = { seam: 0, rug: 0 };
     for (let y = 0; y < 232; y++) {
       for (let x = 0; x < 336; x++) {
         const m = mask.at(x, y);
-        if (m === SHADE.lit) continue;
-        const { gx, gy } = fromCanvas(x + 0.5, y + 0.5);
-        // Clear of the floor's edges and the walls drawn over them.
-        if (gx < 0.1 || gx > 11.9 || gy < 1.1 || gy > 9.9) continue;
-        const i = floorAt(x, y);
-        expect(p.at(x, y), `(${x},${y}) over ${["light board", "dark board", "seam"][i]}`).toBe(shadeOf(floor[i], m === SHADE.shadow ? 0.2 : 0.12));
-        seen[i]++;
+        const under = bare.at(x, y);
+        if (!under) continue;
+        if (m === SHADE.lit) {
+          expect(shaded.at(x, y), `(${x},${y}) is lit`).toBe(under);
+          continue;
+        }
+        expect(shaded.at(x, y), `(${x},${y}) over ${under}`).toBe(shadeOf(under, m === SHADE.shadow ? 0.2 : 0.12));
+        if (under === seam) over.seam++;
+        if (under === rug) over.rug++;
         checked++;
       }
     }
-    expect(checked).toBeGreaterThan(100);
-    expect(seen[2], "seams in shade").toBeGreaterThan(5);
+    expect(checked).toBeGreaterThan(300);
+    expect(over.seam, "seam pixels in shade").toBeGreaterThan(20);
+    expect(over.rug, "rug pixels in the chair's shadow").toBeGreaterThan(20);
+  });
+
+  it("shows the board seams on the lit floor as well as in shade", async () => {
+    const { p } = await room([]);
+    const seam = palettes.day.room[2].toLowerCase();
+    const { fromCanvas } = await import("../src/iso");
+    let lit = 0;
+    for (let y = 0; y < 232; y++)
+      for (let x = 0; x < 336; x++) {
+        const { gx, gy } = fromCanvas(x + 0.5, y + 0.5);
+        if (gx > 0.5 && gx < 11.5 && gy > 4 && gy < 9.5 && p.at(x, y) === seam) lit++;
+      }
+    expect(lit, "seam pixels on the open floor, away from the windows' shade").toBeGreaterThan(100);
+  });
+
+  it("shades the rug where a piece on it casts its shadow, in the rug's own colour darkened (slice 13's review, finding 2)", async () => {
+    const { shadowMask, SHADE } = await import("../src/shadows");
+    const rug = piece(1, "rug", 4, 4, 4, 3, true);
+    const chair = piece(2, "chair", 5, 4, 1, 1);
+    const { p, s } = await room([rug, chair]);
+    const mask = shadowMask(s.room, s.room.furniture, heights);
+    const rugColour = palettes.day.furniture[9].toLowerCase();
+    let shadedRug = 0;
+    for (let y = 0; y < 232; y++)
+      for (let x = 0; x < 336; x++) {
+        if (mask.at(x, y) !== SHADE.shadow) continue;
+        if (p.at(x, y) === rugColour) throw new Error(`(${x},${y}) is in the chair's shadow but drawn as the lit rug`);
+        if (p.at(x, y) === shadeOf(rugColour, 0.2)) shadedRug++;
+      }
+    expect(shadedRug, "rug pixels in the chair's shadow").toBeGreaterThan(50);
   });
 });
 
@@ -527,7 +774,7 @@ describe("the street behind the café", () => {
     [0, "day"],
     [1, "night"],
   ] as const) {
-    it(`fills the corners round the room with the street's ${name} colours, and leaves none of the old backdrop`, async () => {
+    it(`fills the corners round the room with the street's ${name} colours, several of them, not one flat fill`, async () => {
       const p = await drawn(light);
       const colours = street(name);
       // The top-left and top-right corners are sky and towers; the bottom corners the street's foot.
