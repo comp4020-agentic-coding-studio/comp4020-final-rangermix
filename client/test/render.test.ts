@@ -318,6 +318,25 @@ describe("the side a walker shows", () => {
     expect(mirrored([{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }]), "walking down-left").toBe(true);
   });
 
+  it("faces someone who's just come in into the room, whichever way their walk in turned at the end (slice 12's review, finding 4)", () => {
+    for (const path of [
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }, { x: 9, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 6, y: 1 }],
+    ]) {
+      const w = welcome();
+      w.snapshot.people[1] = { ...w.snapshot.people[1], at: path[path.length - 1], walk: { path, start: 10_000, speed: 3 } };
+      const asked = framesAsked(fromWelcome(w, 10_000), 15_000).filter((f) => f.startsWith("person 1"));
+      expect(asked, `arrived by ${JSON.stringify(path)}`).toEqual(["person 1 stand"]);
+    }
+    // Walking in, they show the way they go.
+    const w = welcome();
+    const path = [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }, { x: 9, y: 1 }];
+    w.snapshot.people[1] = { ...w.snapshot.people[1], at: path[3], walk: { path, start: 10_000, speed: 1 } };
+    expect(framesAsked(fromWelcome(w, 10_000), 11_500).filter((f) => f.startsWith("person 1"))[0]).toMatch(/^person 1 back_walk_[ab]$/);
+  });
+
   it("faces the viewer when nobody has walked yet", () => {
     const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
     expect(asked).toContain("person 0 stand");

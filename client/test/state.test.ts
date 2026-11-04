@@ -268,3 +268,15 @@ describe("the side a walker shows, through a reconnect (slice 12's review, findi
     expect(fromWelcome(welcome(), 20_000, s).facing.has("p2")).toBe(false);
   });
 });
+
+describe("someone who's come in, through a reconnect (slice 12's review, finding 4)", () => {
+  it("still faces into the room after a reconnect, whichever way the walk in turned", () => {
+    const w = welcome();
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 8, y: 1 }, walk: { path: [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }], start: 10_000, speed: 3 }, sitting: false });
+    const s = fromWelcome(w, 10_000);
+    const again = welcome();
+    again.now = 20_000;
+    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 8, y: 1 }, walk: null, sitting: false });
+    expect(fromWelcome(again, 20_000, s).facing.get("p2")).toEqual({ view: "front", mirror: false });
+  });
+});

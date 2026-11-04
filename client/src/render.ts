@@ -256,6 +256,10 @@ function standingOn(state: CafeState, spot: { x: number; y: number }): Furniture
  * kept when one was cleared, or the front.
  */
 function facingOf(state: CafeState, key: string, walk: Walk | null, spot: Spot): Spot {
+  // Someone who's just come in, their walk from the door over, faces into
+  // the room, as the spec settled (slice 12's review, finding 4).
+  const door = state.room.door;
+  if (walk && walk.path.length > 1 && !spot.moving && walk.path[0].x === door.x && walk.path[0].y === door.y) return { ...spot, view: "front", mirror: false };
   if (walk && walk.path.length > 1) return spot;
   const kept = state.facing.get(key);
   return kept ? { ...spot, ...kept } : spot;

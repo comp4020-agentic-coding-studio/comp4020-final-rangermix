@@ -137,8 +137,11 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
  */
 function keepFacing(state: CafeState, key: string, walk: Walk | null, at: { x: number; y: number }, localNow: number): void {
   if (!walk || walk.path.length < 2) return;
-  const { view, mirror } = positionAt(walk, at, serverNow(state, localNow));
-  state.facing.set(key, { view, mirror });
+  const { view, mirror, moving } = positionAt(walk, at, serverNow(state, localNow));
+  // A walk in from the door, over, leaves them facing into the room (slice 12's review, finding 4).
+  const door = state.room.door;
+  const arrived = !moving && walk.path[0].x === door.x && walk.path[0].y === door.y;
+  state.facing.set(key, arrived ? { view: "front", mirror: false } : { view, mirror });
 }
 
 /**
