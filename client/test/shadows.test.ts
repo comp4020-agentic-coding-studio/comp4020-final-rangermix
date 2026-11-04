@@ -131,3 +131,24 @@ describe("shadows as the pieces are drawn (slice 13's review)", () => {
     expect(at(mask, 8, 6)).toBe(SHADE.lit);
   });
 });
+
+describe("shadows cast from a piece's parts (slice 11's review, finding 14)", () => {
+  it("lets the light under the window seat's raised cushion, between its legs", () => {
+    // The seat at (4,5), 2 wide: its board and cushion from 7 px up, on four short legs.
+    const mask = shadowMask(room, [piece("window_seat", 4, 5, 2, 1)], { window_seat: 12 });
+    const solid = shadowMask(room, [piece("box", 4, 5, 2, 1)], { box: 12 });
+    // Under the seat's back edge, between its back legs: the steep light from
+    // the windows comes in under the board there, where a solid block as
+    // tall shades the floor.
+    expect(at(solid, 5, 5.25), "under a solid block").toBe(SHADE.shadow);
+    expect(at(mask, 5, 5.25), "under the seat's raised board").toBe(SHADE.lit);
+  });
+
+  it("darkens the floor at the feet of the parts that stand on it, not under a raised part", () => {
+    const mask = shadowMask(room, [piece("table", 4, 6, 2, 1)], { table: 16 });
+    // Just off a leg's foot (the near-left leg, 0.06 to 0.12 across, 0.76 to 0.88 down): darkened.
+    expect(at(mask, 4.07, 6.9), "by a leg's foot").not.toBe(SHADE.lit);
+    // Under the table's top, at its middle, far from every leg: not darkened as a foot.
+    expect(at(mask, 5, 6.5), "under the top, between the legs").not.toBe(SHADE.occluded);
+  });
+});
