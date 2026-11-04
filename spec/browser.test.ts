@@ -4,6 +4,9 @@ import { baseUrl, meetACat, signUp, uniqueName, Visitor } from "./helpers";
 import heights from "../content/sprites/heights.json" with { type: "json" };
 import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
+/** How big a cat is drawn, in room pixels (slice 11). */
+const CAT_PX = 24;
+
 /** How tall each kind of furniture is drawn, in canvas pixels (slice 09): a cat on one is drawn that high. */
 const HEIGHTS = heights as Record<string, number>;
 
@@ -432,7 +435,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const sprite = async () => {
       const floor = await tileAt(page, CAT);
       const scale = (await page.locator("#room").boundingBox())!.width / 336;
-      return { x: floor.x, y: floor.y - 8 * scale };
+      return { x: floor.x, y: floor.y - (CAT_PX / 2 - 2) * scale };
     };
     const target = await sprite();
     await page.locator("#cats-panel .grip").focus();
@@ -609,11 +612,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
         for (let i = 0; i < SEAT.x; i++) await v.page.keyboard.press("ArrowRight");
         await v.page.waitForTimeout(400);
       }
-      // The sprite's middle: 12 px up the seat, then half its 16 px, from feet
-      // 2 px below the tile's centre; times the room's scale.
+      // The sprite's middle: 12 px up the seat, then half its 24 px (slice
+      // 11), from feet 2 px below the tile's centre; times the room's scale.
       const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
       const floor = await tileAt(v.page, SEAT);
-      const at = { x: floor.x, y: floor.y - (12 + 8 - 2) * scale };
+      const at = { x: floor.x, y: floor.y - (12 + CAT_PX / 2 - 2) * scale };
       expect(at.x, "the cat is on screen").toBeGreaterThan(0);
       expect(at.x).toBeLessThan(viewport.width);
       if (touch) await v.page.touchscreen.tap(at.x, at.y);
@@ -842,11 +845,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
       for (let i = 0; i < cat.at.x; i++) await v.page.keyboard.press("ArrowRight");
       for (let i = 1; i < cat.at.y; i++) await v.page.keyboard.press("ArrowDown");
       await v.page.waitForTimeout(400);
-      // The middle of its sprite, half its 16 px up from feet 2 px below the
-      // tile's centre, and up on whatever it's on.
+      // The middle of its sprite, half its 24 px (slice 11) up from feet 2 px
+      // below the tile's centre, and up on whatever it's on.
       const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
       const floor = await tileAt(v.page, cat.at);
-      await v.page.touchscreen.tap(floor.x, floor.y - (6 + lift) * scale);
+      await v.page.touchscreen.tap(floor.x, floor.y - (CAT_PX / 2 - 2 + lift) * scale);
       const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
       if (!(await pick.isVisible({ timeout: 1000 }).catch(() => false))) {
         // It moved just as it was tapped.
