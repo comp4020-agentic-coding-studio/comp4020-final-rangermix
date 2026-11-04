@@ -398,12 +398,21 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.locator("#here-panel .grip").focus();
     for (let i = 0; i < 4; i++) await v.page.keyboard.press("Shift+ArrowLeft");
     expect(Math.round(start.x - (await box()).x)).toBe(256);
+    await v.page.getByRole("button", { name: "Pin who's here", exact: true }).click();
     // A resize re-places every panel from what's kept: it stays where it was put.
     await v.page.setViewportSize({ width: 1900, height: 1080 });
     await v.page.waitForTimeout(200);
     await v.page.setViewportSize({ width: 1920, height: 1080 });
     await v.page.waitForTimeout(200);
     expect(Math.round(start.x - (await box()).x)).toBe(256);
+    // Leave and come back in, the panels set up afresh from what the visit
+    // kept (slice 14's review, finding 5): still moved, still pinned, and
+    // its Unpin named exactly so (finding 3).
+    await v.page.locator("#leave").click();
+    await v.page.locator("#come-back").click();
+    await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    await expect.poll(async () => Math.round(start.x - (await box()).x)).toBe(256);
+    expect(await v.page.getByRole("button", { name: "Unpin who's here", exact: true }).count()).toBe(1);
   });
 
   it("lets a click on a pinned panel through to the café under it, walking or opening a cat's menu, and keeps it still and unselectable but for Unpin (slice 14)", async () => {
@@ -553,8 +562,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const board = (await page.locator("#chalkboard").boundingBox())!;
     await page.mouse.move(board.x + board.width / 2, board.y + board.height / 2);
     await expect.poll(() => dim("#chalkboard")).toBe(false);
-    // A pinned panel never dims.
+    // A pinned panel never dims; the focus put back on the room, as the
+    // click leaves it on the Unpin inside the panel, which would keep it
+    // bright either way (slice 14's review, finding 6).
     await page.getByRole("button", { name: "Pin your cats" }).click();
+    await page.locator("#room").focus();
     await page.mouse.move(960, 1075);
     await page.clock.fastForward(10_000);
     await page.waitForTimeout(200);

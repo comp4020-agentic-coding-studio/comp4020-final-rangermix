@@ -142,7 +142,11 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
     .panel { transition: none; }
   }
   /* The glass, where the browser can filter what's behind; opaque where it can't. */
-  @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+  /* Only where the browser has both the filter and relative colours: one
+     with the filter but not `rgb(from …)` would get a clear background and
+     the filter alone (slice 14's review, finding 4), so it gets the opaque
+     card instead. */
+  @supports ((backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0))) and (color: rgb(from red r g b)) {
     .panel { color: var(--panel-ink); background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
     .panel.dim { background: rgb(from var(--card) r g b / var(--glass-alpha-dim)); }
     .panel .hint, .panel .chalk-lines time, .panel .chalk-lines .empty { color: var(--panel-muted); }

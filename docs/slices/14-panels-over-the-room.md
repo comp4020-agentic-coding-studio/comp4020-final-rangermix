@@ -50,7 +50,7 @@ room shows through.
 
 | What must be true | Held by |
 | --- | --- |
-| At 1920×1080 the room fits at 4× | client unit tests (`scale`, `layout`) |
+| At 1920×1080 the room fits at 4× | browser checks (the room 1344 px wide at 1920×1080; slice 14's review, finding 11: the unit tests hold only `fitScale`'s arithmetic) |
 | A click on a pinned panel, anywhere but Unpin, acts on the café under it: walking to a tile, or the menu of a cat | browser check at 1920×1080 |
 | A pinned panel can't be dragged or its text selected | browser check |
 | An unpinned panel moves by mouse drag, touch drag and keyboard, stays inside the window, and stays inside it after a resize | browser check |

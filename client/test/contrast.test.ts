@@ -182,7 +182,8 @@ describe("the panels over the room (slice 14)", () => {
 
   it("draws the panels' glass from the tokens, and is opaque where a browser can't filter what's behind", () => {
     const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
-    expect(desktop).toMatch(/@supports \(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)/);
+    // The filter and relative colours both, or the opaque card (slice 14's review, finding 4).
+    expect(desktop).toMatch(/@supports \(\(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)\) and \(color: rgb\(from red r g b\)\)/);
     const glass = desktop.slice(desktop.indexOf("@supports"));
     expect(glass).toMatch(/\.panel\s*\{[^}]*backdrop-filter:\s*var\(--glass-filter\)/);
     expect(glass).toMatch(/\.panel\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha\)\)/);
