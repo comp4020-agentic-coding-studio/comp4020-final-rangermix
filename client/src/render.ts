@@ -409,8 +409,9 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       paint: (ctx, sprites) => {
         drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
-        // A held cat in their arms at the chest, below their face (slice 11's
-        // review, finding 11): a 24-px cat a little up from their feet.
+        // A held cat in their arms, from their chest down to their waist,
+        // below their face and clear of their legs (slice 11's review,
+        // finding 11): a 24-px cat raised 8 px on a 32-px person.
         if (held) drawCat(ctx, sprites, state, held, { ...spot, moving: false }, now, lift + 2);
       },
     });

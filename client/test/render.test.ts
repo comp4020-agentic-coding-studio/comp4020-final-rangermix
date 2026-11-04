@@ -538,7 +538,9 @@ describe("a piece's self outline", () => {
     w.snapshot.cats = [];
     w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
     draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
-    const box = palettes.day.furniture[3].toLowerCase();
+    // The box's top is its open top (slice 11's model: the last part, darker wood).
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, { slot: number }[]>;
+    const box = palettes.day.furniture[models.box.at(-1)!.slot].toLowerCase();
     // The box's top: its footprint's diamond raised 12 px (heights.json), inset 0.15 tiles.
     const centre = toCanvas(6.5, 6.5);
     expect(p.at(Math.round(centre.x), Math.round(centre.y - 12))).toBe(box);
@@ -1264,5 +1266,29 @@ describe("perched where the content says cats perch (slice 11's review, finding 
       const cat = { ...s.cats.get("mochi")!, reaction: null };
       expect(catFrame(s, cat, positionAt(null, cat.at, 10_000), 10_000), `a cat on a ${kind} flagged ${flag}`).toBe(want);
     }
+  });
+});
+
+describe("every kind as its parts, standing and lying down (slice 11's review, finding 9)", () => {
+  it("has a model for every kind of furniture", async () => {
+    const models = (await import("../../content/sprites/furniture-models.json")).default as Record<string, unknown[]>;
+    for (const kind of ["cat_tower", "window_seat", "sofa", "table", "chair", "cat_bed", "box", "plant", "toys", "bowls", "cushion", "scratching_post", "lamp"]) {
+      expect(models[kind]?.length ?? 0, `${kind}'s model`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("lays a knocked-over plant down as its pot and leaves, long and low toward the viewer, not one bar", async () => {
+    const { pieceParts } = await import("../src/pieces");
+    const standing = pieceParts(piece(1, "plant", 4, 5, 1, 1), heights);
+    const lying = pieceParts({ ...piece(1, "plant", 4, 5, 1, 1), toppled: true }, heights);
+    // As many parts lying down as standing, in the same colours.
+    expect(lying.map((p) => p.slot)).toEqual(standing.map((p) => p.slot));
+    // Low: nothing lying stands taller than the standing plant is wide.
+    expect(Math.max(...lying.map((p) => p.z)), "lying low").toBeLessThan(Math.max(...standing.map((p) => p.z)));
+    // Long toward the viewer (+y): the parts reach further along y than standing.
+    const reach = (ps: typeof lying) => Math.max(...ps.map((p) => p.y + p.h)) - Math.min(...ps.map((p) => p.y));
+    expect(reach(lying), "lying along the floor").toBeGreaterThan(reach(standing));
+    // Still on its own tile.
+    for (const p of lying) expect(p.y >= 5 - 1e-9 && p.y + p.h <= 6 + 1e-9 && p.x >= 4 - 1e-9 && p.x + p.w <= 5 + 1e-9, "inside its tile").toBe(true);
   });
 });

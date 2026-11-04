@@ -48,11 +48,40 @@ const MODELS = models as Record<string, Model>;
  */
 export function pieceParts(f: FurnitureView, heights: Record<string, number>): Part[] {
   const model = MODELS[f.kind];
-  if (!model || f.toppled) return [{ ...pieceBox(f, heights), z0: 0, slot: null }];
+  if (!model) return [{ ...pieceBox(f, heights), z0: 0, slot: null }];
+  if (f.toppled) return lyingDown(f, model, heights);
   // In the model's own order: whoever draws a kind knows what's in front of
   // what (a post through two platforms isn't one sort), so the parts are
   // listed back to front and bottom to top, and drawn so.
   return model.map((m) => ({ x: f.x + m.x * f.w, y: f.y + m.y * f.h, w: m.w * f.w, h: m.h * f.h, z0: m.z0, z: m.z1, slot: m.slot }));
+}
+
+/** How many room pixels a tile is along the floor, for turning heights into lengths: a 32-px tile's true rise (shadows.ts). */
+const TILE_PX = 16 * 2 * 0.6124;
+
+/**
+ * A knocked-over piece, its parts laid on their side toward the viewer
+ * (slice 11's review, finding 9): what stood up from the floor now lies
+ * along +y from the back of its footprint, its base at the back and its
+ * top nearest the viewer, and what was its depth stands up as its height.
+ * A tall plant lies as a long low pot and leaves; it stays on its tile.
+ */
+function lyingDown(f: FurnitureView, model: Model, heights: Record<string, number>): Part[] {
+  const tall = Math.max(...model.map((m) => m.z1), heights[f.kind] ?? 8);
+  // Its height laid along the tile, squeezed to fit inside the footprint.
+  const along = Math.min(f.h * 0.9, tall / TILE_PX);
+  const k = along / tall;
+  const parts = model.map((m) => ({
+    x: f.x + m.x * f.w,
+    y: f.y + f.h * 0.05 + m.z0 * k,
+    w: m.w * f.w,
+    h: Math.max(0.04, (m.z1 - m.z0) * k),
+    z0: m.y * f.h * TILE_PX * 0.5,
+    z: (m.y + m.h) * f.h * TILE_PX * 0.5,
+    slot: m.slot,
+  }));
+  // Back to front again, now along y: what was low (the base) is at the back.
+  return parts.sort((a, b) => a.y - b.y || a.z0 - b.z0);
 }
 
 /**

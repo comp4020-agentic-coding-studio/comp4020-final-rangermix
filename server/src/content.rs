@@ -94,7 +94,7 @@ mod tests {
         std::fs::write(cats.join("mochi.toml"), &mochi).unwrap();
         assert!(load_cats(&cats).is_ok(), "a known build loads");
         std::fs::write(cats.join("mochi.toml"), mochi.replace("build = \"round\"", "build = \"fluffy\"")).unwrap();
-        let err = load_cats(&cats).err().expect("an unknown build").to_string();
+        let err = load_cats(&cats).expect_err("an unknown build").to_string();
         assert!(err.contains("fluffy"), "{err}");
     }
 
