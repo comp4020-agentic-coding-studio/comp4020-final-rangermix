@@ -113,7 +113,9 @@ export const day = {
   emotes: [outline, m.red, "#ffffff", m.yellow, m.blue],
   // The street behind the café (slice 13), in the slots the client draws:
   // sky at the top, sky at the skyline, a tower, a tower's other side, a
-  // window lit, a window dark, a star, the kerb, the pavement.
+  // window lit, a window dark, a star, the kerb, the pavement; then, for
+  // more colour by day (the user, 2026-11-05), a cloud, its warm underside,
+  // and the sky warming low by the skyline.
   street: [
     m.blue,
     m.lavender,
@@ -124,6 +126,9 @@ export const day = {
     m.lavender,
     m.overlay1,
     mix(m.subtext0, m.overlay2, 0.5),
+    mix(m.rosewater, "#ffffff", 0.55),
+    mix(m.pink, m.lavender, 0.45),
+    mix(m.peach, m.rosewater, 0.35),
   ],
 };
 
@@ -143,7 +148,8 @@ export const night = {
   emotes: all(day.emotes, 0.1),
   // The street at night is its own: a dark sky with stars, the towers near
   // the base, and their windows lit with the street's lamplight.
-  street: [m.crust, m.base, mix(m.base, m.surface0, 0.5), m.surface0, m.yellow, m.surface1, m.text, m.surface0, m.mantle],
+  // Clouds faint against the dark; the warm band is the sky's own colour.
+  street: [m.crust, m.base, mix(m.base, m.surface0, 0.5), m.surface0, m.yellow, m.surface1, m.text, m.surface0, m.mantle, mix(m.base, m.surface1, 0.55), mix(m.base, m.surface0, 0.6), m.base],
 };
 
 if (process.argv[1]?.endsWith("palettes.ts")) {

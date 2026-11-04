@@ -1810,3 +1810,26 @@ corrected line, slice 14's glass by day, and the judgements left.
   its four screenshots.
 - **Mochi approved:** slice 11 goes on in her style, to Burakku, Tora,
   the people and the furniture.
+
+*Sent 2026-11-05 04:04:29 AEDT*
+
+> slice 12 looks good; slice 13 mostly good, add a bit more colour to day background, for example some cloud; slice 14 the panel background should be more translucent, frosty glass is good
+
+**Result.**
+- **Slice 12 live:** its judged line passed; the root plan and spec say so.
+- **Slice 13, more colour by day**
+  ([`318728c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/318728c), on `main` and deployed): six clouds as
+  data in `content/street.toml`, in the two top corners the walls leave,
+  white with a warm underside by day and faint by night; and a warm peach
+  band low in the sky, showing between the towers. Two first tries were
+  wrong and seen to be: clouds in a band the walls hid, and a glow
+  behind a solid row of towers.
+- **Slice 14, more translucent glass** (on `slice-14-merge`, which goes
+  to `main` once its review is answered): solved, then checked against
+  Chrome. Under 4.5:1 over anything, the filter, not the glass's alpha,
+  decides how much of the room shows, so thinning the glass alone barely
+  helped. A 3-px blur in the frost and the panels' own text a shade
+  darker (Latte) or brighter (Mocha) let the room through at 26 to 28% of
+  its range, from 10 to 19%. **By night it reads as frosted glass; by day
+  the bright pastel room still shows mostly as white,** which only a dark
+  panel tint in the light theme would change: asked of the user.

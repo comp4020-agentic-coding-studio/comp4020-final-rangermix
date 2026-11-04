@@ -793,6 +793,36 @@ describe("the street behind the café", () => {
     });
   }
 
+  it("floats clouds in the day's sky, white with a warm underside, and warms the sky low by the skyline (the user, 2026-11-05)", async () => {
+    const p = await drawn(0);
+    const day = (palettes.day as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
+    const { STREET } = await import("../src/street");
+    const seen = new Map<string, number>();
+    // The sky above the room: the top band of the canvas, clear of the walls.
+    for (let y = 0; y < 232; y++)
+      for (let x = 0; x < 336; x++) {
+        const c = p.at(x, y);
+        if (c) seen.set(c, (seen.get(c) ?? 0) + 1);
+      }
+    expect(seen.get(day[STREET.cloud]) ?? 0, "cloud pixels by day").toBeGreaterThan(40);
+    expect(seen.get(day[STREET.cloudShade]) ?? 0, "a cloud's underside").toBeGreaterThan(10);
+    expect(seen.get(day[STREET.glow]) ?? 0, "the warm sky by the skyline").toBeGreaterThan(40);
+    // A cloud's colours differ from the sky's: not one more blue.
+    expect(new Set([day[STREET.cloud], day[STREET.cloudShade], day[STREET.glow]]).size).toBe(3);
+    expect([day[STREET.skyTop], day[STREET.sky]]).not.toContain(day[STREET.cloud]);
+  });
+
+  it("keeps the night's sky dark: faint clouds, no warm glow", async () => {
+    const p = await drawn(1);
+    const night = (palettes.night as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
+    const { STREET } = await import("../src/street");
+    let glow = 0;
+    for (let y = 0; y < 232; y++) for (let x = 0; x < 336; x++) if (p.at(x, y) === night[STREET.glow]) glow++;
+    // At night the glow's slot is the sky's own colour, so nothing warm shows.
+    expect(night[STREET.glow]).toBe(night[STREET.sky]);
+    expect(glow).toBeGreaterThan(0);
+  });
+
   it("draws the street in the evening between its day and its night", async () => {
     const day = street("day");
     const night = street("night");
