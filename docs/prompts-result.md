@@ -1776,3 +1776,37 @@ test first, reviewed cold, and every finding answered. 12 and 13 are on
   solid and dimming shows little; by night the room shows faintly.
 - **Slice 11** waits for 14, and its spec's settled default is one cat
   first, judged by the user, before the rest are drawn.
+
+### 14. Finishing slices 11 to 14 (continued)
+
+*Session `004fb600`, Claude Code (Opus 5.5), continuing session
+`a4e69a46` after its context was compacted.*
+
+*Sent 2026-11-05 03:53:05 AEDT*
+
+> 1. yes that's okay
+> 2. keep it for now
+> 3. explain    - walks crossing the room, watched live (12)
+>    - the café on its street, from the screenshots (docs/notes/screens/slice-13/) (13)
+>    - the panels sitting over the room (14)
+> Mochi looks fine. continue that way.
+
+Answering the three questions at the end of the last turn: slice 12's
+corrected line, slice 14's glass by day, and the judgements left.
+
+**Result.**
+- **Slice 12's changed line accepted:** walks move evenly every frame,
+  steps within a screen pixel of each other, from 2× up, in place of
+  "one screen pixel per frame", which no walk at 3× can meet. The spec
+  says so.
+- **Slice 14's glass kept for now:** text at 4.5:1 over anything, so by
+  day the panels look solid and dimming shows little.
+- **The judged lines explained:** each slice's last "done when" line is
+  a look or feel no test can decide, and the slice is "live" in the root
+  plan once the user has passed it. 12: walks watched on the live café,
+  up the screen a back, down it a face, gliding evenly, the phone's
+  camera holding you still. 13: the room crisp on its street in the six
+  screenshots. 14: the panels comfortable in the room's corners, from
+  its four screenshots.
+- **Mochi approved:** slice 11 goes on in her style, to Burakku, Tora,
+  the people and the furniture.
