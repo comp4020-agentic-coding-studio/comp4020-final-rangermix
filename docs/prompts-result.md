@@ -1833,3 +1833,107 @@ corrected line, slice 14's glass by day, and the judgements left.
   its range, from 10 to 19%. **By night it reads as frosted glass; by day
   the bright pastel room still shows mostly as white,** which only a dark
   panel tint in the light theme would change: asked of the user.
+
+**Result, continued (the rest of that turn).**
+- **Slice 14's review** ([findings](notes/reviews/slice-14-findings.md):
+  4 major, 7 minor), every finding answered
+  ([`a991be0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a991be0), [`81ae643`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/81ae643), [`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2), [`11aee6a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/11aee6a)):
+  - panels sized from the stage, so the left two never overlap and Your
+    cats fits a laptop;
+  - a pinned panel scrolls nothing and only its Unpin takes the focus;
+  - a Pin button's name that survives leaving and coming back;
+  - drags that end when their button or capture is lost;
+  - moves by keyboard described and announced;
+  - the panels out of reach while the café wakes.
+  **The review also caught a claim of mine that was wrong:** the light
+  theme's panels show the room as white at any hour, not just by day,
+  because the page's theme follows the device and my screens had only
+  paired day with light. The record is corrected, with screens of all
+  four pairings ([`756cec2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/756cec2)); in the dark theme the glass reads as
+  frosted, as asked.
+- **Slice 14 merged and live** ([`aeb894a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/aeb894a)), checked on the live café
+  with one `agent_` account at both sizes ([`8dbb13f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8dbb13f)): the room at 4×,
+  the panels floating in frosted glass, the treat button by the emotes.
+  Two checks made steadier on `main`, waiting for the panels to settle
+  and holding the cats away from a chair a bigger cat could cover
+  ([`4284237`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4284237), [`0e4947c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0e4947c)).
+- **Slice 11, the art, in Mochi's style**, on `slice-11-wip`, reviewed
+  fresh before it merges:
+  - the cats drawn as PNGs at 24 px, which a script turns into the sheet
+    the café reads, held equal by a test;
+  - each cat's build (round, slim, striped) as data;
+  - Burakku slim with tall ears, Tora striped;
+  - a frame for each thing a cat does: walking and walking away, sitting,
+    asleep, on a lap, eating, playing, held, perched, scratching,
+    greeting;
+  - people at 32 px, front and back;
+  - each piece of furniture drawn as its parts from data: a sofa's back
+    and arms, legs under the table, chairs and window seat (crit 8's
+    note: no longer a shelf), and a plump cushion (no longer a box).
+  Flagged for the user: Tora's orange coat and the peach wood floor are
+  one family, so by day he blends in.
+
+### 15. Music in the café
+
+*Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-05 00:55:34 AEDT*
+
+> add some background music. pick from https://www.bensound.com/royalty-free-music/lofi, pick 6 music with slightly different style, 3 for day, 3 for night. add playing music info panel. user can do pause/play, change volume, prev/next on that panel.
+
+**Result.** Nothing built yet: the licence stopped it. Bensound's terms
+of use allow its free licence only in online videos and in educational
+films that earn nothing; background music for a game or application
+needs the paid Professional licence, per track (about €65 by third-party
+comparisons, unconfirmed), and its files can't be made available apart
+from the project, so they couldn't go in this repo when it goes public.
+The agent found an alternative it checked could be downloaded without a
+login: HoliznaCC0's *Public Domain Lofi* on the Free Music Archive, about
+50 lofi tracks under CC0. It asked six questions, with its leans: where
+the music comes from (HoliznaCC0, six Bensound licences, or asking
+Bensound), when night starts, what Previous and Next step through, how
+the player starts, where the panel goes, and when to build it.
+
+*Sent 2026-11-05 03:40:49 AEDT*
+
+> 1A 2A 3A 4B 5A 6A and yes each visitor gets their own player
+
+**Result.** [Slice 15, music while you sit](slices/15-music-while-you-sit.md),
+proposed, with
+[ADR 0020](adr/0020-play-public-domain-lofi-each-visitor-their-own.md)
+recording why HoliznaCC0 and why each visitor has their own player
+([`163f9cc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/163f9cc)).
+- **The six tracks,** picked by the agent from the artist's tags, each
+  checked CC0 1.0 on its own page: by day *Bubbles*, *Ocean Breeze* and
+  *Tranquil Mindscape*; by night *Moon Unit*, *Ease into Night* and *One
+  Night in France*. Downloaded and measured: 320 kbps, 41 MB together,
+  their loudness 5 dB apart, so the spec has them re-encoded to about
+  128 kbps at one loudness by a script, about 15 MB.
+- **As answered:** the night set from 17:00 with the room's light (2A);
+  Previous and Next within the hour's three (3A); on or off and the
+  volume remembered per device, starting at the first touch in the café,
+  at 40% to begin (4B); a fourth floating panel on a desktop, a row in
+  the drawer or under the room on a phone (5A); built after slice 14
+  merges and before slice 11 (6A); nothing reaches the server.
+- **Proposed defaults** for the user: a pinned music panel keeps its
+  controls clickable, since slice 14's pinning would otherwise leave only
+  Unpin; playlist order, looping; each visit starts at the set's first
+  track.
+- **The README's "soothing music"** comes true with this slice; the line
+  and a credit for its sources stay the user's to write, with a
+  suggested line in [readme-material.md](notes/readme-material.md).
+- **A builder's read** of the spec, by a fresh agent from a brief file
+  ([brief](notes/briefs/slice-15-builder-check.md),
+  [questions](notes/reviews/slice-15-builder-check.md)), asked four
+  things, none needing the user, each settled in the spec as the
+  agent's call: CI has no ffmpeg, so the encoding script records each
+  file's hash and loudness and `pnpm check` holds the files to that;
+  remembered music plays on entering and waits for a press only if the
+  browser refuses; the set is always the clock's, the song playing or
+  paused finishing first; and a press on the music panel counts as being
+  there, so its check lets the presence ping through
+  ([`02bea13`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/02bea13)).
+- **Shared `main`** with the session building slices 11 to 14, which
+  said so by message: this entry follows its own. Slice 14 merged to
+  `main` while this was written, so 15 can be built once approved.
+- Slice 15 waits on the user's approval.
