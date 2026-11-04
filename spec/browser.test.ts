@@ -309,6 +309,102 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await page.locator(".panel-bar button:visible").count()).toBe(0);
   });
 
+  it("moves a panel by mouse, by touch and by keyboard, keeps it inside the stage through a drag past the edge and a resize, and remembers it (slice 14)", async () => {
+    const v = await visit({ width: 1920, height: 1080 }, true);
+    const page = v.page;
+    const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+    const inside = async (sel: string) => {
+      const [p, s] = [await box(sel), await box("#stage")];
+      expect(p.x, `${sel} inside the stage`).toBeGreaterThanOrEqual(s.x - 0.5);
+      expect(p.y, `${sel} inside the stage`).toBeGreaterThanOrEqual(s.y - 0.5);
+      expect(p.x + p.width, `${sel} inside the stage`).toBeLessThanOrEqual(s.x + s.width + 0.5);
+      expect(p.y + p.height, `${sel} inside the stage`).toBeLessThanOrEqual(s.y + s.height + 0.5);
+    };
+    // By mouse, by its title: 300 across and 100 down.
+    const start = await box("#chalkboard");
+    const title = await box("#chalkboard-heading");
+    await page.mouse.move(title.x + 20, title.y + title.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(title.x + 170, title.y + title.height / 2 + 50, { steps: 5 });
+    await page.mouse.move(title.x + 320, title.y + title.height / 2 + 100, { steps: 5 });
+    await page.mouse.up();
+    let now = await box("#chalkboard");
+    expect(Math.round(now.x - start.x)).toBe(300);
+    expect(Math.round(now.y - start.y)).toBe(100);
+    expect(v.sent.filter((f) => f.type === "walkTo"), "a drag over the room walks nobody anywhere").toEqual([]);
+    // Far past the window's right and bottom: it stops at the stage's edge.
+    const grab = await box("#chalkboard-heading");
+    await page.mouse.move(grab.x + 20, grab.y + 5);
+    await page.mouse.down();
+    await page.mouse.move(5000, 5000, { steps: 4 });
+    await page.mouse.up();
+    await inside("#chalkboard");
+    // By touch, by its grip: a finger drags who's here 200 to the left.
+    const here = await box("#here-panel");
+    const grip = await box("#here-panel .grip");
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: string, x: number, y: number) =>
+      cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+    const [gx, gy] = [grip.x + grip.width / 2, grip.y + grip.height / 2];
+    await touch("touchStart", gx, gy);
+    for (let i = 1; i <= 5; i++) await touch("touchMove", gx - 40 * i, gy);
+    await touch("touchEnd", gx - 200, gy);
+    now = await box("#here-panel");
+    expect(Math.round(here.x - now.x)).toBe(200);
+    // By keyboard: the grip, then the arrows, 16 px a press, 64 with Shift.
+    const cats = await box("#cats-panel");
+    await page.locator("#cats-panel .grip").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Shift+ArrowUp");
+    now = await box("#cats-panel");
+    expect(Math.round(now.x - cats.x)).toBe(32);
+    expect(Math.round(cats.y - now.y)).toBe(64);
+    expect(await page.evaluate(() => document.activeElement === document.querySelector("#cats-panel .grip")), "the grip keeps the focus").toBe(true);
+    // A smaller window, and a phone and back: each panel stays inside the stage.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.waitForTimeout(200);
+    for (const sel of ["#chalkboard", "#cats-panel", "#here-panel"]) await inside(sel);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.waitForFunction(() => document.getElementById("room")?.style.width === "1344px");
+    for (const sel of ["#chalkboard", "#cats-panel", "#here-panel"]) await inside(sel);
+    // Remembered through a reload.
+    const before = await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box));
+    await page.reload();
+    await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    // A panel is placed again once its lines come in and it grows, in the
+    // frame after (a resize observer, before that frame paints), so this
+    // waits for the panels to settle rather than read one instant.
+    const where = async () => (await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box))).map((b) => [Math.round(b.x), Math.round(b.y)]);
+    await expect.poll(where, { timeout: 2000 }).toEqual(before.map((b) => [Math.round(b.x), Math.round(b.y)]));
+  });
+
+  it("keeps a moved panel where it was put for the visit when the device won't store it (slice 14)", async () => {
+    const v = await visit({ width: 1920, height: 1080 }, false, {
+      prepare: (page) =>
+        page.addInitScript(() => {
+          Object.defineProperty(window, "localStorage", {
+            get() {
+              throw new DOMException("blocked", "SecurityError");
+            },
+          });
+        }),
+    });
+    const box = async () => (await v.page.locator("#here-panel").boundingBox())!;
+    const start = await box();
+    await v.page.locator("#here-panel .grip").focus();
+    for (let i = 0; i < 4; i++) await v.page.keyboard.press("Shift+ArrowLeft");
+    expect(Math.round(start.x - (await box()).x)).toBe(256);
+    // A resize re-places every panel from what's kept: it stays where it was put.
+    await v.page.setViewportSize({ width: 1900, height: 1080 });
+    await v.page.waitForTimeout(200);
+    await v.page.setViewportSize({ width: 1920, height: 1080 });
+    await v.page.waitForTimeout(200);
+    expect(Math.round(start.x - (await box()).x)).toBe(256);
+  });
+
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {
     const { page, frames } = await visit({ width: 1920, height: 1080 });
     const welcome = frames.find((f) => f.type === "welcome")!;

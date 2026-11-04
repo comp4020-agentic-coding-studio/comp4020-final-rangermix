@@ -150,3 +150,60 @@ export function panelAt(spot: PanelSpot, size: { w: number; h: number }, stage: 
     top: Math.round(clamp(top, stage.top, Math.max(stage.top, stage.top + stage.height - size.h))),
   };
 }
+
+/**
+ * The spot for a panel dropped with its top-left at `at`: measured from the
+ * stage's nearer side on each axis, by the panel's middle.
+ */
+export function spotFor(at: { left: number; top: number }, size: { w: number; h: number }, stage: { left: number; top: number; width: number; height: number }): PanelSpot {
+  const fromLeft = at.left - stage.left;
+  const fromRight = stage.left + stage.width - at.left - size.w;
+  const fromTop = at.top - stage.top;
+  const fromBottom = stage.top + stage.height - at.top - size.h;
+  const right = fromLeft + size.w / 2 > stage.width / 2;
+  const bottom = fromTop + size.h / 2 > stage.height / 2;
+  return { h: right ? "right" : "left", x: Math.round(right ? fromRight : fromLeft), v: bottom ? "bottom" : "top", y: Math.round(bottom ? fromBottom : fromTop) };
+}
+
+/** Where each panel is and whether it's pinned, by the panel's id. */
+export type PanelsSaved = Record<string, { spot: PanelSpot; pinned: boolean }>;
+
+const PANELS_KEY = "cafe.panels";
+let panelsThisVisit: PanelsSaved | null = null;
+
+const isSpot = (s: unknown): s is PanelSpot => {
+  const o = s as Record<string, unknown> | null;
+  return !!o && (o.h === "left" || o.h === "right") && (o.v === "top" || o.v === "bottom") && Number.isFinite(o.x) && Number.isFinite(o.y);
+};
+
+/** What this device remembers of the panels, or this visit's if it won't store it; what can't be read is left out. */
+export function savedPanels(): PanelsSaved {
+  let text: string | null = null;
+  try {
+    text = localStorage.getItem(PANELS_KEY);
+  } catch {
+    return panelsThisVisit ?? {};
+  }
+  if (text === null) return panelsThisVisit ?? {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {};
+  }
+  const out: PanelsSaved = {};
+  if (!parsed || typeof parsed !== "object") return out;
+  for (const [id, v] of Object.entries(parsed as Record<string, { spot?: unknown; pinned?: unknown }>)) {
+    if (v && isSpot(v.spot) && typeof v.pinned === "boolean") out[id] = { spot: { h: v.spot.h, x: v.spot.x, v: v.spot.v, y: v.spot.y }, pinned: v.pinned };
+  }
+  return out;
+}
+
+export function savePanels(panels: PanelsSaved): void {
+  panelsThisVisit = panels;
+  try {
+    localStorage.setItem(PANELS_KEY, JSON.stringify(panels));
+  } catch {
+    // Without storage the panels stay put for this visit only.
+  }
+}

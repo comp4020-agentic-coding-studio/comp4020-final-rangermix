@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseLayout, menuSpot, panelAt, panOffset, ringCentre, ringPositions, ringRadius, saveLayout, savedLayout } from "../src/layout";
+import { chooseLayout, menuSpot, panelAt, panOffset, ringCentre, ringPositions, ringRadius, saveLayout, savedLayout, savedPanels, savePanels, spotFor } from "../src/layout";
 
 describe("phone layout B", () => {
   it("is a phone's unless it chose the whole room, and never a desktop's", () => {
@@ -179,5 +179,46 @@ describe("panels over the room (slice 14)", () => {
     const spot = { h: "right", x: 8, v: "bottom", y: 8 } as const;
     const small = { left: 8, top: 56, width: 1264, height: 606 };
     expect(panelAt(spot, size, small)).toEqual({ left: 8 + 1264 - 8 - 288, top: 56 + 606 - 8 - 300 });
+  });
+});
+
+describe("moving a panel, and remembering it (slice 14)", () => {
+  const stage = { left: 8, top: 56, width: 1904, height: 966 };
+  const size = { w: 288, h: 300 };
+
+  it("measures a dropped panel from the stage's nearer sides, so it keeps to its corner", () => {
+    // Dropped near the top-right: measured from the right and the top.
+    expect(spotFor({ left: 8 + 1904 - 20 - 288, top: 56 + 40 }, size, stage)).toEqual({ h: "right", x: 20, v: "top", y: 40 });
+    // Near the bottom-left: from the left and the bottom.
+    expect(spotFor({ left: 30, top: 56 + 966 - 10 - 300 }, size, stage)).toEqual({ h: "left", x: 22, v: "bottom", y: 10 });
+    // And back again: the spot puts it where it was dropped.
+    const at = { left: 700, top: 300 };
+    expect(panelAt(spotFor(at, size, stage), size, stage)).toEqual(at);
+  });
+
+  it("remembers where each panel is and which are pinned, and ignores what it can't read", () => {
+    savePanels({ chalkboard: { spot: { h: "right", x: 10, v: "bottom", y: 20 }, pinned: true } });
+    expect(savedPanels()).toEqual({ chalkboard: { spot: { h: "right", x: 10, v: "bottom", y: 20 }, pinned: true } });
+    localStorage.setItem("cafe.panels", "not json");
+    expect(savedPanels()).toEqual({});
+    localStorage.setItem("cafe.panels", JSON.stringify({ chalkboard: { spot: { h: "middle", x: "far", v: "top", y: 1 }, pinned: "yes" }, "here-panel": { spot: { h: "left", x: 4, v: "top", y: 5 }, pinned: false } }));
+    expect(savedPanels()).toEqual({ "here-panel": { spot: { h: "left", x: 4, v: "top", y: 5 }, pinned: false } });
+    localStorage.removeItem("cafe.panels");
+  });
+
+  it("keeps them for the visit when the device won't store them", () => {
+    const real = Object.getOwnPropertyDescriptor(window, "localStorage")!;
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("blocked");
+      },
+    });
+    try {
+      savePanels({ "cats-panel": { spot: { h: "left", x: 1, v: "top", y: 2 }, pinned: false } });
+      expect(savedPanels()).toEqual({ "cats-panel": { spot: { h: "left", x: 1, v: "top", y: 2 }, pinned: false } });
+    } finally {
+      Object.defineProperty(window, "localStorage", real);
+    }
   });
 });

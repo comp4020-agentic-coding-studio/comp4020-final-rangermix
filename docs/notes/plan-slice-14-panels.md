@@ -250,3 +250,13 @@ Where the build departed from this plan, as it happened.
   (model `#0b0b0e`/`#3e3e42`). Within one step of 255 everywhere. The
   test checks text and muted text, not links: a panel holds none, and
   its buttons have their own opaque card.
+- **Task 4: the reload check read the panels mid-placement.** It failed
+  2 runs in 10. A probe logging each placement showed why: after a
+  reload a panel is placed while still empty (54 px tall), then its lines
+  come in and a resize observer places it again, before the next paint.
+  The check could read the box between the two, a state never on screen,
+  and found the chalkboard at the bottom where an empty one would sit. It
+  now polls until the panels settle (8 runs in 8 pass), and still fails
+  with the save switched off. The drag acts by pointer capture on the
+  title or grip, so a drag over the room walks nobody, which the check
+  holds.

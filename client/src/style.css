@@ -105,6 +105,11 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .panel-bar h2 { flex: 1; }
 .panel-bar button { padding: 0.1rem 0.5rem; font-size: 0.85rem; line-height: 1.4; }
 .panel-bar .grip { cursor: grab; touch-action: none; }
+@media (min-width: 960px) {
+  /* The title is a handle too (slice 14). */
+  .panel-bar h2 { cursor: grab; touch-action: none; user-select: none; }
+  .panel.moving, .panel.moving .panel-bar * { cursor: grabbing; }
+}
 .panel-body { overflow: auto; min-height: 0; }
 .panel-body > :first-child, #here > :first-child { margin-top: 0; }
 @media (min-width: 960px) {
