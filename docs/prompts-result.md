@@ -1776,8 +1776,6 @@ test first, reviewed cold, and every finding answered. 12 and 13 are on
   solid and dimming shows little; by night the room shows faintly.
 - **Slice 11** waits for 14, and its spec's settled default is one cat
   first, judged by the user, before the rest are drawn.
-<<<<<<< HEAD
-=======
 
 ### 14. Finishing slices 11 to 14 (continued)
 
@@ -1812,4 +1810,3 @@ corrected line, slice 14's glass by day, and the judgements left.
   its four screenshots.
 - **Mochi approved:** slice 11 goes on in her style, to Burakku, Tora,
   the people and the furniture.
->>>>>>> origin/main
