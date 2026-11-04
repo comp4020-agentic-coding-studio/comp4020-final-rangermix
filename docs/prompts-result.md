@@ -1729,3 +1729,50 @@ proposed to build them.
   street's lamplight at night (slice 10), so the shadows still fall from
   them. Slice 13's default and ADR 0019's cost note now say so.
 - Slices 12 and 13 wait on the user's approval.
+
+*Sent 2026-11-04 21:36:47 AEDT*
+
+> approve both; finish 11-14
+
+**Result.** Slices 12 and 13 approved with their defaults
+([`3ea8e85`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3ea8e85)), then built in the order the plan set, 12, 13, 14, each
+test first, reviewed cold, and every finding answered. 12 and 13 are on
+`main`; 14 is built and under review; 11 comes after it.
+- **Slice 12, walking where you look**
+  ([plan](notes/plan-slice-12-walking.md)): walkers face their way on
+  screen, with back views as data, and are placed by screen pixels on a
+  canvas held at the room's scale, so a diagonal walk is even and the
+  phone's camera holds the walker still ([`65e0862`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/65e0862) to [`2bebc92`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2bebc92)).
+  One done-when line ("at most one screen pixel per frame") couldn't be
+  met by any walk at 3×, so it was corrected to "even, every frame, steps
+  within a pixel of each other", now held from 2× up; **this changed an
+  approved line, and the user hasn't yet seen it.** The review
+  ([findings](notes/reviews/slice-12-findings.md): 3 major, 6 minor)
+  found the cat walking away tail first, a camera test that never ran the
+  stage, and walkers turning round after a reconnect; all fixed test
+  first ([`5edf55f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5edf55f) to [`566385c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/566385c)).
+- **Slice 13, a café on its street**
+  ([plan](notes/plan-slice-13-street.md)): the room crisp, filled by
+  whole pixels; each piece outlined in its own colour; shadows cast from
+  the windows with light through the panes; occlusion at walls and feet;
+  the room as a diorama on a street that's data
+  ([`a8753ac`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a8753ac) to [`e049217`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e049217)). The review
+  ([findings](notes/reviews/slice-13-findings.md): 5 major, 8 minor) found
+  the rug hiding shadows, seams showing only in shade, thin pieces casting
+  a whole tile's shadow, no shadows under cats and people, and a frame
+  seven times slower than slice 12's. Fixed: the street, floor, seams and
+  rug are now one layer, shaded pixel by pixel and laid on in one go,
+  2.4 ms a frame at 5× on a throttled CPU, down from 11.8
+  ([`e757043`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e757043) to [`f92d7da`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f92d7da)).
+- **Merged** to `main` ([`e6ef535`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e6ef535)), which deploys.
+- **Slice 14, panels over the room**
+  ([plan](notes/plan-slice-14-panels.md)): the treat button beside the
+  emotes; the room at 4× with the three panels floating in its corners;
+  frosted glass that keeps text at 4.5:1 over anything; dragging by mouse,
+  touch and keyboard, remembered; pinning that lets clicks through; dimming
+  after 4 s ([`e11b6a4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e11b6a4) to [`f743f0f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f743f0f)). **Measured, for the user's
+  judgement:** holding 4.5:1 over the brightest the street can be means
+  that by day the glass shows the sky and walls as white, so a panel looks
+  solid and dimming shows little; by night the room shows faintly.
+- **Slice 11** waits for 14, and its spec's settled default is one cat
+  first, judged by the user, before the rest are drawn.
