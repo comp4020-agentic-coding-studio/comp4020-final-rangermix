@@ -574,11 +574,15 @@ function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): 
   const colour = colourOf(piece.kind);
   const z = Math.min(HEIGHT[piece.kind] ?? 8, 14);
   const s = 0.6;
-  const cx = spot.x + 0.5 - s / 2;
-  const cy = spot.y + 0.5 - s / 2;
+  // Drawn over the carrier's head as if they stood on a whole tile, then
+  // moved with the sprite, by the screen pixels it was placed at, so the
+  // piece stays put on their head as they walk (slice 12's review, finding 6).
+  const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
+  const placed = feetAt(spot);
+  const whole = feetAt(tile);
   ctx.save();
-  ctx.translate(0, -lift);
-  block(ctx, cx, cy, s, s, z, colour);
+  ctx.translate(onScreen(ctx, placed.x) - whole.x, onScreen(ctx, placed.y) - whole.y - lift);
+  block(ctx, tile.x + 0.5 - s / 2, tile.y + 0.5 - s / 2, s, s, z, colour);
   ctx.restore();
 }
 

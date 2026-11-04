@@ -390,6 +390,54 @@ describe("placing a walker by screen pixels", () => {
   }
   const diagonal = [{ x: 6, y: 5 }, { x: 6, y: 6 }, { x: 6, y: 7 }];
 
+  it("carries a piece over its carrier's head at one place against them, frame by frame, at 3× (slice 12's review, finding 6)", () => {
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[1], id: 2, at: diagonal[0], walk: { path: diagonal, start: 10_000, speed: 3 } }];
+    w.snapshot.held = [{ by: 2, piece: piece(9, "box", 0, 0, 1, 1) }];
+    w.you = 2;
+    const s = fromWelcome(w, 10_000);
+    const offsets = new Set<string>();
+    for (let f = 0; f < 30; f++) {
+      let t = [1, 0, 0, 1, 0, 0];
+      let sprite: { x: number; y: number } | null = null;
+      let box: { x: number; y: number } | null = null;
+      const boxColour = palettes.day.furniture[3].toLowerCase();
+      let fill = "";
+      const stack: number[][] = [];
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, k) => {
+            if (k === "setTransform") return (...m: number[]) => (t = m);
+            if (k === "getTransform") return () => ({ a: t[0], d: t[3], e: t[4], f: t[5] });
+            if (k === "save") return () => stack.push([...t]);
+            if (k === "restore") return () => (t = stack.pop() ?? t);
+            if (k === "translate") return (x: number, y: number) => (t = [t[0], t[1], t[2], t[3], t[4] + t[0] * x, t[5] + t[3] * y]);
+            if (k === "drawImage") return (_img: unknown, x: number, y: number) => (sprite ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            // The box's top, in its own colour: the first of its points drawn,
+            // as a path (slice 12) or by whole pixels (slice 13).
+            if (k === "fillRect" || k === "moveTo") return (x: number, y: number) => fill === boxColour && sprite && (box ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            return () => {};
+          },
+          set: (_t, k, v) => {
+            if (k === "fillStyle") {
+              const m = /^rgb\((\d+) (\d+) (\d+)\)$/.exec(String(v));
+              fill = m ? `#${m.slice(1).map((c) => Number(c).toString(16).padStart(2, "0")).join("")}` : String(v).toLowerCase();
+            }
+            return true;
+          },
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const sprites = new Sprites();
+      sprites.avatar = () => ({}) as HTMLCanvasElement;
+      draw(ctx, s, sprites, 10_000 + (f * 1000) / 60, { tile: null, visible: false, hover: null, ghost: null }, 0, 3);
+      expect(sprite && box, `frame ${f}`).toBeTruthy();
+      offsets.add(`${box!.x - sprite!.x},${box!.y - sprite!.y}`);
+    }
+    expect([...offsets], "the box against its carrier, in screen pixels").toHaveLength(1);
+  });
+
   for (const scale of [1, 2, 3, 5]) {
     it(`places a walker on whole screen pixels at ${scale}×`, () => {
       for (const p of placements(scale, diagonal, 3, 30)) {
