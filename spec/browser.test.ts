@@ -516,6 +516,45 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(Math.round(pinnedAt.x - (await box()).x)).toBe(64);
   });
 
+  it("dims an unpinned panel left unchanged, and brings it back when it changes (slice 14)", async () => {
+    const v = await visit({ width: 1920, height: 1080 }, false, {
+      prepare: async (page) => {
+        await page.clock.install();
+        await page.clock.resume();
+      },
+    });
+    const page = v.page;
+    const dim = (sel: string) => page.evaluate((s) => document.querySelector(s)!.classList.contains("dim"), sel);
+    await page.mouse.move(960, 1075);
+    expect(await dim("#here-panel"), "bright at first").toBe(false);
+    await page.clock.fastForward(5000);
+    await expect.poll(() => dim("#here-panel")).toBe(true);
+    // Dimmed, its glass lets more of the room through.
+    // The background's alpha, whatever colour space the browser reports it in, once its fade is done.
+    const alpha = (sel: string) =>
+      page.evaluate((s) => {
+        const m = /\/\s*([\d.]+)\)$|rgba\([^)]*,\s*([\d.]+)\)$/.exec(getComputedStyle(document.querySelector(s)!).backgroundColor);
+        return m ? Number(m[1] ?? m[2]) : 1;
+      }, sel);
+    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(0.2, 2);
+    // Someone arriving changes who's here: it comes back.
+    await visit({ width: 1920, height: 1080 });
+    await expect.poll(() => dim("#here-panel")).toBe(false);
+    await expect.poll(() => alpha("#here-panel")).toBeCloseTo(0.5, 2);
+    // The pointer over a dimmed panel brings it back too.
+    await page.clock.fastForward(5000);
+    await expect.poll(() => dim("#chalkboard")).toBe(true);
+    const board = (await page.locator("#chalkboard").boundingBox())!;
+    await page.mouse.move(board.x + board.width / 2, board.y + board.height / 2);
+    await expect.poll(() => dim("#chalkboard")).toBe(false);
+    // A pinned panel never dims.
+    await page.getByRole("button", { name: "Pin your cats" }).click();
+    await page.mouse.move(960, 1075);
+    await page.clock.fastForward(10_000);
+    await page.waitForTimeout(200);
+    expect(await dim("#cats-panel")).toBe(false);
+  });
+
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {
     const { page, frames } = await visit({ width: 1920, height: 1080 });
     const welcome = frames.find((f) => f.type === "welcome")!;

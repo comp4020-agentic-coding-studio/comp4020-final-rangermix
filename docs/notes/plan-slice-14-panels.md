@@ -268,3 +268,10 @@ Where the build departed from this plan, as it happened.
   without `user-select: none` and passes with it. The pinned panel's Unpin
   carries `aria-pressed`, and its grip is hidden, so Tab reaches Unpin
   only.
+- **Task 6: dimming looks once a second and on every café change.** A
+  `Dimmer` per panel compares the body's markup, so who's here, rebuilt
+  the same on every message, still dims. The browser check moves the
+  page's clock on rather than waiting, and reads the dimmed glass's alpha
+  from the computed colour, which Chrome reports as `oklab(… / 0.2)` for a
+  relative colour; it polls past the 0.4 s fade. Without the dimming code
+  it fails; with it, 3 runs in 3 pass.

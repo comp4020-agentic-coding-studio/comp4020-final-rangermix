@@ -343,6 +343,7 @@ function enter(me: ApiMe): void {
     showTreatButton($<HTMLButtonElement>("put-treat"), s, cafe.waking, () => cafe.send({ type: "putTreat" }));
     renderChalkboard($("chalk-lines"), s);
     if (!board.hidden) renderChalkboard($("board-lines"), s);
+    floating.changed();
   });
   function stop(): void {
     floating.dispose();

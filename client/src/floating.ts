@@ -20,6 +20,8 @@ const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRigh
 
 export class Floating {
   private readonly saved: PanelsSaved;
+  private readonly dimmers: Dimmer[] = [];
+  private readonly ticker: number;
   private readonly observer = new ResizeObserver(() => this.place());
   private readonly phone = matchMedia(PHONE);
   private readonly onResize = () => this.place();
@@ -36,7 +38,11 @@ export class Floating {
       this.observer.observe(panel);
       this.dragging(panel);
       this.pinning(panel);
+      // Awake while pinned, and on a phone, where panels don't float.
+      this.dimmers.push(new Dimmer(panel, () => this.saved[panel.id].pinned || this.phone.matches));
     }
+    // Looked at once a second, and whenever the café changes (changed()).
+    this.ticker = window.setInterval(() => this.changed(), 1000);
     this.observer.observe(stage);
     window.addEventListener("resize", this.onResize);
     this.phone.addEventListener("change", this.onResize);
@@ -153,16 +159,86 @@ export class Floating {
       this.saved[panel.id] = { ...this.saved[panel.id], pinned: !this.saved[panel.id].pinned };
       savePanels(this.saved);
       show();
+      this.changed();
     };
     pin.addEventListener("click", click);
     this.undo.push(() => pin.removeEventListener("click", click));
     show();
   }
 
+  /** The panels' content may have changed: dim those left unchanged, and bring back the rest. */
+  changed(): void {
+    for (const d of this.dimmers) d.check();
+  }
+
   dispose(): void {
+    window.clearInterval(this.ticker);
+    for (const d of this.dimmers.splice(0)) d.dispose();
     this.observer.disconnect();
     window.removeEventListener("resize", this.onResize);
     this.phone.removeEventListener("change", this.onResize);
+    for (const u of this.undo.splice(0)) u();
+  }
+}
+
+/** How long a panel's content stays unchanged before it dims, in milliseconds (spec 14, tunable). */
+export const DIM_AFTER = 4000;
+
+/**
+ * Dims a panel left unchanged (slice 14): after `DIM_AFTER` with the same
+ * content, the pointer elsewhere and the focus outside it, it grows more
+ * see-through; a change of content, the pointer or the focus brings it
+ * back. What counts is the content's markup, not that it was rebuilt: who's
+ * here is rebuilt on every message the same. A pinned panel never dims.
+ */
+export class Dimmer {
+  private markup: string;
+  private since = Date.now();
+  private hovered = false;
+  private readonly undo: (() => void)[] = [];
+
+  constructor(
+    private readonly panel: HTMLElement,
+    private readonly pinned: () => boolean,
+  ) {
+    this.markup = this.content();
+    const on = (type: string, fn: () => void) => {
+      panel.addEventListener(type, fn);
+      this.undo.push(() => panel.removeEventListener(type, fn));
+    };
+    on("pointerenter", () => {
+      this.hovered = true;
+      this.check();
+    });
+    on("pointerleave", () => {
+      this.hovered = false;
+      this.since = Date.now();
+    });
+    on("focusin", () => this.check());
+    on("focusout", () => {
+      this.since = Date.now();
+      // The focus has gone by the time this runs, wherever it went.
+      queueMicrotask(() => this.check());
+    });
+  }
+
+  private content(): string {
+    return this.panel.querySelector(".panel-body")?.innerHTML ?? "";
+  }
+
+  /** Dims the panel or brings it back, by what's changed since it was last looked at. */
+  check(): void {
+    const now = this.content();
+    if (now !== this.markup) {
+      this.markup = now;
+      this.since = Date.now();
+    }
+    const awake = this.pinned() || this.hovered || this.panel.contains(document.activeElement);
+    if (awake) this.since = Date.now();
+    this.panel.classList.toggle("dim", !awake && Date.now() - this.since >= DIM_AFTER);
+  }
+
+  dispose(): void {
     for (const u of this.undo.splice(0)) u();
   }
 }
