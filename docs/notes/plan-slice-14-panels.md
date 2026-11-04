@@ -304,3 +304,16 @@ Where the build departed from this plan, as it happened.
   screens now take all four pairings). Only a dark panel tint in the light
   theme would change it: asked of the user, not built. The dimming check now reads the glass's
   alphas from the page's tokens.
+
+### Live, 2026-11-05
+
+Merged to `main` at `aeb894a` with slices 12 and 13 and the clouds; CI's
+checks and deploy passed (run 41883672242). Checked on the live café at
+about 05:25 AEDT with one account, `agent_s14r4qb` (a fresh password,
+never written down): signed up at 1920×1080 in the dark theme, logged in
+at 390×844 in the light theme in layout B, each visit left at once. Both
+served build `mw2fo4tq`. At 1920×1080 the room was 1344 px wide (4×), the
+three panels fixed in their corners in dark frosted glass with the night
+room showing through, and "Put a treat down" in the talk bar; on the
+phone, layout B, the panels in the drawer and the treat button showing.
+One other visitor was inside and saw the test visit.
