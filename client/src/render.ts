@@ -1,5 +1,6 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
+import { fillCrisp, strokeCrisp } from "./crisp";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -95,13 +96,9 @@ function shade(hex: string, k: number): string {
   return `rgb(${r} ${g} ${b})`;
 }
 
+/** A polygon filled crisp, by whole room pixels (slice 13): no edge is blended. */
 function poly(ctx: Ctx, pts: Pt[], colour: string): void {
-  ctx.fillStyle = colour;
-  ctx.beginPath();
-  ctx.moveTo(Math.round(pts[0].x), Math.round(pts[0].y));
-  for (const p of pts.slice(1)) ctx.lineTo(Math.round(p.x), Math.round(p.y));
-  ctx.closePath();
-  ctx.fill();
+  fillCrisp(ctx, pts, colour);
 }
 
 /** A floor point raised by `z` pixels. */
@@ -126,14 +123,9 @@ function diamond(x: number, y: number, w = 1, h = 1): Pt[] {
   return [up(x, y), up(x + w, y), up(x + w, y + h), up(x, y + h)];
 }
 
+/** A polygon's edge traced crisp, `width` room pixels wide (slice 13). */
 function outline(ctx: Ctx, pts: Pt[], colour: string, width = 1): void {
-  ctx.strokeStyle = colour;
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x + 0.5, pts[0].y + 0.5);
-  for (const p of pts.slice(1)) ctx.lineTo(p.x + 0.5, p.y + 0.5);
-  ctx.closePath();
-  ctx.stroke();
+  strokeCrisp(ctx, pts, colour, width);
 }
 
 /**

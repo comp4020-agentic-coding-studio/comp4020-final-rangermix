@@ -349,3 +349,51 @@ describe("placing a walker by screen pixels", () => {
     expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
   });
 });
+
+// Slice 13 (ADR 0019): the room is drawn crisp, every pixel one colour.
+
+describe("the room drawn crisp", () => {
+  const noPointer = { tile: null, visible: false, hover: null, ghost: null };
+  for (const scale of [1, 3]) {
+    it(`asks the canvas for no shape it would anti-alias, and fills only whole pixels, at ${scale}×`, async () => {
+      const { pixels } = await import("./pixels");
+      const p = pixels(336 * scale, 232 * scale);
+      const w = welcome();
+      w.snapshot.room.furniture = [piece(1, "sofa", 0, 5, 3, 1), piece(2, "rug", 4, 4, 4, 3, true), { ...piece(3, "plant", 6, 9, 1, 1), toppled: true }, piece(4, "toys", 7, 8, 1, 1)];
+      const s = fromWelcome(w, 10_000);
+      for (const light of [0, 0.5, 1] as Light[]) draw(p.ctx, s, new Sprites(), 10_000, { ...noPointer, visible: true, tile: { x: 3, y: 3 } }, light, scale);
+      expect(p.blended).toEqual([]);
+    });
+  }
+
+  it("fills exactly the pixels whose centres are inside a floor diamond", async () => {
+    const { pixels } = await import("./pixels");
+    const p = pixels(336, 232);
+    const w = welcome();
+    w.snapshot.room.furniture = [];
+    w.snapshot.cats = [];
+    w.snapshot.people = [w.snapshot.people[0]];
+    w.snapshot.people[0] = { ...w.snapshot.people[0], place: "window" };
+    draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, noPointer, 0, 1);
+    // Tile (6,5)'s diamond: corners at toCanvas of its four grid corners.
+    const c = [toCanvas(6, 5), toCanvas(7, 5), toCanvas(7, 6), toCanvas(6, 6)];
+    const insideDiamond = (x: number, y: number) => {
+      const cx = (c[0].x + c[2].x) / 2;
+      const cy = (c[0].y + c[2].y) / 2;
+      return Math.abs(x - cx) / 16 + Math.abs(y - cy) / 8 < 1;
+    };
+    const floor = new Set([palettes.day.room[0], palettes.day.room[1]].map((v) => v.toLowerCase()));
+    let checked = 0;
+    for (let y = Math.floor(c[1].y); y <= Math.ceil(c[3].y); y++) {
+      for (let x = Math.floor(c[0].x); x <= Math.ceil(c[2].x); x++) {
+        if (!insideDiamond(x + 0.5, y + 0.5)) continue;
+        // Well inside: away from the seam the floor draws along each tile's far edge.
+        const d = Math.abs(x + 0.5 - (c[0].x + c[2].x) / 2) / 16 + Math.abs(y + 0.5 - (c[0].y + c[2].y) / 2) / 8;
+        if (d > 0.7) continue;
+        expect(floor.has(p.at(x, y) ?? ""), `(${x},${y}) is ${p.at(x, y)}`).toBe(true);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(50);
+  });
+});

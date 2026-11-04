@@ -159,3 +159,13 @@ Files: `content/street.toml`, `scripts/palettes.ts`,
 ## Execution log
 
 Where the build departed from this plan, as it happened.
+
+- **Task 1: the fills are a module, `crisp.ts`,** so the spans can be
+  tested on their own. The check that no shape is left soft is stronger
+  than counting colours: a small software canvas (`client/test/pixels.ts`)
+  records any `fill` or `stroke` of a path, and any `fillRect` off the
+  pixel grid, and `draw` makes none at 1× and 3× in three lights with a
+  toppled piece, the toys and the keyboard's pointer showing. Two
+  see-through draws stay on purpose: the ghost of a piece being placed,
+  and a hiding cat. They're overlays, not the room's edges, and being seen
+  through is what they're for.
