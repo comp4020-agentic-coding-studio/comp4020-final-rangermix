@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<!--
+  Throwaway art-style study for docs/notes/art-style.md. Not the café's code.
+
+  The café's room, furniture, cats and people are modelled once, then drawn
+  pixel by pixel with no anti-aliasing through two cameras: the 2:1
+  isometric one the café uses now (client/src/iso.ts), and a Stardew-style
+  top-down 3/4 one. Furniture is boxes and ellipsoids hit by a ray per
+  pixel, so overlaps are exact; cats and people are flat sprites shaped
+  the way docs/notes/screens/visual-direction/scripts/density.mjs shaped
+  its cats. Colours are the café's own (content/sprites/palettes.json).
+
+  Build and screenshot it with render.mjs beside this file, which fills in
+  the two placeholders below.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Art-style study</title>
+<style>
+  :root { color-scheme: dark; --bg: #1e1e2e; --card: #262637; --ink: #cdd6f4; --muted: #a6adc8; --line: #45475a; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+  main { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+  section { margin: 0 0 40px; padding: 16px; background: #212131; border-radius: 12px; }
+  h1 { font-size: 1.5rem; margin: 0 0 6px; }
+  h2 { font-size: 1.15rem; margin: 0 0 6px; }
+  p { margin: 0 0 12px; max-width: 80ch; color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; max-width: 62ch; }
+  figcaption b { color: var(--ink); }
+  canvas { display: block; image-rendering: pixelated; }
+  table.sheet { border-collapse: separate; border-spacing: 8px 8px; }
+  table.sheet th { font-weight: 600; font-size: 13px; color: var(--muted); text-align: left; vertical-align: middle; padding-right: 6px; }
+  table.sheet td { background: #2f2e42; border-radius: 8px; padding: 8px; vertical-align: bottom; }
+</style>
+<body>
+<main id="main"></main>
+<script>
+"use strict";
+const PAL = {
+  "day": {
+    "room": [
+      "#c99980",
+      "#b68e7d",
+      "#a1837a",
+      "#f5e0dc",
+      "#987483",
+      "#5c4554",
+      "#f2cdcd",
+      "#11111b",
+      "#89dceb",
+      "#bc927e",
+      "#f9e2af",
+      "#404f4b",
+      "#cdd6f4"
+    ],
+    "furniture": [
+      "#332e46",
+      "#f38ba8",
+      "#b36a83",
+      "#f8c3a5",
+      "#8d726c",
+      "#f7e1ca",
+      "#a6e3a1",
+      "#709473",
+      "#f4ab96",
+      "#b4befe",
+      "#c1caf9",
+      "#bc927e",
+      "#5c4847",
+      "#bac2de",
+      "#97705f",
+      "#74c7ec"
+    ],
+    "coats": {
+      "white_grey": [
+        "#332e46",
+        "#cdd6f4",
+        "#7f849c",
+        "#ffffff",
+        "#89b4fa",
+        "#f5c2e7"
+      ],
+      "black": [
+        "#11111b",
+        "#1e1e2e",
+        "#313244",
+        "#45475a",
+        "#f9e2af",
+        "#f2cdcd"
+      ],
+      "orange_tabby": [
+        "#604b49",
+        "#fab387",
+        "#f3aa9a",
+        "#f5e0dc",
+        "#a6e3a1",
+        "#f5c2e7"
+      ]
+    },
+    "avatars": {
+      "skins": [
+        "#f5e0dc",
+        "#f8c5a9",
+        "#b9907e",
+        "#725750"
+      ],
+      "hair": [
+        "#494060",
+        "#f9e2af",
+        "#8f6673",
+        "#313244"
+      ],
+      "colours": [
+        "#f38ba8",
+        "#fab387",
+        "#a6e3a1",
+        "#89dceb",
+        "#cba6f7",
+        "#f5c2e7"
+      ],
+      "base": [
+        "#332e46",
+        "#45475a",
+        "#765a52",
+        "#ffffff"
+      ]
+    },
+    "emotes": [
+      "#332e46",
+      "#f38ba8",
+      "#ffffff",
+      "#f9e2af",
+      "#89b4fa"
+    ]
+  },
+  "night": {
+    "room": [
+      "#7a6567",
+      "#716066",
+      "#685b65",
+      "#8e8591",
+      "#645569",
+      "#494053",
+      "#8c7d8a",
+      "#27283a",
+      "#f9e2af",
+      "#746266",
+      "#8f867c",
+      "#3c444f",
+      "#7c819b"
+    ],
+    "furniture": [
+      "#36354d",
+      "#96637e",
+      "#76536b",
+      "#997f7c",
+      "#635760",
+      "#988e8f",
+      "#708f7a",
+      "#556863",
+      "#977375",
+      "#777da9",
+      "#7d83a6",
+      "#7b6769",
+      "#4b424d",
+      "#7a7f99",
+      "#685659",
+      "#5781a0"
+    ],
+    "coats": {
+      "white_grey": [
+        "#35324a",
+        "#a1a7c4",
+        "#6a6e86",
+        "#c4c4cb",
+        "#7190c8",
+        "#bd99bb"
+      ],
+      "black": [
+        "#1d1e2c",
+        "#262739",
+        "#333549",
+        "#414358",
+        "#bfb093",
+        "#baa1a8"
+      ],
+      "orange_tabby": [
+        "#54464c",
+        "#c08f77",
+        "#bb8985",
+        "#bdaeb3",
+        "#85b18a",
+        "#bd99bb"
+      ]
+    },
+    "avatars": {
+      "skins": [
+        "#bdaeb3",
+        "#bf9c8f",
+        "#937771",
+        "#614f51"
+      ],
+      "hair": [
+        "#443f5c",
+        "#bfb093",
+        "#755969",
+        "#333549"
+      ],
+      "colours": [
+        "#bb738f",
+        "#c08f77",
+        "#85b18a",
+        "#71acbd",
+        "#9f86c6",
+        "#bd99bb"
+      ],
+      "base": [
+        "#35324a",
+        "#414358",
+        "#645152",
+        "#c4c4cb"
+      ]
+    },
+    "emotes": [
+      "#342f47",
+      "#e083a0",
+      "#ebebee",
+      "#e6d1a6",
+      "#81a8e9"
+    ]
+  }
+};
+const SHOT = "data:image/png;base64,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";
+
+// ---------- colour ----------
+const rgbC = new Map();
+const rgbOf = (h) => { let v = rgbC.get(h); if (!v) { v = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); rgbC.set(h, v); } return v; };
+const hex = (c) => "#" + c.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+const mixC = new Map();
+const mix = (a, b, t) => { const k = a + b + t; let v = mixC.get(k); if (!v) { const A = rgbOf(a), B = rgbOf(b); v = hex(A.map((x, i) => x * (1 - t) + B[i] * t)); mixC.set(k, v); } return v; };
+const dark = (c, k) => mix(c, "#11111b", k);
+const light = (c, k) => mix(c, "#ffffff", k);
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+const norm = (v) => { const l = Math.hypot(...v); return v.map((x) => x / l); };
+
+// ---------- pixel grids ----------
+class Grid {
+  constructor(w, h) { this.w = w; this.h = h; this.a = new Array(w * h).fill(null); }
+  get(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? null : this.a[y * this.w + x]; }
+  set(x, y, c) { if (c && x >= 0 && y >= 0 && x < this.w && y < this.h) this.a[y * this.w + x] = c; }
+  bounds() {
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) if (this.a[y * this.w + x]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return { x0, y0, x1, y1 };
+  }
+  crop(x0, y0, w, h) { const g = new Grid(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) g.a[y * w + x] = this.get(x0 + x, y0 + y); return g; }
+  flip() { const g = new Grid(this.w, this.h); for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) g.a[y * this.w + x] = this.get(this.w - 1 - x, y); return g; }
+  trim() { const b = this.bounds(); return this.crop(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1); }
+  colours() { return new Set(this.a.filter(Boolean)).size; }
+}
+function canvasOf(g, s = 1, bg = null) {
+  const cv = document.createElement("canvas"); cv.width = g.w * s; cv.height = g.h * s;
+  const ctx = cv.getContext("2d"); const im = ctx.createImageData(cv.width, cv.height); const d = im.data;
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const c = g.a[y * g.w + x] || bg; if (!c) continue; const [r, gg, b] = rgbOf(c);
+    for (let j = 0; j < s; j++) { let i = ((y * s + j) * cv.width + x * s) * 4; for (let k = 0; k < s; k++) { d[i] = r; d[i + 1] = gg; d[i + 2] = b; d[i + 3] = 255; i += 4; } }
+  }
+  ctx.putImageData(im, 0, 0); return cv;
+}
+function hstack(grids, gap = 3) {
+  const h = Math.max(...grids.map((g) => g.h)); const w = grids.reduce((a, g) => a + g.w, 0) + gap * (grids.length - 1);
+  const out = new Grid(w, h); let x = 0;
+  for (const g of grids) { for (let y = 0; y < g.h; y++) for (let i = 0; i < g.w; i++) out.set(x + i, h - g.h + y, g.get(i, y)); x += g.w + gap; }
+  return out;
+}
+
+// ---------- sprites: cats and people, flat, the same in either camera ----------
+const ell = (cx, cy, rx, ry) => (u, v) => ((u - cx) / rx) ** 2 + ((v - cy) / ry) ** 2 <= 1;
+const tri = (a, b, c) => (u, v) => {
+  const s = (p, q, r) => (p[0] - r[0]) * (q[1] - r[1]) - (q[0] - r[0]) * (p[1] - r[1]);
+  const d1 = s([u, v], a, b), d2 = s([u, v], b, c), d3 = s([u, v], c, a);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+};
+const rect = (u0, v0, u1, v1) => (u, v) => u >= u0 && u < u1 && v >= v0 && v < v1;
+const curve = (fx, fy, r) => (u, v) => { for (let i = 0; i <= 40; i++) { const t = i / 40; if ((u - fx(t)) ** 2 + (v - fy(t)) ** 2 <= r * r) return true; } return false; };
+
+/** A selective outline: the outline colour, or on the lit top-left rim the shade, at 24 px and up. */
+function outlined(g, O, S, n) {
+  const out = new Grid(g.w, g.h); out.a = g.a.slice();
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (g.get(x, y)) continue;
+    const nb = [[0, 1], [0, -1], [1, 0], [-1, 0]].filter(([dx, dy]) => g.get(x + dx, y + dy));
+    if (!nb.length) continue;
+    out.set(x, y, n >= 24 && S && nb.every(([dx, dy]) => dy === 1 || dx === 1) ? S : O);
+  }
+  return out;
+}
+function putter(g, n) {
+  return (u, v, c, w = 1, h = 1) => { const x = Math.floor(u * n), y = Math.floor(v * n); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (g.get(x + i, y + j)) g.set(x + i, y + j, c); };
+}
+// Each cat is told apart by more than its coat: Mochi rounder with a big
+// white chest, Burakku slim with tall ears and a long tail, Tora striped.
+const TWEAK = {
+  mochi: { f: 1.06, tip: 0.07, bw: 0.25, chest: 0.135, tail: 0.42 },
+  burakku: { f: 1, tip: 0.035, bw: 0.222, chest: 0.09, tail: 0.56 },
+  tora: { f: 1, tip: 0.07, bw: 0.268, chest: 0.11, tail: 0.42 },
+};
+function catSit(n, coat, who) {
+  const [O, B, S, L, E, K] = coat; const t = TWEAK[who]; const striped = who === "tora";
+  const head = ell(0.4, 0.37, 0.215 * t.f, 0.18 * t.f);
+  const earL = tri([0.2, 0.33], [0.23, t.tip], [0.37, 0.22]), earR = tri([0.43, 0.22], [0.57, t.tip], [0.6, 0.33]);
+  const innerL = tri([0.235, 0.27], [0.245, t.tip + 0.06], [0.32, 0.22]), innerR = tri([0.48, 0.22], [0.555, t.tip + 0.06], [0.565, 0.27]);
+  const body = ell(0.5, 0.73, t.bw, 0.23), chest = ell(0.4, 0.66, t.chest, 0.17);
+  const legs = (u, v) => v > 0.8 && v < 0.97 && ((u > 0.33 && u < 0.42) || (u > 0.45 && u < 0.54));
+  const tail = curve((s) => 0.7 + 0.2 * Math.sin(s * 2.4), (s) => 0.93 - t.tail * s * s, 0.055);
+  const g = new Grid(n, n), part = [];
+  for (let y = 0; y < n; y++) {
+    part.push([]);
+    for (let x = 0; x < n; x++) {
+      const u = (x + 0.5) / n, v = (y + 0.5) / n; let p = "";
+      if (tail(u, v)) p = "tail"; if (body(u, v) || legs(u, v)) p = "body"; if (head(u, v) || earL(u, v) || earR(u, v)) p = "head";
+      part[y].push(p); if (!p) continue;
+      let c = B; const [cx, cy, r] = p === "head" ? [0.4, 0.37, 0.2] : p === "body" ? [0.5, 0.73, 0.24] : [0.8, 0.7, 0.1];
+      const lit = ((u - cx) + (v - cy)) / r;
+      if (lit > 0.75) c = S; if (lit < -0.95 && p !== "tail") c = L;
+      if (p === "body" && chest(u, v)) c = lit > 0.9 ? B : L;
+      if (striped && (p !== "body" || !chest(u, v))) { const band = p === "tail" ? Math.sin(v * 60) : p === "head" ? (v < 0.3 ? Math.sin(u * 70) : 0) : Math.sin((u * 0.6 + v) * 34); if (band > 0.55 && c !== L) c = S; }
+      if (p === "head" && (innerL(u, v) || innerR(u, v))) c = K;
+      if (legs(u, v) && v > 0.93) c = L;
+      g.set(x, y, c);
+    }
+  }
+  const put = putter(g, n);
+  const ew = Math.max(1, Math.round(n / 14)), eh = Math.max(1, Math.round(n / 11));
+  put(0.3, 0.355, E, ew, eh); put(0.47, 0.355, E, ew, eh);
+  if (n >= 24) { put(0.3, 0.355, O, 1, eh); put(0.47, 0.355, O, 1, eh); }
+  if (n >= 32) { put(0.3 + 1 / n, 0.355, "#ffffff"); put(0.47 + 1 / n, 0.355, "#ffffff"); }
+  put(0.385, 0.44, K, Math.max(1, Math.round(n / 16)), 1);
+  if (n >= 24) for (let y = Math.floor(0.82 * n); y < Math.floor(0.95 * n); y++) { const x = Math.floor(0.435 * n); if (g.get(x, y)) g.set(x, y, S); }
+  const out = outlined(g, O, S, n);
+  if (n >= 24) for (let y = 1; y < n; y++) for (let x = 0; x < n; x++) if (part[y][x] === "body" && part[y - 1][x] === "head" && out.get(x, y) !== L) out.set(x, y, O);
+  return out;
+}
+function catNap(n, coat, who) {
+  const [O, B, S, L, E, K] = coat; const t = TWEAK[who]; const striped = who === "tora";
+  const body = ell(0.57, 0.75, 0.33, 0.19), head = ell(0.29, 0.69, 0.16 * t.f, 0.145 * t.f);
+  const earL = tri([0.15, 0.66], [0.16, 0.5 - (0.07 - t.tip)], [0.27, 0.58]), earR = tri([0.3, 0.57], [0.39, 0.49 - (0.07 - t.tip)], [0.42, 0.63]);
+  const innerL = tri([0.175, 0.63], [0.18, 0.55], [0.24, 0.6]), innerR = tri([0.32, 0.58], [0.375, 0.53], [0.39, 0.61]);
+  const len = who === "burakku" ? 0.58 : 0.48;
+  const tail = curve((s) => 0.88 - len * s, (s) => 0.85 + 0.07 * Math.sin(Math.PI * s), 0.055);
+  const chest = ell(0.37, 0.8, t.chest, 0.08);
+  const g = new Grid(n, n);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = (x + 0.5) / n, v = (y + 0.5) / n; let p = "";
+    if (body(u, v)) p = "body"; if (tail(u, v)) p = "tail"; if (head(u, v) || earL(u, v) || earR(u, v)) p = "head";
+    if (!p) continue;
+    const [cx, cy, r] = p === "head" ? [0.29, 0.69, 0.16] : p === "body" ? [0.57, 0.75, 0.3] : [0.62, 0.88, 0.12];
+    const lit = ((u - cx) + (v - cy)) / r; let c = B;
+    if (lit > 0.75) c = S; if (lit < -0.9 && p !== "tail") c = L;
+    if (p !== "tail" && chest(u, v)) c = L;
+    if (striped && p === "body" && Math.sin((u - v * 0.4) * 38) > 0.55 && c !== L) c = S;
+    if (striped && p === "tail" && Math.sin(u * 60) > 0.5) c = S;
+    if (p === "head" && (innerL(u, v) || innerR(u, v))) c = K;
+    g.set(x, y, c);
+  }
+  const put = putter(g, n); const ew = Math.max(1, Math.round(n / 12));
+  put(0.2, 0.7, O, ew, 1); put(0.315, 0.7, O, ew, 1);
+  put(0.265, 0.755, K, 1, 1);
+  return outlined(g, O, S, n);
+}
+function catWalk(n, coat, who, frame = 0) {
+  const [O, B, S, L, E, K] = coat; const t = TWEAK[who]; const striped = who === "tora";
+  const body = ell(0.45, 0.6, t.bw + 0.02, 0.145), head = ell(0.76, 0.46, 0.145 * t.f, 0.135 * t.f);
+  const earL = tri([0.65, 0.4], [0.665, 0.23 - (0.07 - t.tip)], [0.745, 0.34]), earR = tri([0.76, 0.34], [0.835, 0.22 - (0.07 - t.tip)], [0.87, 0.4]);
+  const innerR = tri([0.785, 0.34], [0.83, 0.27], [0.85, 0.37]);
+  const xs = frame ? [0.3, 0.34, 0.56, 0.62] : [0.25, 0.37, 0.58, 0.66];
+  const legs = (u, v) => v > 0.66 && v < 0.87 && xs.some((a) => u >= a && u < a + 0.065);
+  const tail = curve((s) => 0.2 - 0.12 * s, (s) => 0.55 - t.tail * 0.75 * s + 0.04 * Math.sin(Math.PI * s), 0.045);
+  const chest = ell(0.66, 0.63, 0.07, 0.08);
+  const g = new Grid(n, n);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = (x + 0.5) / n, v = (y + 0.5) / n; let p = "";
+    if (tail(u, v)) p = "tail"; if (body(u, v) || legs(u, v)) p = "body"; if (head(u, v) || earL(u, v) || earR(u, v)) p = "head";
+    if (!p) continue;
+    const [cx, cy, r] = p === "head" ? [0.76, 0.46, 0.14] : p === "body" ? [0.45, 0.6, 0.22] : [0.15, 0.4, 0.1];
+    const lit = ((u - cx) + (v - cy)) / r; let c = B;
+    if (lit > 0.75) c = S; if (lit < -0.95 && p !== "tail") c = L;
+    if (p === "body" && chest(u, v)) c = L;
+    if (striped && p !== "head" && Math.sin(u * 44) > 0.55 && c !== L) c = S;
+    if (legs(u, v) && v > 0.83) c = L;
+    if (p === "head" && innerR(u, v)) c = K;
+    g.set(x, y, c);
+  }
+  const put = putter(g, n); const ew = Math.max(1, Math.round(n / 14)), eh = Math.max(1, Math.round(n / 11));
+  put(0.79, 0.43, E, ew, eh); if (n >= 24) put(0.79 + ew / n, 0.43, O, 1, eh);
+  put(0.89, 0.49, K, 1, 1);
+  return outlined(g, O, S, n);
+}
+/** A person, `n` tall: front or back, standing, mid-step (frame 1 or 2) or sitting. */
+function person(n, look, view = "front", frame = 0, sit = false) {
+  const [O, SK, HA, SH, TR, SO] = look;
+  const head = ell(0.5, 0.25, 0.195, 0.185), cap = ell(0.5, 0.21, 0.215, 0.165);
+  const hair = view === "back" ? (u, v) => (head(u, v) && v < 0.41) || cap(u, v) : (u, v) => cap(u, v) && (v < 0.23 || (Math.abs(u - 0.5) > 0.14 && v < 0.34));
+  const torso = (u, v) => rect(0.33, 0.43, 0.67, 0.71)(u, v) && !((u < 0.36 || u > 0.64) && v < 0.46);
+  const arms = (u, v) => rect(0.26, 0.45, 0.33, 0.65)(u, v) || rect(0.67, 0.45, 0.74, 0.65)(u, v);
+  const hands = (u, v) => rect(0.26, 0.65, 0.33, 0.7)(u, v) || rect(0.67, 0.65, 0.74, 0.7)(u, v);
+  const L = sit ? [rect(0.35, 0.71, 0.65, 0.8)] : frame === 1 ? [rect(0.32, 0.71, 0.45, 0.86), rect(0.55, 0.71, 0.68, 0.88)] : frame === 2 ? [rect(0.4, 0.71, 0.6, 0.87)] : [rect(0.36, 0.71, 0.48, 0.87), rect(0.52, 0.71, 0.64, 0.87)];
+  const F = sit ? [rect(0.35, 0.8, 0.48, 0.85), rect(0.52, 0.8, 0.65, 0.85)] : frame === 1 ? [rect(0.31, 0.86, 0.45, 0.92), rect(0.55, 0.88, 0.69, 0.94)] : frame === 2 ? [rect(0.39, 0.87, 0.61, 0.93)] : [rect(0.35, 0.87, 0.48, 0.93), rect(0.52, 0.87, 0.65, 0.93)];
+  const g = new Grid(n, n);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = (x + 0.5) / n, v = (y + 0.5) / n; let c = null;
+    if (L.some((f) => f(u, v))) c = u > 0.55 ? dark(TR, 0.15) : TR;
+    if (F.some((f) => f(u, v))) c = SO;
+    if (torso(u, v)) c = u > 0.6 ? dark(SH, 0.15) : u < 0.37 ? light(SH, 0.12) : SH;
+    if (arms(u, v)) c = u > 0.6 ? dark(SH, 0.22) : SH;
+    if (hands(u, v)) c = SK;
+    if (head(u, v)) { const lit = ((u - 0.5) + (v - 0.25)) / 0.19; c = lit > 0.8 ? dark(SK, 0.12) : SK; }
+    if (hair(u, v)) { const lit = ((u - 0.5) + (v - 0.2)) / 0.2; c = lit > 0.6 ? dark(HA, 0.18) : lit < -0.8 ? light(HA, 0.18) : HA; }
+    g.set(x, y, c);
+  }
+  if (view === "front") {
+    const put = putter(g, n); const ew = Math.max(1, Math.round(n / 20)), eh = Math.max(1, Math.round(n / 12));
+    put(0.41, 0.27, O, ew, eh); put(0.56, 0.27, O, ew, eh);
+    if (n >= 26) { put(0.36, 0.34, mix(SK, "#f38ba8", 0.35), ew, 1); put(0.61, 0.34, mix(SK, "#f38ba8", 0.35), ew, 1); }
+  }
+  return outlined(g, O, null, n);
+}
+const lookOf = (P, i, c) => { const A = P.avatars; return [A.base[0], A.skins[i], A.hair[i], A.colours[c], A.base[1], A.base[2], A.base[3]]; };
+
+// ---------- cameras ----------
+// iso: client/src/iso.ts, a 2:1 diamond T wide; a tile-high edge rises
+// 0.612 T (the true dimetric ratio). top: Stardew-style, the floor seen
+// square and upright faces drawn toward you, k tiles up the screen per tile
+// of height, matched to iso's.
+function isoCam(T) {
+  const hw = T / 2, hh = T / 4, zz = 0.6124 * T;
+  const dx = -(zz / hh) / 2, dy = (zz / hh) / 2;
+  return { name: "iso", T, zpx: 1 / zz, dx, dy, shadeSide: 0.28, shadeFront: 0.1, L: norm([-0.25, 0.45, 0.85]),
+    project: (x, y, z) => [(x + y) * hw, (y - x) * hh - z * zz],
+    unproj: (sx, sy) => { const a = sx / hw, b = sy / hh; return [(a - b) / 2, (a + b) / 2]; },
+    board: (x0, y0, cx, cy) => ((cy - cx) - (y0 - x0)) / (dy - dx) };
+}
+function topCam(T, k = 0.866) {
+  return { name: "top", T, zpx: 1 / (k * T), dx: 0, dy: k, shadeSide: 0.28, shadeFront: 0.16, L: norm([-0.3, 0.4, 0.86]),
+    project: (x, y, z) => [x * T, (y - z * k) * T],
+    unproj: (sx, sy) => [sx / T, sy / T],
+    board: (x0, y0, cx, cy) => (cy - y0) / k };
+}
+
+// ---------- ray hits ----------
+function hitBox(b, x0, y0, dx, dy) {
+  let lo = b.z0, hi = b.z1, face = "top";
+  if (dx === 0) { if (x0 < b.x0 || x0 > b.x1) return null; }
+  else { const t1 = (b.x0 - x0) / dx, t2 = (b.x1 - x0) / dx; const l = Math.min(t1, t2), h = Math.max(t1, t2); if (l > lo) lo = l; if (h < hi) { hi = h; face = "side"; } }
+  if (dy === 0) { if (y0 < b.y0 || y0 > b.y1) return null; }
+  else { const t1 = (b.y0 - y0) / dy, t2 = (b.y1 - y0) / dy; const l = Math.min(t1, t2), h = Math.max(t1, t2); if (l > lo) lo = l; if (h < hi) { hi = h; face = "front"; } }
+  return hi >= lo ? { s: hi, face } : null;
+}
+function hitEll(e, x0, y0, dx, dy) {
+  const ax = dx / e.rx, bx = (x0 - e.cx) / e.rx, ay = dy / e.ry, by = (y0 - e.cy) / e.ry, az = 1 / e.rz, bz = -e.cz / e.rz;
+  const A = ax * ax + ay * ay + az * az, B = 2 * (ax * bx + ay * by + az * bz), C = bx * bx + by * by + bz * bz - 1;
+  const disc = B * B - 4 * A * C; if (disc < 0) return null;
+  return { s: (-B + Math.sqrt(disc)) / (2 * A), face: "ell" };
+}
+function shadeHit(cam, p, face, s, x0, y0) {
+  const x = x0 + s * cam.dx, y = y0 + s * cam.dy, z = s;
+  if (p.paint) return p.paint(face, x, y, z, cam);
+  const c = p.c;
+  if (p.kind === "box") return face === "top" ? c : face === "front" ? dark(c, cam.shadeFront) : dark(c, cam.shadeSide);
+  const nx = (x - p.cx) / (p.rx * p.rx), ny = (y - p.cy) / (p.ry * p.ry), nz = (z - p.cz) / (p.rz * p.rz);
+  const d = (nx * cam.L[0] + ny * cam.L[1] + nz * cam.L[2]) / (Math.hypot(nx, ny, nz) || 1);
+  return d > 0.85 ? light(c, 0.14) : d > 0.45 ? c : d > 0.1 ? dark(c, 0.12) : dark(c, 0.26);
+}
+const box = (x0, y0, z0, x1, y1, z1, c) => ({ kind: "box", x0, y0, z0, x1, y1, z1, c });
+const ellp = (cx, cy, cz, rx, ry, rz, c) => ({ kind: "ell", cx, cy, cz, rx, ry, rz, c });
+const boxOf = (p) => (p.kind === "box" ? p : { x0: p.cx - p.rx, x1: p.cx + p.rx, y0: p.cy - p.ry, y1: p.cy + p.ry, z0: Math.max(0, p.cz - p.rz), z1: p.cz + p.rz });
+
+// ---------- the café's furniture, as shapes (content/room.toml's layout) ----------
+function model(P, kind, x, y) {
+  const F = P.furniture, wood = F[11], woodL = F[3], woodD = F[4];
+  const rope = mix(F[5], woodL, 0.35);
+  const p = [];
+  const legs = (x0, y0, x1, y1, h, c) => { for (const [a, b] of [[x0, y0], [x1 - 0.08, y0], [x0, y1 - 0.08], [x1 - 0.08, y1 - 0.08]]) p.push(box(a, b, 0, a + 0.08, b + 0.08, h, c)); };
+  let fp = [1, 1], shadow = true;
+  if (kind === "cat_tower") {
+    fp = [2, 2];
+    p.push(box(x + 0.08, y + 0.08, 0, x + 1.92, y + 1.92, 0.2, woodL));
+    p.push(box(x + 0.86, y + 0.86, 0.2, x + 1.14, y + 1.14, 2.2, rope));
+    p.push(box(x + 0.22, y + 0.22, 0.2, x + 0.4, y + 0.4, 0.95, rope));
+    p.push(box(x + 0.14, y + 0.14, 0.95, x + 1.22, y + 1.22, 1.07, woodL), box(x + 0.2, y + 0.2, 1.07, x + 1.16, y + 1.16, 1.13, F[9]));
+    p.push(box(x + 0.72, y + 0.72, 1.86, x + 1.86, y + 1.86, 1.98, woodL), box(x + 0.78, y + 0.78, 1.98, x + 1.8, y + 1.8, 2.04, F[9]));
+  } else if (kind === "window_seat") {
+    fp = [2, 1];
+    p.push(box(x + 0.04, y + 0.04, 0, x + 1.96, y + 0.9, 0.42, wood), box(x + 0.08, y + 0.08, 0.42, x + 1.92, y + 0.86, 0.52, F[10]));
+  } else if (kind === "sofa") {
+    fp = [3, 1];
+    p.push(box(x + 0.04, y + 0.1, 0, x + 2.96, y + 0.94, 0.3, F[2]));
+    p.push(box(x + 0.3, y + 0.32, 0.3, x + 1.48, y + 0.92, 0.44, F[1]), box(x + 1.52, y + 0.32, 0.3, x + 2.7, y + 0.92, 0.44, F[1]));
+    p.push(box(x + 0.04, y + 0.08, 0.3, x + 2.96, y + 0.34, 0.92, F[2]));
+    p.push(box(x + 0.04, y + 0.1, 0.3, x + 0.3, y + 0.94, 0.6, F[2]), box(x + 2.7, y + 0.1, 0.3, x + 2.96, y + 0.94, 0.6, F[2]));
+  } else if (kind === "table") {
+    fp = [2, 1];
+    p.push(box(x + 0.04, y + 0.08, 0.66, x + 1.96, y + 0.92, 0.76, wood)); legs(x + 0.1, y + 0.14, x + 1.9, y + 0.86, 0.66, woodD);
+    p.push(ellp(x + 0.55, y + 0.5, 0.8, 0.09, 0.09, 0.06, light(F[13], 0.3)));
+  } else if (kind === "chair") {
+    p.push(box(x + 0.18, y + 0.18, 0.4, x + 0.82, y + 0.82, 0.48, woodL), box(x + 0.18, y + 0.74, 0.48, x + 0.82, y + 0.82, 1.0, woodL));
+    legs(x + 0.18, y + 0.18, x + 0.82, y + 0.82, 0.4, woodD);
+  } else if (kind === "cat_bed") {
+    p.push(ellp(x + 0.5, y + 0.55, 0.05, 0.42, 0.38, 0.15, F[2]), ellp(x + 0.5, y + 0.55, 0.1, 0.3, 0.27, 0.07, F[1]));
+  } else if (kind === "box") {
+    p.push(box(x + 0.14, y + 0.14, 0, x + 0.86, y + 0.86, 0.56, F[14]), box(x + 0.46, y + 0.14, 0.56, x + 0.54, y + 0.86, 0.57, dark(F[14], 0.2)));
+  } else if (kind === "plant") {
+    p.push(box(x + 0.3, y + 0.3, 0, x + 0.7, y + 0.7, 0.36, F[8]), box(x + 0.27, y + 0.27, 0.32, x + 0.73, y + 0.73, 0.42, F[8]));
+    p.push(ellp(x + 0.5, y + 0.5, 0.72, 0.3, 0.3, 0.32, F[6]), ellp(x + 0.38, y + 0.46, 0.96, 0.17, 0.17, 0.2, F[6]), ellp(x + 0.62, y + 0.6, 0.9, 0.15, 0.15, 0.18, F[6]));
+  } else if (kind === "toys") {
+    shadow = false;
+    p.push(ellp(x + 0.32, y + 0.42, 0.08, 0.09, 0.09, 0.09, F[1]), ellp(x + 0.66, y + 0.62, 0.06, 0.13, 0.07, 0.06, F[13]));
+  } else if (kind === "bowls") {
+    fp = [2, 1]; shadow = false;
+    p.push(ellp(x + 0.5, y + 0.5, 0.04, 0.26, 0.22, 0.08, F[13]), ellp(x + 1.5, y + 0.5, 0.04, 0.26, 0.22, 0.08, F[15]));
+  } else if (kind === "cushion") {
+    shadow = false;
+    p.push(ellp(x + 0.5, y + 0.5, 0.06, 0.38, 0.38, 0.1, F[9]));
+  }
+  return { parts: p, x, y, w: fp[0], h: fp[1], shadow };
+}
+const LAYOUT = [["cat_tower", 0, 1], ["window_seat", 2, 1], ["plant", 11, 1], ["table", 9, 3], ["chair", 9, 4], ["chair", 10, 4], ["sofa", 0, 5], ["cat_bed", 0, 7], ["toys", 7, 8], ["box", 1, 9], ["plant", 6, 9], ["bowls", 10, 9], ["cushion", 9, 7]];
+function rugAt(P, rx, ry) {
+  const F = P.furniture;
+  return (x, y) => {
+    if (x < rx || x >= rx + 4 || y < ry || y >= ry + 3) return null;
+    const e = Math.min(x - rx, rx + 4 - x, y - ry, ry + 3 - y);
+    return e < 0.16 ? F[9] : e < 0.3 ? light(F[10], 0.25) : F[10];
+  };
+}
+
+// ---------- the room's surfaces ----------
+const TILES = "WWGGGGWDCWWW";
+function wallFace(R, a, z, which, zpx) {
+  if (z < 0) return dark(R[4], 0.3);
+  if (z < 0.5) return z > 0.5 - zpx ? dark(R[4], 0.3) : R[4];
+  if (which !== "street") return R[3];
+  const col = Math.floor(a), f = a - col, ch = TILES[col] || "W";
+  if (ch === "G" && f > 0.05 && f < 0.95 && z > 0.95 && z < 2.1) {
+    if (!(f > 0.12 && f < 0.88 && z > 1.02 && z < 2.03)) return R[5];
+    const g = (((f * 1.2 - (z - 1) * 0.6) % 0.55) + 0.55) % 0.55;
+    return g < 0.06 ? light(R[8], 0.4) : R[8];
+  }
+  if (ch === "D" && f > 0.08 && f < 0.92 && z < 2.0) {
+    if (!(f > 0.15 && f < 0.85 && z < 1.93)) return R[5];
+    if (f > 0.7 && f < 0.78 && z > 0.92 && z < 1.06) return R[10];
+    return Math.abs(z - 1.45) < zpx * 0.6 || Math.abs(z - 0.55) < zpx * 0.6 ? dark(R[9], 0.18) : R[9];
+  }
+  if (ch === "C" && f > 0.1 && f < 0.92 && z > 1.0 && z < 1.8) {
+    if (!(f > 0.16 && f < 0.86 && z > 1.06 && z < 1.74)) return R[5];
+    for (const [x0, zz] of [[0.24, 1.6], [0.42, 1.47], [0.28, 1.33], [0.5, 1.2]]) if (f > x0 && f < x0 + 0.26 && Math.abs(z - zz) < zpx * 0.6) return R[12];
+    return R[11];
+  }
+  return R[3];
+}
+function wallThings(cam, room) {
+  const { w, h, H, P, tw, slab } = room; const R = P.room; const cap = mix(R[3], "#ffffff", 0.35);
+  const street = { kind: "box", x0: -tw, x1: w, y0: 1 - tw, y1: 1, z0: -slab, z1: H,
+    paint: (f, x, y, z, c) => (f === "top" ? cap : f === "front" ? wallFace(R, x, z, "street", c.zpx) : dark(R[3], 0.4)) };
+  if (cam.name === "top") return [{ parts: [street], outline: false }];
+  const plain = { kind: "box", x0: w, x1: w + tw, y0: 1 - tw, y1: h, z0: -slab, z1: H,
+    paint: (f, x, y, z, c) => (f === "top" ? cap : f === "side" ? dark(wallFace(R, y, z, "plain", c.zpx), 0.14) : dark(R[3], 0.4)) };
+  return [{ parts: [street], outline: false }, { parts: [plain], outline: false }];
+}
+function slabThing(room) {
+  const { w, h, slab, P } = room; const wood = P.furniture[11];
+  return { outline: false, parts: [{ kind: "box", x0: 0, x1: w, y0: 1, y1: h, z0: -slab, z1: -0.0001,
+    paint: (f, x, y, z, c) => (z > -c.zpx * 1.5 ? light(wood, 0.1) : f === "front" ? dark(wood, 0.3) : dark(wood, 0.45)) }] };
+}
+function plankWidth(cam) { return (cam.name === "iso" ? cam.T : cam.T * 1.41) >= 24 ? 0.5 : 1; }
+function floorAt(cam, R, sx, sy, x0, y0) {
+  const pw = plankWidth(cam);
+  const id = (x, y) => { const row = Math.floor(y / pw); const off = (row * 0.5) % 1.5; return [row, Math.floor((x + off) / 1.5)]; };
+  const [r, c] = id(x0, y0);
+  const a = id(...cam.unproj(sx + 1, sy)), b = id(...cam.unproj(sx, sy + 1));
+  if (a[0] !== r || a[1] !== c || b[0] !== r || b[1] !== c) return R[2];
+  return (((r * 73856093) ^ (c * 19349663)) >>> 0) % 3 === 0 ? R[1] : R[0];
+}
+function backdrop(room, px, py, W, H, night) {
+  if (room.bg === "void") return "#1e1e2e";
+  if (room.bg === "diorama") {
+    const r = Math.hypot((px - W / 2) / W, (py - H * 0.5) / H) * 2.4;
+    const k = Math.max(0, Math.min(3, Math.floor(r * 3 + bayer(px, py) - 0.5)));
+    return ["#34324a", "#2b2a3e", "#242334", "#1e1e2e"][k];
+  }
+  // "city": the street's towers standing behind the café, so the top corners
+  // hold sky and lit windows; below the skyline, the dark street.
+  const horizon = Math.round(H * 0.6);
+  if (py >= horizon) return bayer(px, py) < 0.25 ? "#1e1e2e" : "#181825";
+  const v = py / horizon;
+  const sky = night ? ["#11111b", "#181825", "#1e1e2e", "#262539"] : ["#89b4fa", "#a3bdf7", "#b4befe", "#c6c9f5"];
+  let c = sky[Math.max(0, Math.min(3, Math.floor(v * 4 + bayer(px, py) - 0.5)))];
+  if (night && (((px * 7919) ^ (py * 104729)) >>> 0) % 211 === 0 && v < 0.6) c = "#cdd6f4";
+  const bw = 14 + (Math.floor(px / 14) % 3) * 3, col = Math.floor(px / 17);
+  const hgt = Math.round(H * (0.1 + ((((col * 2654435761) >>> 0) % 1000) / 1000) * 0.32));
+  if (py > horizon - hgt) {
+    const lx = px % 17, ly = horizon - py;
+    const body = night ? (col % 2 ? "#232336" : "#28283d") : (col % 2 ? "#9aa3d8" : "#a8afe0");
+    if (lx === 0) return night ? "#181825" : "#8f98cf";
+    const win = lx % 3 === 2 && ly % 4 === 2 && lx < 15;
+    const lit = win && (((col * 31 + Math.floor(ly / 4) * 17 + Math.floor(lx / 3) * 7) >>> 0) % 5 < 2);
+    c = lit ? (night ? "#f9e2af" : "#f5e0dc") : win ? (night ? "#313244" : "#b4befe") : body;
+  }
+  return c;
+}
+
+// ---------- the renderer ----------
+// Pass 1 floor and backdrop; pass 2 every solid by a ray per pixel into a
+// depth buffer; pass 3 a dark outline round each piece of furniture; pass 4
+// sprites stood up as cards, so the sofa's back hides whoever's behind it.
+function render(cam, sc) {
+  const pts = [];
+  const add = (b) => { for (const x of [b.x0, b.x1]) for (const y of [b.y0, b.y1]) for (const z of [b.z0, b.z1]) pts.push(cam.project(x, y, z)); };
+  for (const t of sc.things) for (const p of t.parts) add(boxOf(p));
+  if (sc.room) add({ x0: 0, x1: sc.room.w, y0: sc.room.y0, y1: sc.room.h, z0: 0, z1: 0 });
+  for (const s of sc.sprites) { const [fx, fy] = cam.project(s.cx, s.cy, s.z0); pts.push([fx - s.g.w / 2, fy - s.g.h], [fx + s.g.w / 2, fy]); }
+  const pad = sc.pad ?? 2;
+  let minX = Math.floor(Math.min(...pts.map((p) => p[0]))) - pad, minY = Math.floor(Math.min(...pts.map((p) => p[1]))) - pad;
+  let W = Math.ceil(Math.max(...pts.map((p) => p[0]))) + pad - minX, H = Math.ceil(Math.max(...pts.map((p) => p[1]))) + pad - minY;
+  if (sc.frame) ({ minX, minY, W, H } = sc.frame);
+  const g = new Grid(W, H), depth = new Float32Array(W * H).fill(-Infinity), owner = new Int32Array(W * H).fill(-1);
+  const room = sc.room, R = room?.P.room;
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+    const sx = px + minX + 0.5, sy = py + minY + 0.5, [x0, y0] = cam.unproj(sx, sy), i = py * W + px;
+    if (!room) continue;
+    let c = backdrop(room, px, py, W, H, room.night);
+    if (x0 >= 0 && x0 <= room.w && y0 >= room.y0 && y0 <= room.h) {
+      c = floorAt(cam, R, sx, sy, x0, y0);
+      for (const f of sc.flats) { const fc = f(x0, y0); if (fc) c = fc; }
+      if (sc.shadows.some((s) => s(x0, y0))) c = dark(c, 0.17);
+      depth[i] = 0;
+    } else if (room.trim) { const tc = room.trim(x0, y0); if (tc) c = tc; }
+    g.a[i] = c;
+  }
+  const kind = [];
+  sc.things.forEach((t, id) => {
+    kind[id] = t.outline === false ? "solid" : "outline";
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const p of t.parts) { const b = boxOf(p); for (const x of [b.x0, b.x1]) for (const y of [b.y0, b.y1]) for (const z of [b.z0, b.z1]) { const [X, Y] = cam.project(x, y, z); bx0 = Math.min(bx0, X); bx1 = Math.max(bx1, X); by0 = Math.min(by0, Y); by1 = Math.max(by1, Y); } }
+    const px0 = Math.max(0, Math.floor(bx0 - minX) - 1), px1 = Math.min(W - 1, Math.ceil(bx1 - minX) + 1);
+    const py0 = Math.max(0, Math.floor(by0 - minY) - 1), py1 = Math.min(H - 1, Math.ceil(by1 - minY) + 1);
+    for (let py = py0; py <= py1; py++) for (let px = px0; px <= px1; px++) {
+      const [x0, y0] = cam.unproj(px + minX + 0.5, py + minY + 0.5);
+      let best = null;
+      for (const p of t.parts) { const h = p.kind === "box" ? hitBox(p, x0, y0, cam.dx, cam.dy) : hitEll(p, x0, y0, cam.dx, cam.dy); if (h && h.s > -0.5 && (!best || h.s > best.s)) best = { ...h, p }; }
+      if (!best) continue;
+      const i = py * W + px;
+      if (best.s > depth[i]) { depth[i] = best.s; owner[i] = id; g.a[i] = shadeHit(cam, best.p, best.face, best.s, x0, y0); }
+    }
+  });
+  const og = g.a.slice();
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+    const i = py * W + px; let bd = -Infinity, bc = null;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const qx = px + dx, qy = py + dy; if (qx < 0 || qy < 0 || qx >= W || qy >= H) continue;
+      const j = qy * W + qx, o = owner[j];
+      if (o < 0 || o === owner[i] || kind[o] !== "outline" || depth[j] <= depth[i] + 0.02) continue;
+      if (depth[j] > bd) { bd = depth[j]; bc = g.a[j]; }
+    }
+    if (bc) og[i] = mix(bc, "#2a2438", 0.62);
+  }
+  g.a = og;
+  sc.sprites.forEach((s, k) => {
+    const [fx, fy] = cam.project(s.cx, s.cy, s.z0), b = s.g.bounds();
+    const left = Math.round(fx - minX) - Math.round((b.x0 + b.x1) / 2), top = Math.round(fy - minY) - b.y1 - 1;
+    for (let y = 0; y < s.g.h; y++) for (let x = 0; x < s.g.w; x++) {
+      const c = s.g.get(x, y); if (!c) continue;
+      const px = left + x, py = top + y; if (px < 0 || py < 0 || px >= W || py >= H) continue;
+      const i = py * W + px, [x0, y0] = cam.unproj(px + minX + 0.5, py + minY + 0.5), sb = cam.board(x0, y0, s.cx, s.cy);
+      if (sb > depth[i] - 0.08) { g.a[i] = c; depth[i] = sb; owner[i] = 100000 + k; }
+    }
+  });
+  let roomPx = 0; for (let i = 0; i < W * H; i++) if (depth[i] > -Infinity) roomPx++;
+  return { g, minX, minY, W, H, roomShare: roomPx / (W * H) };
+}
+
+// ---------- scenes ----------
+/** The café as it stands in content/room.toml, with three cats and four people about. */
+function cafe(cam, P, opts = {}) {
+  const Tiso = opts.Tiso ?? cam.T;
+  const nc = Math.round(0.75 * Tiso), np = Math.round(1.1 * Tiso);
+  const room = { w: 12, h: 10, y0: 1, H: 2.4, P, tw: 0.14, slab: opts.slab ?? 0, bg: opts.bg ?? "void", night: !!opts.night };
+  if (cam.name === "top") {
+    const trimC = mix(P.room[5], P.room[7], 0.25);
+    room.trim = (x, y) => ((x >= -0.18 && x < 0 || x > 12 && x <= 12.18) && y >= 1 - 0.14 - 2.4 * 0.866 && y <= 10.18) || (y > 10 && y <= 10.18 && x >= -0.18 && x <= 12.18) ? trimC : null;
+  }
+  const things = [], shadows = [];
+  const ox = cam.name === "iso" ? 0 : 0.08, oy = 0.12;
+  for (const [k, x, y] of LAYOUT) {
+    const m = model(P, k, x, y); things.push({ parts: m.parts });
+    if (m.shadow) shadows.push((sx, sy) => sx >= x + 0.06 + ox && sx <= x + m.w - 0.06 + ox && sy >= y + 0.1 + oy && sy <= y + m.h + oy - 0.02);
+  }
+  things.push(...wallThings(cam, room));
+  if (room.slab) things.push(slabThing(room));
+  const C = P.coats;
+  const sprites = [
+    { g: catNap(nc, C.white_grey, "mochi"), cx: 3.0, cy: 1.5, z0: 0.52 },
+    { g: catNap(nc, C.black, "burakku").flip(), cx: 0.5, cy: 7.55, z0: 0.13 },
+    { g: catSit(nc, C.orange_tabby, "tora"), cx: 5.0, cy: 5.0, z0: 0 },
+    { g: person(np, lookOf(P, 0, 0), "front"), cx: 7.5, cy: 2.5, z0: 0 },
+    { g: person(np, lookOf(P, 2, 3), "front", 0, true), cx: 1.5, cy: 5.62, z0: 0.44 },
+    { g: person(np, lookOf(P, 1, 4), "front"), cx: 6.6, cy: 6.5, z0: 0 },
+    { g: person(np, lookOf(P, 3, 2), "back", 0, true), cx: 10.5, cy: 4.45, z0: 0.48 },
+  ];
+  for (const s of sprites) if (s.z0 === 0) shadows.push((x, y) => ((x - s.cx - 0.03) / 0.24) ** 2 + ((y - s.cy - 0.06) / 0.15) ** 2 <= 1);
+  return { room, things, sprites, shadows, flats: [rugAt(P, 4, 4)], pad: opts.pad ?? 3 };
+}
+/** One piece of furniture on its own, for the density sheets. */
+function piece(cam, P, kind) {
+  const m = model(P, kind, 0, 0);
+  return render(cam, { room: null, things: [{ parts: m.parts }], sprites: [], shadows: [], flats: [], pad: 2 }).g.trim();
+}
+
+// ---------- page ----------
+const main = document.getElementById("main");
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, attrs); for (const k of kids) e.append(k); return e; };
+function section(id, title, text) {
+  const s = el("section", { id }); s.dataset.shot = id;
+  s.append(el("h2", { textContent: title })); for (const t of [].concat(text)) s.append(el("p", { innerHTML: t }));
+  main.append(s); return s;
+}
+const fig = (node, caption) => el("figure", {}, node, el("figcaption", { innerHTML: caption }));
+const numbers = {};
+const day = PAL.day, night = PAL.night;
+
+main.append(el("h1", { textContent: "The café's look, reconsidered" }));
+main.append(el("p", { innerHTML: "Procedural studies, not final art: every object is modelled once and drawn with no anti-aliasing, so only the camera and the pixel count change between pictures. Drawn art would have more character than these shapes." }));
+
+// 1. Blur: the live café's frame, and the same frame with each blended pixel snapped back.
+async function blurSection() {
+  const s = section("1-blur", "1. The blur is anti-aliased edges, not the camera or the scale",
+    "Left: the live café's own frame at 10:00 (slice 10's screenshot), enlarged. Right: the same frame with every in-between pixel snapped to the nearest colour it was blended from. Nothing else changed.");
+  const img = new Image(); img.src = SHOT; await img.decode();
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const cx = c.getContext("2d"); cx.drawImage(img, 0, 0);
+  const d = cx.getImageData(0, 0, img.width, img.height).data;
+  const W = Math.floor(img.width / 3), H = Math.floor(img.height / 3);
+  const g = new Grid(W, H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * 3 * img.width + x * 3) * 4; g.a[y * W + x] = hex([d[i], d[i + 1], d[i + 2]]); }
+  const interior = new Set();
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const c0 = g.get(x, y); if ([[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => g.get(x + a, y + b) === c0)) interior.add(c0); }
+  const snapped = new Grid(W, H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c0 = g.get(x, y); if (interior.has(c0)) { snapped.set(x, y, c0); continue; }
+    let best = null, bd = 1e9; const v = rgbOf(c0);
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const n = g.get(x + i, y + j); if (!n || !interior.has(n)) continue; const w = rgbOf(n); const dd = (v[0] - w[0]) ** 2 + (v[1] - w[1]) ** 2 + (v[2] - w[2]) ** 2; if (dd < bd) { bd = dd; best = n; } }
+    snapped.set(x, y, best ?? c0);
+  }
+  numbers.blur = { live: g.colours(), snapped: snapped.colours(), interior: interior.size };
+  const crop = [60, 92, 120, 76];
+  s.append(el("div", { className: "row" },
+    fig(canvasOf(g.crop(...crop), 5), `<b>Live, ${g.colours()} colours.</b> Every slanted edge of a block or floor diamond is drawn by the canvas with blended pixels, then scaled 3× into soft 3×3 smudges.`),
+    fig(canvasOf(snapped.crop(...crop), 5), `<b>Snapped, ${snapped.colours()} colours.</b> The same frame, each pixel one colour from the palette. This is what "crisp" means here.`)));
+}
+
+// 2. Walking: the café's own maths (motion.ts, iso.ts, render.ts) against three fixes, live.
+function walkSection() {
+  const s = section("2-walk", "2. Walking: why it shakes, and three fixes",
+    ["Every walker loops the same square of four three-tile legs at 3 tiles a second (content/tuning.toml), so each leg goes one way on the grid. <b>Now</b> is the café's own maths: a position rounded to the room's pixels each frame, and the facing taken from the grid's x alone, as client/src/motion.ts does.",
+     "Watch the first leg, toward the street wall: the walker moves up and to the left but faces right, and shows its face while walking away."]);
+  const look = lookOf(day, 0, 0); const n = 35;
+  const spr = {}; for (const v of ["front", "back"]) for (const f of [0, 1, 2]) { const g = person(n, look, v, f); spr[`${v}${f}`] = { g, b: g.bounds() }; }
+  const path = [[1, 4], [1, 3], [1, 2], [1, 1], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [3, 4], [2, 4], [1, 4]];
+  const speed = 3, loop = (path.length - 1) / speed * 1000;
+  const at = (ms) => {
+    const steps = ((ms % loop) / 1000) * speed, i = Math.min(path.length - 2, Math.floor(steps)), f = steps - i;
+    const a = path[i], b = path[i + 1];
+    return { a, b, f, x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f };
+  };
+  const variants = [
+    { key: "now", cam: isoCam(32), title: "<b>Now.</b> Rounded to the room's pixels; facing from the grid's x." },
+    { key: "facing", cam: isoCam(32), title: "<b>Fix 1: face where you go.</b> Facing and front or back taken from the screen direction. Still rounded per frame, so it steps unevenly." },
+    { key: "lockstep", cam: isoCam(32), title: "<b>Fix 2: move in whole 2:1 steps.</b> Progress snapped to an eighth of a tile, exactly 2 px across and 1 down, so x and y always change together." },
+    { key: "smooth", cam: isoCam(32), title: "<b>Fix 3: move by screen pixels.</b> The sprite's pixels stay 3×3, but where it stands moves one screen pixel at a time." },
+    { key: "top", cam: topCam(24), title: "<b>Top-down, same rounding as now.</b> Walks run along the screen's own axes, so only one coordinate changes at a time." },
+  ];
+  const S = 3; const canvases = [];
+  const row = el("div", { className: "row" });
+  for (const v of variants) {
+    const P = day; const room = { w: 6, h: 6, y0: 0, H: 0, P, tw: 0, slab: 0, bg: "void" };
+    const bgR = render(v.cam, { room, things: [], sprites: [], shadows: [], flats: [], pad: 26 + (v.key === "top" ? 6 : 0) });
+    const bgc = canvasOf(bgR.g, S); const cv = document.createElement("canvas"); cv.width = bgc.width; cv.height = bgc.height;
+    canvases.push({ v, bgR, bgc, cv, ctx: cv.getContext("2d") });
+    row.append(fig(cv, v.title));
+  }
+  s.append(row);
+  const sc = {}; for (const k in spr) { sc[k] = canvasOf(spr[k].g, S); sc[k + "f"] = canvasOf(spr[k].g.flip(), S); }
+  function frame(ms) {
+    for (const { v, bgR, bgc, ctx } of canvases) {
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(bgc, 0, 0);
+      const p = at(ms); let { x, y } = p;
+      if (v.key === "lockstep") { const q = Math.floor(p.f * 8) / 8; x = p.a[0] + (p.b[0] - p.a[0]) * q; y = p.a[1] + (p.b[1] - p.a[1]) * q; }
+      const [fx, fy] = v.cam.project(x + 0.5, y + 0.5, 0); const ax = fx - bgR.minX, ay = fy - bgR.minY;
+      const [ex, ey] = v.cam.project(p.b[0] + 0.5, p.b[1] + 0.5, 0), [sx0, sy0] = v.cam.project(p.a[0] + 0.5, p.a[1] + 0.5, 0);
+      let view = "front", flip = false;
+      if (v.key === "now") flip = p.b[0] < p.a[0];
+      else { view = ey < sy0 || (v.key === "top" && ey < sy0) ? "back" : "front"; flip = ex < sx0; }
+      const fr = Math.floor(ms / 180) % 2 ? 1 : 2; const key = `${view}${fr}`; const { b } = spr[key];
+      const cx = Math.round((b.x0 + b.x1) / 2);
+      let X, Y;
+      if (v.key === "smooth") { X = Math.round(ax * S) - cx * S; Y = Math.round(ay * S) - (b.y1 + 1) * S; }
+      else { X = (Math.round(ax) - cx) * S; Y = (Math.round(ay) - b.y1 - 1) * S; }
+      if (flip) X = (v.key === "smooth" ? Math.round(ax * S) : Math.round(ax) * S) - (spr[key].g.w - 1 - cx) * S;
+      ctx.drawImage(flip ? sc[key + "f"] : sc[key], X, Y);
+    }
+  }
+  window.__walkAt = (ms) => { window.__frozen = ms; frame(ms); };
+  const tick = (t) => { if (window.__frozen === undefined) frame(t); requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  // The numbers behind "shaking": per-frame steps at 60 fps on a leg, and the follow-camera's wobble.
+  const cam = isoCam(32); const steps = {}; let prev = null;
+  for (let f = 0; f < 60; f++) { const [X, Y] = cam.project(1.5, 4.5 - (f / 60) * 3, 0); const p = [Math.round(X), Math.round(Y)]; if (prev) { const k = `${p[0] - prev[0]},${p[1] - prev[1]}`; steps[k] = (steps[k] || 0) + 1; } prev = p; }
+  numbers.walk = { stepsPerSecondAt60fps: steps };
+}
+
+// 3. Corners.
+function cornerSection() {
+  const s = section("3-corners", "3. The empty corners: embrace them, fill them, or use them",
+    "A 2:1 room's floor is a diamond, and a diamond fills half its bounding box, so about 40% of the frame is backdrop whatever the art. These keep the camera and do something with the space.");
+  const cam = isoCam(32);
+  const make = (opts) => render(cam, cafe(cam, opts.night ? night : day, opts));
+  const now = make({ bg: "void" }), dio = make({ bg: "diorama", slab: 0.45 }), city = make({ bg: "city", slab: 0.45, night: true });
+  numbers.corners = { void: now.roomShare, diorama: dio.roomShare };
+  s.append(el("div", { className: "row" },
+    fig(canvasOf(now.g, 2), `<b>A. As now.</b> The room floats on a flat backdrop. ${(100 - now.roomShare * 100).toFixed(0)}% of the frame is empty.`),
+    fig(canvasOf(dio.g, 2), "<b>B. A diorama.</b> Give the floor a thickness and the walls a top, and set it on a soft glow: the empty space reads as framing, the way an isometric lofi room is usually shown."),
+    fig(canvasOf(city.g, 2), "<b>C. The city behind it.</b> The same diorama at night with the street's towers behind, so the top corners hold sky and lit windows.")));
+  // D: the panels in the corners, so the room can grow from 3× to 4×.
+  const mock = (scaleReal, floating) => {
+    const W = 640, H = 360, k = 1 / 3; const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
+    x.imageSmoothingEnabled = false; x.fillStyle = "#1e1e2e"; x.fillRect(0, 0, W, H);
+    const roomC = canvasOf(dio.g, 1); const rw = dio.W * scaleReal * k, rh = dio.H * scaleReal * k;
+    const panel = (px, py, pw, ph, label) => { x.fillStyle = "rgba(49,50,68,0.92)"; x.fillRect(px, py, pw, ph); x.strokeStyle = "#45475a"; x.strokeRect(px + 0.5, py + 0.5, pw - 1, ph - 1); x.fillStyle = "#a6adc8"; x.font = "9px system-ui"; x.fillText(label, px + 5, py + 12); };
+    if (!floating) {
+      panel(4, 24, 91, 332, "Chalkboard · cats"); panel(545, 24, 91, 332, "Here · said");
+      x.drawImage(roomC, 99 + (432 - rw) / 2, 24 + (316 - rh) / 2, rw, rh);
+    } else {
+      x.drawImage(roomC, (W - rw) / 2, 22 + (316 - rh) / 2, rw, rh);
+      panel(6, 24, 120, 92, "Chalkboard"); panel(6, 250, 120, 92, "Your cats"); panel(514, 24, 120, 70, "Here (2/6)");
+    }
+    x.fillStyle = "#313244"; x.fillRect(100, 344, 440, 12); x.fillStyle = "#a6adc8"; x.font = "9px system-ui"; x.fillText("Say something…", 106, 353);
+    return cv;
+  };
+  s.append(el("div", { className: "row", style: "margin-top:14px" },
+    fig(mock(3, false), "<b>The page now, at 1920×1080 (shown at a third).</b> The panels take two columns, so the room fits at 3×."),
+    fig(mock(4, true), "<b>D. Panels float in the corners.</b> The empty triangles hold the chalkboard, the cats and who's here, and the room grows to 4×, 78% more room on screen.")));
+}
+
+// 4. Density. Each row is one density, shown at the same size on screen as
+// the game would show it: 16-px tiles at 6×, 24 at 4×, 32 at 3×, 48 at 2×.
+// Top-down squares are three quarters of the isometric diamond's width, so
+// the room comes out about the same size on screen in either camera.
+const DENS = [16, 24, 32, 48];
+const topT = (T) => Math.round(0.75 * T);
+function densitySection() {
+  const s = section("4-density", "4. Cats, people and furniture at four densities",
+    ["Each row is drawn at a different pixel count and shown at the same size on screen, as the game would: 16-px tiles at 6×, 24 at 4×, 32 at 3×, 48 at 2×. Cats are three quarters of a tile across, people a tenth taller than a tile is wide. ADR 0017 chose the 32-px row; the café now draws 16-px sprites (the first row's people and cats are close to them) in a 32-px room.",
+     "Cats and people are drawn the same in either camera; furniture isn't, so it's shown both ways below."]);
+  const C = day.coats;
+  const t1 = el("table", { className: "sheet" });
+  const h1 = el("tr"); for (const x of ["", "Tora, Mochi, Burakku sitting", "Napping, napping, walking", "People: front, front, back, mid-step"]) h1.append(el("th", { textContent: x })); t1.append(h1);
+  for (const T of DENS) {
+    const tr = el("tr"), n = Math.round(0.75 * T), np = Math.round(1.1 * T), k = 96 / T;
+    tr.append(el("th", { innerHTML: `${T}-px tiles<br>cats ${n} px<br>people ${np} px` }));
+    tr.append(el("td", {}, canvasOf(hstack([catSit(n, C.orange_tabby, "tora"), catSit(n, C.white_grey, "mochi"), catSit(n, C.black, "burakku")], 1), k)));
+    tr.append(el("td", {}, canvasOf(hstack([catNap(n, C.orange_tabby, "tora"), catNap(n, C.white_grey, "mochi"), catWalk(n, C.black, "burakku", 0)], 1), k)));
+    tr.append(el("td", {}, canvasOf(hstack([person(np, lookOf(day, 0, 0)), person(np, lookOf(day, 2, 3)), person(np, lookOf(day, 3, 4), "back"), person(np, lookOf(day, 1, 2), "front", 1)], 1), k)));
+    t1.append(tr);
+  }
+  const t2 = el("table", { className: "sheet", style: "margin-top:10px" });
+  const h2 = el("tr"); for (const x of ["", "Isometric: sofa, chair, cat tower, plant", "Top-down 3/4: the same four"]) h2.append(el("th", { textContent: x })); t2.append(h2);
+  for (const T of DENS) {
+    const tr = el("tr"), k = 96 / T;
+    tr.append(el("th", { textContent: `${T}-px tiles` }));
+    tr.append(el("td", {}, canvasOf(hstack(["sofa", "chair", "cat_tower", "plant"].map((kd) => piece(isoCam(T), day, kd)), 2), k)));
+    tr.append(el("td", {}, canvasOf(hstack(["sofa", "chair", "cat_tower", "plant"].map((kd) => piece(topCam(topT(T)), day, kd)), 2), k)));
+    t2.append(tr);
+  }
+  s.append(t1, t2);
+}
+
+// 4b. The café's corner at each density, both cameras.
+function contextSection() {
+  const s = section("4b-in-the-room", "4b. The same corner of the café at each density",
+    "The sofa, the cat bed, the box and the rug's edge, with Burakku napping, Tora on the rug and two people, at the same on-screen size in every row.");
+  const t = el("table", { className: "sheet" });
+  const tr0 = el("tr"); for (const x of ["", "Isometric", "Top-down 3/4"]) tr0.append(el("th", { textContent: x })); t.append(tr0);
+  // The part of the room shown: x 0 to 7, y 4.4 to 10, up to 1.7 tiles high.
+  const region = (cam, r) => {
+    const pts = [];
+    for (const x of [0, 7]) for (const y of [4.4, 10]) for (const z of [0, 1.7]) pts.push(cam.project(x, y, z));
+    const x0 = Math.floor(Math.min(...pts.map((p) => p[0])) - r.minX), x1 = Math.ceil(Math.max(...pts.map((p) => p[0])) - r.minX);
+    const y0 = Math.floor(Math.min(...pts.map((p) => p[1])) - r.minY), y1 = Math.ceil(Math.max(...pts.map((p) => p[1])) - r.minY);
+    return r.g.crop(Math.max(0, x0), Math.max(0, y0), Math.min(r.W, x1) - Math.max(0, x0), Math.min(r.H, y1) - Math.max(0, y0));
+  };
+  for (const T of DENS) {
+    const tr = el("tr"); tr.append(el("th", { textContent: `${T}-px tiles` }));
+    const iso = isoCam(T), top = topCam(topT(T));
+    tr.append(el("td", {}, canvasOf(region(iso, render(iso, cafe(iso, day, { Tiso: T }))), 96 / T)));
+    tr.append(el("td", {}, canvasOf(region(top, render(top, cafe(top, day, { Tiso: T }))), 96 / T)));
+    t.append(tr);
+  }
+  s.append(t);
+}
+
+// 5. Camera.
+function cameraSection() {
+  const s = section("5-camera", "5. The whole café in each camera, at the density ADR 0017 chose",
+    "24-px cats in both. The isometric room on 32-px diamonds; the top-down one on 24-px squares. Day, then night.");
+  const iso = isoCam(32), top = topCam(24);
+  const ri = render(iso, cafe(iso, day, { bg: "diorama", slab: 0.45 })), rt = render(top, cafe(top, day, { Tiso: 32 }));
+  const rin = render(iso, cafe(iso, night, { bg: "diorama", slab: 0.45, night: true })), rtn = render(top, cafe(top, night, { Tiso: 32, night: true }));
+  numbers.camera = { iso: { w: ri.W, h: ri.H, share: ri.roomShare }, top: { w: rt.W, h: rt.H, share: rt.roomShare } };
+  s.append(el("div", { className: "row" },
+    fig(canvasOf(ri.g, 2), `<b>Isometric</b> (as diorama B), ${ri.W}×${ri.H} px, ${(ri.roomShare * 100).toFixed(0)}% of it room.`),
+    fig(canvasOf(rt.g, 2), `<b>Top-down 3/4</b>, ${rt.W}×${rt.H} px, ${(rt.roomShare * 100).toFixed(0)}% of it room.`)));
+  s.append(el("div", { className: "row", style: "margin-top:14px" }, fig(canvasOf(rin.g, 2), "<b>Isometric, night.</b>"), fig(canvasOf(rtn.g, 2), "<b>Top-down 3/4, night.</b>")));
+  // How much of a 1920×1080 stage each fills at its largest whole scale.
+  const stage = [1296, 950];
+  const fitS = (r) => Math.max(1, Math.floor(Math.min(stage[0] / r.W, stage[1] / r.H)));
+  const si = fitS(ri), st = fitS(rt);
+  numbers.stage = { iso: { scale: si, share: (ri.W * si * ri.H * si * ri.roomShare) / (stage[0] * stage[1]) }, top: { scale: st, share: (rt.W * st * rt.H * st * rt.roomShare) / (stage[0] * stage[1]) } };
+  s.append(el("p", { style: "margin-top:12px", innerHTML: `On a 1920×1080 screen the stage between the panels is about 1296×950. The isometric room fits at ${si}× and its room pixels cover ${(numbers.stage.iso.share * 100).toFixed(0)}% of the stage; the top-down one fits at ${st}× and covers ${(numbers.stage.top.share * 100).toFixed(0)}%.` }));
+}
+
+(async () => {
+  await blurSection();
+  walkSection();
+  cornerSection();
+  densitySection();
+  contextSection();
+  cameraSection();
+  window.__numbers = numbers; window.__ready = true;
+})().catch((e) => { document.body.prepend(el("pre", { textContent: String(e.stack || e) })); window.__error = String(e.stack || e); window.__ready = true; });
+</script>
+</body>
+</html>

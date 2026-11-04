@@ -49,7 +49,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 08 | Long gaps held by mocked time | A clock the tests start at a chosen instant (never on Fly); the built café lives through a night, a midnight and nine days in `cargo test`; the night lines of 01 and 02 no longer wait on a real night ([ADR 0016](../adr/0016-hold-long-gaps-with-mocked-time-not-a-real-night.md)) | [08](../slices/08-long-gaps-held-by-mocked-time.md) | live 2026-10-21 ([plan](plan-slice-08-mocked-time.md), [findings](reviews/slice-08-findings.md)) |
 | 09 | The room seen at an angle | The isometric camera on the same grid, with plain blocks for sprites; picking and the browser checks through the stage; layout B the phone's default ([ADR 0017](../adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md)) | [09](../slices/09-the-room-seen-at-an-angle.md) | live 2026-10-22, turned 90° at the user's asking so the street wall is on the left ([plan](plan-slice-09-isometric.md), [findings](reviews/slice-09-findings.md), [notes](slice-09-isometric.md)) |
 | 10 | Catppuccin by day and by night | Catppuccin-led day and night palettes in place of the tint, the window lit at night; the page in Latte and Mocha | [10](../slices/10-catppuccin-by-day-and-by-night.md) | reviewed and deployed 2026-10-22, checked live ([plan](plan-slice-10-palette.md), [findings](reviews/slice-10-findings.md), [notes](slice-10-palette.md)); live once the user has judged it |
-| 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21 |
+| 11 | Cats you can tell apart | The agent's PNG sprites at 24-px cats and 32 to 36-px people, a pose for every behaviour; replaces 05 | [11](../slices/11-cats-you-can-tell-apart.md) | approved 2026-10-21; on hold from 2026-11-04 while the user reconsiders the camera ([art-style.md](art-style.md)) |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -101,9 +101,12 @@ Updated by session `6753d63d`.
 
 ## What's left, in order
 
-1. **Build slice 11** (approved 2026-10-21), the art, now that the camera
-   (09) and the colours (10) are in. It ships on its own and leaves the
-   café working.
+1. **Settle the look, then build slice 11.** On 2026-11-04 the user asked
+   whether the room's blur, the walking shake and the empty corners mean
+   isometric should give way to a top-down 3/4 camera. The judgement, with
+   studies, is [art-style.md](art-style.md); the choice is the user's.
+   Either way, the floor and walls need drawing crisp and walkers need to
+   face where they go, which slice 11 as written doesn't cover.
 2. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the

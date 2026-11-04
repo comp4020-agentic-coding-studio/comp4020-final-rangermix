@@ -1629,3 +1629,40 @@ built as slices 09 to 11 in place of slice 05:
 
 Also open: slices 03, 04 and 06 are specs the user hasn't approved, and the
 final submission is Mon 9 November, 12:00, five days out.
+
+*Sent 2026-11-04 16:01:21 AEDT*
+
+> help me reconsider the art style -
+> 1. the current isometric view make everything looks blurred, will that still be the case after we rebuild the sprite for everything?
+> 2. cat and people walking looks like shaking, which I guess it's still following the original axis. is that fixable?
+> 3. the isometric view leaves blank space at corners, is there a walkaround for that?
+> 4. give me visual example on how the cats, people and furniture looks like in different pixel count / density.
+> 5. overall would Top-Down / 3/4 Pseudo-3D like stardew valley be a better fit for this game, or isometric wins? I thought isometric will give more modern lofi / cyber cafe feel, but it looks like might not work out.
+
+**Result.** A judgement with studies, nothing decided
+([notes/art-style.md](notes/art-style.md)). A throwaway study models the
+café's own room, furniture, cats and people once and draws them pixel by
+pixel through either camera at 16, 24, 32 and 48-px tiles
+([screens/art-style/](notes/screens/art-style/)). What it found:
+
+- **The blur is anti-aliasing in the code, not the camera or the scale.**
+  The 3× scaling is clean, but `render.ts` draws the floor, walls and
+  blocks as canvas polygons, whose edges are blended: one two-colour
+  diamond comes out in 4 colours, and the live frame in 763 where its
+  fills use 37. New sprites stay crisp, but slice 11 as written would leave
+  the floor and walls soft. Drawing them as tiles fixes it in either camera.
+- **The shake is three things, all fixable.** Walkers face by grid x and
+  have only a front view, so walking toward the street wall moonwalks
+  showing their faces. Positions rounded each frame step unevenly along
+  the 2:1 diagonal (12 of 60 frames still). Layout B's camera wobbles a
+  pixel. Fixes: face by screen direction with back views, then even 2:1
+  steps or screen-pixel placement.
+- **The corners are the diamond's shape**: about 40% of the frame. Studied
+  as a diorama, the street's towers behind it, or the panels floating in
+  them (the room 3× to 4× on a desktop).
+- **Density:** 32-px tiles with 24-px cats still looks right.
+- **The camera:** top-down 3/4 fills the frame (6% empty against 42%) and
+  is simpler to draw, but reads as the "normal" look the user left in
+  October, and rebuilding slice 09 would take days of the five left. My
+  read: stay isometric and fix what's wrong with it. The choice is the
+  user's, so ADR 0017 stands and slice 11 is on hold until they make it.
