@@ -635,7 +635,21 @@ describe("in a browser", { timeout: 30_000 }, () => {
   });
 
   it("says where each tile is on the room seen at an angle, so a click there acts on what's on it", async () => {
-    const { page, frames } = await visit({ width: 1920, height: 1080 });
+    // The cats held in the room's far corner by the page's socket, as the
+    // window-seat check holds one: a 24-px cat (slice 11) by the chair would
+    // rightly take the click on what's drawn over it.
+    const away = (page: Page) =>
+      page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        server.onMessage((m) => {
+          const f = JSON.parse(String(m));
+          if (f.type === "welcome") {
+            f.snapshot.cats.forEach((c: Frame, i: number) => Object.assign(c, { at: { x: 11, y: 9 - i }, walk: null, pose: "sit", heldBy: null }));
+            ws.send(JSON.stringify(f));
+          } else if (!f.cat) ws.send(m);
+        });
+      });
+    const { page, frames } = await visit({ width: 1920, height: 1080 }, false, { prepare: away });
     const welcome = frames.find((f) => f.type === "welcome")!;
     const chair = welcome.snapshot.room.furniture.find((f: Frame) => f.kind === "chair");
     // The chair's middle is on the room, and a click there opens the chair's menu.
