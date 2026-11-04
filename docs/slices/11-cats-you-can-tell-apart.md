@@ -45,7 +45,7 @@ furniture looks like what it is, standing or knocked over.
 
 | What must be true | Held by |
 | --- | --- |
-| Every sprite the client draws exists, at its size, using only its palette's colours, with no stray pixels | `cargo test` (the content loader) |
+| Every sprite the client draws exists, at its size, using only its palette's colours, with no stray pixels | `cargo test` (the sizes) and client unit tests (`sheets`: only slot colours, every frame in one piece) |
 | All art is data in `content/sprites/`, not code, and a new coat is a data change | `cargo test` (the loader reads it) |
 | Each behaviour shows its own pose | client unit tests (the frame chosen for each pose) |
 | Each cat is told apart from the others in every pose, and each piece reads as what it is, standing and knocked over, at both scales, day and night | judged: by the user, from the sprite sheet in `docs/notes/screens/` |

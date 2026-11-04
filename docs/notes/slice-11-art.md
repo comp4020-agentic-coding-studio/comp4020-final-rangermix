@@ -6,11 +6,11 @@ first cat, drawn for judging and not yet in the café.
 
 ## Mochi at 24 px, every pose
 
-![Mochi's sheet](screens/slice-11/mochi-sheet.png)
+![Mochi's sheet, as judged](screens/slice-11/mochi-judged-sheet.png)
 
 ![today's 16 px beside 24 px](screens/slice-11/mochi-16-and-24.png)
 
-- Drawn by `screens/slice-11/scripts/mochi.mjs` from the shapes of the
+- Drawn by `scripts/cats.mjs` (first written as `screens/slice-11/scripts/mochi.mjs`) from the shapes of the
   study's 24-px cats (`screens/art-style/scripts/study.html`, Mochi's
   round build, big white chest and short ears), in her coat's six palette
   slots, so the night colours and other coats still swap.

@@ -83,3 +83,24 @@ from behind a person); then the review, merge, deploy and live check.
 ## Execution log
 
 Where the build departed from this plan, as it happened.
+
+- **Built in Mochi's style after the user approved her** (2026-11-05,
+  03:53 AEDT). The draft's plan held: PNGs as the source of the text
+  sheets (`scripts/sprites.ts`, a test that the sheets are its output),
+  and a cat's build as data. Departures:
+  - The cats and people are drawn by scripts from shapes, as the study's
+    were (`scripts/cats.mjs`, `scripts/people.mjs`), not by hand; the PNGs
+    they write are the art anyone may redraw.
+  - **A coat is six slots, not about eight:** an outline, a base, a
+    shade, a light, eyes and pink. White is the light, on Mochi.
+  - **Furniture is boxes, not PNGs:** each kind's parts in
+    `content/sprites/furniture-models.json`, so its shadows, picking and
+    sorting stay exact (the plan's decision 4 had sprites; an isometric
+    picture of a 2×2 tower can't cast or sort by its parts).
+  - The study's sitting and sleeping cats faced left; turned to face
+    right, as every frame must.
+  - Knocking over shows its pose because the server now names the cat (a
+    `knock` reaction), and a treat taken from a hand shows eating.
+- **The review** (21 findings) is answered in
+  [`reviews/slice-11-findings.md`](reviews/slice-11-findings.md).
+

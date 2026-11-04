@@ -20,7 +20,7 @@ describe("the cats' sheet", () => {
   it("holds every frame of every build at 24 by 24, front and back", () => {
     const sheet = parseSheet(readFileSync(join(repo, "content/sprites/cat.txt"), "utf8"));
     const frames = ["sit", "walk_a", "walk_b", "back_sit", "back_walk_a", "back_walk_b", "nap", "eat", "play_a", "play_b", "perch", "held", "lap", "scratch", "knock", "greet"];
-    for (const build of ["round"]) {
+    for (const build of ["round", "slim", "striped"]) {
       for (const f of frames) {
         const grid = sheet.get(`${build}:${f}`);
         expect(grid, `${build}:${f}`).toBeDefined();

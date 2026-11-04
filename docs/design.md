@@ -444,8 +444,7 @@ renamed.
 - **The look** is chosen
   ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
   from [notes/visual-direction.md](notes/visual-direction.md)) and built in
-  slices 09 to 11. Until slice 11 is built, the sprites below stay true of
-  the live café.
+  slices 09 to 11.
   - **A 2:1 isometric camera** on the same grid (slice 09, built), kept
     over a top-down 3/4 one on 2026-11-04
     ([ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
@@ -453,9 +452,15 @@ renamed.
     another comes after it, and things on one spot go piece, treat, cat,
     person, a cat on their lap; what stands on a piece is drawn up on it. A
     click or tap acts on what's drawn under it, up off its tile, before the
-    floor. Until slice 11, furniture is shaded blocks as tall as
-    `content/sprites/heights.json` says, lying lower and longer when
-    knocked over.
+    floor: a figure on its sprite's own pixels, a piece on its parts. Each
+    piece is drawn as its parts (slice 11), boxes from
+    `content/sprites/furniture-models.json`, each its own colour, listed
+    back to front: a sofa's back, arms and seat; legs under the table,
+    chairs and window seat; a pot and leaves. What's up on a piece stands
+    on the part under its tile. A piece a cat can knock over (the plant,
+    the toys, the lamp) lies down as its parts on their side; one with no
+    model, or knocked over without one, is a single block as tall as
+    `content/sprites/heights.json` says.
   - **Catppuccin-led colours** (slice 10, built): `content/sprites/palettes.json`
     holds a day set and a night set of the same shape, written by
     `scripts/palettes.ts` from Catppuccin's values (credited in
@@ -512,10 +517,18 @@ renamed.
     or the furniture changes, not every frame; the shadows are the same by
     night. Blocks are lit from the windows: the left face a little shaded,
     the front, turned away from them, most.
-- **Sprites** are grids of palette numbers in `content/sprites/`, drawn by
-  Claude as code. Cats share a base sprite with swappable coats, patterns and
-  eyes, and recoloured images are cached at startup. Any sprite can be redrawn
-  later, by hand or from a pack, without touching code.
+- **Sprites** (slice 11) are PNGs in `content/sprites/png/`, drawn by
+  Claude with `scripts/cats.mjs` and `scripts/people.mjs` in a fixed key of
+  slot colours; `scripts/sprites.ts` turns them into the grids of palette
+  numbers in `cat.txt` and `avatar.txt` the client and `cargo test` read,
+  and a test holds that the grids are its output. Cats are about 24 px,
+  people 32. Each cat has a coat (its colours, six slots) and a build (its
+  shape: round, slim, striped), both data in its file in `content/cats/`;
+  a build is a folder of frames, one for each thing a cat does (sitting,
+  walking and walking away, asleep, on a lap, eating, playing, held,
+  perched, scratching, knocking something over, greeting), every frame
+  facing right and mirrored to face left. Recoloured images are cached.
+  Any sprite can be redrawn later, by hand or from a pack, as PNGs.
 - **HTML over the canvas** for bubbles (any language renders crisply, which a
   pixel font can't), menus (real buttons the keyboard can focus) and a
   screen-reader live region that narrates what happens ("Mochi walked over to
