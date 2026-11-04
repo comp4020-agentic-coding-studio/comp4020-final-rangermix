@@ -285,6 +285,10 @@ function standingOn(state: CafeState, spot: { x: number; y: number }): Furniture
  * kept when one was cleared, or the front.
  */
 function facingOf(state: CafeState, key: string, walk: Walk | null, spot: Spot): Spot {
+  // Someone who's just come in, their walk from the door over, faces into
+  // the room, as the spec settled (slice 12's review, finding 4).
+  const door = state.room.door;
+  if (walk && walk.path.length > 1 && !spot.moving && walk.path[0].x === door.x && walk.path[0].y === door.y) return { ...spot, view: "front", mirror: false };
   if (walk && walk.path.length > 1) return spot;
   const kept = state.facing.get(key);
   return kept ? { ...spot, ...kept } : spot;
@@ -691,11 +695,15 @@ function drawCarried(ctx: Ctx, piece: FurnitureView, spot: Spot, standing = 0): 
   const colour = colourOf(piece.kind);
   const z = Math.min(HEIGHT[piece.kind] ?? 8, 14);
   const s = 0.6;
-  const cx = spot.x + 0.5 - s / 2;
-  const cy = spot.y + 0.5 - s / 2;
+  // Drawn over the carrier's head as if they stood on a whole tile, then
+  // moved with the sprite, by the screen pixels it was placed at, so the
+  // piece stays put on their head as they walk (slice 12's review, finding 6).
+  const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
+  const placed = feetAt(spot);
+  const whole = feetAt(tile);
   ctx.save();
-  ctx.translate(0, -lift);
-  block(ctx, cx, cy, s, s, z, colour);
+  ctx.translate(onScreen(ctx, placed.x) - whole.x, onScreen(ctx, placed.y) - whole.y - lift);
+  block(ctx, tile.x + 0.5 - s / 2, tile.y + 0.5 - s / 2, s, s, z, colour);
   ctx.restore();
 }
 

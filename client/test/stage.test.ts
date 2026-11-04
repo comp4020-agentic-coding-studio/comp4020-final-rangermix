@@ -119,3 +119,88 @@ describe("the canvas at the room's scale", () => {
     });
   }
 });
+
+// Slice 12's review, finding 2: the real stage and renderer together. In
+// layout B the camera follows you; you walk along a diagonal; each frame the
+// canvas's CSS left plus where your sprite is drawn on it is where you are
+// on screen, and that must hold still. Stepped through the stage's own
+// paint, with a 2D context that records where each image is drawn.
+
+describe("the stage's camera and the sprite it follows, together", () => {
+  for (const width of [390, 393]) {
+    it(`holds you on one screen pixel across as the camera follows your walk in layout B, at ${width} wide`, async () => {
+      const { fromWelcome } = await import("../src/state");
+      const now = { t: 100_000 };
+      const realNow = Date.now;
+      Date.now = () => now.t;
+      try {
+        const welcome = {
+          type: "welcome" as const,
+          you: 1,
+          build: "b",
+          now: 100_000,
+          cap: 6,
+          chalkHours: 24,
+          chalkShown: 8,
+          snapshot: {
+            room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
+            people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 1, y: 6 }, walk: { path: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((x) => ({ x, y: 6 })), start: 100_000, speed: 3 }, sitting: false }],
+            cats: [],
+            yourTrust: [],
+            held: [],
+            treats: [],
+            yourTreats: 3,
+            bowls: 2,
+            chalkboard: [],
+          },
+        };
+        const state = fromWelcome(welcome, 100_000);
+        const cafe = { state } as unknown as Cafe;
+        const box = document.createElement("div");
+        Object.defineProperty(box, "clientWidth", { value: width });
+        Object.defineProperty(box, "clientHeight", { value: 844 });
+        box.getBoundingClientRect = () => ({ left: 0, top: 0, right: width, bottom: 844, width, height: 844, x: 0, y: 0, toJSON: () => ({}) });
+        const canvas = document.createElement("canvas");
+        box.append(canvas);
+        // The person's sprite is the only image this room draws; record its device x.
+        let m = [1, 0, 0, 1, 0, 0];
+        const stack: number[][] = [];
+        let drawnAt: number | null = null;
+        const ctx = new Proxy(
+          {},
+          {
+            get: (_t, key) => {
+              if (key === "setTransform") return (a: number, b: number, c: number, d: number, e: number, f: number) => (m = [a, b, c, d, e, f]);
+              if (key === "getTransform") return () => ({ a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] });
+              if (key === "save") return () => stack.push([...m]);
+              if (key === "restore") return () => (m = stack.pop() ?? m);
+              if (key === "translate") return (x: number, y: number) => (m = [m[0], m[1], m[2], m[3], m[4] + m[0] * x, m[5] + m[3] * y]);
+              if (key === "scale") return (x: number, y: number) => (m = [m[0] * x, m[1], m[2], m[3] * y, m[4], m[5]]);
+              if (key === "drawImage") return (_img: unknown, x: number) => (drawnAt = Math.min(m[0] * x + m[4], m[0] * (x + 16) + m[4]));
+              return () => {};
+            },
+            set: () => true,
+          },
+        );
+        canvas.getContext = (() => ctx) as unknown as typeof canvas.getContext;
+        const stage = new Stage(cafe, canvas, box);
+        // Every sprite is a canvas, so the stub draws it.
+        stage.sprites.avatar = () => document.createElement("canvas");
+        stage.sprites.cat = () => null;
+        stage.sprites.emote = () => null;
+        stage.setLayout("b");
+        const onScreen = new Set<number>();
+        for (let f = 0; f < 90; f++) {
+          now.t = 100_000 + 200 + f * (1000 / 60);
+          (stage as unknown as { paint(): void }).paint();
+          expect(drawnAt, `frame ${f}: the sprite was drawn`).not.toBeNull();
+          onScreen.add(Math.round(parseFloat(canvas.style.left) + drawnAt!));
+          drawnAt = null;
+        }
+        expect([...onScreen], "where you are on screen, across, frame by frame").toHaveLength(1);
+      } finally {
+        Date.now = realNow;
+      }
+    });
+  }
+});

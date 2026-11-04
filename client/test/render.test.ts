@@ -279,6 +279,65 @@ describe("the side a walker shows", () => {
     expect(framesAsked(s, 13_000).filter((f) => f.startsWith("person 1"))).toEqual(["person 1 back"]);
   });
 
+  it("mirrors a cat walking up the screen to the left, and not one walking up it to the right, so it goes head first both ways (slice 12's review, finding 1)", () => {
+    /** Whether the cat's frame was drawn mirrored: a scale(-1, 1) in force when its image is drawn. */
+    const mirrored = (path: { x: number; y: number }[]) => {
+      const w = welcome();
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], at: path[0], pose: "walk", walk: { path, start: 10_000, speed: 1 } }];
+      w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+      const s = fromWelcome(w, 10_000);
+      const cat = document.createElement("canvas");
+      const sprites = new Sprites();
+      sprites.cat = () => cat;
+      sprites.avatar = () => null;
+      let flip = 1;
+      const stack: number[] = [];
+      let seen: boolean | null = null;
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, key) => {
+            if (key === "save") return () => stack.push(flip);
+            if (key === "restore") return () => (flip = stack.pop() ?? 1);
+            if (key === "scale") return (x: number) => (flip *= Math.sign(x));
+            if (key === "drawImage") return (img: unknown) => img === cat && (seen = flip < 0);
+            if (key === "getTransform") return () => ({ a: 1 });
+            return () => {};
+          },
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      draw(ctx, s, sprites, 10_500, { tile: null, visible: false, hover: null, ghost: null }, 0);
+      return seen;
+    };
+    // Along +x: up and to the right on screen, the frames' own way.
+    expect(mirrored([{ x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }]), "walking up-right").toBe(false);
+    // Toward the street wall, -y: up and to the left, so mirrored.
+    expect(mirrored([{ x: 4, y: 6 }, { x: 4, y: 5 }, { x: 4, y: 4 }]), "walking up-left").toBe(true);
+    // Toward the viewer along +y: down and to the right, unmirrored; along -x, down-left, mirrored.
+    expect(mirrored([{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 4, y: 6 }]), "walking down-right").toBe(false);
+    expect(mirrored([{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }]), "walking down-left").toBe(true);
+  });
+
+  it("faces someone who's just come in into the room, whichever way their walk in turned at the end (slice 12's review, finding 4)", () => {
+    for (const path of [
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }, { x: 9, y: 1 }],
+      [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 6, y: 1 }],
+    ]) {
+      const w = welcome();
+      w.snapshot.people[1] = { ...w.snapshot.people[1], at: path[path.length - 1], walk: { path, start: 10_000, speed: 3 } };
+      const asked = framesAsked(fromWelcome(w, 10_000), 15_000).filter((f) => f.startsWith("person 1"));
+      expect(asked, `arrived by ${JSON.stringify(path)}`).toEqual(["person 1 stand"]);
+    }
+    // Walking in, they show the way they go.
+    const w = welcome();
+    const path = [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }, { x: 9, y: 1 }];
+    w.snapshot.people[1] = { ...w.snapshot.people[1], at: path[3], walk: { path, start: 10_000, speed: 1 } };
+    expect(framesAsked(fromWelcome(w, 10_000), 11_500).filter((f) => f.startsWith("person 1"))[0]).toMatch(/^person 1 back_walk_[ab]$/);
+  });
+
   it("faces the viewer when nobody has walked yet", () => {
     const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
     expect(asked).toContain("person 0 stand");
@@ -332,6 +391,54 @@ describe("placing a walker by screen pixels", () => {
   }
   const diagonal = [{ x: 6, y: 5 }, { x: 6, y: 6 }, { x: 6, y: 7 }];
 
+  it("carries a piece over its carrier's head at one place against them, frame by frame, at 3× (slice 12's review, finding 6)", () => {
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[1], id: 2, at: diagonal[0], walk: { path: diagonal, start: 10_000, speed: 3 } }];
+    w.snapshot.held = [{ by: 2, piece: piece(9, "box", 0, 0, 1, 1) }];
+    w.you = 2;
+    const s = fromWelcome(w, 10_000);
+    const offsets = new Set<string>();
+    for (let f = 0; f < 30; f++) {
+      let t = [1, 0, 0, 1, 0, 0];
+      let sprite: { x: number; y: number } | null = null;
+      let box: { x: number; y: number } | null = null;
+      const boxColour = palettes.day.furniture[3].toLowerCase();
+      let fill = "";
+      const stack: number[][] = [];
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, k) => {
+            if (k === "setTransform") return (...m: number[]) => (t = m);
+            if (k === "getTransform") return () => ({ a: t[0], d: t[3], e: t[4], f: t[5] });
+            if (k === "save") return () => stack.push([...t]);
+            if (k === "restore") return () => (t = stack.pop() ?? t);
+            if (k === "translate") return (x: number, y: number) => (t = [t[0], t[1], t[2], t[3], t[4] + t[0] * x, t[5] + t[3] * y]);
+            if (k === "drawImage") return (_img: unknown, x: number, y: number) => (sprite ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            // The box's top, in its own colour: the first of its points drawn,
+            // as a path (slice 12) or by whole pixels (slice 13).
+            if (k === "fillRect" || k === "moveTo") return (x: number, y: number) => fill === boxColour && sprite && (box ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            return () => {};
+          },
+          set: (_t, k, v) => {
+            if (k === "fillStyle") {
+              const m = /^rgb\((\d+) (\d+) (\d+)\)$/.exec(String(v));
+              fill = m ? `#${m.slice(1).map((c) => Number(c).toString(16).padStart(2, "0")).join("")}` : String(v).toLowerCase();
+            }
+            return true;
+          },
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const sprites = new Sprites();
+      sprites.avatar = () => ({}) as HTMLCanvasElement;
+      draw(ctx, s, sprites, 10_000 + (f * 1000) / 60, { tile: null, visible: false, hover: null, ghost: null }, 0, 3);
+      expect(sprite && box, `frame ${f}`).toBeTruthy();
+      offsets.add(`${box!.x - sprite!.x},${box!.y - sprite!.y}`);
+    }
+    expect([...offsets], "the box against its carrier, in screen pixels").toHaveLength(1);
+  });
+
   for (const scale of [1, 2, 3, 5]) {
     it(`places a walker on whole screen pixels at ${scale}×`, () => {
       for (const p of placements(scale, diagonal, 3, 30)) {
@@ -340,15 +447,24 @@ describe("placing a walker by screen pixels", () => {
     });
   }
 
-  it("moves a walker evenly at 3×: every frame, by steps that differ by at most a screen pixel", () => {
-    const ps = placements(3, diagonal, 3, 36);
-    const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
-    for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
-    const xs = steps.map((s) => s.dx);
-    const ys = steps.map((s) => s.dy);
-    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
-  });
+  // At 2× and up; at 1× a person covers under a pixel some frames, so some
+  // stand still: the limit of whole pixels there (slice 12's review, finding 8).
+  for (const [scale, speed, who] of [
+    [2, 3, "a person"],
+    [3, 3, "a person"],
+    [5, 3, "a person"],
+    [3, 2, "a cat's pace"],
+  ] as const) {
+    it(`moves ${who} evenly at ${scale}×: every frame, by steps that differ by at most a screen pixel`, () => {
+      const ps = placements(scale, diagonal, speed, 36);
+      const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
+      for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
+      const xs = steps.map((s) => s.dx);
+      const ys = steps.map((s) => s.dy);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
+      expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
+    });
+  }
 });
 
 // Slice 13 (ADR 0019): the room is drawn crisp, every pixel one colour.
