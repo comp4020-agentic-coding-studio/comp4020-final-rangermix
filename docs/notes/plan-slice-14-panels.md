@@ -296,8 +296,11 @@ Where the build departed from this plan, as it happened.
   What moved it: a 3-px blur in the frost, and the panels' own text a
   shade darker in Latte (`#3c3f55`, muted too) and Mocha's bright text
   for muted in the dark, which let the filter open to 26% (Latte) and 28%
-  (Mocha). Chrome's colours matched the model within a step of 255. By
-  night it reads as glass; by day the bright room still shows mostly as
-  white, which only a dark panel tint in the light theme would change:
-  asked of the user, not built. The dimming check now reads the glass's
+  (Mocha). Chrome's colours matched the model within a step of 255. In
+  the dark theme it reads as glass; in the light theme it shows the room
+  as white, and not only by day, as first written: the page's theme is
+  the device's, not the hour's, and the screens had paired day with light
+  and night with dark, which hid it (slice 14's review, finding 1; the
+  screens now take all four pairings). Only a dark panel tint in the light
+  theme would change it: asked of the user, not built. The dimming check now reads the glass's
   alphas from the page's tokens.

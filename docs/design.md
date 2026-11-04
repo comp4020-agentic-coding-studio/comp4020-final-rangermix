@@ -406,9 +406,11 @@ renamed.
   card goes over it thinly, a quarter (a tenth dimmed), and the panels'
   own text is a shade darker (light) or brighter (dark) than the page's,
   so their text holds 4.5:1 over anything the room and street can show
-  while the room shows through as soft shapes. By night that reads as
-  glass; by day the bright room still shows mostly as white, the cost of
-  4.5:1 over anything in a light panel. "Put a treat down" is in the talk bar beside
+  while the room shows through as soft shapes. In the dark theme that
+  reads as frosted glass at any hour; in the light theme (the device's
+  setting, not the café's hour) the panels show the room as white at any
+  hour, day or night, the cost of 4.5:1 over anything in a light panel
+  (slice 14's review, finding 1): the user's to weigh. "Put a treat down" is in the talk bar beside
   the emotes, at every size, so a pinned panel costs nothing.
 - **Phone (390×844), and anything narrower than 960 px:** two layouts, with
   one button to switch between them, remembered per device (or for the visit,
