@@ -76,9 +76,23 @@ describe("the café's colours in each light", () => {
     expect(luminance(palettes.night.room[0])).toBeLessThan(luminance(palettes.day.room[0]));
   });
 
-  it("draws every cat frame at 16 pixels", () => {
+  it("draws every cat frame at 16 pixels, a back view for each but the nap (slice 12)", () => {
     const sheet = parseSheet(catSheet);
-    expect([...sheet.keys()].sort()).toEqual(["nap", "sit", "walk_a", "walk_b"]);
+    expect([...sheet.keys()].sort()).toEqual(["back_sit", "back_walk_a", "back_walk_b", "nap", "sit", "walk_a", "walk_b"]);
     for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([16, 16]);
+  });
+
+  it("draws every person frame at 16 pixels, with a back view for each (slice 12)", () => {
+    const sheet = parseSheet(avatarSheet);
+    expect([...sheet.keys()].sort()).toEqual(["back", "back_walk_a", "back_walk_b", "stand", "walk_a", "walk_b"]);
+    for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([16, 16]);
+  });
+
+  it("shows no face on a back view: no eye pixels where the front has them", () => {
+    const sheet = parseSheet(avatarSheet);
+    // Slot 0 is the outline and eyes; on the front the eyes sit inside the head (rows 3 to 6).
+    const eyes = (g: number[][]) => g.slice(3, 7).flatMap((row) => row.slice(5, 11)).filter((v) => v === 0).length;
+    expect(eyes(sheet.get("stand")!)).toBeGreaterThan(0);
+    for (const name of ["back", "back_walk_a", "back_walk_b"]) expect(eyes(sheet.get(name)!), name).toBe(0);
   });
 });

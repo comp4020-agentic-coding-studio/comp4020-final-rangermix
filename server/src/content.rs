@@ -117,13 +117,14 @@ mod tests {
         for tile in ["floor", "wall", "window", "door", "board"] {
             assert_eq!(room[tile], (16, 16), "{tile}");
         }
+        // Each walking or standing frame has a back view, for walking away (slice 12).
         let cat = sprite_sizes("cat.txt");
-        for frame in ["sit", "walk_a", "walk_b", "nap"] {
-            assert_eq!(cat[frame], (16, 16), "{frame}");
+        for frame in ["sit", "walk_a", "walk_b", "nap", "back_sit", "back_walk_a", "back_walk_b"] {
+            assert_eq!(cat.get(frame), Some(&(16, 16)), "{frame}");
         }
         let avatar = sprite_sizes("avatar.txt");
-        for frame in ["stand", "walk_a", "walk_b"] {
-            assert_eq!(avatar[frame], (16, 16), "{frame}");
+        for frame in ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"] {
+            assert_eq!(avatar.get(frame), Some(&(16, 16)), "{frame}");
         }
         let emotes = sprite_sizes("emotes.txt");
         for emote in ["heart", "question", "dots", "zzz", "sniff"] {

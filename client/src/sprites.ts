@@ -14,8 +14,10 @@ import type { Look } from "./protocol/Look";
 /** Palette slots; -1 is transparent. */
 export type Grid = number[][];
 export type TileName = "floor" | "wall" | "window" | "door" | "board";
-export type CatFrame = "sit" | "walk_a" | "walk_b" | "nap";
-export type AvatarFrame = "stand" | "walk_a" | "walk_b";
+/** A cat's frames; the back_ ones show it walking or sitting away from the viewer (slice 12). */
+export type CatFrame = "sit" | "walk_a" | "walk_b" | "nap" | "back_sit" | "back_walk_a" | "back_walk_b";
+/** A person's frames; the back ones show them walking or standing away from the viewer (slice 12). */
+export type AvatarFrame = "stand" | "walk_a" | "walk_b" | "back" | "back_walk_a" | "back_walk_b";
 export type EmoteName = "heart" | "question" | "dots" | "zzz" | "sniff" | "wave" | "laugh" | "yawn" | "scratch" | "treat" | "food";
 
 const SLOTS = "0123456789abcdef";
