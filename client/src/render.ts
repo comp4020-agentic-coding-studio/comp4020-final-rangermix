@@ -1,7 +1,7 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
-import { INSET, pieceBox } from "./pieces";
+import { pieceBox } from "./pieces";
 import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
 import { streetSlot } from "./street";
@@ -223,20 +223,22 @@ function blockTile(f: FurnitureView, z: number, px: number, py: number): { x: nu
   return { x: clamp(g.gx, f.x, f.w), y: clamp(g.gy, f.y, f.h) };
 }
 
-/** Where a piece's block is drawn: its outline, top and two faces together. */
+/** Where a piece's block is drawn: its outline, top and two faces together, from the box it's drawn as (pieces.ts). */
 function blockOutline(f: FurnitureView): Pt[] {
-  const z = HEIGHT[f.kind] ?? 8;
-  const i = INSET[f.kind] ?? 0.06;
-  const [x, y, w, h] = [f.x + i, f.y + i, f.w - 2 * i, f.h - 2 * i];
-  if (f.toppled) {
-    const along = Math.min(f.w - 0.1, w * 1.8);
-    const lz = Math.max(2, Math.round(z / 3));
-    const [bx, by, bw, bh] = [f.x + (f.w - along) / 2, y + h * 0.25, along, h * 0.5];
-    return [up(bx, by, lz), up(bx + bw, by, lz), up(bx + bw, by + bh, lz), up(bx + bw, by + bh), up(bx, by + bh), up(bx, by)];
-  }
-  // Its silhouette from the front-right: round the top's back edges, down the
-  // right, along the front base, and up the left.
-  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h), up(x, y + h), up(x, y)];
+  const b = pieceBox(f, HEIGHT);
+  return silhouette(b.x, b.y, b.w, b.h, b.z);
+}
+
+/**
+ * Whether canvas point (px, py) is on a piece as drawn: inside its block,
+ * or on the outline traced a room pixel wide round it, which can fall a
+ * pixel outside the polygon, across a corner too (slice 13's review,
+ * finding 9).
+ */
+function onBlock(f: FurnitureView, px: number, py: number): boolean {
+  const pts = blockOutline(f);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inside(pts, px + dx, py + dy)) return true;
+  return false;
 }
 
 /** A figure's sprite box, `lift` pixels up, as a polygon. */
@@ -313,7 +315,7 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       lift: 0,
       // What others stand on is the floor, as far as a click goes, and is
       // drawn with it, under the shadows (slice 13's review, finding 2).
-      hit: f.under ? undefined : (px, py) => (inside(blockOutline(f), px, py) ? blockTile(f, HEIGHT[f.kind] ?? 8, px, py) : null),
+      hit: f.under ? undefined : (px, py) => (onBlock(f, px, py) ? blockTile(f, pieceBox(f, HEIGHT).z, px, py) : null),
       inLayer: f.under,
       paint: (ctx, sprites) => {
         drawPiece(ctx, f);

@@ -430,6 +430,37 @@ describe("a piece's self outline", () => {
   });
 });
 
+describe("picking a piece by its outline (slice 13's review, finding 9)", () => {
+  it("finds the piece at every pixel drawn in its outline's colour, so a click on its rim isn't a click behind it", async () => {
+    const { pixels } = await import("./pixels");
+    const w = welcome();
+    w.snapshot.room.furniture = [piece(1, "sofa", 4, 5, 3, 1), piece(2, "box", 8, 7, 1, 1), piece(3, "lamp", 2, 3, 1, 1)];
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+    const s = fromWelcome(w, 10_000);
+    const p = pixels(336, 232);
+    draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+    const shadeOf = (hex: string, k: number) => {
+      const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+      return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
+    };
+    for (const f of s.room.furniture) {
+      const slot = { sofa: 1, box: 3, lamp: 5 }[f.kind as "sofa" | "box" | "lamp"];
+      const rim = shadeOf(palettes.day.furniture[slot], 0.45);
+      let rims = 0;
+      for (let y = 0; y < 232; y++)
+        for (let x = 0; x < 336; x++) {
+          if (p.at(x, y) !== rim) continue;
+          rims++;
+          const hit = hitAt(s, x + 0.5, y + 0.5, 10_000);
+          const on = hit && hit.x >= f.x && hit.x < f.x + f.w && hit.y >= f.y && hit.y < f.y + f.h;
+          expect(on, `the ${f.kind}'s rim at (${x},${y}) picks ${JSON.stringify(hit)}`).toBe(true);
+        }
+      expect(rims, `the ${f.kind}'s rim`).toBeGreaterThan(10);
+    }
+  });
+});
+
 describe("a figure's shadow (slice 13's review, finding 5)", () => {
   /** The room at 1× with only `cats` and `people` in it, and the floor layer as it is under them. */
   async function scene(cats: Welcome["snapshot"]["cats"], people: Welcome["snapshot"]["people"]) {
