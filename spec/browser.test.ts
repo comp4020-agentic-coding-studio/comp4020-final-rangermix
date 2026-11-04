@@ -891,21 +891,27 @@ describe("in a browser", { timeout: 30_000 }, () => {
       },
     });
     /**
-     * Every colour painted on the canvas's own pixels within `r` canvas
-     * pixels of a tile's spot, `up` pixels above it. Clear pixels, not yet
-     * drawn on, are left out: a slow runner can be read before the first
-     * frame lands (CI caught it reading #000000, 2026-10-22).
+     * Every colour painted on the canvas's own pixels within `r` room
+     * pixels of a tile's spot, `up` room pixels above it. The canvas holds
+     * the room at its scale (slice 12), so room pixels are counted through
+     * the CSS size the room is shown at. Clear pixels, not yet drawn on, are
+     * left out: a slow runner can be read before the first frame lands (CI
+     * caught it reading #000000, 2026-10-22).
      */
     const coloursAt = (tile: Tile, up: number, r: number) =>
       v.page.evaluate(
         ([x, y, up, r]) => {
           const canvas = document.getElementById("room") as HTMLCanvasElement;
           const box = canvas.getBoundingClientRect();
-          const scale = box.width / canvas.width;
+          // Canvas pixels per CSS pixel, and the room's scale on the page.
+          const perCss = canvas.width / box.width;
+          const roomScale = box.width / 336;
           const at = (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(x, y);
-          const cx = Math.round((at.x - box.left) / scale);
-          const cy = Math.round((at.y - box.top) / scale) - up;
-          const data = canvas.getContext("2d")!.getImageData(cx - r, cy - r, 2 * r + 1, 2 * r + 1).data;
+          const k = roomScale * perCss;
+          const cx = Math.round((at.x - box.left) * perCss);
+          const cy = Math.round((at.y - box.top) * perCss - up * k);
+          const rr = Math.round(r * k);
+          const data = canvas.getContext("2d")!.getImageData(cx - rr, cy - rr, 2 * rr + 1, 2 * rr + 1).data;
           const seen = new Set<string>();
           for (let i = 0; i < data.length; i += 4) {
             if (data[i + 3] === 0) continue;

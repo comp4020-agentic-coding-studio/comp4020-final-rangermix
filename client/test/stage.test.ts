@@ -88,3 +88,34 @@ describe("the stage on the isometric camera", () => {
     expect(stage.tileToCss(0.5, 1.5)).toEqual({ left: 100 + 16 * 3, top: 50 + 152 * 3 });
   });
 });
+
+// Slice 12: the canvas is the room at its scale, so a walker can be placed
+// to a screen pixel; its size on the page doesn't change.
+
+describe("the canvas at the room's scale", () => {
+  function fitted(width: number, height: number, layout: "a" | "b" = "a") {
+    const cafe = { state: null } as unknown as Cafe;
+    const box = document.createElement("div");
+    Object.defineProperty(box, "clientWidth", { value: width });
+    Object.defineProperty(box, "clientHeight", { value: height });
+    const canvas = document.createElement("canvas");
+    box.append(canvas);
+    const stage = new Stage(cafe, canvas, box);
+    stage.layout = layout;
+    stage.fit();
+    return { stage, canvas };
+  }
+
+  for (const [w, h, layout, scale] of [
+    [1296, 950, "a", 3],
+    [400, 300, "a", 1],
+    [390, 844, "b", 3],
+  ] as const) {
+    it(`holds the room at ${scale}× in its own pixels, and stays ${scale}× its size on the page (${w}×${h}, layout ${layout})`, () => {
+      const { stage, canvas } = fitted(w, h, layout);
+      expect(stage.scale).toBe(scale);
+      expect([canvas.width, canvas.height]).toEqual([ISO.width * scale, ISO.height * scale]);
+      expect([canvas.style.width, canvas.style.height]).toEqual([`${ISO.width * scale}px`, `${ISO.height * scale}px`]);
+    });
+  }
+});

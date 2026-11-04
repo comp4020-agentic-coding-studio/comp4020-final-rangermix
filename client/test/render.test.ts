@@ -284,3 +284,60 @@ describe("the side a walker shows", () => {
     expect(framesAsked(s, 11_600).filter((f) => f.startsWith("cat white_grey"))).toEqual(["cat white_grey nap"]);
   });
 });
+
+// Slice 12: a walker moves by screen pixels. The canvas is the room at its
+// on-screen scale, so a sprite placed at a fraction of a room pixel lands on
+// a whole screen pixel: its own pixels stay `scale` wide, but it moves
+// `scale` times more finely than the room's grid.
+
+describe("placing a walker by screen pixels", () => {
+  /** Where `draw` puts person 1's sprite, in canvas (screen) pixels, at each frame of a walk. */
+  function placements(scale: number, path: { x: number; y: number }[], speed: number, frames: number) {
+    const w = welcome();
+    w.snapshot.cats = [];
+    w.snapshot.people = [{ ...w.snapshot.people[1], id: 2, at: path[0], walk: { path, start: 10_000, speed } }];
+    w.you = 2;
+    const s = fromWelcome(w, 10_000);
+    const out: { x: number; y: number }[] = [];
+    for (let f = 0; f < frames; f++) {
+      let t = [1, 0, 0, 1, 0, 0];
+      let placed: { x: number; y: number } | null = null;
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, k) => {
+            if (k === "setTransform") return (...m: number[]) => (t = m);
+            if (k === "getTransform") return () => ({ a: t[0], d: t[3], e: t[4], f: t[5] });
+            if (k === "drawImage") return (_img: unknown, x: number, y: number) => (placed ??= { x: t[0] * x + t[4], y: t[3] * y + t[5] });
+            return () => {};
+          },
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const sprites = new Sprites();
+      sprites.avatar = () => ({}) as HTMLCanvasElement;
+      draw(ctx, s, sprites, 10_000 + (f * 1000) / 60, { tile: null, visible: false, hover: null, ghost: null }, 0, scale);
+      out.push(placed!);
+    }
+    return out;
+  }
+  const diagonal = [{ x: 6, y: 5 }, { x: 6, y: 6 }, { x: 6, y: 7 }];
+
+  for (const scale of [1, 2, 3, 5]) {
+    it(`places a walker on whole screen pixels at ${scale}×`, () => {
+      for (const p of placements(scale, diagonal, 3, 30)) {
+        expect(Number.isInteger(p.x) && Number.isInteger(p.y), `${p.x}, ${p.y}`).toBe(true);
+      }
+    });
+  }
+
+  it("moves a walker evenly at 3×: every frame, by steps that differ by at most a screen pixel", () => {
+    const ps = placements(3, diagonal, 3, 36);
+    const steps = ps.slice(1).map((p, i) => ({ dx: p.x - ps[i].x, dy: p.y - ps[i].y }));
+    for (const s of steps) expect(Math.abs(s.dx) + Math.abs(s.dy), "a frame that doesn't move").toBeGreaterThan(0);
+    const xs = steps.map((s) => s.dx);
+    const ys = steps.map((s) => s.dy);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(1);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1);
+  });
+});

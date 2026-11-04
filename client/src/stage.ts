@@ -141,8 +141,10 @@ export class Stage {
       this.canvas.style.left = "";
       this.canvas.style.top = "";
     }
-    this.canvas.width = ISO.width;
-    this.canvas.height = ISO.height;
+    // The canvas holds the room at its scale, so a walker can be placed to a
+    // screen pixel (slice 12); the room is drawn into it in room pixels.
+    this.canvas.width = ISO.width * this.scale;
+    this.canvas.height = ISO.height * this.scale;
     this.canvas.style.width = `${ISO.width * this.scale}px`;
     this.canvas.style.height = `${ISO.height * this.scale}px`;
     for (const hook of this.panHooks) hook();
@@ -155,10 +157,10 @@ export class Stage {
       this.canvas.getContext("2d")?.clearRect(0, 0, this.canvas.width, this.canvas.height);
       return;
     }
-    if (this.canvas.width !== ISO.width) this.fit();
+    if (this.canvas.width !== ISO.width * this.scale) this.fit();
     if (this.layout === "b") this.pan(state);
     const ctx = this.canvas.getContext("2d");
-    if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, lightAt(canberraHour()));
+    if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, lightAt(canberraHour()), this.scale);
   }
 
   /**

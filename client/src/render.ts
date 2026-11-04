@@ -136,8 +136,18 @@ function outline(ctx: Ctx, pts: Pt[], colour: string, width = 1): void {
   ctx.stroke();
 }
 
+/**
+ * `v`, in room pixels, rounded to the nearest whole pixel of the canvas: the
+ * canvas is the room at its on-screen scale (slice 12), so a sprite placed
+ * there keeps its own pixels whole and square, but moves by screen pixels.
+ */
+function onScreen(ctx: Ctx, v: number): number {
+  const k = ctx.getTransform?.()?.a || 1;
+  return Math.round(v * k) / k;
+}
+
 function blit(ctx: Ctx, img: CanvasImageSource | null, x: number, y: number): void {
-  if (img) ctx.drawImage(img, Math.round(x), Math.round(y));
+  if (img) ctx.drawImage(img, onScreen(ctx, x), onScreen(ctx, y));
 }
 
 /** Where a sprite `size` wide stands with its feet on the tile at `spot`: its top-left. */
@@ -375,8 +385,11 @@ function footprint(spot: { x: number; y: number }, on: FurnitureView | null): { 
  * `lightAt`): the room, furniture and sprites in that light's colours, the
  * window lit at night, and no wash laid over it (slice 10).
  */
-export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, light: Light): void {
+export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: number, pointer: Pointer, light: Light, scale = 1): void {
   const { room } = state;
+  // The canvas is the room at `scale`: everything below is drawn in room
+  // pixels, and figures are placed to the canvas's own pixels (slice 12).
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const palette = paletteAt(light);
   ROOM = palette.room;
   FURNITURE = palette.furniture;
@@ -518,8 +531,8 @@ const SCATTERED: [number, number, number][] = [
 ];
 
 function drawFlipped(ctx: Ctx, img: CanvasImageSource, at: Pt, mirror: boolean): void {
-  const x = Math.round(at.x);
-  const y = Math.round(at.y);
+  const x = onScreen(ctx, at.x);
+  const y = onScreen(ctx, at.y);
   if (!mirror) {
     ctx.drawImage(img, x, y);
     return;
@@ -572,8 +585,9 @@ function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: num
   const feet = feetAt(spot);
   const at = { x: feet.x, y: feet.y - lift };
   if (img) drawFlipped(ctx, img, at, spot.mirror);
-  const x = Math.round(at.x);
-  const y = Math.round(at.y);
+  // The marker and emote move with the sprite, by the same screen pixels.
+  const x = onScreen(ctx, at.x);
+  const y = onScreen(ctx, at.y);
   if (isYou) {
     // A small marker over your own head.
     ctx.fillStyle = "#ffffff";
