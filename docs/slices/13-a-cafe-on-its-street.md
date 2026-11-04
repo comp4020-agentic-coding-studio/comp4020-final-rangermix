@@ -1,6 +1,6 @@
 # 13. A café on its street
 
-- **Status:** Approved 2026-11-04, with the proposed defaults for its open questions (the same shadows by night; the street pans with the room)
+- **Status:** Built 2026-11-04 ([plan](../notes/plan-slice-13-street.md), [screens](../notes/screens/slice-13/)); approved 2026-11-04, with the proposed defaults for its open questions (the same shadows by night; the street pans with the room)
 - **Plan:** written when the slice starts, as `docs/notes/plan-slice-13-street.md`
 - **Design:** The client ("The look": the room is a diorama on its street;
   crisp, with outlines and shadows);

@@ -473,19 +473,25 @@ renamed.
     pixels, and a figure is placed to the canvas's own pixels, so a walk
     on the diagonal is even and the phone's camera holds a walker still
     as it follows them. A sprite's own pixels stay whole.
-  - **The room is a diorama on its street** (decided 2026-11-04, ADR 0018):
+  - **The room is a diorama on its street** (slice 13, built;
+    [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
     the floor has a thickness and the walls a top, and the street stands
     behind the café, sky and towers by day, stars and lit windows by
     night, in the same hour's light as the room. It fills the corners the
-    room's diamond leaves.
-  - **Crisp, with outlines and shadows** (decided 2026-11-04,
+    room's diamond leaves. The street is data, `content/street.toml` (the
+    skyline's height, the towers' widths and heights, the windows), with
+    its colours in the palette's "street" slots by day and by night; it
+    takes no click.
+  - **Crisp, with outlines and shadows** (slice 13, built;
     [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
-    every pixel of the room one colour, with no anti-aliasing; a one-pixel
-    outline, each piece's own colour darkened, where it meets what's
-    behind it; shadows cast from the street wall's windows, with their
-    light through the panes; and the floor darkened where it meets a wall
-    or a piece. Until slice 13 is built, the floor, walls and blocks are
-    canvas polygons whose edges the canvas blends.
+    every pixel of the room one colour, with no anti-aliasing: shapes are
+    filled and traced by whole room pixels, never as canvas paths; a
+    one-pixel outline, each piece's own colour darkened, where it meets
+    what's behind it; shadows cast from the street wall's windows, with
+    their light through the panes; and the floor darkened where it meets
+    a wall or a piece. The shadows are worked out over the room's pixels
+    when the furniture changes, not every frame, and are the same by
+    night.
 - **Sprites** are grids of palette numbers in `content/sprites/`, drawn by
   Claude as code. Cats share a base sprite with swappable coats, patterns and
   eyes, and recoloured images are cached at startup. Any sprite can be redrawn

@@ -205,3 +205,13 @@ Where the build departed from this plan, as it happened.
   to [slice-07-waking.md](slice-07-waking.md). The full spec passes on a
   fresh café: 70, one skipped (restart, which needs Docker).
 
+- **Task 5: the screens,** from `docs/notes/screens/slice-13/shoot.mjs`
+  against a fresh local café: the page at 10:00 and 22:00 at both sizes,
+  and the room's canvas on its own at both hours for the judged line. Seen
+  before committing: no soft edge at either size; each piece outlined in
+  its own colour; the light through the panes lying in bars a tile or two
+  out from the street wall, with the wall's shade at its foot; shadows
+  toward the viewer behind the sofa, the counter and the boxes; the slab
+  under the floor's front edges; the street filling the corners, with
+  stars and lit windows by night. On the phone the street shows above the
+  wall's top and below the floor's edge as the room pans.
