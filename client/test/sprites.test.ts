@@ -88,6 +88,19 @@ describe("the café's colours in each light", () => {
     for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([16, 16]);
   });
 
+  it("draws every cat frame facing the same way, head on the right, so the mirroring turns them all alike (slice 12's review, finding 1)", () => {
+    const sheet = parseSheet(catSheet);
+    // The head is the mass near the top: in rows 3 to 8, where it sits, its
+    // drawn pixels lie right of the middle. A walk frame with its head on
+    // the left would walk tail first once mirrored the same way as the rest.
+    for (const [name, grid] of sheet) {
+      if (name === "nap") continue;
+      const cols = grid.slice(3, 9).flatMap((row) => row.flatMap((v, x) => (v >= 0 ? [x] : [])));
+      const mean = cols.reduce((a, b) => a + b, 0) / cols.length;
+      expect(mean, `${name}'s head, by the mean column of rows 3 to 8`).toBeGreaterThan(8);
+    }
+  });
+
   it("shows no face on a back view: no eye pixels where the front has them", () => {
     const sheet = parseSheet(avatarSheet);
     // Slot 0 is the outline and eyes; on the front the eyes sit inside the head (rows 3 to 6).

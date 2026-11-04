@@ -278,6 +278,46 @@ describe("the side a walker shows", () => {
     expect(framesAsked(s, 13_000).filter((f) => f.startsWith("person 1"))).toEqual(["person 1 back"]);
   });
 
+  it("mirrors a cat walking up the screen to the left, and not one walking up it to the right, so it goes head first both ways (slice 12's review, finding 1)", () => {
+    /** Whether the cat's frame was drawn mirrored: a scale(-1, 1) in force when its image is drawn. */
+    const mirrored = (path: { x: number; y: number }[]) => {
+      const w = welcome();
+      w.snapshot.cats = [{ ...w.snapshot.cats[0], at: path[0], pose: "walk", walk: { path, start: 10_000, speed: 1 } }];
+      w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
+      const s = fromWelcome(w, 10_000);
+      const cat = document.createElement("canvas");
+      const sprites = new Sprites();
+      sprites.cat = () => cat;
+      sprites.avatar = () => null;
+      let flip = 1;
+      const stack: number[] = [];
+      let seen: boolean | null = null;
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, key) => {
+            if (key === "save") return () => stack.push(flip);
+            if (key === "restore") return () => (flip = stack.pop() ?? 1);
+            if (key === "scale") return (x: number) => (flip *= Math.sign(x));
+            if (key === "drawImage") return (img: unknown) => img === cat && (seen = flip < 0);
+            if (key === "getTransform") return () => ({ a: 1 });
+            return () => {};
+          },
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      draw(ctx, s, sprites, 10_500, { tile: null, visible: false, hover: null, ghost: null }, 0);
+      return seen;
+    };
+    // Along +x: up and to the right on screen, the frames' own way.
+    expect(mirrored([{ x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }]), "walking up-right").toBe(false);
+    // Toward the street wall, -y: up and to the left, so mirrored.
+    expect(mirrored([{ x: 4, y: 6 }, { x: 4, y: 5 }, { x: 4, y: 4 }]), "walking up-left").toBe(true);
+    // Toward the viewer along +y: down and to the right, unmirrored; along -x, down-left, mirrored.
+    expect(mirrored([{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 4, y: 6 }]), "walking down-right").toBe(false);
+    expect(mirrored([{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }]), "walking down-left").toBe(true);
+  });
+
   it("faces the viewer when nobody has walked yet", () => {
     const asked = framesAsked(fromWelcome(welcome(), 10_000), 10_000);
     expect(asked).toContain("person 0 stand");
