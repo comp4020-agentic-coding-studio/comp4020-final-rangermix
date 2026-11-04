@@ -74,8 +74,10 @@ describe("shadows from the windows", () => {
 
   it("darkens the floor where it meets a wall or a piece's foot", () => {
     const mask = shadowMask(room, [piece("box", 6, 6)], heights);
-    // Right at the plain wall's foot, far from the windows' shadow.
-    expect(at(mask, 11.97, 6.5)).toBe(SHADE.occluded);
+    // Right at the plain wall's foot: darkened, by its foot or by its shade
+    // (slice 13's review, finding 8, shades the strip beside it).
+    expect([SHADE.occluded, SHADE.shadow]).toContain(at(mask, 11.97, 6.5));
+    expect(at(mask, 8.5, 4.5), "the open floor, away from the walls and the box").toBe(SHADE.lit);
     // Right against the box's front face, before its shadow begins.
     expect([SHADE.occluded, SHADE.shadow]).toContain(at(mask, 6.5, 7.15));
   });
@@ -88,5 +90,44 @@ describe("worked out when the furniture changes, not every frame", () => {
     expect(shadowMask(room, [piece("sofa", 0, 5, 3, 1)], heights)).toBe(first);
     expect(shadowMask(room, [piece("sofa", 4, 5, 3, 1)], heights)).not.toBe(first);
     expect(shadowMask(room, [piece("sofa", 0, 5, 3, 1, { toppled: true })], heights)).not.toBe(first);
+  });
+});
+
+describe("shadows as the pieces are drawn (slice 13's review)", () => {
+  it("casts a thin piece's shadow from its own narrow block, not its whole tile, and only away from the windows (finding 4)", () => {
+    // A lamp is drawn 0.3 tiles in from its tile's edges (render.ts's insets): from 6.3 to 6.7.
+    const mask = shadowMask(room, [piece("lamp", 6, 5)], { lamp: 28 });
+    // Between its back face and the windows, and beside it: lit.
+    expect(at(mask, 6.5, 5.12)).toBe(SHADE.lit);
+    expect(at(mask, 6.12, 5.5)).toBe(SHADE.lit);
+    // In front of it, away from the windows, and a little toward -x as
+    // the light leans toward +x: its shadow, a strip as narrow as the lamp.
+    expect(at(mask, 6.25, 6.2)).toBe(SHADE.shadow);
+    expect(at(mask, 6.75, 6.2), "past the strip's edge").toBe(SHADE.lit);
+  });
+
+  it("darkens the floor at a thin piece's own foot, not a ring a tile wide round it (finding 4)", () => {
+    const mask = shadowMask(room, [piece("plant", 3, 7)], { plant: 22 });
+    // A plant stands 0.28 in from its tile's edges: 3.28 to 3.72.
+    expect(at(mask, 3.24, 7.5), "just off its left foot").not.toBe(SHADE.lit);
+    expect(at(mask, 3.1, 7.5), "a ring 0.18 out from its foot").toBe(SHADE.lit);
+  });
+
+  it("lies a toppled piece's shadow along it as it lies, longer and lower (finding 4)", () => {
+    // A toppled plant lies across its tile, 0.25 to 0.75 of the way down it.
+    const standing = shadowMask(room, [piece("plant", 3, 7)], { plant: 22 });
+    const fallen = shadowMask(room, [piece("plant", 3, 7, 1, 1, { toppled: true })], { plant: 22 });
+    expect(at(standing, 3.25, 8.4), "a standing plant's long shadow").toBe(SHADE.shadow);
+    expect(at(fallen, 3.25, 8.4), "a lying plant casts a short one").toBe(SHADE.lit);
+  });
+
+  it("shades the floor beside the plain wall, where the light comes over it from the side (finding 8)", () => {
+    const mask = shadowMask(room, [], heights);
+    // The light leans toward +x, so near the plain wall at x = 12 the ray
+    // leaves through that wall below its top.
+    expect(at(mask, 11.5, 6)).toBe(SHADE.shadow);
+    expect(at(mask, 11.3, 6)).toBe(SHADE.shadow);
+    // Well away from it, the open floor is lit.
+    expect(at(mask, 8, 6)).toBe(SHADE.lit);
   });
 });

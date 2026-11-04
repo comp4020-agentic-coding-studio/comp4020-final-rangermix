@@ -1,6 +1,7 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
 import { fillCrisp, strokeCrisp } from "./crisp";
+import { INSET, pieceBox } from "./pieces";
 import { Raster, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
 import { streetSlot } from "./street";
@@ -66,8 +67,6 @@ const SLOT: Record<string, number> = {
   lamp: 5,
 };
 const colourOf = (kind: string): string => FURNITURE[SLOT[kind] ?? 3];
-/** How far in from its footprint's edges a small piece's block stands, in tiles. */
-const INSET: Record<string, number> = { plant: 0.28, toys: 0.32, bowls: 0.18, chair: 0.2, cat_bed: 0.12, box: 0.15, cushion: 0.15, scratching_post: 0.3, lamp: 0.3 };
 const HEIGHT = heights as Record<string, number>;
 /** The street behind the café into the floor layer (slice 13): each pixel its slot's colour in this light. */
 function drawStreet(ctx: Ctx, colours: string[], light: Light): void {
@@ -571,21 +570,11 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
 
 /** A piece where it stands, as a shaded block; knocked over, lying on its side. */
 function drawPiece(ctx: Ctx, f: FurnitureView): void {
-  const colour = colourOf(f.kind);
-  const z = HEIGHT[f.kind] ?? 8;
-  const i = INSET[f.kind] ?? 0.06;
-  const x = f.x + i;
-  const y = f.y + i;
-  const w = f.w - 2 * i;
-  const h = f.h - 2 * i;
-  // Its shadow is cast from the windows now, with the floor's (slice 13).
-  if (!f.toppled) {
-    block(ctx, x, y, w, h, z, colour);
-    return;
-  }
-  // Fallen toward the viewer: lower, and longer across its footprint.
-  const along = Math.min(f.w - 0.1, w * 1.8);
-  block(ctx, f.x + (f.w - along) / 2, y + h * 0.25, along, h * 0.5, Math.max(2, Math.round(z / 3)), colour);
+  // The block it's drawn as, standing or fallen toward the viewer, is the
+  // one its shadow is cast from (pieces.ts).
+  const b = pieceBox(f, HEIGHT);
+  block(ctx, b.x, b.y, b.w, b.h, b.z, colourOf(f.kind));
+  if (!f.toppled) return;
   // Scattered toys (slice 02): a couple more balls of yarn strewn beside it,
   // where a cat batted them, until someone gathers them up.
   if (f.kind === "toys") {
