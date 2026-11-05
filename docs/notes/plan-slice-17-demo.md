@@ -304,3 +304,40 @@ Written 2026-11-06 from the code at `5efb730` (main at `5a3a1df`).
 ## Execution log
 
 Where the build departed from this plan, task by task.
+
+- **Task 1.** `next_time_of_day` gives the next day's instant when the time
+  falls in daylight saving's spring gap (24.5 hours on), and the world
+  refuses anything past `jump_max_hours`, so the day's limit lives in one
+  place. The store waits up to 5 s for a lock (`busy_timeout`), so the
+  seed can write beside the running café.
+- **Task 3.** The seed's log test failed every time in parallel and passed
+  alone: with one dispatcher registered, `tracing` worked out a callsite's
+  interest from whichever thread reached it first, and another test's
+  thread, logging nowhere, cached "never". `test_logs::LogSink::capture`
+  now keeps a second dispatcher registered for the run. The seed also
+  refuses a name a visitor holds before writing anything, and makes each
+  demo account's recovery code at random and never shows it.
+- **Task 5.** A held cat and a lap are let go by the replay's own first
+  step, with their person set aside, rather than in `settle_for_jump`; a
+  real lap still gets its board line.
+- **Task 6.** The `movedOn` refusal is made by the world
+  (`refuse_moved_on`), since `check-logs` needs who on every action line.
+  The binary restart test starts its second run five minutes later on the
+  mocked clock: the same start would put the clock behind its own save,
+  a state no real restart makes.
+- **Task 7.** Bots never sit (the spec first said they might): a bot on the
+  sofa would take the seat the regular needs for a lap. Their
+  `personJoined` is sent once they're marked bots, and nobody welcomes
+  them after a jump.
+- **Task 9.** The bar's card is opaque, not the panels' glass: its text
+  holds 4.5:1 by the page's own colours, which the contrast test already
+  holds. It floats under the status bar at `--demo-top`, measured from the
+  status bar; layout B pans the room clear of it. The browser check hears
+  the jump's words through the announcer, since a two-minute jump replays
+  in milliseconds and the cover is gone before it can be caught, and fills
+  the typed time before pressing Enter, since typing digits into a time
+  field depends on the browser's 12- or 24-hour clock. `spec/demo.test.ts`
+  and the browser check each wait out a jump another check made within the
+  minute.
+- **Task 10.** The narrator's wake-up and jump lines share their
+  "meanwhile" clause.
