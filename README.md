@@ -35,7 +35,7 @@ The cats get to know you over days, and the café keeps Canberra time, so ten mi
 4. Bar: **Night**. Burakku is up and the others asleep; the board shows the hours you skipped. Talk a lot, and she hides.
 5. Bar: **Morning**. The regular walks out and back in, and Tora greets them at the door.
 6. As yourself, keep picking Tora up: she refuses, then scratches, then bans you for a while.
-7. Bar: four **bots**. Leave and come back: you wait at the window, and can only talk.
+7. Bar: add **bots** until six are inside, then one more, who waits at the window. Leave and come back: the bot has taken your seat, so you wait at the window and can only talk. Remove a bot, and you walk in.
 8. Both grab the same chair: the first grab wins. Resize mid-use, switch the phone's layout, try the keyboard alone.
 9. Bar: **Canberra time** puts the hour back. Come back tomorrow: the cats still know you.
 

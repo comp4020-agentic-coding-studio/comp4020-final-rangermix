@@ -74,30 +74,34 @@ describe.skipIf(!password)("demo accounts", () => {
     await demo.leave();
   }, 90_000);
 
-  it("bots fill the café, so the next visitor waits at the window until one goes", async () => {
+  it("follows the README: bots until six are inside and one more, so a newcomer who leaves comes back to the window (slice 17's review, finding 2)", async () => {
+    const account = await signUp();
+    let newcomer = await Visitor.connect(account.cookie);
     const demo = await Visitor.connect(await logIn("demo2", password!));
     const people = demo.welcome.snapshot.people as Msg[];
-    const free = demo.welcome.cap - people.filter((p) => p.place === "inside").length;
     // Bots left by an earlier run of this check, if its demo2 is back within its grace period.
     const already = people.filter((p) => p.bot).length;
+    const inside = people.filter((p) => p.place === "inside").length;
+    // Bots until six are inside, then one more, who waits at the window.
+    const adding = demo.welcome.cap - inside + 1;
     let from = demo.messages.length;
-    for (let n = 0; n < free; n++) demo.send({ type: "addBot" });
-    for (let n = 0; n < free; n++) {
-      const joined = await demo.next((m) => m.type === "personJoined" && m.person.id !== demo.welcome.you, 3000, from);
-      expect(joined.person.bot).toBe(true);
-      from = demo.messages.indexOf(joined) + 1;
+    let last: Msg | undefined;
+    for (let n = 0; n < adding; n++) demo.send({ type: "addBot" });
+    for (let n = 0; n < adding; n++) {
+      last = await demo.next((m) => m.type === "personJoined" && m.person.bot, 3000, from);
+      from = demo.messages.indexOf(last) + 1;
     }
-    const newcomer = await Visitor.connect((await signUp()).cookie);
+    expect(last?.person.place).toBe("window");
+    // The newcomer leaves, and the bot at the window takes the seat: back
+    // again, the newcomer waits at the window and can only talk.
+    await newcomer.leave();
+    newcomer = await Visitor.connect(account.cookie);
     const me = (newcomer.welcome.snapshot.people as Msg[]).find((p) => p.id === newcomer.welcome.you);
     expect(me?.place).toBe("window");
+    // A bot removed, and the newcomer walks in.
     const fromNewcomer = newcomer.messages.length;
     demo.send({ type: "removeBot" });
-    const placed = await newcomer.next(
-      (m) => m.type === "personPlaced" && m.id === newcomer.welcome.you && m.place === "inside",
-      3000,
-      fromNewcomer,
-    );
-    expect(placed.place).toBe("inside");
+    await newcomer.next((m) => m.type === "personPlaced" && m.id === newcomer.welcome.you && m.place === "inside", 3000, fromNewcomer);
     await newcomer.leave();
     // Leaving takes the demo account's bots with it.
     const watcher = await Visitor.connect((await signUp()).cookie);
@@ -106,7 +110,7 @@ describe.skipIf(!password)("demo accounts", () => {
     await watcher.next((m) => m.type === "personLeft" && m.id === demo.welcome.you, 3000, fromWatcher);
     await new Promise((r) => setTimeout(r, 200));
     const left = watcher.messages.slice(fromWatcher).filter((m) => m.type === "personLeft").length;
-    expect(left).toBe(1 + already + free - 1);
+    expect(left).toBe(1 + already + adding - 1);
     await watcher.leave();
   });
 });

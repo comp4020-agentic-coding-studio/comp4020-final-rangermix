@@ -244,9 +244,12 @@ in window 2 only.
    them at the door.
 5. **Boundaries.** The newcomer keeps picking Tora up: she refuses, then
    scratches, then bans it, and says for how long.
-6. **A full café.** Bar: four bots. Six are inside. The newcomer leaves and
-   comes back, and waits at the window, where they can only talk. Remove a
-   bot, and the newcomer walks in.
+6. **A full café.** Bar: bots until six are inside (four, with the regular
+   and the newcomer), then one more, who waits at the window. The newcomer
+   leaves and comes back: the bot has taken the seat, so the newcomer waits
+   at the window, where they can only talk. Remove a bot, and the newcomer
+   walks in. (Four bots alone, as first written, let the newcomer straight
+   back in: slice 17's review, finding 2.)
 7. **Together.** Both reach for the same chair: the first grab wins, and
    the other is told who has it. A piece on the door's walkway is refused.
    From part 2, bar: Play room, and Tora goes to the new pieces first.
