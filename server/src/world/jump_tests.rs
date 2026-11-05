@@ -241,6 +241,59 @@ fn a_jump_settles_people_and_walks_nobody_out() {
     assert!(w.person(5).is_none(), "gone after its grace period");
 }
 
+#[tokio::test]
+async fn trust_a_cat_gives_during_a_jump_is_stored() {
+    // Slice 17's review, finding 3: a sleep's replay never meets a treat on
+    // the floor, but a jump's does; a cat that ate one changed its giver's
+    // trust in memory only, and a restart lost it.
+    let dir = tempfile::tempdir().unwrap();
+    let store = crate::store::Store::open(&dir.path().join("cafe.db")).unwrap();
+    store
+        .call(|c| {
+            crate::store::insert_user(c, "p1", "p", "r", 0, 0, 1)?;
+            crate::store::insert_user(c, "demo2", "p", "r", 0, 0, 1)?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let t0 = canberra(2026, 11, 6, 14, 0);
+    let content = crate::content::repo_content();
+    let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+    let mut w = World::new(
+        content,
+        trust,
+        Vec::new(),
+        SavedArrangement::Fresh,
+        ChaCha8Rng::seed_from_u64(7),
+        Some(store.clone()),
+        "test".into(),
+        t0,
+    );
+    join(&mut w, 1, t0);
+    join_demo(&mut w, 2, t0);
+    w.tick(t0);
+    w.handle(
+        t0 + 10_000,
+        Input::Msg {
+            id: 1,
+            msg: ClientMsg::PutTreat {},
+        },
+    );
+    jump(&mut w, 2, t0 + 10_000, Some(NIGHT));
+    store.flush().await.unwrap();
+    let rows = store.call(|c| crate::store::all_trust(c)).await.unwrap();
+    let mut gained = 0;
+    for cat in ["mochi", "tora", "burakku"] {
+        let value = w.trust.value(cat, 1);
+        if value > 0.0 {
+            gained += 1;
+            let row = rows.iter().find(|r| r.cat_id == cat && r.user_id == 1);
+            assert_eq!(row.map(|r| r.value), Some(value), "{cat}'s trust in p1 is stored");
+        }
+    }
+    assert!(gained > 0, "a cat ate p1's treat during the jump");
+}
+
 #[test]
 fn no_cat_is_left_on_a_persons_tile() {
     let t0 = canberra(2026, 11, 6, 14, 0);

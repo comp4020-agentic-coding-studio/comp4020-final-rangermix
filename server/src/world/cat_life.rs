@@ -815,6 +815,9 @@ impl World {
         if let Some(store) = &self.store {
             let row = TrustBook::row(&cat_id, id, &rec);
             store.fire(move |c| crate::store::put_trust(c, &row));
+        } else {
+            // A replay holds the store back: its end save writes this.
+            self.unsaved_trust.push((cat_id.clone(), id));
         }
         out.push(Out {
             to: To::One(id),

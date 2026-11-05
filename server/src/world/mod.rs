@@ -183,6 +183,9 @@ pub struct World {
     jump: Option<jump::Jump>,
     /// When, by the café's clock, the last jump landed.
     last_jump: Option<u64>,
+    /// Trust a cat changed while a replay held the store back: written with
+    /// the replay's end save (slice 17's review, finding 3).
+    unsaved_trust: Vec<(String, u32)>,
 }
 
 impl World {
@@ -228,6 +231,7 @@ impl World {
             ahead: 0,
             jump: None,
             last_jump: None,
+            unsaved_trust: Vec::new(),
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -505,6 +509,10 @@ impl World {
         let arrangement = self.arrangement_json();
         let chalk = board.then(|| self.chalk_rows());
         let ahead = self.ahead.to_string();
+        let mut touched = std::mem::take(&mut self.unsaved_trust);
+        touched.sort();
+        touched.dedup();
+        let trust: Vec<crate::store::TrustRow> = touched.iter().filter_map(|(cat, id)| self.trust.row_of(cat, *id)).collect();
         store.fire(move |conn| {
             for (id, json) in &cats {
                 crate::store::put_cat_state(conn, id, json, now)?;
@@ -513,6 +521,9 @@ impl World {
             crate::store::put_world(conn, "rng", &rng)?;
             crate::store::put_world(conn, "arrangement", &arrangement)?;
             crate::store::put_world(conn, "ahead", &ahead)?;
+            for row in &trust {
+                crate::store::put_trust(conn, row)?;
+            }
             if let Some(rows) = &chalk {
                 crate::store::replace_chalk(conn, rows)?;
             }
