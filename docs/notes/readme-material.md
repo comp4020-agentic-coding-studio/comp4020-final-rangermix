@@ -155,10 +155,14 @@ user's call: build it, or change the line.
 
 - **"soothing music".** The design has no music, and no phase plans any.
   *Update 2026-11-05:* [slice 15](../slices/15-music-while-you-sit.md)
-  (proposed) adds it: six lofi tracks by HoliznaCC0, released under CC0
-  ([ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)).
-  A source line the user could use: "Music: six tracks from *Public
-  Domain Lofi* by HoliznaCC0, CC0 1.0, from the Free Music Archive
+  (built) adds it: six lofi tracks by HoliznaCC0, released under CC0
+  ([ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)),
+  credited track by track in `content/music/CREDITS.md`. The README's
+  "soothing music" is now true as written; a fuller line the user could
+  use: "quiet lofi, a brighter set by day and a dreamier one by night,
+  each visitor's own to pause, skip or turn down." A source line: "Music:
+  six tracks from *Public Domain Lofi* by HoliznaCC0, CC0 1.0, from the
+  Free Music Archive
   (freemusicarchive.org/music/holiznacc0/public-domain-lofi)."
 - **The template's first lines are still there.** The README opens with the
   template's `# Your app` heading and its `<!-- TEMPLATE ... Replace
