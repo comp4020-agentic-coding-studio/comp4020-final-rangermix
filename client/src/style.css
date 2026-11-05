@@ -232,6 +232,24 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .still-there p { margin: 0; font-weight: 600; }
 .toast { position: absolute; z-index: 2; left: 50%; bottom: 0.75rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.9rem; pointer-events: none; }
 
+/* The demo bar (slice 17): a demo account's controls. Opaque, so its text
+   holds 4.5:1 over anything the room and street show behind it. */
+.demo-bar { grid-area: demo; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 0.35rem 0.6rem; }
+.demo-bar[hidden] { display: none; }
+.demo-clock { margin: 0; white-space: nowrap; }
+.demo-label, #demo-ahead, .demo-wait { color: var(--muted); }
+.demo-group { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.demo-group button { padding: 0.15rem 0.55rem; }
+.demo-at { display: inline-flex; align-items: center; gap: 0.3rem; margin: 0; }
+.demo-at input { width: 6.5rem; }
+.demo-toggle { display: none; }
+@media (min-width: 960px) {
+  /* As wide as its controls, in one row where the window allows: a box at
+     left 50% would otherwise shrink to half the window and wrap. */
+  .demo-bar { position: fixed; z-index: 3; top: var(--demo-top, 64px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+  .demo-group + .demo-group { border-left: 1px solid var(--line); padding-left: 0.6rem; }
+}
+
 /* The café on a phone, layout A: the whole room on top, full width, the rest below */
 @media (max-width: 959px) {
   .cafe {
@@ -273,6 +291,15 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
      Chrome, and Tab must never reach what nobody can see (slice 09's review,
      finding 4). */
   .chalkboard .panel-body { overflow: visible; }
+  /* The demo bar between the status bar and the room, its groups opening
+     one at a time below their buttons (slice 17). */
+  .demo .cafe { grid-template-rows: auto auto auto auto auto auto auto; grid-template-areas: "status" "demo" "stage" "talk" "music" "here" "cats"; }
+  .demo-bar { margin: 0 8px; }
+  /* One slim row: the time and two buttons; the label stays for a screen reader. */
+  .demo-label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .demo-toggle { display: inline-block; }
+  .demo-group { display: none; width: 100%; }
+  .demo-group.open { display: flex; }
 }
 
 /* The phone's layout switch, and layout B: the room fills the screen at 3x and
@@ -286,6 +313,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .layout-b .status { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.35rem 0.6rem; }
 .layout-b .talk { position: fixed; bottom: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; }
 .layout-b .panel { display: none; }
+.layout-b .demo-bar { position: fixed; z-index: 3; top: var(--demo-top, 64px); left: 8px; right: 8px; margin: 0; }
 /* The chalkboard's copy stays for a screen reader while the drawer is shut,
    as it does in layout A, now that a phone opens in B (slice 09); your cats
    and who's here come with the drawer, so Tab never reaches what nobody can

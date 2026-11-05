@@ -42,9 +42,12 @@ describe.skipIf(!password)("demo accounts", () => {
 
     const demo = await Visitor.connect(await logIn("demo1", password!));
     expect(demo.welcome.demo).toBe(true);
+    // The clock moves at most once a minute: another check may just have.
+    const wait = Math.max(0, demo.welcome.nextJump - demo.welcome.now);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait + 500));
     // Two minutes on by the café's clock: a short jump, so the café the
     // rest of the spec uses keeps nearly its own hour.
-    const minute = (minuteOf(demo.welcome.now) + 2) % (24 * 60);
+    const minute = (minuteOf(demo.welcome.now + wait) + 2) % (24 * 60);
     from = visitor.messages.length;
     const fromDemo = demo.messages.length;
     demo.send({ type: "setClock", minute });
@@ -69,7 +72,7 @@ describe.skipIf(!password)("demo accounts", () => {
     expect((await demo.next((m) => m.type === "error", 3000, again)).code).toBe("tooSoon");
     await visitor.leave();
     await demo.leave();
-  });
+  }, 90_000);
 
   it("bots fill the café, so the next visitor waits at the window until one goes", async () => {
     const demo = await Visitor.connect(await logIn("demo2", password!));

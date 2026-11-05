@@ -5,6 +5,7 @@ import { type ArmsBar, showArms } from "./arms";
 import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
+import { DemoBar } from "./demoBar";
 import { cafeHour } from "./canberra";
 import { type Target, attachInput } from "./input";
 import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
@@ -380,8 +381,35 @@ function enter(me: ApiMe): void {
       else if (cafe.state && catInArms(cafe.state)) cafe.send({ type: "putDown" });
     },
   });
+  // The demo bar (slice 17): a demo account's controls, under the status
+  // bar, with the café's time kept up to the second.
+  const demoBar = new DemoBar(
+    {
+      bar: $("demo-bar"),
+      time: $("demo-time"),
+      ahead: $("demo-ahead"),
+      wait: $("demo-wait"),
+      toggles: [...document.querySelectorAll<HTMLButtonElement>("#demo-bar .demo-toggle")],
+      hourOn: $<HTMLButtonElement>("demo-hour-on"),
+      at: $<HTMLInputElement>("demo-at"),
+      go: $<HTMLButtonElement>("demo-go"),
+      canberra: $<HTMLButtonElement>("demo-canberra"),
+      botCount: $("demo-bot-count"),
+      addBot: $<HTMLButtonElement>("demo-add-bot"),
+      removeBot: $<HTMLButtonElement>("demo-remove-bot"),
+    },
+    (msg) => cafe.send(msg),
+  );
+  const placeDemoBar = () => {
+    const below = document.querySelector(".status")!.getBoundingClientRect().bottom;
+    document.documentElement.style.setProperty("--demo-top", `${Math.round(below + 8)}px`);
+  };
+  const demoTick = window.setInterval(() => demoBar.update(cafe.state, cafe.waking), 1000);
+  window.addEventListener("resize", placeDemoBar);
   const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
+    demoBar.update(cafe.state, cafe.waking);
+    placeDemoBar();
     $("waking").hidden = !cafe.waking;
     $("waking-text").textContent = cafe.wakingText;
     // The panels float over the stage, under the dusting cover while the
@@ -420,6 +448,9 @@ function enter(me: ApiMe): void {
     music.dispose();
     drawerWatch.disconnect();
     window.removeEventListener("resize", fitDrawer);
+    window.removeEventListener("resize", placeDemoBar);
+    window.clearInterval(demoTick);
+    demoBar.update(null, false);
     floating.dispose();
     detach();
     talk.dispose();

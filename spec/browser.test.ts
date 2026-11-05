@@ -1665,3 +1665,115 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   });
 });
+
+// Slice 17: the demo bar, which only a demo account sees. The café the spec
+// runs against must be seeded (`cafe demo seed`), as CI does; without
+// APP_DEMO_PASSWORD these checks are skipped.
+const demoPassword = process.env.APP_DEMO_PASSWORD;
+
+/** Opens the café in a fresh browser and logs in as `name` through the page. */
+async function visitAs(name: string, viewport: { width: number; height: number }, touch = false, init?: string): Promise<Visit> {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  contexts.push(context);
+  if (init) await context.addInitScript(init);
+  const page = await context.newPage();
+  await hearAnnouncer(page);
+  const frames: Frame[] = [];
+  const sent: Frame[] = [];
+  page.on("websocket", (ws) => {
+    ws.on("framereceived", (f) => frames.push(JSON.parse(String(f.payload))));
+    ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload))));
+  });
+  await page.goto(baseUrl);
+  await page.locator("#tab-login").click();
+  await page.locator("#login input[name=name]").fill(name);
+  await page.locator("#login input[name=password]").fill(demoPassword!);
+  await page.locator("#login input[name=password]").press("Enter");
+  await page.waitForFunction(() => /inside|window/.test(document.getElementById("status-text")?.textContent ?? ""));
+  return { page, frames, sent };
+}
+
+const HHMM = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/** The light the café's hour gives (design.md, "Numbers to tune"). */
+function lightOf(ms: number): string {
+  const hour = Number(HHMM.format(new Date(ms)).slice(0, 2));
+  return String(hour >= 21 || hour < 6 ? 1 : hour >= 17 ? 0.5 : 0);
+}
+
+describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
+  it("is a demo account's alone; by keyboard it moves the café on, and the page keeps the café's clock", async () => {
+    const visitor = await visit({ width: 1920, height: 1080 });
+    expect(await visitor.page.locator("#demo-bar").isHidden()).toBe(true);
+    // This device's clock is twelve hours out: the café's light must follow
+    // the server's clock all the same.
+    const twelveHours = 12 * 3_600_000;
+    const shifted = `(() => {
+      const Real = Date;
+      class Shifted extends Real {
+        constructor(...args) { super(...(args.length ? args : [Real.now() + ${twelveHours}])); }
+        static now() { return Real.now() + ${twelveHours}; }
+      }
+      globalThis.Date = Shifted;
+    })();`;
+    const demo = await visitAs("demo1", { width: 1920, height: 1080 }, false, shifted);
+    const page = demo.page;
+    await page.locator("#demo-bar").waitFor();
+    const welcome = demo.frames.find((f) => f.type === "welcome")!;
+    expect(welcome.demo).toBe(true);
+    await page.waitForFunction(() => document.getElementById("room")?.dataset.light !== undefined);
+    expect(await page.locator("#room").getAttribute("data-light")).toBe(lightOf(welcome.now));
+    expect(await page.locator("#demo-time").textContent()).toMatch(/^\d\d:\d\d$/);
+    // The bar is in the page's tab order.
+    await page.locator("#leave").focus();
+    let reached = false;
+    for (let n = 0; n < 40 && !reached; n++) {
+      await page.keyboard.press("Tab");
+      reached = await page.evaluate(() => document.getElementById("demo-bar")!.contains(document.activeElement));
+    }
+    expect(reached).toBe(true);
+    // The clock moves at most once a minute: wait out another check's jump.
+    await page.locator("#demo-wait").waitFor({ state: "hidden", timeout: 70_000 });
+    // Two minutes on from the café's time as the bar shows it.
+    const [h, m] = (await page.locator("#demo-time").textContent())!.split(":").map(Number);
+    const t = (h * 60 + m + 2) % (24 * 60);
+    const target = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+    await page.locator("#demo-at").fill(target);
+    await page.locator("#demo-at").focus();
+    await page.keyboard.press("Enter");
+    // Two minutes replay in a moment, so the cover is up too briefly to
+    // catch: what it said is heard, and the café comes back at the new time.
+    const told = `demo1 moved the café on to ${target}. Time passes…`;
+    await page.waitForFunction((t) => (window as unknown as { said: string[] }).said.includes(t), told, { timeout: 10_000 });
+    expect(demo.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
+    await page.locator("#waking").waitFor({ state: "hidden", timeout: 15_000 });
+    await expect.poll(() => page.locator("#demo-time").textContent()).toBe(target);
+    // The visitor's page went with it.
+    await visitor.page.waitForFunction(() => document.getElementById("waking")!.hidden);
+    expect(visitor.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
+  }, 120_000);
+
+  it("works by touch on a phone, closes with Escape, and survives a resize", async () => {
+    const demo = await visitAs("demo2", { width: 390, height: 844 }, true);
+    const page = demo.page;
+    const toggle = page.locator("#demo-bar .demo-toggle", { hasText: "Bots" });
+    await toggle.tap();
+    expect(await toggle.getAttribute("aria-expanded")).toBe("true");
+    await page.locator("#demo-add-bot").tap();
+    await expect.poll(() => demo.frames.some((f) => f.type === "personJoined" && f.person.bot)).toBe(true);
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("1 bot");
+    await page.locator("#demo-remove-bot").tap();
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("No bots");
+    await page.locator("#demo-add-bot").focus();
+    await page.keyboard.press("Escape");
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false");
+    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("Bots");
+    expect(await page.locator("#demo-bots").isHidden()).toBe(true);
+    // Mid-use, to a desktop: the groups stand in one row, no buttons to open them.
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await expect.poll(() => page.locator("#demo-bots").isVisible()).toBe(true);
+    expect(await toggle.isHidden()).toBe(true);
+    const bar = (await page.locator("#demo-bar").boundingBox())!;
+    expect(bar.height).toBeLessThan(80);
+  }, 60_000);
+});
