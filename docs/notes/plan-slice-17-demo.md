@@ -341,3 +341,10 @@ Where the build departed from this plan, task by task.
   minute.
 - **Task 10.** The narrator's wake-up and jump lines share their
   "meanwhile" clause.
+- **After task 10.** The whole spec suite caught three checks that faked
+  only the device's clock (the light, the street, the music's night set):
+  with the page keeping the server's clock they started at whatever hour
+  the spec ran. Their welcome now says the faked hour too
+  (`cafeAt` in `spec/browser.test.ts`, the music checks' `visit`), rather
+  than a demo jump, which would move the shared café's clock for every
+  later check.
