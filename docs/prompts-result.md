@@ -2164,3 +2164,79 @@ study shows sizes at 4× and 3×
   both 1920×1080 at 4× and a phone at 1×. 13 by 12 fills the window a
   little more but is 10 px too wide for the phone. The size is the
   user's to choose; ADR 0021 renamed to the floor decision.
+
+### 17. How markers receive the café
+
+*Session `f6949123`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-06 04:25:45 AEDT*
+
+> let's plan for the demo / evaluation. the game requires long term interaction with cats and is bounded to real world time, which makes it hard to evaluation from a regular user perspective with limited time. I think we can use a combined approach of test account and master control: some test account to show cat's behaviour change with different trust level, master control of time of the day, furniture layout, etc. create a list of features to show, then map them to how to show it, then come up with a demo flow. do not edit yet.
+
+**Result.** A plan in the conversation, with nothing edited, at the
+user's asking.
+- **What shaped it.** Markers get about ten minutes as a new member, two
+  sessions side by side at both sizes. A cat's trust grows by at most 10
+  times its trust rate a Canberra day, so a lap is at least 8 days away
+  with Mochi, 14 with Tora and 27 with Burakku. The café's clock is set
+  once at start, and `CAFE_CLOCK_START` is refused on Fly (ADR 0016).
+  The page's light and music read the device's clock, while the cats'
+  rhythms are the server's.
+- **25 features**, each mapped to how it could be shown: a fresh
+  account, two windows, a regular with seeded trust, a preview of the
+  night, the operator's tools, a café on a laptop on mocked time, or the
+  tests. Most show already; the gaps were the trust levels, the time of
+  day, and the line at the window without a crowd.
+- **Proposed then:** an operator's seed for one regular, a night preview
+  for one viewer, an operator's command to put the room back, bots for
+  rehearsal only; a ten-minute path for markers and a five-minute loop
+  for the showcase; six questions.
+
+*Sent 2026-11-06 05:07:51 AEDT*
+
+> 1. consider markers only. what i meant for demo is actually how markers receive this.
+> 2. the page should take it's clock from the server. given we already use websocket we can send synced clock to all users at once. whenever the clock is changed the server will fast forward time to the target clock for at most 24 hours. the ability to set time will be limited to demo accounts only, who will have control for server clock etc. the control should be a floating bar at top.
+> 3. Trust choice: a
+> 4. furniture: make 3 set of furniture with arrangement, available for demo account to choose from. this sets the furniture immediately without rate limit.
+> 5. Bots: add option to add/remove bots for demo account.
+> 6. How do markers get the regular's login? A in the README
+> 7. given the answer above, adjust the marker's flow.
+> 8. create instructions for markers in readme
+
+**Result.** Slice 17 is proposed, with ADR 0022 accepted
+([`a4ed140`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4ed140)),
+and the README's section for markers is drafted
+([`ca45331`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ca45331)).
+Nothing is built.
+- **The user's choices, as decided:** markers only; the page keeps the
+  server's clock; a demo account moves it on to a time of day, at most 24
+  hours, for the whole café, through the replay a sleep uses; three
+  furniture sets laid out at once without the rate limit; bots added and
+  removed; demo accounts' trust seeded by an operator command; their
+  login in the README; the controls in a floating bar at the top.
+- **The agent's calls, open until the spec is approved:** the people
+  inside come through a jump as the cats' empty café would (a held cat
+  put down, a lap ended, their timers started again); how far ahead the
+  café is, saved, so its clock never goes back; one jump a minute; two
+  demo accounts, so two markers don't move each other out, each seeded
+  with Mochi 85, Tora 55 and Burakku 25; bots that never talk or touch
+  anything, are never stored or met by the cats, and leave after 15
+  minutes or with their demo account; sign-up refusing `demo_` and
+  `bot_`; the bar's four times picked for the cats (07:00, 13:30, 18:30,
+  23:30); the three sets, Opening day, Lap time and Play room.
+- **Rules changed** in `AGENTS.md`: the operator's seed is trust's one
+  exception; only a demo account holds the controls, and the clock only
+  moves forward; the demo accounts' password is public, unlike the
+  agents' test accounts. `docs/design.md` has a new "Showing it to
+  markers", marked decided and not yet built.
+- **The marker's path, adjusted** to the bar: arriving, trust side by
+  side, the afternoon lap, the night, the morning's greeting at the door,
+  Tora's boundaries, a café full of bots, rearranging together, every way
+  in, and the next day.
+- **The README's "For markers"** (the README 519 words in all, inside the
+  brief's 600) stays on the branch until the slice is built, since
+  `/readme/` is live and mustn't promise what isn't there. Its password
+  is a placeholder until the user picks one.
+- **Open:** five questions in the spec: putting the hour back, the
+  accounts' names and password, the bar on a phone, the three sets, and
+  the order against slice 16.
