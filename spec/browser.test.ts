@@ -1792,7 +1792,11 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await expect.poll(() => page.locator("#demo-bots").isVisible()).toBe(true);
     expect(await toggle.isHidden()).toBe(true);
+    // Between the corner panels, not over their bars and pins.
     const bar = (await page.locator("#demo-bar").boundingBox())!;
-    expect(bar.height).toBeLessThan(80);
+    const left = (await page.locator("#chalkboard").boundingBox())!;
+    const right = (await page.locator("#here-panel").boundingBox())!;
+    expect(bar.x).toBeGreaterThanOrEqual(left.x + left.width);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(right.x);
   }, 60_000);
 });

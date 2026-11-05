@@ -246,7 +246,9 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 @media (min-width: 960px) {
   /* As wide as its controls, in one row where the window allows: a box at
      left 50% would otherwise shrink to half the window and wrap. */
-  .demo-bar { position: fixed; z-index: 3; top: var(--demo-top, 64px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+  /* Between the corner panels' columns (18rem each, from 16 px in), so it
+     wraps rather than covering their bars and pins. */
+  .demo-bar { position: fixed; z-index: 3; top: var(--demo-top, 64px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 2 * (18rem + 40px)); justify-content: center; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
   .demo-group + .demo-group { border-left: 1px solid var(--line); padding-left: 0.6rem; }
 }
 
