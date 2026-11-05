@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ISO } from "../src/iso";
-import { STREET, streetRuns, streetSlot } from "../src/street";
+import streetFile from "../../content/street.toml?raw";
+import { STREET, parseStreet, street, streetRuns, streetSlot, terraceAt } from "../src/street";
 
 // Slice 16: the street carried past the room's canvas to the window's edges.
 // `streetRuns` lays the street out over a span of room pixels that can start
@@ -45,5 +46,43 @@ describe("the street past the room's edges", () => {
     const stars = (night: boolean) => streetRuns(span, night).filter((r) => r.slot === STREET.star).length;
     expect(stars(false)).toBe(0);
     expect(stars(true)).toBeGreaterThan(0);
+  });
+});
+
+describe("the terrace in the room's bottom corners (slice 16)", () => {
+  it("is data in street.toml: each thing's kind, the floor edge it stands by, how far along it and how far out", () => {
+    expect(street.terrace.length).toBeGreaterThanOrEqual(5);
+    for (const t of street.terrace) {
+      expect(["bench", "planter", "table", "umbrella", "chair", "lamp"]).toContain(t.kind);
+      expect(["left", "front"]).toContain(t.side);
+      expect(t.along).toBeGreaterThanOrEqual(0);
+      expect(t.out).toBeGreaterThan(0);
+    }
+    // A bench and planters by the left edge; a table, its umbrella and a lamp out front.
+    const by = (side: string) => street.terrace.filter((t) => t.side === side).map((t) => t.kind);
+    expect(by("left")).toEqual(expect.arrayContaining(["bench", "planter"]));
+    expect(by("front")).toEqual(expect.arrayContaining(["table", "umbrella", "lamp"]));
+  });
+
+  it("reads a new thing from a few lines, and refuses a kind it can't draw or a side it doesn't know", () => {
+    const base = streetFile.replace(/\[\[terrace\]\][\s\S]*$/, "");
+    const one = parseStreet(`${base}\n[[terrace]]\nkind = "planter"\nside = "left"\nalong = 2\nout = 1.5\n`);
+    expect(one.terrace).toEqual([{ kind: "planter", side: "left", along: 2, out: 1.5 }]);
+    expect(() => parseStreet(`${base}\n[[terrace]]\nkind = "fountain"\nside = "left"\nalong = 2\nout = 1\n`)).toThrow(/fountain/);
+    expect(() => parseStreet(`${base}\n[[terrace]]\nkind = "bench"\nside = "back"\nalong = 2\nout = 1\n`)).toThrow(/back/);
+  });
+
+  it("puts each thing off the floor, outside its edge: left of the floor's left edge, or past its front", () => {
+    const room = { width: 13, height: 13 };
+    for (const t of street.terrace) {
+      const at = terraceAt(t, room);
+      if (t.side === "left") {
+        expect(at.x, `${t.kind} left of the floor`).toBeLessThan(0);
+        expect(at.y).toBeGreaterThanOrEqual(1);
+      } else {
+        expect(at.y, `${t.kind} past the floor's front`).toBeGreaterThanOrEqual(room.height);
+        expect(at.x).toBeGreaterThanOrEqual(0);
+      }
+    }
   });
 });

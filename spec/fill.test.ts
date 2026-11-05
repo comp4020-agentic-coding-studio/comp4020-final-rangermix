@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import palettes from "../content/sprites/palettes.json";
@@ -215,5 +216,45 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       }
     }
     expect(seen, "edge points looked at").toBeGreaterThan(20);
+  });
+
+  it("draws the terrace in the bottom corners, and a click or tap on it does nothing", async () => {
+    const { page, sent } = await visit({ width: 1920, height: 1080 });
+    await page.waitForTimeout(500);
+    // The bench stands by the floor's left edge (content/street.toml): its
+    // spot on the page, by the café's map, a tile's middle being (x + .5, y + .5).
+    const terrace = [...readFileSync(new URL("../content/street.toml", import.meta.url), "utf8").matchAll(/\[\[terrace\]\]\s*kind = "(\w+)"\s*side = "(\w+)"\s*along = ([\d.]+)\s*out = ([\d.]+)/g)].map((m) => ({
+      kind: m[1],
+      side: m[2],
+      along: Number(m[3]),
+      out: Number(m[4]),
+    }));
+    const bench = terrace.find((t) => t.kind === "bench")!;
+    const table = terrace.find((t) => t.kind === "table")!;
+    const spot = (gx: number, gy: number) =>
+      page.evaluate(([gx, gy]) => (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(gx - 0.5, gy - 0.5), [gx, gy]);
+    // Up the bench's seat a little, and the table's top: the pixels drawn there.
+    const scale = (await boxOf(page, "#room")).width / 400;
+    for (const [what, gx, gy, up] of [
+      ["the bench", -bench.out, 1 + bench.along, 6 + 8],
+      ["the table", table.along, 13 + table.out, 6 + 14],
+    ] as const) {
+      const at = await spot(gx, gy);
+      const p = { x: at.x, y: at.y - (up - 6) * scale };
+      expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [p.x, p.y]), `${what} is on the room's canvas, clear of the panels`).toBe("room");
+      // What's drawn there is the thing, not the street's pavement round it.
+      const colour = await page.evaluate(([x, y]) => {
+        const c = document.getElementById("room") as HTMLCanvasElement;
+        const r = c.getBoundingClientRect();
+        const [cr, cg, cb] = c.getContext("2d")!.getImageData(Math.floor(((x - r.left) / r.width) * c.width), Math.floor(((y - r.top) / r.height) * c.height), 1, 1).data;
+        return `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+      }, [p.x, p.y]);
+      expect(streetColours("day"), `${what} is drawn at the point clicked (${colour})`).not.toContain(colour);
+      const before = sent.length;
+      await page.mouse.click(p.x, p.y);
+      await page.waitForTimeout(200);
+      expect(await page.locator(".menu").count(), `a click on ${what}`).toBe(0);
+      expect(sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what a click on ${what} sent`).toEqual([]);
+    }
   });
 });

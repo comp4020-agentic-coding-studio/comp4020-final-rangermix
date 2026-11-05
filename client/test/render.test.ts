@@ -573,13 +573,17 @@ describe("picking a piece by its outline (slice 13's review, finding 9)", () => 
       const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
       return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
     };
+    // The same room without its pieces: a pixel in a rim's colour there is
+    // someone else's, the terrace's scenery in the same colours (slice 16).
+    const bare = pixels(ISO.width, ISO.height);
+    draw(bare.ctx, fromWelcome({ ...w, snapshot: { ...w.snapshot, room: { ...w.snapshot.room, furniture: [] } } }, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
     for (const f of s.room.furniture) {
       const slot = { sofa: 1, box: 3, lamp: 5 }[f.kind as "sofa" | "box" | "lamp"];
       const rim = shadeOf(palettes.day.furniture[slot], 0.45);
       let rims = 0;
       for (let y = 0; y < ISO.height; y++)
         for (let x = 0; x < ISO.width; x++) {
-          if (p.at(x, y) !== rim) continue;
+          if (p.at(x, y) !== rim || bare.at(x, y) === rim) continue;
           rims++;
           const hit = hitAt(s, x + 0.5, y + 0.5, 10_000);
           const on = hit && hit.x >= f.x && hit.x < f.x + f.w && hit.y >= f.y && hit.y < f.y + f.h;
@@ -788,9 +792,9 @@ describe("the street behind the café", () => {
       // The top-left and top-right corners are sky and towers; the bottom corners the street's foot.
       for (const [x, y] of [
         [4, 4],
-        [330, 4],
-        [4, 228],
-        [330, 228],
+        [ISO.width - 6, 4],
+        [4, ISO.height - 4],
+        [ISO.width - 6, ISO.height - 4],
       ]) {
         expect(colours.has(p.at(x, y) ?? ""), `(${x},${y}) is ${p.at(x, y)} at ${name}`).toBe(true);
       }
@@ -818,6 +822,41 @@ describe("the street behind the café", () => {
     // A cloud's colours differ from the sky's: not one more blue.
     expect(new Set([day[STREET.cloud], day[STREET.cloudShade], day[STREET.glow]]).size).toBe(3);
     expect([day[STREET.skyTop], day[STREET.sky]]).not.toContain(day[STREET.cloud]);
+  });
+
+  // Slice 16: the café's terrace in the room's two bottom corners, from street.toml.
+  it("stands the terrace's things in both bottom corners, off the floor, a lamp among them lit only at night", async () => {
+    const { street: data, terraceAt } = await import("../src/street");
+    // The room this test draws: the welcome's.
+    const room = welcome().snapshot.room;
+    for (const [light, name] of [
+      [0, "day"],
+      [1, "night"],
+    ] as const) {
+      const p = await drawn(light);
+      const streetColours = street(name);
+      // Just over each thing's spot on the pavement (the slab's foot, 6 px
+      // under the floor): something not the street's is drawn there.
+      for (const t of data.terrace) {
+        const at = terraceAt(t, room);
+        const foot = toCanvas(at.x, at.y);
+        let drawn = 0;
+        for (let dy = -10; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) if (!streetColours.has(p.at(Math.round(foot.x) + dx, Math.round(foot.y) + 6 + dy) ?? "")) drawn++;
+        expect(drawn, `${name}: the ${t.kind} at (${at.x}, ${at.y}) is drawn`).toBeGreaterThan(4);
+      }
+    }
+    // The lamp's head: the window's glass at night, warm yellow (room slot 8), not by day.
+    const lamp = data.terrace.find((t) => t.kind === "lamp")!;
+    const at = terraceAt(lamp, room);
+    const head = toCanvas(at.x, at.y);
+    const glow = (palettes.night as unknown as { room: string[] }).room[8].toLowerCase();
+    const near = (p: { at(x: number, y: number): string | null }) => {
+      const seen = new Set<string>();
+      for (let dy = -52; dy <= -44; dy++) for (let dx = -4; dx <= 4; dx++) seen.add(p.at(Math.round(head.x) + dx, Math.round(head.y) + 6 + dy) ?? "");
+      return seen;
+    };
+    expect(near(await drawn(1)).has(glow), "the lamp lit at night").toBe(true);
+    expect(near(await drawn(0)).has(glow), "the lamp unlit by day").toBe(false);
   });
 
   it("keeps the night's sky dark: faint clouds, no warm glow", async () => {

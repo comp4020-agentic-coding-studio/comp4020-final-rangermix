@@ -124,3 +124,10 @@ Where the build departed from this plan, task by task.
   shadow) is kept only on the phone's layout A, where the street doesn't
   carry on. The phone's layout B never showed the page, as its pan stops
   at the room's edges, so its check is a guard that passed before.
+- **Task 5.** The terrace is placed by where 1920×1080 shows it, clear of
+  the panels and the talk bar where they start: by the left edge 4 to 7
+  tiles along, out front 5.7 to 9.2. The lamp is lit in the window's glass
+  slot, warm yellow at night. Its things share the furniture's colours, so
+  the slice 13 rim test now leaves out pixels the room has without its
+  pieces. The browser check clicks the bench's seat and the table's top,
+  having read that what's drawn there is the thing.

@@ -4,7 +4,7 @@ import { fillCrisp, strokeCrisp } from "./crisp";
 import { pieceBox, pieceParts, topAt } from "./pieces";
 import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
-import { streetSlot } from "./street";
+import { type TerraceThing, street, streetSlot, terraceAt } from "./street";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -463,6 +463,8 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   drawFigureShadows(ctx, state, localNow, layer);
 
   for (const item of drawOrder(state, localNow)) if (!item.inLayer) item.paint(ctx, sprites);
+  // The terrace in the bottom corners, nearest the viewer of all (slice 16).
+  for (const t of street.terrace) drawTerrace(ctx, t, room, light);
 
   if (pointer.ghost) {
     const { piece, at, ok } = pointer.ghost;
@@ -647,6 +649,61 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
       }
     }
   });
+}
+
+/**
+ * A thing on the terrace (slice 16), on the pavement at the slab's foot: a
+ * few blocks for its kind, in the furniture's colours and the hour's light,
+ * with the room's outlines. Scenery: nothing picks it.
+ */
+function drawTerrace(ctx: Ctx, t: TerraceThing, room: RoomView, light: Light): void {
+  const at = terraceAt(t, room);
+  /** A block `w` by `h` tiles centred on the thing's spot, from `z0` to `z` px over the pavement. */
+  const box = (dx: number, dy: number, w: number, h: number, z: number, colour: string, z0 = 0) =>
+    block(ctx, at.x + dx - w / 2, at.y + dy - h / 2, w, h, z - SLAB, colour, z0 - SLAB);
+  // Along the left edge, a long thing lies along y; out front, along x.
+  const long = (len: number, deep: number) => (t.side === "left" ? [deep, len] : [len, deep]);
+  const wood = FURNITURE[14];
+  const dark = FURNITURE[12];
+  switch (t.kind) {
+    case "bench": {
+      const [w, h] = long(2.4, 0.6);
+      const [lw, lh] = long(0.12, 0.12);
+      for (const k of [-1, 1]) {
+        const [dx, dy] = t.side === "left" ? [0, k * 1.05] : [k * 1.05, 0];
+        box(dx, dy, lw, lh, 7, dark);
+      }
+      box(0, 0, w, h, 9, wood, 7);
+      // Its back, on the side away from the café.
+      const [bw, bh] = long(2.4, 0.14);
+      const [bx, by] = t.side === "left" ? [-0.23, 0] : [0, 0.23];
+      box(bx, by, bw, bh, 18, wood, 9);
+      break;
+    }
+    case "planter":
+      box(0, 0, 0.9, 0.9, 10, FURNITURE[8]);
+      box(0, 0, 0.74, 0.74, 18, FURNITURE[6], 10);
+      box(0, 0, 0.5, 0.5, 23, FURNITURE[7], 18);
+      break;
+    case "table":
+      box(0, 0, 0.14, 0.14, 13, dark);
+      box(0, 0, 1.1, 1.1, 15, FURNITURE[5], 13);
+      break;
+    case "umbrella":
+      box(0, 0, 0.1, 0.1, 40, dark, 15);
+      box(0, 0, 1.8, 1.8, 42, FURNITURE[1], 40);
+      box(0, 0, 0.9, 0.9, 44, FURNITURE[1], 42);
+      break;
+    case "chair":
+      box(0, 0, 0.55, 0.55, 9, FURNITURE[11]);
+      box(0, 0.2, 0.55, 0.15, 17, FURNITURE[11], 9);
+      break;
+    case "lamp":
+      box(0, 0, 0.2, 0.2, 46, dark);
+      // Lit at night in the window's glass, warm yellow then.
+      box(0, 0, 0.5, 0.5, 52, light >= 1 ? ROOM[8] : FURNITURE[5], 46);
+      break;
+  }
 }
 
 /** A piece where it stands, as a shaded block; knocked over, lying on its side. */

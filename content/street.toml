@@ -16,11 +16,19 @@
 #   that's where they float. White with a warm underside by day, faint by
 #   night.
 #
+# terrace (slice 16): the café's own pavement in the room's two bottom
+#   corners, each thing standing by the floor's left edge or its front: its
+#   `kind` (bench, planter, table, umbrella, chair, lamp: each drawn as its
+#   own few blocks), its `side` ("left" or "front"), how far `along` that
+#   edge from its back end, in tiles, and how far `out` from it. Scenery:
+#   off the café's grid, it takes no click and blocks no one.
+#
 # The client reads this file with a small reader of its own (street.ts):
-# plain `key = number` lines, the one `[windows]` table and `[[towers]]`
-# tables, with comments. Write it in that much TOML only; anything else
-# (inline tables, dotted keys, strings, underscores in numbers) stops the
-# client loading, though it's valid TOML that `cargo test` reads.
+# plain `key = number` and `key = "word"` lines, the one `[windows]` table
+# and `[[towers]]`, `[[clouds]]` and `[[terrace]]` tables, with comments.
+# Write it in that much TOML only; anything else (inline tables, dotted
+# keys, underscores in numbers) stops the client loading, though it's valid
+# TOML that `cargo test` reads.
 
 horizon = 0.55
 
@@ -91,3 +99,56 @@ width = 30
 x = 300
 y = 30
 width = 20
+
+# The terrace (slice 16), placed where 1920×1080 shows it, clear of the
+# panels and the talk bar where they start. By the left edge: a bench along
+# it between two planters.
+[[terrace]]
+kind = "planter"
+side = "left"
+along = 4.0
+out = 1.4
+
+[[terrace]]
+kind = "bench"
+side = "left"
+along = 5.6
+out = 1.3
+
+[[terrace]]
+kind = "planter"
+side = "left"
+along = 7.2
+out = 1.4
+
+# Out front, right of the middle: a table under an umbrella with two
+# chairs, and a street lamp, lit at night.
+[[terrace]]
+kind = "table"
+side = "front"
+along = 6.5
+out = 1.7
+
+[[terrace]]
+kind = "umbrella"
+side = "front"
+along = 6.5
+out = 1.7
+
+[[terrace]]
+kind = "chair"
+side = "front"
+along = 5.7
+out = 1.7
+
+[[terrace]]
+kind = "chair"
+side = "front"
+along = 7.3
+out = 1.7
+
+[[terrace]]
+kind = "lamp"
+side = "front"
+along = 9.2
+out = 1.1
