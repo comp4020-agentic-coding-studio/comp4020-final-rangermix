@@ -13,7 +13,10 @@ function welcome(): Welcome {
     now: 10_000,
     cap: 6,
     chalkHours: 24,
-    chalkShown: 8, demo: false, ahead: 0, nextJump: 0,
+    chalkShown: 8,
+    demo: false,
+    ahead: 0,
+    nextJump: 0,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false, bot: false }],
@@ -36,6 +39,13 @@ describe("the client's copy of the café", () => {
     expect(s.people.get(1)?.name).toBe("me");
     expect(s.cats.get("mochi")?.pose).toBe("nap");
     expect(s.trust.get("mochi")?.value).toBe(1.5);
+  });
+
+  it("keeps whether you're a demo account, how far ahead the clock runs, and when it can move (slice 17)", () => {
+    const visitor = fromWelcome(welcome(), 4_000);
+    expect([visitor.demo, visitor.ahead, visitor.nextJump]).toEqual([false, 0, 0]);
+    const demo = fromWelcome({ ...welcome(), demo: true, ahead: 3_600_000, nextJump: 70_000 }, 4_000);
+    expect([demo.demo, demo.ahead, demo.nextJump]).toEqual([true, 3_600_000, 70_000]);
   });
 
   it("adds, places, moves and removes people", () => {

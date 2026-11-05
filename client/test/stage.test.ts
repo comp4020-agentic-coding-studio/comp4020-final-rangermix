@@ -142,7 +142,10 @@ describe("the stage's camera and the sprite it follows, together", () => {
           now: 100_000,
           cap: 6,
           chalkHours: 24,
-          chalkShown: 8, demo: false, ahead: 0, nextJump: 0,
+          chalkShown: 8,
+          demo: false,
+          ahead: 0,
+          nextJump: 0,
           snapshot: {
             room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
             people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 1, y: 6 }, walk: { path: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((x) => ({ x, y: 6 })), start: 100_000, speed: 3 }, sitting: false, bot: false }],

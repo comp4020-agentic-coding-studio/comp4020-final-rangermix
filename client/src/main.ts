@@ -5,6 +5,7 @@ import { type ArmsBar, showArms } from "./arms";
 import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
+import { cafeHour } from "./canberra";
 import { type Target, attachInput } from "./input";
 import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
@@ -83,15 +84,20 @@ function enter(me: ApiMe): void {
   // café but the presence ping any press sends (touched, above). It isn't
   // the café's, so it stays live while the café wakes, drawn over the
   // dusting cover.
-  const music = new Music({
-    audio: $<HTMLAudioElement>("music-audio"),
-    title: $("music-title"),
-    artist: $("music-artist"),
-    play: $<HTMLButtonElement>("music-play"),
-    previous: $<HTMLButtonElement>("music-previous"),
-    next: $<HTMLButtonElement>("music-next"),
-    volume: $<HTMLInputElement>("music-volume"),
-  });
+  const music = new Music(
+    {
+      audio: $<HTMLAudioElement>("music-audio"),
+      title: $("music-title"),
+      artist: $("music-artist"),
+      play: $<HTMLButtonElement>("music-play"),
+      previous: $<HTMLButtonElement>("music-previous"),
+      next: $<HTMLButtonElement>("music-next"),
+      volume: $<HTMLInputElement>("music-volume"),
+    },
+    // The café's hour picks the set (slice 17): a demo account's jump to
+    // the night brings the night's music.
+    () => cafeHour(cafe.state),
+  );
   const touched = () => cafe.touched();
   // Music remembered on that the browser wouldn't play yet starts at the
   // first press in the café (slice 15): as the finger lifts, since a
@@ -377,6 +383,7 @@ function enter(me: ApiMe): void {
   const unsubscribe = cafe.onChange(() => {
     $("status-text").textContent = cafe.statusLine();
     $("waking").hidden = !cafe.waking;
+    $("waking-text").textContent = cafe.wakingText;
     // The panels float over the stage, under the dusting cover while the
     // café wakes: out of Tab's reach too (slice 14's review, finding 8).
     for (const id of ["chalkboard", "cats-panel", "here-panel"]) $(id).inert = cafe.waking;

@@ -11,7 +11,10 @@ function state() {
       now: 0,
       cap: 6,
       chalkHours: 24,
-      chalkShown: 8, demo: false, ahead: 0, nextJump: 0,
+      chalkShown: 8,
+      demo: false,
+      ahead: 0,
+      nextJump: 0,
       snapshot: {
         room: {
           width: 12,
