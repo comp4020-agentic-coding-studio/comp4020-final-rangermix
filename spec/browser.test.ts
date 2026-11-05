@@ -81,6 +81,27 @@ async function visit(viewport: { width: number; height: number }, touch = false,
   return { page, frames, sent };
 }
 
+/**
+ * Fakes the page's clock at `at`, and has the café's welcome say it's `at`
+ * too, so the café's hour starts there and the faked clock carries it on.
+ * The page keeps the server's clock, not the device's (slice 17), so a
+ * check that wants an hour of its own sets it in both places.
+ */
+async function cafeAt(page: Page, at: string): Promise<void> {
+  const start = new Date(at).getTime();
+  const since = Date.now();
+  await page.clock.install({ time: new Date(at) });
+  await page.clock.resume();
+  await page.routeWebSocket(/\/ws$/, (ws) => {
+    const server = ws.connectToServer();
+    server.onMessage((m) => {
+      const f = JSON.parse(String(m));
+      if (f.type === "welcome") f.now = start + (Date.now() - since);
+      ws.send(JSON.stringify(f));
+    });
+  });
+}
+
 /** How many animations the waking overlay is running. */
 const wakingAnimations = (page: Page) => page.evaluate(() => document.getElementById("waking")!.getAnimations({ subtree: true }).length);
 
@@ -1353,6 +1374,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
       { x: 11, y: 2 },
     ];
     let coat = "";
+    // The café at 10:00 by its own clock, which the page keeps (slice 17).
+    const at = new Date("2026-10-22T10:00:00+11:00").getTime();
+    const since = Date.now();
     const pinned = (page: Page) =>
       page.routeWebSocket(/\/ws$/, (ws) => {
         const server = ws.connectToServer();
@@ -1360,6 +1384,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
         server.onMessage((m) => {
           const f = JSON.parse(String(m));
           if (f.type === "welcome") {
+            f.now = at + (Date.now() - since);
             f.snapshot.cats.forEach((cat: Frame, i: number) => {
               ids.add(cat.id);
               if (i === 0) coat = cat.coat;
@@ -1443,10 +1468,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
 
   it("stands the room on its street, by day and by night, and takes no click or tap there, at both sizes (slice 13)", async () => {
     const v = await visit({ width: 1920, height: 1080 }, false, {
-      prepare: async (page) => {
-        await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
-        await page.clock.resume();
-      },
+      prepare: (page) => cafeAt(page, "2026-11-04T10:00:00+11:00"),
     });
     const street = (light: "day" | "night") => (palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
     /**
@@ -1503,10 +1525,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // room pans, so the taps go where the canvas shows the street now: points
     // on screen whose canvas pixel is one of the street's colours.
     const phone = await visit({ width: 390, height: 844 }, true, {
-      prepare: async (page) => {
-        await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
-        await page.clock.resume();
-      },
+      prepare: (page) => cafeAt(page, "2026-11-04T10:00:00+11:00"),
     });
     await phone.page.waitForFunction(() => document.body.classList.contains("layout-b"));
     await phone.page.waitForTimeout(600);
