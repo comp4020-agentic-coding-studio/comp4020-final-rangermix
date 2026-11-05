@@ -63,7 +63,8 @@ fn jump(w: &mut World, id: u32, now: u64, minute: Option<u32>) -> (u64, Vec<Out>
     let asked = ask(w, id, now, minute);
     let (_, to) = jumping(&asked).expect("a jump");
     let jump = w.take_jump().expect("held for the world task");
-    (to, w.run_jump(now + 100, jump))
+    w.run_jump(now + 100, jump);
+    (to, w.welcomes(to))
 }
 
 fn welcomes(outs: &[Out]) -> Vec<(u32, u64, u64)> {
@@ -88,14 +89,16 @@ fn a_jump_goes_to_the_next_time_of_day() {
     let jump = w.take_jump().expect("held for the world task");
     assert!(w.take_jump().is_none(), "once");
     let to = t0 + 9 * HOUR + HOUR / 2;
-    let outs = w.run_jump(t0 + 100, jump);
-    let ahead = to - (t0 + 100);
+    w.run_jump(t0 + 100, jump);
+    let outs = w.welcomes(to);
+    // The lead grows by exactly the gap asked for (finding 8).
+    let ahead = to - t0;
     assert_eq!(welcomes(&outs), vec![(1, to, ahead), (2, to, ahead)]);
     assert_eq!(w.ahead(), ahead);
     let line = sink.lines().into_iter().find(|l| l["what"] == "jumped").expect("a jumped line");
     assert_eq!(
         (line["who"].as_str(), line["gap_secs"].as_u64()),
-        (Some("demo2"), Some(ahead / 1000))
+        (Some("demo2"), Some((to - (t0 + 100)) / 1000))
     );
     assert!(line["steps"].as_u64().unwrap() >= 34_000, "{line}");
 }

@@ -42,13 +42,17 @@ pub enum Command {
     },
 }
 
+/// The jump the café is living now, as the `jumping` message every page got,
+/// for a page that opens meanwhile; none between jumps (slice 17).
+pub type Jumping = Arc<std::sync::Mutex<Option<Arc<str>>>>;
+
 /// Each person's current connection: its id, and where to send its messages.
 type Conns = HashMap<u32, (u64, mpsc::Sender<Arc<str>>)>;
 
 /// The world task: what connections send it, one at a time, and ten ticks a
 /// second. `main` makes its inbox before the café wakes, so a connection made
 /// meanwhile waits there (slice 07).
-pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
+pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>, jumping: Jumping) {
     let mut conns: Conns = HashMap::new();
     let mut ticker = tokio::time::interval(Duration::from_millis(100));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -62,7 +66,7 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
                 // A demo account moved the clock on (slice 17): everyone has
                 // been told; the café lives the hours between, then goes on.
                 if let Some(jump) = world.take_jump() {
-                    world = run_jump(world, &mut conns, jump).await;
+                    world = run_jump(world, &mut conns, jump, &jumping).await;
                     // What queued meanwhile was meant for the café before.
                     while let Ok(cmd) = rx.try_recv() {
                         if command(&mut world, &mut conns, cmd, true) == Flow::Stop {
@@ -154,10 +158,15 @@ fn moved_on(msg: &ClientMsg) -> bool {
 /// the café's clock on and welcomes everyone at the new time. A replay that
 /// panics ends the world task the same way, so the process stops and Fly
 /// starts it again from the last save (slice 07).
-async fn run_jump(mut world: World, conns: &mut Conns, jump: crate::world::jump::Jump) -> World {
-    let (world, outs) = match tokio::task::spawn_blocking(move || {
-        let outs = world.run_jump(now_ms(), jump);
-        (world, outs)
+async fn run_jump(mut world: World, conns: &mut Conns, jump: crate::world::jump::Jump, jumping: &Jumping) -> World {
+    let told = ServerMsg::Jumping {
+        by: world.name_of(jump.by),
+        to: jump.to,
+    };
+    *jumping.lock().expect("the jumping lock isn't poisoned") = Some(text(&told));
+    let mut world = match tokio::task::spawn_blocking(move || {
+        world.run_jump(now_ms(), jump);
+        world
     })
     .await
     {
@@ -165,9 +174,15 @@ async fn run_jump(mut world: World, conns: &mut Conns, jump: crate::world::jump:
         Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
         Err(e) => panic!("the jump was cancelled: {e}"),
     };
-    let mut world = world;
+    *jumping.lock().expect("the jumping lock isn't poisoned") = None;
     crate::time::set_ahead(world.ahead());
+    // The replay took a while: the world catches up to the café's clock as
+    // it is now, and the welcome says that time, so no page runs behind
+    // (slice 17's review, finding 5). Pages are covered until their welcome,
+    // so what the catching up says goes nowhere.
     let now = now_ms();
+    let _ = world.tick(now);
+    let outs = world.welcomes(now);
     deliver(&mut world, conns, outs, now);
     world
 }
@@ -245,6 +260,14 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
     // Still replaying its sleep: say so at once; the join waits its turn, and
     // the welcome comes when the café is awake (slice 07).
     if !app.awake.load(Ordering::SeqCst) && sink.send(Message::Text(text(&ServerMsg::Waking {}).as_ref().into())).await.is_err() {
+        return;
+    }
+    // Living a demo account's jump: say so at once, as while waking; the
+    // welcome comes at the new hour (slice 17's review, finding 9).
+    let living = app.jumping.lock().expect("the jumping lock isn't poisoned").clone();
+    if let Some(told) = living
+        && sink.send(Message::Text(told.as_ref().into())).await.is_err()
+    {
         return;
     }
     if app

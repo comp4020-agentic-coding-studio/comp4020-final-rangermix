@@ -4,7 +4,9 @@ use crate::auth;
 use crate::http::{AppState, client_ip, origin_ok};
 use crate::protocol::{ApiError, ApiErrorCode, ApiMe, LogInRequest, Look, RecoverRequest, SignUpRequest};
 use crate::store::{self, UserRow};
-use crate::time::now_ms;
+// Accounts keep Canberra's own clock, not the café's, which a demo account
+// moves on: a jump must spend nobody's session (slice 17's review, finding 4).
+use crate::time::canberra_now_ms as now_ms;
 use axum::Json;
 use axum::extract::{ConnectInfo, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};

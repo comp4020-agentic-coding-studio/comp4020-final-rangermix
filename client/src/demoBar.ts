@@ -37,9 +37,9 @@ function minuteNow(cafeNow: number): number {
 export function aheadText(ms: number): string {
   if (ms <= 0) return "on Canberra time";
   if (ms < HOUR) return `${Math.max(1, Math.round(ms / 60_000))} min ahead`;
-  if (ms < DAY) return `${Math.round(ms / HOUR)} h ahead`;
+  if (ms < DAY) return `${Math.floor(ms / HOUR)} h ahead`;
   const days = Math.floor(ms / DAY);
-  const hours = Math.round((ms % DAY) / HOUR);
+  const hours = Math.floor((ms % DAY) / HOUR);
   const whole = days === 1 ? "a day" : `${days} days`;
   return `${whole}${hours > 0 ? ` and ${hours} h` : ""} ahead`;
 }

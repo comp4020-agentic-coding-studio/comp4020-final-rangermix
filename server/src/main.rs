@@ -98,6 +98,7 @@ async fn run() -> anyhow::Result<()> {
     let port = config.port;
     let state = http::AppState::new(config, readme, store.clone(), tuning, world_tx.clone());
     let awake = state.awake.clone();
+    let jumping = state.jumping.clone();
     // The doors open at once (slice 07): the page and the accounts work while
     // the café replays its sleep, and a café page opened meanwhile is told so.
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
@@ -117,7 +118,7 @@ async fn run() -> anyhow::Result<()> {
                 return anyhow::Ok(());
             }
             awake.store(true, Ordering::SeqCst);
-            ws::world_task(world, world_rx).await;
+            ws::world_task(world, world_rx, jumping).await;
             anyhow::Ok(())
         })
     };

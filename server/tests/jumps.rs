@@ -2,7 +2,7 @@
 //! binary on a mocked clock, seeded by its own subcommand.
 mod common;
 
-use common::{Cafe, HOUR, Socket, login, repo, seed_demo, signup};
+use common::{Cafe, HOUR, Socket, content_with, login, repo, seed_demo, signup};
 use std::time::Duration;
 
 #[test]
@@ -27,6 +27,57 @@ fn a_jump_cuts_nobody_off() {
     sam.send_text(r#"{"type":"emote","emote":"wave"}"#);
     let waved = sam.next_where(Duration::from_secs(5), |m| m["type"] == "emoted");
     assert_eq!(waved["emote"], "wave");
+    cafe.stop(Duration::from_secs(10));
+}
+
+/// Whether `cookie` is still signed in.
+fn signed_in(cafe: &Cafe, cookie: &str) -> bool {
+    let res = cafe.http(&format!(
+        "GET /api/me HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n",
+        cafe.port
+    ));
+    res.starts_with("HTTP/1.1 200")
+}
+
+#[test]
+fn long_jumps_age_no_session_keep_the_pages_clock_and_tell_a_page_that_opens() {
+    // Slice 17's review, findings 4, 5 and 9, on a café whose sessions last a
+    // day and whose clock can move again at once.
+    let data = tempfile::tempdir().unwrap();
+    let content = content_with(
+        data.path(),
+        &[
+            ("session_days = 30", "session_days = 1"),
+            ("jump_every_secs = 60", "jump_every_secs = 1"),
+        ],
+    );
+    assert!(seed_demo(data.path(), &content, "catppuccino"));
+    let cafe = Cafe::start(data.path(), &content, Some("2026-11-06T14:00:00+11:00"));
+    let (_, sam) = signup(&cafe, "sam");
+    let (_, joan) = signup(&cafe, "joan");
+    let mut demo = Socket::open(&cafe, &login(&cafe, "demo1", "catppuccino"));
+    let you = demo.welcome()["you"].clone();
+    for _ in 0..2 {
+        // On to 13:59, a minute short of a day.
+        demo.send_text(r#"{"type":"setClock","minute":839}"#);
+        demo.next_where(Duration::from_secs(10), |m| m["type"] == "jumping");
+        // Finding 9: a page that opens while the café lives the hours is told.
+        let mut opener = Socket::open(&cafe, &joan);
+        let first: serde_json::Value = serde_json::from_str(&opener.next_text()).unwrap();
+        assert_eq!(first["type"], "jumping", "{first}");
+        let welcome = demo.next_where(Duration::from_secs(60), |m| m["type"] == "welcome");
+        // Finding 5: the welcome's time is the café's own, not where the
+        // replay began, so what the café starts next isn't seen late.
+        demo.send_text(r#"{"type":"walkTo","tile":{"x":7,"y":2}}"#);
+        let moved = demo.next_where(Duration::from_secs(5), |m| m["type"] == "personMoved" && m["id"] == you);
+        let late = moved["walk"]["start"].as_u64().unwrap() as i64 - welcome["now"].as_u64().unwrap() as i64;
+        assert!((0..500).contains(&late), "the page's clock would run {late} ms behind");
+        drop(opener);
+        std::thread::sleep(Duration::from_millis(1_100));
+    }
+    // Finding 4: nearly two days on by the café's clock, sam's day-long
+    // session is still good: jumps don't spend anyone's session.
+    assert!(signed_in(&cafe, &sam));
     cafe.stop(Duration::from_secs(10));
 }
 

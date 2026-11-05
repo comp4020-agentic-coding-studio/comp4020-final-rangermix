@@ -141,7 +141,8 @@ fn bots_come_through_a_jump() {
     );
     let jump = w.take_jump().unwrap();
     let to = jump.to;
-    let outs = w.run_jump(t0 + 100, jump);
+    w.run_jump(t0 + 100, jump);
+    let outs = w.welcomes(to);
     assert!(
         outs.iter().all(|o| o.to == To::One(1)),
         "a bot has no page to welcome: {:?}",

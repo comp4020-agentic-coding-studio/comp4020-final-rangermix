@@ -19,7 +19,10 @@ describe("the demo bar", () => {
     expect(aheadText(0)).toBe("on Canberra time");
     expect(aheadText(2 * 60_000)).toBe("2 min ahead");
     expect(aheadText(20_000)).toBe("1 min ahead");
-    expect(aheadText(9.5 * HOUR)).toBe("10 h ahead");
+    // Whole hours, rounded down, so nearly a day never reads "24 h" (slice 17's review, finding 8).
+    expect(aheadText(9.5 * HOUR)).toBe("9 h ahead");
+    expect(aheadText(23.9 * HOUR)).toBe("23 h ahead");
+    expect(aheadText(DAY + 23.9 * HOUR)).toBe("a day and 23 h ahead");
     expect(aheadText(DAY)).toBe("a day ahead");
     expect(aheadText(DAY + 3 * HOUR)).toBe("a day and 3 h ahead");
     expect(aheadText(2 * DAY)).toBe("2 days ahead");

@@ -13,6 +13,10 @@ use crate::room::Walker;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Jump {
     pub by: u32,
+    /// The café's time when it was asked for: the lead grows by exactly
+    /// `to - from`, so "Canberra time" lands on whole days (slice 17's
+    /// review, finding 8).
+    pub from: u64,
     pub to: u64,
 }
 
@@ -28,7 +32,8 @@ impl World {
         let most = self.tuning.jump_max_hours * 3_600_000;
         let to = match minute {
             Some(minute) => crate::time::next_time_of_day(now, minute),
-            None => crate::time::realign_gap(self.ahead).map(|gap| now + gap),
+            // Canberra's own clock is the café's without its lead.
+            None => crate::time::realign_target(now, now - self.ahead),
         };
         let Some(to) = to.filter(|&to| to - now <= most) else {
             let why = if minute.is_none() {
@@ -40,7 +45,7 @@ impl World {
         };
         let by = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
         tracing::info!(target: "action", uid = id, who = %by, what = "set_clock", outcome = "ok", gap_secs = (to - now) / 1000);
-        self.jump = Some(Jump { by: id, to });
+        self.jump = Some(Jump { by: id, from: now, to });
         out.push(Out {
             to: To::All,
             msg: ServerMsg::Jumping { by, to },
@@ -77,9 +82,10 @@ impl World {
     /// Lives the hours from `now` to the jump's time as the café lives a
     /// sleep, with the people inside set aside, then brings them back with
     /// their timers moved on by the gap, so the jump itself walks nobody
-    /// out. The café's lead grows by the gap and is saved with the replay.
-    /// Returns a welcome at the new time for everyone.
-    pub fn run_jump(&mut self, now: u64, jump: Jump) -> Vec<Out> {
+    /// out. The café's lead grows by the gap asked for, and is saved with
+    /// the replay. The world task then moves the clock on, catches the
+    /// world up to it, and welcomes everyone (`welcomes`).
+    pub fn run_jump(&mut self, now: u64, jump: Jump) {
         let began = std::time::Instant::now();
         let to = jump.to.max(now);
         let gap = to - now;
@@ -87,7 +93,7 @@ impl World {
         // Everyone gets a fresh welcome, so what settling says goes nowhere.
         let mut settling = Vec::new();
         self.settle_for_jump(now, &mut settling);
-        self.ahead += gap;
+        self.ahead += jump.to - jump.from;
         let mut people = std::mem::take(&mut self.people);
         self.arrivals.clear();
         self.heard.clear();
@@ -107,13 +113,17 @@ impl World {
         tracing::info!(target: "cafe", what = "jumped", uid = jump.by, who = %who, gap_secs = gap / 1000,
             steps = replay.steps, took_ms = began.elapsed().as_millis() as u64, refills = replay.refills,
             walks = %replay.walks_text());
-        // A bot has no page to welcome.
+    }
+
+    /// A welcome at `now` for everyone in the café: after a jump. A bot has
+    /// no page to welcome.
+    pub fn welcomes(&self, now: u64) -> Vec<Out> {
         self.people
             .iter()
             .filter(|p| p.bot.is_none())
             .map(|p| Out {
                 to: To::One(p.id),
-                msg: self.welcome(p.id, to),
+                msg: self.welcome(p.id, now),
             })
             .collect()
     }

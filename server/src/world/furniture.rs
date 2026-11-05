@@ -29,7 +29,7 @@ impl World {
         self.held.iter().position(|h| h.by == id)
     }
 
-    fn name_of(&self, id: u32) -> String {
+    pub fn name_of(&self, id: u32) -> String {
         self.person(id).map(|p| p.name.clone()).unwrap_or_else(|| "Someone".into())
     }
 
