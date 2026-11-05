@@ -56,6 +56,10 @@ under [Numbers to tune](#numbers-to-tune).
 - **It keeps Canberra time.** Morning light, afternoon sun, lamps in the
   evening, dim at night, and cats with daily rhythms to match. *Why:* one café
   in one place has one clock, and a night visit becomes a different visit.
+  A demo account can move that clock on, never back; from then the café
+  runs ahead of Canberra's wall clock
+  ([Showing it to markers](#showing-it-to-markers), decided 2026-11-06,
+  not yet built).
 
 ## People
 
@@ -166,7 +170,9 @@ under [Numbers to tune](#numbers-to-tune).
   It unlocks behaviour: the cat comes when you call; then greets you at the
   door and sits by you; then naps on your lap and puts up with being carried
   longer. Your own trust with each cat is shown to you; others see trust only
-  in what the cats do.
+  in what the cats do. The operator's seed for demo accounts is the one
+  change to trust that isn't a person's doing
+  ([Showing it to markers](#showing-it-to-markers)).
 - **Anger** is per cat per person and kept in memory only: it rises with
   unwelcome handling by temper and cools by grudge. Bans are stored until they
   expire. Pet, play, offer and pick up answer by one rule; a refusal or
@@ -388,6 +394,44 @@ renamed.
 - **Privacy:** no email addresses, no IP addresses stored, and bubble text never
   written anywhere. Per-IP rate limits are counted in memory and never written
   down or logged.
+
+## Showing it to markers
+
+Decided 2026-11-06 by the user
+([ADR 0022](adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md));
+built as [slice 17](slices/17-markers-see-weeks-in-ten-minutes.md), whose
+spec is proposed and not yet built. The details marked proposed there are
+still open.
+
+- **Markers get a regular's account.** They have about ten minutes and a
+  new account, which every cat treats as a stranger, and a lap is at least
+  8 days of visits away. So the README gives them a demo account's login
+  beside their own, and the two side by side show what weeks change.
+  *Why:* the café's point is what time builds, and markers can't wait for
+  it.
+- **Demo accounts** are marked as such in the store, by the operator only.
+  `cafe demo seed`, a subcommand of the server's binary run over
+  `fly ssh console`, creates them, marks them and sets each cat's trust in
+  them from `content/demo.toml`; a restart loads it. Their password is in
+  the README, public by design; their recovery codes stay with the user.
+  Sign-up refuses names starting `demo_` or `bot_`.
+- **The page keeps the café's clock**, set from the welcome's `now`: the
+  light, the street, the window, the music set and the board's times follow
+  the server, not the device.
+- **A demo account moves the clock forward** to the next time of day it
+  asks for, at most 24 hours on. The server replays the gap for the whole
+  café as it replays a sleep, while every page waits, then welcomes
+  everyone at the new time. How far ahead the café is, is saved, so the
+  clock never goes back.
+- **A demo account lays out one of three furniture sets** from
+  `content/layouts/` at once, without the rate limit, by the usual
+  placement rules.
+- **A demo account adds and removes bots**: visitors the server runs, which
+  take seats and join the line, never talk or touch anything, and are
+  never stored or met by the cats.
+- **The controls are a floating bar at the top of the room**, which only a
+  demo account sees, working by keyboard, touch and mouse at both sizes.
+  Everyone else sees what it did.
 
 ## The client
 

@@ -55,6 +55,7 @@ starts, from the code as it then stands, and it ends with a fresh review.
 | 14 | Panels over the room | The desktop's panels float over the room, half see-through, draggable and pinnable, dimming when idle; the room at 4×; the treat button beside the emotes | [14](../slices/14-panels-over-the-room.md) | reviewed and merged 2026-11-05 ([plan](plan-slice-14-panels.md), [findings](reviews/slice-14-findings.md), [screens](screens/slice-14/)); the glass more see-through at the user's asking; live once the user has judged the screens, the light theme's white glass, and a real Safari |
 | 15 | Music while you sit | Six CC0 lofi tracks by HoliznaCC0, three for day and three for night by the Canberra hour; each visitor's own player, with Play or Pause, Previous, Next and a volume in a fourth floating panel ([ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)) | [15](../slices/15-music-while-you-sit.md) | reviewed and deployed 2026-11-05, checked live ([plan](plan-slice-15-music.md), [findings](reviews/slice-15-findings.md), [notes](slice-15-music.md), [screens](screens/slice-15/)); live once the user has listened to the sets and judged the panel; a real iPhone's first tap still to try |
 | 16 | The café fills the window | A bigger floor at 32-px tiles, so at 1920×1080 the room fills the window; on a desktop the status and talk bars float over the room; the street across the whole window; a terrace in the room's bottom corners ([ADR 0021](../adr/0021-grow-the-floor-and-float-the-bars.md), proposed) | [16](../slices/16-the-cafe-fills-the-window.md) | proposed 2026-11-06, from the user's three asks of that day, with a study ([notes](slice-16-study.md), [screens](screens/slice-16-study/)); the user's answers in; the floor's size still to choose |
+| 17 | Markers see weeks of the café in ten minutes | The page keeps the server's clock; demo accounts, their login in the README, move it forward up to 24 hours through a replay, lay out one of three furniture sets at once, and add or remove bots, from a floating bar at the top; their trust seeded by the operator; the README's "For markers" ([ADR 0022](../adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md)) | [17](../slices/17-markers-see-weeks-in-ten-minutes.md) | proposed 2026-11-06 from the user's answers on how markers receive the café; five questions open |
 
 What the crits and reviews turn up becomes new slices here, each with a spec
 before its plan.
@@ -127,6 +128,12 @@ Updated by session `a4e69a46` (2026-11-05).
    [ADR 0020](../adr/0020-play-public-domain-lofi-each-visitor-their-own.md)),
    goes between 14 and 11 at the user's asking, since its desktop panel
    is one of 14's floating panels.
+1a. **Slice 17, how markers receive the café** (proposed 2026-11-06,
+   [ADR 0022](../adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md)):
+   demo accounts with the clock, the furniture sets and bots, and the
+   README's "For markers". The user said to "consider markers only", so
+   this comes before the showcase's slices 04 and 03. Whether it goes
+   before or after slice 16 is its question 5; proposed, before.
 2. **Approve and build slices 04, then 03.** The showcase puts a full room
    of strangers in the café, so the load check and the window's count come
    first, then mute, the blocklist and the admin ban. This order is the
