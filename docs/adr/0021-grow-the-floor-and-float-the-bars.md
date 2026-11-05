@@ -1,6 +1,6 @@
 # 0021. Grow the room's floor, float the bars, and carry the street to the window's edges
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-06
 
 ## Context
@@ -66,9 +66,10 @@ a 1920×1080 *viewport*, not a screen, so the room is sized to that.
 We will keep 32-px tiles and **grow the floor** instead, float the
 status and talk bars on a desktop, draw the street across the whole
 window, and put a terrace in the bottom corners as data in
-`content/street.toml`. The floor's size is still the user's to choose
-(slice 16, question 1); proposed, 12 by 12 at 4×, the biggest that also
-fits a phone at 1×. The tile options above are not taken.
+`content/street.toml`. The user chose a **13 by 12 floor at 4×** on 2026-11-06, the biggest
+that fits 1920×1080 at 4×; on the phone's whole-room layout, 10 px too
+wide at 1×, the room is centred and its side corners cut a little. The
+tile options above are not taken.
 
 ## Consequences
 
