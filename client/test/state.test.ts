@@ -13,10 +13,10 @@ function welcome(): Welcome {
     now: 10_000,
     cap: 6,
     chalkHours: 24,
-    chalkShown: 8,
+    chalkShown: 8, demo: false, ahead: 0, nextJump: 0,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
-      people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false }],
+      people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false, bot: false }],
       cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 1, y: 5 }, pose: "nap", walk: null, heldBy: null }],
       yourTrust: [{ cat: "mochi", value: 1.5, level: "stranger" }],
       held: [],
@@ -40,7 +40,7 @@ describe("the client's copy of the café", () => {
 
   it("adds, places, moves and removes people", () => {
     const s = fromWelcome(welcome(), 10_000);
-    const sam = { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "window" as const, at: { x: 7, y: 0 }, walk: null, sitting: false };
+    const sam = { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "window" as const, at: { x: 7, y: 0 }, walk: null, sitting: false, bot: false };
     expect(apply(s, { type: "personJoined", person: sam })).toEqual([{ kind: "announce", text: "sam is waiting at the window." }]);
     expect(apply(s, { type: "personJoined", person: sam })).toEqual([]);
     apply(s, { type: "personPlaced", id: 2, place: "inside", at: { x: 7, y: 0 }, walk: null });
@@ -87,7 +87,7 @@ describe("the client's copy of the café", () => {
     const cushion = { id: 14, kind: "cushion", x: 9, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, perch: false, toppled: false };
     w.snapshot.room.furniture = [cushion];
     const s = fromWelcome(w, 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     expect(apply(s, { type: "furnitureHeld", piece: cushion, by: 2 })).toEqual([{ kind: "announce", text: "sam picked up the cushion." }]);
     expect(s.room.furniture).toEqual([]);
     expect(s.held.get(2)?.id).toBe(14);
@@ -102,7 +102,7 @@ describe("the client's copy of the café", () => {
 
   it("keeps the treats on the floor, your own, and the bowls, and says what happened", () => {
     const s = fromWelcome(welcome(), 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     expect(s.yourTreats).toBe(3);
     expect(s.bowls).toBe(2);
     expect(apply(s, { type: "treatPlaced", treat: { id: 5, at: { x: 3, y: 3 } }, by: 2 })).toEqual([{ kind: "announce", text: "sam put a treat down." }]);
@@ -118,7 +118,7 @@ describe("the client's copy of the café", () => {
 
   it("follows a cat into someone's arms and down again", () => {
     const s = fromWelcome(welcome(), 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     expect(apply(s, { type: "catHeld", cat: "mochi", by: 2 })).toEqual([{ kind: "announce", text: "sam picked up Mochi." }]);
     expect(s.cats.get("mochi")).toMatchObject({ heldBy: 2, pose: "held" });
     expect(apply(s, { type: "catHeld", cat: "mochi", by: null })).toEqual([{ kind: "announce", text: "Mochi got down." }]);
@@ -129,7 +129,7 @@ describe("the client's copy of the café", () => {
     const w = welcome();
     w.snapshot.room.furniture = [{ id: 7, kind: "plant", x: 1, y: 1, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false }];
     const s = fromWelcome(w, 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     expect(apply(s, { type: "furnitureToppled", id: 7, toppled: true, by: null })).toEqual([{ kind: "announce", text: "The plant got knocked over." }]);
     expect(s.room.furniture[0].toppled).toBe(true);
     expect(apply(s, { type: "furnitureToppled", id: 7, toppled: false, by: 2 })).toEqual([{ kind: "announce", text: "sam stood the plant back up." }]);
@@ -140,7 +140,7 @@ describe("the client's copy of the café", () => {
     const w = welcome();
     w.snapshot.room.furniture = [{ id: 8, kind: "toys", x: 7, y: 8, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false }];
     const s = fromWelcome(w, 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     expect(apply(s, { type: "furnitureToppled", id: 8, toppled: true, by: null })).toEqual([{ kind: "announce", text: "The toys got scattered." }]);
     expect(apply(s, { type: "furnitureToppled", id: 8, toppled: false, by: 2 })).toEqual([{ kind: "announce", text: "sam gathered up the toys." }]);
   });
@@ -192,7 +192,7 @@ describe("the client's copy of the café", () => {
 
   it("shows an emote over its person and announces someone else's", () => {
     const s = fromWelcome(welcome(), 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     expect(apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000)).toEqual([{ kind: "announce", text: "sam waves." }]);
     expect(s.emotes.get(2)).toEqual({ emote: "wave", at: 10_000 });
     expect(apply(s, { type: "emoted", from: 1, emote: "laugh" }, 10_000)).toEqual([]);
@@ -201,7 +201,7 @@ describe("the client's copy of the café", () => {
 
   it("forgets someone's emote and what they carried when they leave", () => {
     const s = fromWelcome(welcome(), 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: false });
     apply(s, { type: "emoted", from: 2, emote: "wave" }, 10_000);
     s.held.set(2, { id: 9, kind: "lamp", x: 0, y: 0, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false });
     apply(s, { type: "personLeft", id: 2 });
@@ -234,12 +234,12 @@ describe("the client's copy of the café", () => {
   it("knows a cat asleep where someone sits is on their lap", () => {
     // Phase 3's review, finding 31: the server lets only a lap cat nap there.
     const s = fromWelcome(welcome(), 10_000);
-    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 1, y: 5 }, walk: null, sitting: true });
+    s.people.set(2, { id: 2, name: "sam", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 1, y: 5 }, walk: null, sitting: true, bot: false });
     const mochi = s.cats.get("mochi")!;
     expect(lapOf(s, mochi)).toBe(2);
     expect(lapOf(s, { ...mochi, pose: "sit" })).toBeNull();
     expect(lapOf(s, { ...mochi, at: { x: 2, y: 5 } })).toBeNull();
-    s.people.set(2, { ...s.people.get(2)!, sitting: false });
+    s.people.set(2, { ...s.people.get(2)!, sitting: false, bot: false });
     expect(lapOf(s, mochi)).toBeNull();
   });
 });
@@ -249,20 +249,20 @@ describe("the side a walker shows, through a reconnect (slice 12's review, findi
     // Sam walks toward the viewer, then is sent toward the street wall and
     // arrives; the server ends that walk without a message.
     const w = welcome();
-    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 4 }, walk: { path: [{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 4, y: 6 }], start: 10_000, speed: 1 }, sitting: false });
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 4 }, walk: { path: [{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 4, y: 6 }], start: 10_000, speed: 1 }, sitting: false, bot: false });
     const s = fromWelcome(w, 10_000);
     apply(s, { type: "personMoved", id: 2, walk: { path: [{ x: 4, y: 5 }, { x: 4, y: 4 }, { x: 4, y: 3 }], start: 10_600, speed: 1 } }, 10_600);
     // The connection drops and comes back, long after: the welcome has Sam at (4,3), walk over.
     const again = welcome();
     again.now = 20_000;
-    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 3 }, walk: null, sitting: false });
+    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 3 }, walk: null, sitting: false, bot: false });
     const after = fromWelcome(again, 20_000, s);
     expect(after.facing.get("p2"), "Sam faces the way the last walk went").toEqual({ view: "back", mirror: true });
   });
 
   it("doesn't let a reconnect's kept side outlive the walker leaving", () => {
     const w = welcome();
-    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 4 }, walk: { path: [{ x: 4, y: 4 }, { x: 4, y: 3 }], start: 10_000, speed: 1 }, sitting: false });
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 4 }, walk: { path: [{ x: 4, y: 4 }, { x: 4, y: 3 }], start: 10_000, speed: 1 }, sitting: false, bot: false });
     const s = fromWelcome(w, 10_000);
     apply(s, { type: "personLeft", id: 2 }, 12_000);
     expect(fromWelcome(welcome(), 20_000, s).facing.has("p2")).toBe(false);
@@ -272,11 +272,11 @@ describe("the side a walker shows, through a reconnect (slice 12's review, findi
 describe("someone who's come in, through a reconnect (slice 12's review, finding 4)", () => {
   it("still faces into the room after a reconnect, whichever way the walk in turned", () => {
     const w = welcome();
-    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 8, y: 1 }, walk: { path: [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }], start: 10_000, speed: 3 }, sitting: false });
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 8, y: 1 }, walk: { path: [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 8, y: 1 }], start: 10_000, speed: 3 }, sitting: false, bot: false });
     const s = fromWelcome(w, 10_000);
     const again = welcome();
     again.now = 20_000;
-    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 8, y: 1 }, walk: null, sitting: false });
+    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 8, y: 1 }, walk: null, sitting: false, bot: false });
     expect(fromWelcome(again, 20_000, s).facing.get("p2")).toEqual({ view: "front", mirror: false });
   });
 });

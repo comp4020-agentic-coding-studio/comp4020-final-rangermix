@@ -2,16 +2,20 @@
 //! bubbles and the cats. `handle` and `tick` return messages for the
 //! connection layer to route; nothing here touches a socket, and durable
 //! changes go to the store as writes it doesn't wait for.
+mod bots;
 mod cat_life;
 #[cfg(test)]
 mod cats_tests;
 mod chalk;
 #[cfg(test)]
 mod chalk_tests;
+#[cfg(test)]
+mod demo_tests;
 mod furniture;
 #[cfg(test)]
 mod furniture_tests;
 mod handling;
+mod jump;
 #[cfg(test)]
 mod log_tests;
 mod people;
@@ -56,6 +60,8 @@ pub enum Input {
         id: u32,
         name: String,
         look: Look,
+        /// A demo account (slice 17).
+        demo: bool,
     },
     /// The connection dropped; the seat is kept for the grace period.
     Drop {
@@ -90,6 +96,8 @@ struct Person {
     /// Their furniture changes: a burst, then a slow refill (per person, so a
     /// reconnect doesn't refill it).
     furniture: crate::limits::Bucket,
+    /// A demo account, with the bar of controls (slice 17).
+    demo: bool,
 }
 
 /// Something a person asked for that happens when their walk ends.
@@ -229,7 +237,7 @@ impl World {
     pub fn handle(&mut self, now: u64, input: Input) -> Vec<Out> {
         let mut out = Vec::new();
         match input {
-            Input::Join { id, name, look } => self.join(now, id, name, look, &mut out),
+            Input::Join { id, name, look, demo } => self.join(now, id, name, look, demo, &mut out),
             Input::Drop { id } => self.drop_connection(now, id, &mut out),
             Input::Msg { id, msg } => {
                 // Someone walking out after an unanswered nudge is on their way.
@@ -268,6 +276,9 @@ impl World {
                     ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
                     ClientMsg::Emote { emote } => self.emote(id, emote, &mut out),
                     ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
+                    ClientMsg::SetClock { minute } => self.ask_jump(now, id, minute, &mut out),
+                    ClientMsg::AddBot {} => self.add_bot(now, id, &mut out),
+                    ClientMsg::RemoveBot {} => self.remove_bot(now, id, &mut out),
                 }
                 if let Some(what) = what {
                     self.log_request(id, what, &about, &out[before..], pending_before);
@@ -522,6 +533,9 @@ pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {
         ClientMsg::PutTreat {} => "put_treat",
         ClientMsg::GiveTreat { .. } => "give_treat",
         ClientMsg::Tidy { .. } => "tidy",
+        ClientMsg::SetClock { .. } => "set_clock",
+        ClientMsg::AddBot {} => "add_bot",
+        ClientMsg::RemoveBot {} => "remove_bot",
         ClientMsg::Presence { .. } | ClientMsg::Here {} => return None,
     })
 }
@@ -532,6 +546,18 @@ pub fn code_name(code: ErrorCode) -> String {
         .ok()
         .and_then(|v| v.as_str().map(str::to_string))
         .unwrap_or_default()
+}
+
+impl World {
+    /// True for a demo account; anyone else is told only a demo account can
+    /// (slice 17, AGENTS.md).
+    pub(super) fn demo_or_refuse(&self, id: u32, out: &mut Vec<Out>) -> bool {
+        if self.person(id).is_some_and(|p| p.demo) {
+            return true;
+        }
+        error(out, id, ErrorCode::NotDemo, "Only a demo account can do that.");
+        false
+    }
 }
 
 fn error(out: &mut Vec<Out>, id: u32, code: ErrorCode, detail: &str) {

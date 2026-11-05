@@ -23,6 +23,7 @@ pub enum Command {
         id: u32,
         name: String,
         look: Look,
+        demo: bool,
         conn: u64,
         tx: mpsc::Sender<Arc<str>>,
     },
@@ -57,12 +58,12 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
                 let Some(cmd) = cmd else { break };
                 let now = now_ms();
                 match cmd {
-                    Command::Join { id, name, look, conn, tx } => {
+                    Command::Join { id, name, look, demo, conn, tx } => {
                         if let Some((_, old)) = conns.insert(id, (conn, tx)) {
                             // A second tab: the first is told, then let go.
                             let _ = old.try_send(text(&ServerMsg::Replaced {}));
                         }
-                        let outs = world.handle(now, Input::Join { id, name, look });
+                        let outs = world.handle(now, Input::Join { id, name, look, demo });
                         deliver(&mut world, &mut conns, outs, now);
                     }
                     Command::Leave { id, conn } => {
@@ -187,6 +188,7 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
             id,
             name: user.name.clone(),
             look,
+            demo: user.demo,
             conn,
             tx,
         })

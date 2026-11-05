@@ -10,12 +10,12 @@ const s = fromWelcome(
     now: 0,
     cap: 6,
     chalkHours: 24,
-    chalkShown: 8,
+    chalkShown: 8, demo: false, ahead: 0, nextJump: 0,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [
-        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false },
-        { id: 2, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false },
+        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false, bot: false },
+        { id: 2, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false, bot: false },
       ],
       cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 6, y: 5 }, pose: "sit", walk: null, heldBy: null }],
       yourTrust: [{ cat: "mochi", value: 23.5, level: "familiar" }],

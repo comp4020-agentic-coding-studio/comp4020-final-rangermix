@@ -170,7 +170,6 @@ pub struct UserRow {
     pub avatar: u8,
     pub colour: u8,
     /// A demo account (slice 17): it can move the clock and add bots.
-    #[allow(dead_code)] // read by the world task (slice 17, task 4)
     pub demo: bool,
 }
 

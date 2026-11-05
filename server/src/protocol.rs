@@ -49,6 +49,8 @@ pub struct PersonView {
     pub walk: Option<Walk>,
     /// Sitting on a piece of furniture at `at`.
     pub sitting: bool,
+    /// A bot a demo account added (slice 17): the server runs it.
+    pub bot: bool,
 }
 
 /// A piece someone is carrying.
@@ -312,6 +314,18 @@ pub enum ErrorCode {
     NoTreats,
     /// You're carrying a cat or a piece already.
     HandsFull,
+    /// Only a demo account can do that (slice 17).
+    NotDemo,
+    /// The clock moved on a moment ago; it can move again shortly.
+    TooSoon,
+    /// That time isn't within a day, or the café is on Canberra time already.
+    BadTime,
+    /// As many bots as the café takes are here.
+    BotsFull,
+    /// There's no bot to remove.
+    NoBots,
+    /// The café's clock moved on before that reached it.
+    MovedOn,
 }
 
 /// What a client asks for. The server decides what happens (AGENTS.md).
@@ -388,6 +402,15 @@ pub enum ClientMsg {
     Emote {
         emote: Emote,
     },
+    /// A demo account moves the café's clock on to the next time it's
+    /// `minute` past midnight in Canberra, or, with none, on to Canberra's
+    /// own hour again (slice 17, ADR 0022).
+    SetClock {
+        minute: Option<u32>,
+    },
+    /// A demo account adds a bot to the café, or removes the newest.
+    AddBot {},
+    RemoveBot {},
 }
 
 /// What the server tells clients: a snapshot on joining, then events in order.
@@ -403,6 +426,12 @@ pub enum ServerMsg {
         /// The chalkboard keeps this many hours of lines and shows this many.
         chalk_hours: u32,
         chalk_shown: u32,
+        /// You're a demo account, with the bar of controls (slice 17).
+        demo: bool,
+        /// How far a demo account has moved the café's clock on, in ms.
+        ahead: u64,
+        /// When, by the café's clock, its clock can move on again.
+        next_jump: u64,
         // Boxed: by far the largest message, and sent once per connection.
         snapshot: Box<Snapshot>,
     },
@@ -410,6 +439,12 @@ pub enum ServerMsg {
     /// Sent at once to a connection made while the café replays its sleep:
     /// the welcome follows when it's awake (slice 07).
     Waking {},
+    /// A demo account moved the café's clock on to `to`: the café lives the
+    /// hours between, and a welcome at the new time follows (slice 17).
+    Jumping {
+        by: String,
+        to: u64,
+    },
     PersonJoined {
         person: PersonView,
     },
