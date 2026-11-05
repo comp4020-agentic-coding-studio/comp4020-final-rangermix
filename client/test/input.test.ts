@@ -91,9 +91,9 @@ describe("pointing at things", () => {
     // (one that doesn't block) is somewhere to go; its menu opens from the
     // tile you're on or already walking to.
     const s = state();
-    const rug = { id: 7, kind: "rug", x: 2, y: 2, w: 4, h: 3, movable: true, blocks: false, under: true, seats: false, toppled: false };
-    const cushion = { id: 14, kind: "cushion", x: 7, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, toppled: false };
-    const chair = { id: 9, kind: "chair", x: 8, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: true, toppled: false };
+    const rug = { id: 7, kind: "rug", x: 2, y: 2, w: 4, h: 3, movable: true, blocks: false, under: true, seats: false, perch: false, toppled: false };
+    const cushion = { id: 14, kind: "cushion", x: 7, y: 7, w: 1, h: 1, movable: true, blocks: false, under: false, seats: true, perch: false, toppled: false };
+    const chair = { id: 9, kind: "chair", x: 8, y: 2, w: 1, h: 1, movable: true, blocks: true, under: false, seats: true, perch: false, toppled: false };
     s.room.furniture = [rug, cushion, chair];
     const piece = (id: number, tile: { x: number; y: number }) => [{ kind: "piece" as const, id, tile }];
     // You stand at (5,5), off the rug: a click on it walks there.
