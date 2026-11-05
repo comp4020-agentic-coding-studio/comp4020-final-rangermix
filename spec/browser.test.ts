@@ -313,7 +313,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // Two on the left never overlap.
     expect(panels.chalkboard.y + panels.chalkboard.height).toBeLessThanOrEqual(panels.cats.y + 0.5);
     // Nothing important under them where they start: every tile's middle, and the chalkboard's, is the room's.
-    const tiles = [{ x: 8, y: 0 }, ...Array.from({ length: 9 * 12 }, (_, i) => ({ x: i % 12, y: 1 + Math.floor(i / 12) }))];
+    // The floor is 13 by 12 since slice 16, the music panel the fourth.
+    const tiles = [{ x: 8, y: 0 }, ...Array.from({ length: 12 * 13 }, (_, i) => ({ x: i % 13, y: 1 + Math.floor(i / 13) }))];
     for (const t of tiles) {
       const at = await tileAt(page, t);
       expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [at.x, at.y]), `the tile (${t.x}, ${t.y})`).toBe("room");
@@ -818,10 +819,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
   it("keeps a cat's menu opened low in the room whole on screen, by mouse and by keyboard, at both desktop sizes", async () => {
     // A cat's menu is tall, and opened on the bottom row it ran off the
     // room's bottom, under the talk bar. Cats wander, so this page is shown
-    // one sitting still on the bottom row at (5,9): its welcome says so, and
+    // one sitting still on the bottom row, (5,12) since slice 16's 13 by 12
+    // floor: its welcome says so, and
     // what the café says of that cat later is held back. Only what this page
     // draws changes; every action is still the café's to answer.
-    const LOW = { x: 5, y: 9 };
+    const LOW = { x: 5, y: 12 };
     const lowCat = (page: Page) =>
       page.routeWebSocket(/\/ws$/, (ws) => {
         const server = ws.connectToServer();
@@ -839,8 +841,10 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const expectMenuInStage = async (page: Page) => {
       const menu = page.locator(".menu");
       await menu.waitFor();
-      const [m, s] = await Promise.all([menu.boundingBox(), page.locator("#stage").boundingBox()]);
+      const [m, s, talk] = await Promise.all([menu.boundingBox(), page.locator("#stage").boundingBox(), page.locator(".talk").boundingBox()]);
       expect(m!.y + m!.height, "the menu's bottom within the stage").toBeLessThanOrEqual(s!.y + s!.height + 0.5);
+      // The talk bar floats over the stage's foot on a desktop (slice 16): the menu stays above it.
+      expect(m!.y + m!.height, "the menu's bottom above the talk bar").toBeLessThanOrEqual(talk!.y + 0.5);
       expect(m!.y).toBeGreaterThanOrEqual(s!.y - 0.5);
       expect(m!.x + m!.width, "the menu's right within the stage").toBeLessThanOrEqual(s!.x + s!.width + 0.5);
       expect(m!.x).toBeGreaterThanOrEqual(s!.x - 0.5);
@@ -863,8 +867,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
       await page.keyboard.press("Escape");
       // By keyboard: the pointer to the bottom row's left end, along to the cat, and Enter.
       await page.locator("#room").focus();
-      for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowDown");
-      for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowLeft");
+      for (let i = 0; i < 13; i++) await page.keyboard.press("ArrowDown");
+      for (let i = 0; i < 13; i++) await page.keyboard.press("ArrowLeft");
       for (let i = 0; i < LOW.x; i++) await page.keyboard.press("ArrowRight");
       await page.keyboard.press("Enter");
       await expectMenuInStage(page);
@@ -1479,23 +1483,84 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // beside the floor's left, right and front tips. Each point is read
     // first, to be sure it's the street that's clicked.
     const box = (await v.page.locator("#room").boundingBox())!;
-    const colourAt = (fx: number, fy: number) =>
-      v.page.evaluate(
-        ([fx, fy]) => {
-          const canvas = document.getElementById("room") as HTMLCanvasElement;
-          const [r, g, b] = canvas.getContext("2d")!.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
-          return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
-        },
-        [fx, fy],
-      );
     const sentBefore = v.sent.length;
     // The floor's tips at 1×, for the 13 by 12 floor: left (0, 160), right
     // (400, 152) and front (192, 256) of 400 by 264; these points are clear of them.
-    for (const [fx, fy] of [[0.01, 0.02], [0.99, 0.02], [0.01, 0.97], [0.99, 0.97], [0.01, 0.76], [0.99, 0.72], [0.4, 0.99]]) {
-      expect(street("day"), `the point (${fx}, ${fy}) is the street`).toContain(await colourAt(fx, fy));
-      await v.page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+    // The 13 by 12 room reaches under the panels and the floating bars at
+    // 4× (slice 16), so the points are found, not fixed: in each corner of
+    // the room's canvas, the first point whose pixel is the street's and
+    // where the canvas is what a click reaches. (By the front tip, the
+    // street is under the floating talk bar now.)
+    const regions: [string, number, number, number, number][] = [
+      ["top left", 0, 0.3, 0, 0.35],
+      ["top right", 0.7, 1, 0, 0.35],
+      ["bottom left", 0, 0.3, 0.6, 1],
+      ["bottom right", 0.7, 1, 0.6, 1],
+    ];
+    const points = await v.page.evaluate(
+      ([regions, colours]) => {
+        const canvas = document.getElementById("room") as HTMLCanvasElement;
+        const r = canvas.getBoundingClientRect();
+        const ctx = canvas.getContext("2d")!;
+        // The floor and its walls as drawn, from the café's own map: the
+        // floor's diamond, raised by the walls' height, and its slab under
+        // it. A point off all of it is the street, whatever its colour.
+        const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+        const scale = r.width / room.size.width;
+        const [w, h] = [13, 13];
+        const corner = (gx: number, gy: number) => {
+          // tileAt gives a tile's middle: a corner is half a tile back on each axis.
+          const m = room.tileAt(gx, gy);
+          const right = room.tileAt(gx + 1, gy);
+          const down = room.tileAt(gx, gy + 1);
+          return { x: m.x - (right.x - m.x) / 2 - (down.x - m.x) / 2, y: m.y - (right.y - m.y) / 2 - (down.y - m.y) / 2 };
+        };
+        const [left, back, rightTip, front] = [corner(0, 1), corner(w, 1), corner(w, h), corner(0, h)];
+        const wall = 56 * scale;
+        const slab = 8 * scale;
+        // The room as one shape: up the walls from the back edges, down the slab under the front ones.
+        const shape = [
+          { x: left.x, y: left.y - wall },
+          { x: back.x, y: back.y - wall },
+          { x: rightTip.x, y: rightTip.y - wall },
+          { x: rightTip.x, y: rightTip.y + slab },
+          { x: front.x, y: front.y + slab },
+          { x: left.x, y: left.y + slab },
+        ];
+        const inRoom = (x: number, y: number) => {
+          let inside = false;
+          for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+            const [a, b] = [shape[i], shape[j]];
+            if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+          }
+          return inside;
+        };
+        const out: { where: string; x: number; y: number }[] = [];
+        for (const [where, x0, x1, y0, y1] of regions) {
+          search: for (let fy = y0 + 0.005; fy < y1; fy += 0.01) {
+            for (let fx = x0 + 0.005; fx < x1; fx += 0.01) {
+              const x = r.left + r.width * fx;
+              const y = r.top + r.height * fy;
+              if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight || inRoom(x, y) || document.elementFromPoint(x, y)?.id !== "room") continue;
+              const [cr, cg, cb] = ctx.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
+              if (colours.includes(`#${[cr, cg, cb].map((c) => c.toString(16).padStart(2, "0")).join("")}`)) {
+                out.push({ where, x, y });
+                break search;
+              }
+            }
+          }
+        }
+        return out;
+      },
+      [regions, street("day")] as const,
+    );
+    expect(points.map((p) => p.where), "a street point to click in each corner and by the front").toEqual(regions.map((r) => r[0]));
+    for (const p of points) {
+      const before = v.sent.length;
+      await v.page.mouse.click(p.x, p.y);
       await v.page.waitForTimeout(150);
-      expect(await v.page.locator(".menu").count(), `a click on the street at (${fx}, ${fy})`).toBe(0);
+      expect(await v.page.locator(".menu").count(), `a click on the street ${p.where}`).toBe(0);
+      expect(v.sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what a click on the street ${p.where} (${Math.round(p.x)}, ${Math.round(p.y)}) sent`).toEqual([]);
     }
     expect(v.sent.slice(sentBefore).filter((f) => f.type !== "here").map((f) => f.type), "what clicks on the street sent").toEqual([]);
     // On to 22:00 on the same page: the night's street, with a star or a lit

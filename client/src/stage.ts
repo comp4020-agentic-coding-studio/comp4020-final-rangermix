@@ -137,7 +137,10 @@ export class Stage {
     } else {
       // On a phone the page scrolls, so only the width limits the room.
       const phone = matchMedia(PHONE).matches;
-      this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight);
+      // On a desktop the stage is the whole window, the bars floating over
+      // it (slice 16): the room fits it less 8 px each side.
+      const margin = phone ? 0 : 16;
+      this.scale = fitScale(this.box.clientWidth - margin, phone ? Infinity : this.box.clientHeight - margin);
       this.canvas.style.left = "";
       this.canvas.style.top = "";
     }

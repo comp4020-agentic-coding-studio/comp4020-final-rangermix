@@ -180,6 +180,23 @@ describe("the panels over the room (slice 14)", () => {
     expect(glass).toMatch(/\.panel \.hint[^{]*\{[^}]*color:\s*var\(--panel-muted\)/);
   });
 
+  it("draws the floating bars' glass and the status line's words from the panels' tokens, so the panels' 4.5:1 holds for them (slice 16)", () => {
+    // The bars float only on a desktop, outside layout B, which has its own.
+    const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
+    const bars = desktop.slice(0, desktop.indexOf(".panel {"));
+    expect(bars).toMatch(/body:not\(\.layout-b\) \.status\s*\{[^}]*position:\s*fixed/);
+    expect(bars).toMatch(/body:not\(\.layout-b\) \.talk\s*\{[^}]*position:\s*fixed/);
+    // The status line's words, the only text on the bars' glass: the
+    // talk bar's box, buttons and emotes keep their own opaque fills.
+    expect(bars).toMatch(/#status-text\s*\{[^}]*color:\s*var\(--panel-ink\)/);
+    // Opaque card where the browser can't filter; the panels' glass where it can.
+    expect(bars).toMatch(/#status-text\s*\{[^}]*background:\s*var\(--card\)/);
+    expect(bars).toMatch(/\.talk\s*\{[^}]*background:\s*var\(--card\)/);
+    const glass = bars.slice(bars.indexOf("@supports"));
+    expect(glass).toMatch(/@supports \(\(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)\) and \(color: rgb\(from red r g b\)\)/);
+    expect(glass).toMatch(/background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha\)\);\s*-webkit-backdrop-filter:\s*var\(--glass-filter\);\s*backdrop-filter:\s*var\(--glass-filter\)/);
+  });
+
   it("draws the panels' glass from the tokens, and is opaque where a browser can't filter what's behind", () => {
     const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
     // The filter and relative colours both, or the opaque card (slice 14's review, finding 4).

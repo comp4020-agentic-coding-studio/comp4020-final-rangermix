@@ -132,17 +132,19 @@ export function openMenu(
   overlay.append(menu);
   if (!menu.classList.contains("ring") && !menu.classList.contains("sheet")) {
     // Measured once it's on the page, then kept whole within the stage,
-    // which cuts off anything past its edges. One taller than the stage
-    // scrolls.
-    menu.style.maxHeight = `${overlay.clientHeight}px`;
+    // which cuts off anything past its edges, and clear of the bars that
+    // float over it on a desktop (slice 16). One taller than that scrolls.
+    const free = freeArea(overlay);
+    const band = Math.max(0, free.bottom - free.top);
+    menu.style.maxHeight = `${band}px`;
     menu.style.overflowY = "auto";
     const at = menuSpot(
-      { left: anchor.left, right: anchor.right ?? anchor.left, top: anchor.top },
+      { left: anchor.left, right: anchor.right ?? anchor.left, top: anchor.top - free.top },
       { w: menu.offsetWidth, h: menu.offsetHeight },
-      { w: overlay.clientWidth, h: overlay.clientHeight },
+      { w: overlay.clientWidth, h: band },
     );
     menu.style.left = `${at.left}px`;
-    menu.style.top = `${at.top}px`;
+    menu.style.top = `${at.top + free.top}px`;
   }
   open = menu;
   menu.querySelector("button")?.focus();

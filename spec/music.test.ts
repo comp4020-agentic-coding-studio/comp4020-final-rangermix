@@ -524,8 +524,14 @@ describe("the café's music", { timeout: 60_000 }, () => {
       const scrolls = await page.evaluate(() => { const b = document.querySelector(".music-body")!; return b.scrollHeight > b.clientHeight + 1; });
       expect(scrolls, `${what}: the music's body scrolls`).toBe(false);
     };
-    // The longest title of the six.
+    // The longest title of the six, which wraps to two lines in the 17rem
+    // panel (slice 16): the panel grows to it a frame later, once it's
+    // measured again.
     await page.getByRole("button", { name: "Previous track" }).click();
+    await page.waitForFunction(() => {
+      const b = document.querySelector(".music-body")!;
+      return b.scrollHeight <= b.clientHeight + 1;
+    });
     await whole("1920×1080");
     await page.getByRole("button", { name: "Pin the music", exact: true }).click();
     await whole("1920×1080, pinned");

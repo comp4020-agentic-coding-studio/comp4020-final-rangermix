@@ -107,6 +107,25 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .carrying { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .status { flex-wrap: wrap; }
 .outdated { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.3rem 0.2rem 0.8rem; border: 1px solid var(--accent); border-radius: 999px; }
+/* The bars float on a desktop (slice 16), as layout B's do: the room has the
+   window's whole height, so the 13 by 12 floor fits at 4× in 1920×1080. The
+   status line is a small pill top left, its buttons top right, and the talk
+   bar a frosted bar across the bottom middle, on the panels' glass. */
+@media (min-width: 960px) {
+  body:not(.layout-b) .cafe { display: block; padding: 0; }
+  body:not(.layout-b) .stage { position: fixed; inset: 0; }
+  body:not(.layout-b) .status { position: fixed; z-index: 3; top: 8px; left: 8px; right: 8px; pointer-events: none; }
+  body:not(.layout-b) .status > * { pointer-events: auto; }
+  body:not(.layout-b) #status-text { flex: none; margin-right: auto; padding: 0.35rem 0.8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--panel-ink); }
+  /* What else the status line shows as it happens (carrying something, the
+     café updated) sits on the same glass as the words, so it reads over the room. */
+  body:not(.layout-b) .carrying, body:not(.layout-b) .outdated { padding: 0.25rem 0.35rem 0.25rem 0.8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--panel-ink); }
+  body:not(.layout-b) .outdated { border-color: var(--accent); }
+  body:not(.layout-b) .talk { position: fixed; z-index: 3; bottom: 8px; left: 50%; transform: translateX(-50%); width: min(60rem, calc(100vw - 16px)); padding: 0.4rem; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  @supports ((backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0))) and (color: rgb(from red r g b)) {
+    body:not(.layout-b) #status-text, body:not(.layout-b) .carrying, body:not(.layout-b) .outdated, body:not(.layout-b) .talk { background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
+  }
+}
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem 1rem 0.75rem; min-height: 0; display: flex; flex-direction: column; }
 .panel h2 { font-size: 0.95rem; margin: 0; }
 .panel h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
@@ -131,7 +150,10 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .panel-body > :first-child, #here > :first-child { margin-top: 0; }
 @media (min-width: 960px) {
   /* Fixed over the stage, where floating.ts puts them, and kept inside it. */
-  .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 18rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+  /* 17rem, so where they start they leave every tile's middle of the 13 by
+     12 floor clear at 1920×1080: the floor's left corner tile has its
+     middle 288 px in (slice 16). */
+  .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 17rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
   /* As tall as its content, up to its share of the stage (floating.ts sets --most). */
   .panel { max-height: var(--most, 40vh); }
   /* Who's here keeps its headings in view; only what was said scrolls. */

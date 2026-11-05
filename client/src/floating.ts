@@ -53,6 +53,10 @@ export class Floating {
       this.saved[panel.id] ??= { spot: START[panel.id], pinned: false };
       // A panel that grows or shrinks moves, if it stands from the bottom or right.
       this.observer.observe(panel);
+      // The music's cap is its own height (place()), so its box can't grow
+      // to tell: a title that wraps to two lines in the 17rem panel (slice
+      // 16) grows what's in it, which is watched instead.
+      for (const inner of panel.querySelectorAll(".music-now, .music-controls")) this.observer.observe(inner);
       this.dragging(panel);
       this.pinning(panel);
       // Awake while pinned, and on a phone, where panels don't float.
@@ -66,9 +70,18 @@ export class Floating {
     this.place();
   }
 
+  /**
+   * Where the panels may go: the stage, less the bands the floating status
+   * and talk bars take at its top and foot (slice 16), so a panel starts,
+   * moves and stays clear of them.
+   */
   private stageBox(): { left: number; top: number; width: number; height: number } {
     const box = this.stage.getBoundingClientRect();
-    return { left: box.left, top: box.top, width: box.width, height: box.height };
+    const status = document.querySelector(".status")?.getBoundingClientRect();
+    const talk = document.querySelector(".talk")?.getBoundingClientRect();
+    const top = status && status.bottom > box.top ? Math.min(status.bottom, box.bottom) : box.top;
+    const bottom = talk && talk.top < box.bottom ? Math.max(talk.top, top) : box.bottom;
+    return { left: box.left, top, width: box.width, height: bottom - top };
   }
 
   /** The music panel, if it floats with these. */
