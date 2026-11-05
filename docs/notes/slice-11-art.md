@@ -129,3 +129,16 @@ chest, eyes open, and the café draws the holder's arms round it in their
 own skin: one under the cat rising toward its head, a hand on its back
 (`drawHug` in render.ts). Their face shows above. A test holds the arms
 across the cat in the holder's skin, and the cat below their eyes.
+
+## Live, 2026-11-05
+
+Merged to `main` at `04f218d`; CI's checks and deploy passed (run
+41933797131). Checked on the live café at about 11:05 AEDT with one
+account, `agent_s11` plus four characters (a fresh password, never
+written down), signed up at 1920×1080 and logged in at 390×844, each
+visit left at once. Build `mw2r5x8h`. The sign-up look picker previews at
+32×32. The welcome sends each cat with its build: Burakku slim, Mochi
+round, Tora striped. In the room as visitors had arranged it: Mochi
+sitting on the sofa's arm, Tora and Burakku asleep on the window seats on
+their legs, the cat tower, the table and chairs, and two plants a cat had
+knocked over, lying as their pots and leaves.

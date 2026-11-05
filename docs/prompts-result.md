@@ -1983,3 +1983,68 @@ recording why HoliznaCC0 and why each visitor has their own player
   said so by message: this entry follows its own. Slice 14 merged to
   `main` while this was written, so 15 can be built once approved.
 - Slice 15 waits on the user's approval.
+
+### 16. Walking onto the rug
+
+*Session `898737a9`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-05 04:09:58 AEDT*
+
+> currently clicking on the rug show the interaction menu but prevent user standing on it. for some kind of interactable items user should be able to walk to / on it, like rugs.
+
+**Result.** A click or tap on the rug now walks you onto it
+([`8a0ecc1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8a0ecc1)).
+- **The cause was the client's alone.** The server already lets people
+  stand on a piece that doesn't block, as the rug and the cushion don't,
+  but the client opened a menu for every movable piece clicked, and the
+  rug's only says "Move the rug". No walk was sent; with full arms the
+  click did nothing at all.
+- **The rule, from the data:** a click on a piece people walk over walks
+  you there; a click on the tile you stand on, or are walking to, opens
+  its menu. A cat or a person on the rug, a piece that blocks, or one
+  knocked over still opens the menu wherever you are. Enter on the
+  keyboard's pointer opens it at once, so the keyboard reaches "Move the
+  rug" as before. It names no kind, so a new piece that doesn't block
+  works the same. In `docs/design.md`, under the controls, with
+  [notes/walk-onto-rugs.md](notes/walk-onto-rugs.md).
+- **Checked:** a unit test, seen failing first, and a browser check at
+  1920×1080 by mouse and 390×844 by touch, seen failing against a local
+  café serving `main`'s client and passing with the fix; all of `spec/`,
+  the client's tests and `cargo test` pass. Built on a branch from `main`;
+  not yet on the live café.
+
+*Sent 2026-11-05 10:03:09 AEDT*
+
+> create pr to merge
+
+**Result.** The branch rebased onto `main`, which had taken slice 14 and
+the music session's entries since, and opened as a pull request
+([#1](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/pull/1)). The prompt log was the only conflict: both
+sides had added to its end, and this session's entry now follows the
+music session's, numbered 16, as its prompt came after. Every check ran
+again on the rebased tree: 230 client tests, all 77 of `spec/` against a
+local café (the rug check with slice 14's panels over the room) and
+`cargo test`, all passing. Live once merged and deployed.
+
+### 15. Music in the café (continued)
+
+*Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-05 12:23:52 AEDT*
+
+> add credit for the music
+
+**Result.** `README.md` is the user's, and this was their ask to write
+the credit proposed for it. A **Credits** section at its end, the user's
+text untouched
+([`d70120f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d70120f)):
+the six tracks from HoliznaCC0's *Public Domain Lofi*, under CC0 1.0,
+each linked to its page on the Free Music Archive, three by day and
+three by night, noted as playing once slice 15 is built (it is still
+proposed). Catppuccin is credited beside it, under the MIT licence, as
+the opening paragraph already names it. The links to the slice and to
+`content/sprites/CREDITS.md` are full GitHub addresses, because
+`/readme/` serves only images from `docs/` and a relative link would
+404 on the live café. Checked on a local server: `/readme/` renders the
+section with every link, and `spec/invariants.test.ts` (the README's
+headings on the served page, in order) passes.

@@ -673,6 +673,79 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.getByRole("button", { name: "Close" }).click();
   });
 
+  it("walks onto the rug by a click or tap, and opens its menu from there, at both sizes", async () => {
+    // The user's ask after slice 14: a click on the rug opened its menu,
+    // which only moves it, so nobody could stand on it. Now a click walks
+    // you onto it, as on the floor, and a click on the tile you're on opens
+    // its menu. The page is shown every cat off the rug, and held there, so
+    // nothing alive is on the tile clicked.
+    const offRug = (page: Page) =>
+      page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        server.onMessage((m) => {
+          const f = JSON.parse(String(m));
+          if (f.type === "welcome") {
+            f.snapshot.cats.forEach((cat: Frame, i: number) => Object.assign(cat, { at: { x: 9 + i, y: 8 }, walk: null, pose: "sit", heldBy: null }));
+            ws.send(JSON.stringify(f));
+          } else if (f.cat === undefined) ws.send(m);
+        });
+      });
+    for (const [viewport, touch] of [
+      [{ width: 1920, height: 1080 }, false],
+      [{ width: 390, height: 844 }, true],
+    ] as const) {
+      const v = await visit(viewport, touch, { prepare: offRug });
+      const room = v.frames.find((f) => f.type === "welcome")!.snapshot.room;
+      const rug = room.furniture.find((f: Frame) => f.kind === "rug");
+      const me = meSeen(v.frames);
+      const others: Tile[] = v.frames.find((f) => f.type === "welcome")!.snapshot.people.filter((p: Frame) => p.id !== me.id && p.place === "inside").map((p: Frame) => p.at);
+      // A tile of the rug with nothing else on it, and nobody there.
+      let spot: Tile | null = null;
+      for (let y = rug.y; y < rug.y + rug.h && !spot; y++) {
+        for (let x = rug.x; x < rug.x + rug.w && !spot; x++) {
+          const covered = room.furniture.some((f: Frame) => f.id !== rug.id && x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
+          if (!covered && !others.some((o) => o.x === x && o.y === y) && !(me.at.x === x && me.at.y === y)) spot = { x, y };
+        }
+      }
+      expect(spot, "a bare tile of the rug").not.toBeNull();
+      const tile = spot!;
+      if (touch) {
+        // In the bigger room the rug can be off screen: the keyboard's
+        // pointer onto it pulls the view there, and the view stays when the
+        // pointer is put away.
+        await v.page.locator("#room").focus();
+        await v.page.keyboard.press("ArrowRight");
+        for (let i = 0; i < 12; i++) await v.page.keyboard.press("ArrowLeft");
+        for (let i = 0; i < 10; i++) await v.page.keyboard.press("ArrowUp");
+        for (let i = 0; i < tile.x; i++) await v.page.keyboard.press("ArrowRight");
+        for (let i = 1; i < tile.y; i++) await v.page.keyboard.press("ArrowDown");
+        await v.page.waitForTimeout(400);
+      }
+      const press = async () => {
+        const at = await tileAt(v.page, tile);
+        expect(at.x, "the rug is on screen").toBeGreaterThan(0);
+        expect(at.x).toBeLessThan(viewport.width);
+        if (touch) await v.page.touchscreen.tap(at.x, at.y);
+        else await v.page.mouse.click(at.x, at.y);
+      };
+      const from = v.frames.length;
+      await press();
+      // A walk onto the rug, which the café accepts, and no menu.
+      await expect.poll(() => v.sent.some((f) => f.type === "walkTo" && f.tile.x === tile.x && f.tile.y === tile.y), { timeout: 3000 }).toBe(true);
+      await expect.poll(() => v.frames.slice(from).some((f) => f.type === "personMoved" && f.id === me.id), { timeout: 3000 }).toBe(true);
+      expect(v.frames.slice(from).some((f) => f.type === "error"), "no refusal").toBe(false);
+      expect(await v.page.locator(".menu").count(), "no menu on the way").toBe(0);
+      // There, the same tile opens the rug's menu: it moves.
+      const walk = v.frames.slice(from).find((f) => f.type === "personMoved" && f.id === me.id)!.walk;
+      expect(walk.path.at(-1)).toEqual(tile);
+      await v.page.waitForTimeout(((walk.path.length - 1) / walk.speed) * 1000 + 600);
+      await press();
+      await expect.poll(() => v.page.locator(".menu").getAttribute("aria-label"), { timeout: 3000 }).toBe("Rug");
+      expect(await v.page.locator(".menu").getByRole("menuitem").allTextContents()).toEqual(["Move the rug"]);
+      await v.page.keyboard.press("Escape");
+    }
+  });
+
   it("opens a cat's menu by a click or tap where it's drawn, up on the window seat, at both sizes", async () => {
     // Slice 09's review, finding 1: at an angle a cat on a piece is drawn
     // up off its tile, over the wall behind, and a click there used to walk

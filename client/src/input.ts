@@ -57,6 +57,26 @@ export function targetsAt(state: CafeState, tile: Tile, localNow: number): Targe
 }
 
 /**
+ * What a click or tap on a tile does: opens a menu of what's there, or walks
+ * you there. A piece people walk over (a rug, a cushion: one that doesn't
+ * block, standing) is somewhere to go, so a click on it walks you onto it;
+ * its menu opens from the tile you stand on or are already walking to. Its
+ * menu is still a Tab and an Enter away by keyboard. Anything alive on the
+ * tile, or a piece in the way, opens the menu wherever you are.
+ */
+export function clickOn(state: CafeState, targets: Target[], tile: Tile): { act: Target[] } | { walk: Tile } {
+  const me = state.people.get(state.you);
+  const heading = me?.walk?.path.at(-1) ?? me?.at;
+  const here = heading !== undefined && heading.x === tile.x && heading.y === tile.y;
+  const underfoot = (t: Target) => {
+    if (t.kind !== "piece") return false;
+    const f = state.room.furniture.find((p) => p.id === t.id);
+    return f !== undefined && !f.blocks && !f.toppled;
+  };
+  return targets.length === 0 || (!here && targets.every(underfoot)) ? { walk: tile } : { act: targets };
+}
+
+/**
  * What Tab steps through: the cats, people and furniture, nearest first, then
  * the chalkboard. It hangs by the door where everyone comes in, so nearest
  * first would make it the first Tab; last, Shift+Tab reaches it at once.
@@ -109,12 +129,21 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
   let cycle: Target[] = [];
   let index = -1;
 
+  // Enter on the keyboard's pointer opens the menu of whatever is there.
   const actAt = (tile: Tile) => {
     const state = cafe.state;
     if (!state) return;
     const targets = targetsAt(state, tile, Date.now());
     if (targets.length > 0) hooks.act(targets, tile);
     else hooks.walk(tile);
+  };
+  // A click or tap walks onto a rug, and opens its menu from there.
+  const clickAt = (tile: Tile) => {
+    const state = cafe.state;
+    if (!state) return;
+    const does = clickOn(state, targetsAt(state, tile, Date.now()), tile);
+    if ("act" in does) hooks.act(does.act, tile);
+    else hooks.walk(does.walk);
   };
   const myTile = (): Tile => {
     const s = cafe.state;
@@ -132,7 +161,7 @@ export function attachInput(stage: Stage, cafe: Cafe, hooks: InputHooks): () => 
     const tile = carrying ? stage.cssToTile(e.clientX, e.clientY) : stage.whatsDrawnAt(e.clientX, e.clientY);
     if (!tile) return;
     pointer.visible = false;
-    actAt(tile);
+    clickAt(tile);
   };
 
   const onKey = (e: KeyboardEvent) => {
