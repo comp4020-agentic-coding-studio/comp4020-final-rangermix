@@ -122,6 +122,9 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
      nothing in it can be selected, but its Unpin. */
   .panel.pinned { pointer-events: none; user-select: none; -webkit-user-select: none; }
   .panel.pinned .pin { pointer-events: auto; }
+  /* A pinned music panel that couldn't be paused would be a trap (slice
+     15): its controls stay live, and its words let clicks through. */
+  .panel.pinned .music-controls > * { pointer-events: auto; }
   .panel.pinned .panel-bar h2 { cursor: default; }
 }
 .panel-body { overflow: auto; min-height: 0; }

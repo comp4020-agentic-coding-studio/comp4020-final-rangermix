@@ -399,6 +399,85 @@ describe("the café's music", { timeout: 60_000 }, () => {
     expect((await audio(page)).volume).toBeCloseTo(0.35, 2);
   });
 
+  it("drags, pins and dims as the other panels do on a desktop, and pinned, its five controls still work while its words let clicks through to the café", async () => {
+    const v = await visit({ width: 1920, height: 1080 });
+    const page = v.page;
+    const panel = page.locator("#music-panel");
+    const box = async () => (await panel.boundingBox())!;
+    // By mouse, by its title: 200 to the left and 150 up.
+    const start = await box();
+    const title = (await page.locator("#music-heading").boundingBox())!;
+    await page.mouse.move(title.x + 10, title.y + title.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(title.x - 90, title.y + title.height / 2 - 75, { steps: 5 });
+    await page.mouse.move(title.x - 190, title.y + title.height / 2 - 150, { steps: 5 });
+    await page.mouse.up();
+    let now = await box();
+    expect(Math.round(start.x - now.x)).toBe(200);
+    expect(Math.round(start.y - now.y)).toBe(150);
+    // By keyboard, by its grip.
+    await page.locator("#music-panel .grip").focus();
+    await page.keyboard.press("Shift+ArrowLeft");
+    expect(Math.round(now.x - (await box()).x)).toBe(64);
+    now = await box();
+    // Left alone, it dims; a track's name changing brings it back.
+    await page.locator("#room").focus();
+    await page.mouse.move(960, 1075);
+    await expect.poll(() => panel.evaluate((p) => p.classList.contains("dim")), { timeout: 8000 }).toBe(true);
+    await page.locator("#music-next").focus();
+    await page.keyboard.press("Enter");
+    await page.locator("#room").focus();
+    await expect.poll(() => panel.evaluate((p) => p.classList.contains("dim"))).toBe(false);
+    // Pinned: Play, Previous, Next, the volume and Unpin still answer the mouse.
+    await page.getByRole("button", { name: "Pin the music", exact: true }).click();
+    expect(await page.getByRole("button", { name: "Unpin the music", exact: true }).isVisible()).toBe(true);
+    const from = v.sent.length;
+    await page.locator("#music-play").click();
+    await playing(page, "ocean-breeze");
+    await page.locator("#music-next").click();
+    await playing(page, "tranquil-mindscape");
+    await page.locator("#music-previous").click();
+    await playing(page, "ocean-breeze");
+    const slider = (await page.locator("#music-volume").boundingBox())!;
+    await page.mouse.click(slider.x + slider.width * 0.9, slider.y + slider.height / 2);
+    await expect.poll(async () => (await audio(page)).volume).toBeGreaterThan(0.7);
+    await page.locator("#music-play").click();
+    await paused(page);
+    expect(notPresence(v.sent, from), "what the pinned controls sent the café").toEqual([]);
+    // Its words let a click through to the café: over the title, the room's
+    // canvas is what's under the pointer.
+    const words = (await page.locator("#music-title").boundingBox())!;
+    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [words.x + 4, words.y + words.height / 2]), "under the track's name").toBe("room");
+    // It stays put: a drag on its title doesn't move it.
+    const pinnedAt = await box();
+    const heading = (await page.locator("#music-heading").boundingBox())!;
+    await page.mouse.move(heading.x + 10, heading.y + heading.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(heading.x + 200, heading.y - 150, { steps: 5 });
+    await page.mouse.up();
+    expect(await box()).toEqual(pinnedAt);
+    // Pinned, it never dims.
+    await page.locator("#room").focus();
+    await page.mouse.move(960, 1075);
+    await page.waitForTimeout(5000);
+    expect(await panel.evaluate((p) => p.classList.contains("dim"))).toBe(false);
+    // By keyboard, Tab reaches its five controls and not its grip.
+    await page.locator("#put-treat").focus();
+    const reached: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press("Tab");
+      const el = await page.evaluate(() => (document.activeElement?.closest("#music-panel") ? document.activeElement.getAttribute("aria-label") || document.activeElement.id : null));
+      if (el) reached.push(el);
+    }
+    expect(reached).toEqual(expect.arrayContaining(["Unpin the music", "Previous track", "Play", "Next track", "Volume"]));
+    expect(reached).not.toContain("Move the music");
+    // Remembered through a reload, still pinned where it was.
+    await page.reload();
+    await inside(page);
+    await expect.poll(async () => page.getByRole("button", { name: "Unpin the music", exact: true }).count()).toBe(1);
+    await expect.poll(async () => { const b = await box(); return [Math.round(b.x), Math.round(b.y)]; }).toEqual([Math.round(pinnedAt.x), Math.round(pinnedAt.y)]);
+  });
+
   it("keeps on, off and the volume for the visit when the device won't store them", async () => {
     const v = await visit({ width: 1920, height: 1080 }, false, {
       prepare: async (page) => {
