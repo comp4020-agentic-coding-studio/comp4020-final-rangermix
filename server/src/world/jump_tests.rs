@@ -298,6 +298,33 @@ async fn trust_a_cat_gives_during_a_jump_is_stored() {
 }
 
 #[test]
+fn a_jump_puts_a_held_cat_down_and_ends_a_lap() {
+    // Slice 17's review, finding 11: the replay's first step lets both go,
+    // with their person set aside; now a test would see if it didn't.
+    let t0 = canberra(2026, 11, 6, 14, 0);
+    let mut w = world_at(t0);
+    join_demo(&mut w, 1, t0);
+    join(&mut w, 2, t0);
+    let settled = t0 + 10_000;
+    w.tick(settled);
+    let holder = w.person(1).unwrap().at;
+    w.cats[0].held_by = Some(1);
+    w.cats[0].at = holder;
+    let sofa = w.room.pieces.iter().find(|p| p.kind == "sofa").unwrap();
+    let (seat, sofa_id) = (sofa.tiles()[0], sofa.id);
+    let p = w.people.iter_mut().find(|p| p.id == 2).unwrap();
+    p.at = seat;
+    p.sitting = Some(sofa_id);
+    w.cats[1].at = seat;
+    w.cats[1].walk = None;
+    w.cats[1].lap = Some(2);
+    w.cats[1].until = settled + 3_600_000;
+    jump(&mut w, 1, settled, Some(NIGHT));
+    assert_eq!(w.cats[0].held_by, None, "the held cat got down");
+    assert_eq!(w.cats[1].lap, None, "the lap ended");
+}
+
+#[test]
 fn no_cat_is_left_on_a_persons_tile() {
     let t0 = canberra(2026, 11, 6, 14, 0);
     let mut w = world_at(t0);

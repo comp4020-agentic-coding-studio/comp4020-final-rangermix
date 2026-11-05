@@ -532,6 +532,12 @@ impl World {
     }
 }
 
+/// A world on the repo's content at the epoch, for tests outside this module.
+#[cfg(test)]
+pub fn test_world() -> World {
+    people::tests::world()
+}
+
 /// The name an action goes by in the logs; None for what isn't an action
 /// (a hidden tab, a "still here").
 pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {

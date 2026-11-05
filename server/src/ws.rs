@@ -403,6 +403,39 @@ mod tests {
     }
 
     #[test]
+    fn what_queued_during_a_jump_is_refused_and_told() {
+        // Slice 17's review, finding 11: the drain itself, not only which
+        // messages count as actions.
+        use crate::protocol::{Look, Tile};
+        let mut world = crate::world::test_world();
+        let mut conns: Conns = HashMap::new();
+        let (tx, mut rx) = mpsc::channel(64);
+        let join = Command::Join {
+            id: 1,
+            name: "sam".into(),
+            look: Look { avatar: 0, colour: 0 },
+            demo: false,
+            conn: 7,
+            tx,
+        };
+        assert_eq!(command(&mut world, &mut conns, join, false), Flow::Go);
+        while rx.try_recv().is_ok() {}
+        let walk = || Command::Msg {
+            id: 1,
+            conn: 7,
+            msg: ClientMsg::WalkTo { tile: Tile { x: 7, y: 2 } },
+        };
+        command(&mut world, &mut conns, walk(), true);
+        let told: Vec<String> = std::iter::from_fn(|| rx.try_recv().ok()).map(|m| m.to_string()).collect();
+        assert!(told.iter().any(|m| m.contains(r#""code":"movedOn""#)), "{told:?}");
+        assert!(!told.iter().any(|m| m.contains("personMoved")), "{told:?}");
+        // The same walk, not after a jump, goes.
+        command(&mut world, &mut conns, walk(), false);
+        let told: Vec<String> = std::iter::from_fn(|| rx.try_recv().ok()).map(|m| m.to_string()).collect();
+        assert!(told.iter().any(|m| m.contains("personMoved")), "{told:?}");
+    }
+
+    #[test]
     fn a_connection_silent_past_two_pings_is_gone() {
         // A phone that sleeps without closing its socket keeps answering
         // nothing, not even pongs; it must not hold its seat for minutes.
