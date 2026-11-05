@@ -540,7 +540,7 @@ renamed.
   playlist (`playlist.toml`, data as a cat is) and credits
   (`CREDITS.md`), three for day and three for night by the Canberra
   hour, the night set from 17:00 until 6:00. `scripts/music.ts`
-  re-encoded each once from its original to 128 kbps at −16 LUFS, and
+  re-encoded each once from its original to 128 kbps aimed at −16 LUFS, and
   `manifest.json` records each file's hash and measured loudness, which a
   client test holds the files to (CI has no ffmpeg). Each visitor has
   their own player (`client/src/music.ts` chooses, `musicPanel.ts`
@@ -553,7 +553,11 @@ renamed.
   Whether it was on, and how loud (40% to start), is remembered per device
   under `cafe.music` and never reaches the server; remembered on, it plays
   on entering, or at the first press in the café if the browser won't let
-  it yet (a key going down, or a finger lifting). Leaving stops it. *Why not Bensound,
+  it yet (a key going down, a finger lifting, or the click a tap ends in);
+  nothing is set loading before then. The system's media controls (a
+  phone's lock screen, a keyboard's media keys) name the track and play,
+  pause and skip it, and a pause from them is remembered as the panel's
+  is. Leaving stops it. *Why not Bensound,
   as first asked:* its free licence covers online videos, not a website's
   background music, and a paid track's files couldn't go in the public
   repo. *Why each their own:* pause and skip are personal, and a shared
@@ -679,7 +683,7 @@ renamed.
 | Sign-up, log-in and recovery attempts | 5 a minute per name from one address, so nobody elsewhere can lock a name out; 60 a minute per IP address, since a whole venue can share one |
 | Password hashing | argon2id, 19 MiB, 2 iterations, at most 2 at once |
 | Avatar looks | 4 avatars in 6 colours |
-| Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start, in steps of 5; 128 kbps stereo MP3 at −16 LUFS integrated, true peak under −1.5 dBTP (slice 15) |
+| Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start, in steps of 5; 128 kbps stereo MP3 aimed at −16 LUFS integrated, within 1 LU, true peak under −1.5 dBTP (slice 15) |
 
 ## Harness
 

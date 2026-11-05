@@ -406,4 +406,69 @@ checkout. Nothing live was touched: not the café, not Fly.
 
 ## Answers
 
-*For the builder.*
+*By the builder, 2026-11-05.* Every finding is fixed in [`64c284d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/64c284d), each test
+seen failing first against the code before it: the unit tests in
+`client/test/musicPanel.test.ts` (seven new, all failing before), and four
+new or tightened browser checks in `spec/music.test.ts` (all four failing
+before). After it, the client's 299 tests, the whole spec (87 passed, the
+restart check skipped without Docker) and both typechecks pass.
+
+1. **Fixed.** The element's `error` event lets go of what it held, so
+   the next Play sets the source again. Unit: a fake element whose first
+   load fails; a second Play sets the source again and plays. Browser:
+   the first request for Bubbles is reset by `page.route`; the panel says
+   Play, and a second Play plays it. No note is shown: the panel truly
+   says Play, and a second press is the remedy; a message is left for
+   when the café has a place for such notes.
+2. **Fixed.** `playLoaded` settles against the clock first, so Play and
+   the first press just after 17:00 play the night set. Unit tests for
+   both: the hour flipped from 16 to 17 with no timer run.
+3. **Fixed.** On and off are remembered from the element's own `play`
+   and `pause` events, so a media key or a headset's button counts. A
+   pause counts only after a play (a refused `play()` is nothing), not
+   while `ended` is true, and not the one `dispose()` makes (its
+   listeners are gone first). The system's media controls get the
+   track's title, artist and album through `navigator.mediaSession`,
+   with Play, Pause, Next and Previous handlers, cleared when the visit
+   ends. Unit tests for each; the media session against a stand-in,
+   since no browser here shows a lock screen.
+4. **Fixed both ways.** The filter at the paused-Next check is gone, and
+   after the reload the check holds that nothing was fetched and no
+   source set before the press. The code no longer leans on `preload`:
+   it sets no source while `navigator.userActivation.hasBeenActive` is
+   false, and a refused `play()` unloads. A unit test holds that a
+   refused entry leaves no source.
+5. **Fixed.** The music's body has 5 px of padding inside, given back by
+   a matching negative margin, so each 3-px ring 2 px out stays inside
+   the scrolling box. The browser check holds each control's box plus
+   5 px inside the body, pinned and not.
+6. **Fixed.** A skip announces "Ocean Breeze, by HoliznaCC0" through the
+   page's live region. For layout B, opening the drawer takes the focus
+   to its first control, the music's Previous, first on screen, and
+   Escape inside the drawer closes it and gives the focus back to the
+   toggle (the drawer names its panels with `aria-controls`). The
+   browser check opens it by keyboard and reads both, and the
+   announcement after Next.
+7. **Fixed.** The music panel's cap is its own content's height, since
+   it never grows with the café; who's here gets the stage less the
+   music and the gaps. The browser check holds every control inside the
+   panel and the body unscrolled at 1920×1080 and at 960×540, pinned and
+   not, with the longest title loaded.
+8. **Fixed as far as can be held here; the iPhone try is still owed.**
+   `click` now starts waiting music too, beside `pointerup` and
+   `keydown`, which costs nothing where `pointerup` already worked. No
+   WebKit is installed for Playwright, so whether Safari honours either
+   is held by a try on a real iPhone, recorded as not checked in the
+   slice's notes until it's done.
+9. **Fixed.** `TRACKS` records each original's own address (the
+   `fileUrl` in its page's data) and the name to save it under, and
+   `node scripts/music.ts <folder> --get` fetches them with curl. The
+   manifest records the ffmpeg that made the files. Run end to end with
+   `--get` into a fresh folder: the six originals fetched match the ones
+   first downloaded byte for byte, and the six files it wrote match the
+   committed ones byte for byte (only the manifest's new `ffmpeg` line
+   changed).
+
+**Also noticed.** The blank line splitting the root plan's table is
+removed with this slice's row. design.md's numbers now say "aimed at
+−16 LUFS, within 1 LU", as the test holds.

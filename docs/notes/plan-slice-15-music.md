@@ -103,3 +103,9 @@ Where the build departed from this plan, as it happened.
     with the drawer open.
   - **The Pause label changes at once,** not at the `pause` event a task
     later, so a quick second press reads the panel truly.
+- **The review** (9 findings, 1 major) is answered in
+  [`reviews/slice-15-findings.md`](reviews/slice-15-findings.md), all
+  fixed. **Not checked:** a reload into the café on a real iPhone with
+  music remembered on, then a tap (finding 8); no WebKit is installed for
+  Playwright here. Real Safari, Firefox and a screen reader were not
+  tried either.
