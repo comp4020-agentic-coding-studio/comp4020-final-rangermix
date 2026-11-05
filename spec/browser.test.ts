@@ -179,8 +179,8 @@ async function tabToCat(v: Visit, ok: (c: CatSeen) => boolean = () => true): Pro
  */
 async function ringFromTile(page: Page, tile: Tile): Promise<{ off: number; px: number }> {
   const room = (await page.locator("#room").boundingBox())!;
-  // A tile's diamond is 32 of the canvas's 336 pixels across.
-  const px = (room.width * 32) / 336;
+  // A tile's diamond is 32 of the canvas's 1× pixels across.
+  const px = (room.width * 32) / (await oneX(page)).width;
   const at = await tileAt(page, tile);
   const ring = page.locator(".menu.ring");
   const centre = { x: Number(await ring.getAttribute("data-centre-x")), y: Number(await ring.getAttribute("data-centre-y")) };
@@ -227,14 +227,19 @@ const tileAt = (page: Page, tile: Tile) =>
 
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
 const roomWidth = (page: Page) => page.evaluate(() => document.getElementById("room")?.style.width);
+/** The room's canvas at 1×, from the page: it grows with the floor (slice 16), 400 by 264 for 13 by 12. */
+const oneX = (page: Page) => page.evaluate(() => (window as unknown as { cafeRoom: { size: { width: number; height: number } } }).cafeRoom.size);
+/** The room's width on the page at `scale`, as its style says it. */
+const widthAt = async (page: Page, scale: number) => `${(await oneX(page)).width * scale}px`;
 
 describe("in a browser", { timeout: 30_000 }, () => {
   it("does everything by keyboard at both sizes, through a resize mid-use", async () => {
     const { page } = await visit({ width: 1920, height: 1080 });
     expect(await focused(page)).toBe("room");
-    // The room at an angle, 336 pixels wide at 1x, at 4x with the panels
-    // floating over it (slice 14).
-    expect(await roomWidth(page)).toBe("1344px");
+    // The room at an angle at 4× with the panels and bars floating over it
+    // (slices 14 and 16): 1600 px for the 13 by 12 floor.
+    expect(await oneX(page)).toEqual({ width: 400, height: 264 });
+    expect(await roomWidth(page)).toBe(await widthAt(page, 4));
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
@@ -246,7 +251,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await focused(page)).toBe("room");
     // A phone opens in the bigger room, at 3x, panned to follow you.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1008px");
+    await page.waitForFunction((w) => document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === w, await widthAt(page, 3));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await page.keyboard.press("Escape");
     await page.keyboard.press("Tab");
@@ -255,7 +260,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Enter");
     await page.locator(".bubble", { hasText: "hello by keyboard" }).waitFor();
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1344px");
+    await page.waitForFunction((w) => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === w, await widthAt(page, 4));
     await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("room");
     // Forward from the talk box, past Say and the emotes, to the treat
@@ -274,7 +279,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
 
   it("floats the chalkboard, your cats and who's here in the room's corners at 1920×1080, the room at 4× and every tile clear (slice 14)", async () => {
     const { page } = await visit({ width: 1920, height: 1080 });
-    expect(await roomWidth(page)).toBe("1344px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 4));
     const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
     // The panels are placed again once their content is in and they grow
     // (a resize observer, the frame after): wait for them to settle inside
@@ -383,7 +388,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForFunction(() => document.body.classList.contains("layout-b"));
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => document.getElementById("room")?.style.width === "1344px");
+    await page.waitForFunction((w) => document.getElementById("room")?.style.width === w, await widthAt(page, 4));
     for (const sel of ["#chalkboard", "#cats-panel", "#here-panel"]) await inside(sel);
     // Remembered through a reload.
     const before = await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box));
@@ -455,7 +460,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // Over the cat by keyboard: the panel's middle onto the cat's middle.
     const sprite = async () => {
       const floor = await tileAt(page, CAT);
-      const scale = (await page.locator("#room").boundingBox())!.width / 336;
+      const scale = (await page.locator("#room").boundingBox())!.width / (await oneX(page)).width;
       return { x: floor.x, y: floor.y - (CAT_PX / 2 - 2) * scale };
     };
     const target = await sprite();
@@ -797,7 +802,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
       }
       // The sprite's middle: 12 px up the seat, then half its 24 px (slice
       // 11), from feet 2 px below the tile's centre; times the room's scale.
-      const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
+      const scale = (await v.page.locator("#room").boundingBox())!.width / (await oneX(v.page)).width;
       const floor = await tileAt(v.page, SEAT);
       const at = { x: floor.x, y: floor.y - (12 + CAT_PX / 2 - 2) * scale };
       expect(at.x, "the cat is on screen").toBeGreaterThan(0);
@@ -888,7 +893,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
   it("opens a phone in the bigger room, follows the pointer, opens rings, and remembers a switch to the whole room", async () => {
     const { page } = await visit({ width: 390, height: 844 }, true);
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(true);
-    expect(await roomWidth(page)).toBe("1008px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 3));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     // The keyboard's pointer pulls the view along with it.
     const leftOf = () => page.evaluate(() => document.getElementById("room")?.style.left);
@@ -911,13 +916,13 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Escape");
     // The whole room, at 1x across the phone, remembered through a reload.
     await page.locator("#layout-switch").tap();
-    expect(await roomWidth(page)).toBe("336px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 1));
     await page.reload();
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(false);
-    expect(await roomWidth(page)).toBe("336px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 1));
     await page.locator("#layout-switch").tap();
-    expect(await roomWidth(page)).toBe("1008px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 3));
   });
 
   it("puts a treat down from beside the emotes, by mouse on a desktop and by touch on a phone, and the other visitor sees it (slice 14)", async () => {
@@ -1030,7 +1035,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
       await v.page.waitForTimeout(400);
       // The middle of its sprite, half its 24 px (slice 11) up from feet 2 px
       // below the tile's centre, and up on whatever it's on.
-      const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
+      const scale = (await v.page.locator("#room").boundingBox())!.width / (await oneX(v.page)).width;
       const floor = await tileAt(v.page, cat.at);
       await v.page.touchscreen.tap(floor.x, floor.y - (CAT_PX / 2 - 2 + lift) * scale);
       const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
@@ -1391,8 +1396,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
           const box = canvas.getBoundingClientRect();
           // Canvas pixels per CSS pixel, and the room's scale on the page.
           const perCss = canvas.width / box.width;
-          const roomScale = box.width / 336;
-          const at = (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(x, y);
+          const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+          const roomScale = box.width / room.size.width;
+          const at = room.tileAt(x, y);
           const k = roomScale * perCss;
           const cx = Math.round((at.x - box.left) * perCss);
           const cy = Math.round((at.y - box.top) * perCss - up * k);
@@ -1483,7 +1489,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
         [fx, fy],
       );
     const sentBefore = v.sent.length;
-    // The floor's tips at 1×: left (0, 152), right (336, 136) and front (176, 232) of 336 by 232.
+    // The floor's tips at 1×, for the 13 by 12 floor: left (0, 160), right
+    // (400, 152) and front (192, 256) of 400 by 264; these points are clear of them.
     for (const [fx, fy] of [[0.01, 0.02], [0.99, 0.02], [0.01, 0.97], [0.99, 0.97], [0.01, 0.76], [0.99, 0.72], [0.4, 0.99]]) {
       expect(street("day"), `the point (${fx}, ${fy}) is the street`).toContain(await colourAt(fx, fy));
       await v.page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);

@@ -9,7 +9,8 @@
 # windows: every `every` pixels across and up a tower, a window `size` pixels
 #   square; `lit` of them in 10 are lit, by a fixed pattern.
 # clouds: each one where it floats, `x` and `y` its middle in room pixels
-#   at 1x on the 336 by 232 backdrop, and `width` across; drawn behind the
+#   at 1x on the room's backdrop (400 by 264 since slice 16's 13 by 12
+#   floor), and `width` across; drawn behind the
 #   towers. The sky that shows is the two top corners the room's walls leave
 #   (above the street wall on the left, the plain wall on the right), so
 #   that's where they float. White with a warm underside by day, faint by
@@ -63,30 +64,30 @@ height = 0.88
 
 [[clouds]]
 x = 30
-y = 18
+y = 26
 width = 40
 
 [[clouds]]
 x = 92
-y = 34
+y = 42
 width = 28
 
 [[clouds]]
 x = 14
-y = 52
+y = 60
 width = 22
 
 [[clouds]]
-x = 262
+x = 326
 y = 16
 width = 44
 
 [[clouds]]
-x = 318
+x = 382
 y = 36
 width = 30
 
 [[clouds]]
-x = 236
+x = 300
 y = 30
 width = 20

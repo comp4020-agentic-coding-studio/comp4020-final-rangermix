@@ -1,21 +1,54 @@
+import roomFile from "../../content/room.toml?raw";
+
 // The camera (slice 09, ADR 0017): the café's grid seen in a 2:1 isometric
 // view. The grid stays the model; this is only how the client draws it and
-// finds what's under a pointer. The floor is rows 1 to 9, each tile a 32 by
-// 16 diamond, seen from the room's front-right corner: the street wall, row
-// 0, with its window, door and chalkboard, stands up the back left along the
-// floor's far edge (y = 1), in its order from the left, and a plain wall up
-// the back right (x = 12). Turned so on 2026-10-22, at the user's asking.
+// finds what's under a pointer. Each tile is a 32 by 16 diamond, seen from
+// the room's front-right corner: the street wall, row 0, with its window,
+// door and chalkboard, stands up the back left along the floor's far edge
+// (y = 1), in its order from the left, and a plain wall up the back right
+// (x = width). Turned so on 2026-10-22, at the user's asking. The grid's
+// size is content/room.toml's, the file the server reads (slice 16), so the
+// canvas grows with the floor; client and server are one build.
 
-/** The canvas, the walls' height and where grid point (0,0) lands, in canvas pixels at 1x. */
+/**
+ * The floor's size from room.toml: its top-level `width` and `height`
+ * lines. Enough TOML for those two numbers; the server reads the whole
+ * file with a real parser.
+ */
+export function parseFloor(text: string): { width: number; height: number } {
+  const num = (key: string) => {
+    const m = new RegExp(`^${key}\\s*=\\s*(\\d+)\\s*(#.*)?$`, "m").exec(text);
+    if (!m) throw new Error(`room.toml: no ${key}`);
+    return Number(m[1]);
+  };
+  return { width: num("width"), height: num("height") };
+}
+
+/** The café's grid: `width` columns, and `height` rows with the street wall's row 0 among them. */
+export const FLOOR = parseFloor(roomFile);
+
+/** How high the walls stand, in canvas pixels at 1×. */
+const WALL = 56;
+/** Half a diamond across, and half down. */
+const HALF_W = 16;
+const HALF_H = 8;
+/** Diamonds from the left corner of the floor to its right: its width and its depth. */
+const ACROSS = FLOOR.width + FLOOR.height - 1;
+
+/**
+ * The canvas, the walls' height and where grid point (0,0) lands, in canvas
+ * pixels at 1x: (w + d) × 16 across and (w + d) × 8 + 64 down, the walls'
+ * 56 and the slab's 8 below the front corner. 336 by 232 for the 12 by 9
+ * floor before slice 16; 400 by 264 for 13 by 12.
+ */
 export const ISO = {
-  width: 336,
-  height: 232,
-  wall: 56,
-  originX: -16,
-  originY: 144,
-  /** Half a diamond across, and half down. */
-  halfW: 16,
-  halfH: 8,
+  width: ACROSS * HALF_W,
+  height: WALL + ACROSS * HALF_H + 8,
+  wall: WALL,
+  originX: -HALF_W,
+  originY: WALL + (FLOOR.width - 1) * HALF_H,
+  halfW: HALF_W,
+  halfH: HALF_H,
 } as const;
 
 /** Where grid point (gx, gy), on the floor, lands on the canvas. */

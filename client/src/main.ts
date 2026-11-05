@@ -17,6 +17,7 @@ import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
 import { pieceName } from "./state";
 import { Stage } from "./stage";
+import { ISO } from "./iso";
 import { Talk } from "./talk";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -124,6 +125,8 @@ function enter(me: ApiMe): void {
   // a fraction of the canvas isn't a tile (slice 09). The browser checks find
   // tiles through it, and it tells nothing the canvas doesn't show.
   (window as unknown as { cafeRoom: unknown }).cafeRoom = Object.freeze({
+    /** The room's canvas at 1×, which grows with the floor (slice 16). */
+    size: Object.freeze({ width: ISO.width, height: ISO.height }),
     tileAt(x: number, y: number): { x: number; y: number } {
       const box = $("stage").getBoundingClientRect();
       const at = middle({ x, y });
