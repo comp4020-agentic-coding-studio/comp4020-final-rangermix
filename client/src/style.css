@@ -178,7 +178,15 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   }
 }
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }
-#room { display: block; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); touch-action: manipulation; }
+/* The street behind the room, to the stage's edges (slice 16): drawn at the
+   room's scale and lined up with it by stage.ts; it takes no click. */
+.street { position: absolute; left: 0; top: 0; max-width: none; image-rendering: pixelated; pointer-events: none; z-index: 0; }
+#room { position: relative; z-index: 0; display: block; image-rendering: pixelated; touch-action: manipulation; }
+/* Framed only where the street doesn't carry on past it: the phone's whole room (layout A). */
+@media (max-width: 959px) {
+  body:not(.layout-b) #room { border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); }
+  body:not(.layout-b) .street { display: none; }
+}
 #room.placing { cursor: crosshair; }
 .overlay { position: absolute; inset: 0; pointer-events: none; }
 .overlay > * { pointer-events: auto; }

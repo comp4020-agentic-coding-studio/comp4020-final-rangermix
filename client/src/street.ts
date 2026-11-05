@@ -1,4 +1,5 @@
 import streetFile from "../../content/street.toml?raw";
+import { ISO } from "./iso";
 
 // The street behind the café (slice 13, ADR 0018): sky, the towers across
 // the road, the kerb and the pavement, round the room's diamond. Its shape
@@ -142,4 +143,34 @@ function cloudAt(x: number, y: number, _w: number, _horizon: number): number | n
     return v > base - 1.5 ? STREET.cloudShade : STREET.cloud;
   }
   return null;
+}
+
+/** One run of a row of the street: from `x`, `w` room pixels in one slot. */
+export interface StreetRun {
+  y: number;
+  x: number;
+  w: number;
+  slot: number;
+}
+
+/**
+ * The street over a span of room pixels (slice 16), from (x0, y0) to (x1,
+ * y1), which can start left of and above the room's canvas and end past it:
+ * each row as runs of one slot, the slots the room's own street has inside
+ * its canvas and carrying on outside it, so the street runs to the window's
+ * edges behind the room.
+ */
+export function streetRuns(span: { x0: number; y0: number; x1: number; y1: number }, night: boolean): StreetRun[] {
+  const out: StreetRun[] = [];
+  for (let y = span.y0; y < span.y1; y++) {
+    let x = span.x0;
+    while (x < span.x1) {
+      const slot = streetSlot(x, y, ISO.width, ISO.height, night);
+      let end = x + 1;
+      while (end < span.x1 && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
+      out.push({ y, x, w: end - x, slot });
+      x = end;
+    }
+  }
+  return out;
 }

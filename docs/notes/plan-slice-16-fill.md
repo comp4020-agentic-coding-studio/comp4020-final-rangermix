@@ -102,3 +102,25 @@ Written 2026-11-06 from `main` at `5a3a1df`. Study:
 ## Execution log
 
 Where the build departed from this plan, task by task.
+
+- **Task 1.** As planned, with one more test touched: the saved-cat test
+  placed Burakku at random before Mochi's saved spot was checked, and on
+  the bigger floor the draw landed on Mochi's spot. It now saves Burakku
+  too, so it holds what it says whatever the floor. `long_gaps.rs` reads
+  the stored arrangement's `pieces`.
+- **Task 2.** As planned. `window.cafeRoom` gained `size`, the room's 1×
+  canvas, for the browser checks.
+- **Task 3.** Three things the plan didn't foresee, each found by an
+  existing check. At 18rem the cats panel covered the left corner tile's
+  middle, so the panels are 17rem. A desktop menu opened low ran under the
+  floating talk bar, so it's kept between the bars as the ring is. The
+  music panel's title wraps at 17rem and its box, held at its last
+  height, couldn't tell, so its title and controls are watched. The
+  street check's fixed points fell under panels and bars over the bigger
+  room; it finds its points off the room's shape instead.
+- **Task 4.** The street canvas is drawn once per light, scale and stage
+  size, a stage's size past the room on each side, and moved as the room
+  pans, rather than redrawn per frame. The room's frame (rounded corners,
+  shadow) is kept only on the phone's layout A, where the street doesn't
+  carry on. The phone's layout B never showed the page, as its pan stops
+  at the room's edges, so its check is a guard that passed before.

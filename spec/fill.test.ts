@@ -1,5 +1,6 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import palettes from "../content/sprites/palettes.json";
 import { baseUrl, uniqueName } from "./helpers";
 
 // Slice 16's browser checks: at the 1920×1080 viewport the course marks at,
@@ -148,5 +149,71 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       expect(overlaps(p, status), `${id} over the status bar`).toBe(false);
       expect(overlaps(p, talk), `${id} over the talk bar`).toBe(false);
     }
+  });
+
+  /** The colours of a whole-page screenshot at the window's edges and corners, sampled every 40 px, and where. */
+  async function edges(page: Page): Promise<{ at: string; colour: string }[]> {
+    const shot = await page.screenshot();
+    return page.evaluate(async (b64) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${b64}`;
+      await img.decode();
+      const c = document.createElement("canvas");
+      [c.width, c.height] = [img.width, img.height];
+      const ctx = c.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const out: { at: string; colour: string }[] = [];
+      const hex = (x: number, y: number) => {
+        const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+        return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+      };
+      // Each edge, 2 px in, except where something floats over it: a bar,
+      // a panel or a menu, or near enough for its shadow (24 px) to shade it.
+      const over = [...document.querySelectorAll(".status > *, .talk, .panel, .menu, .bubble")]
+        .map((e) => e.getBoundingClientRect())
+        .filter((r) => r.width > 0 && r.height > 0);
+      const free = (x: number, y: number) => !over.some((r) => x > r.left - 24 && x < r.right + 24 && y > r.top - 24 && y < r.bottom + 24);
+      for (let x = 2; x < c.width - 2; x += 40) for (const y of [2, c.height - 3]) if (free(x, y)) out.push({ at: `(${x}, ${y})`, colour: hex(x, y) });
+      for (let y = 2; y < c.height - 2; y += 40) for (const x of [2, c.width - 3]) if (free(x, y)) out.push({ at: `(${x}, ${y})`, colour: hex(x, y) });
+      return out;
+    }, shot.toString("base64"));
+  }
+
+  const streetColours = (light: "day" | "night") => (palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
+
+  it("carries the street to every edge of the window behind the room, by day and by night, with none of the page showing", async () => {
+    const { page } = await visit({ width: 1920, height: 1080 });
+    await page.waitForTimeout(600);
+    for (const [when, light] of [["10:00", "day"], ["22:00", "night"]] as const) {
+      if (when === "22:00") {
+        await page.clock.fastForward("12:00:00");
+        await page.waitForTimeout(600);
+      }
+      const seen = await edges(page);
+      expect(seen.length, "edge points to look at").toBeGreaterThan(60);
+      const street = streetColours(light);
+      for (const p of seen) expect(street, `${light}: the window's edge at ${p.at} is the street, not the page`).toContain(p.colour);
+    }
+  });
+
+  it("carries the street past the room's edges in the phone's bigger room as it pans to each side", async () => {
+    const { page } = await visit({ width: 390, height: 844 }, true);
+    await page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    await page.locator("#room").focus();
+    // At 3× the room is bigger than the phone and the pan stops at its
+    // edges, so an edge shows the room, as it did before slice 16: never the
+    // page's own background (Latte's base, the light theme's; Mocha's the
+    // dark's). A guard, not a change: it passed before the street was carried.
+    const page_ = ["#eff1f5", "#1e1e2e"];
+    let seen = 0;
+    for (const keys of [["ArrowLeft", 13], ["ArrowRight", 13], ["ArrowUp", 13], ["ArrowDown", 13]] as const) {
+      for (let i = 0; i < keys[1]; i++) await page.keyboard.press(keys[0]);
+      await page.waitForTimeout(400);
+      for (const p of await edges(page)) {
+        seen++;
+        expect(page_, `panned ${keys[0]}: the edge at ${p.at} is the room or the street, not the page`).not.toContain(p.colour);
+      }
+    }
+    expect(seen, "edge points looked at").toBeGreaterThan(20);
   });
 });
