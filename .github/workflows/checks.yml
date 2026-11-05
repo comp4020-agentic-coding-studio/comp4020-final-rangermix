@@ -38,11 +38,16 @@ jobs:
         # of the container keeps the database, as Fly's volume does
         run: |
           docker build -t app .
+          # the demo accounts markers use (slice 17), seeded by the operator's
+          # own command on the volume before the café starts
+          docker run --rm -e CAFE_DEMO_PASSWORD=catppuccino -v app-data:/data app /app/cafe demo seed
           docker run -d --init --name app -p 8080:8080 -e PORT=8080 -v app-data:/data app
       - name: Run the spec
         run: pnpm check
         env:
           APP_URL: http://localhost:8080
+          # spec/demo.test.ts logs in as demo1 (slice 17)
+          APP_DEMO_PASSWORD: catppuccino
           # spec/restart.test.ts stops the app, lets it sleep, starts it again,
           # and reads the restart's own wake-up line (slice 01)
           APP_RESTART: docker stop app && sleep 30 && docker start app
@@ -53,7 +58,7 @@ jobs:
         # its wake-up on the wall clock as Fly runs it (slice 08), and none
         # holds what the spec said in a bubble or its password (AGENTS.md:
         # never log what anyone says)
-        run: docker logs app 2>&1 | node scripts/check-logs.ts --wall "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse"
+        run: docker logs app 2>&1 | node scripts/check-logs.ts --wall "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse" "catppuccino"
       - name: Show the app's output
         # what the container printed, so a crash or slow boot is visible
         if: ${{ failure() }}

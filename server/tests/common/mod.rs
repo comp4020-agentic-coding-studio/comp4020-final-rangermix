@@ -173,6 +173,39 @@ pub fn signup(cafe: &Cafe, name: &str) -> (String, String) {
     (res, cookie)
 }
 
+/// Logs `name` in with `password`; the session cookie it set.
+pub fn login(cafe: &Cafe, name: &str, password: &str) -> String {
+    let body = format!(r#"{{"name":"{name}","password":"{password}"}}"#);
+    let res = cafe.http(&format!(
+        "POST /api/login HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        cafe.port,
+        body.len()
+    ));
+    assert!(res.starts_with("HTTP/1.1 200"), "{res}");
+    res.lines()
+        .find_map(|l| l.strip_prefix("set-cookie: ").or_else(|| l.strip_prefix("Set-Cookie: ")))
+        .and_then(|c| c.split(';').next())
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// Runs `cafe demo seed` on `data` with `password`, as the operator does
+/// beside the café (slice 17), and says whether it succeeded.
+pub fn seed_demo(data: &Path, content: &Path, password: &str) -> bool {
+    Command::new(env!("CARGO_BIN_EXE_cafe"))
+        .args(["demo", "seed"])
+        .env("DATA_DIR", data)
+        .env("CONTENT_DIR", content)
+        .env("CAFE_DEMO_PASSWORD", password)
+        .env_remove("FLY_APP_NAME")
+        .env_remove("CAFE_CLOCK_START")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+        .success()
+}
+
 /// A WebSocket's text frames, read by hand: the server's frames aren't masked.
 pub struct Socket(TcpStream);
 

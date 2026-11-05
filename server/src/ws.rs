@@ -56,45 +56,18 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
         tokio::select! {
             cmd = rx.recv() => {
                 let Some(cmd) = cmd else { break };
-                let now = now_ms();
-                match cmd {
-                    Command::Join { id, name, look, demo, conn, tx } => {
-                        if let Some((_, old)) = conns.insert(id, (conn, tx)) {
-                            // A second tab: the first is told, then let go.
-                            let _ = old.try_send(text(&ServerMsg::Replaced {}));
+                if command(&mut world, &mut conns, cmd, false) == Flow::Stop {
+                    break;
+                }
+                // A demo account moved the clock on (slice 17): everyone has
+                // been told; the café lives the hours between, then goes on.
+                if let Some(jump) = world.take_jump() {
+                    world = run_jump(world, &mut conns, jump).await;
+                    // What queued meanwhile was meant for the café before.
+                    while let Ok(cmd) = rx.try_recv() {
+                        if command(&mut world, &mut conns, cmd, true) == Flow::Stop {
+                            return;
                         }
-                        let outs = world.handle(now, Input::Join { id, name, look, demo });
-                        deliver(&mut world, &mut conns, outs, now);
-                    }
-                    Command::Leave { id, conn } => {
-                        if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
-                            conns.remove(&id);
-                            let outs = world.handle(now, Input::Drop { id });
-                            deliver(&mut world, &mut conns, outs, now);
-                        }
-                    }
-                    Command::Msg { id, conn, msg } => {
-                        // A Leave from a page whose welcome never reached it (it
-                        // gave up while the café woke) still walks its person out,
-                        // unless another tab of theirs holds the seat now (slice
-                        // 07's review, finding 1).
-                        let current = conns.get(&id).is_some_and(|(c, _)| *c == conn);
-                        let gave_up = matches!(msg, ClientMsg::Leave {}) && !conns.contains_key(&id);
-                        if current || gave_up {
-                            let leaving = matches!(msg, ClientMsg::Leave {});
-                            let outs = world.handle(now, Input::Msg { id, msg });
-                            deliver(&mut world, &mut conns, outs, now);
-                            // Gone through the door: let the connection go too,
-                            // rather than wait for the page to close it.
-                            if leaving {
-                                conns.remove(&id);
-                            }
-                        }
-                    }
-                    Command::Shutdown { done } => {
-                        world.save(now);
-                        let _ = done.send(());
-                        break;
                     }
                 }
             }
@@ -105,6 +78,98 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
             }
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+enum Flow {
+    Go,
+    Stop,
+}
+
+/// Handles one command at the café's clock. With `after_jump`, an action
+/// that was sent before its page heard of the jump is refused (`movedOn`)
+/// rather than done at the new hour.
+fn command(world: &mut World, conns: &mut Conns, cmd: Command, after_jump: bool) -> Flow {
+    let now = now_ms();
+    match cmd {
+        Command::Join {
+            id,
+            name,
+            look,
+            demo,
+            conn,
+            tx,
+        } => {
+            if let Some((_, old)) = conns.insert(id, (conn, tx)) {
+                // A second tab: the first is told, then let go.
+                let _ = old.try_send(text(&ServerMsg::Replaced {}));
+            }
+            let outs = world.handle(now, Input::Join { id, name, look, demo });
+            deliver(world, conns, outs, now);
+        }
+        Command::Leave { id, conn } => {
+            if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
+                conns.remove(&id);
+                let outs = world.handle(now, Input::Drop { id });
+                deliver(world, conns, outs, now);
+            }
+        }
+        Command::Msg { id, conn, msg } => {
+            // A Leave from a page whose welcome never reached it (it
+            // gave up while the café woke) still walks its person out,
+            // unless another tab of theirs holds the seat now (slice
+            // 07's review, finding 1).
+            let current = conns.get(&id).is_some_and(|(c, _)| *c == conn);
+            let gave_up = matches!(msg, ClientMsg::Leave {}) && !conns.contains_key(&id);
+            if after_jump && current && moved_on(&msg) {
+                let outs = world.refuse_moved_on(id, &msg);
+                deliver(world, conns, outs, now);
+            } else if current || gave_up {
+                let leaving = matches!(msg, ClientMsg::Leave {});
+                let outs = world.handle(now, Input::Msg { id, msg });
+                deliver(world, conns, outs, now);
+                // Gone through the door: let the connection go too,
+                // rather than wait for the page to close it.
+                if leaving {
+                    conns.remove(&id);
+                }
+            }
+        }
+        Command::Shutdown { done } => {
+            world.save(now);
+            let _ = done.send(());
+            return Flow::Stop;
+        }
+    }
+    Flow::Go
+}
+
+/// An action, as against being here or leaving: what a jump refuses if it
+/// was sent before the page heard of it.
+fn moved_on(msg: &ClientMsg) -> bool {
+    action_name(msg).is_some() && !matches!(msg, ClientMsg::Leave {})
+}
+
+/// Runs a held jump off the runtime, as a wake-up's replay runs, then moves
+/// the café's clock on and welcomes everyone at the new time. A replay that
+/// panics ends the world task the same way, so the process stops and Fly
+/// starts it again from the last save (slice 07).
+async fn run_jump(mut world: World, conns: &mut Conns, jump: crate::world::jump::Jump) -> World {
+    let (world, outs) = match tokio::task::spawn_blocking(move || {
+        let outs = world.run_jump(now_ms(), jump);
+        (world, outs)
+    })
+    .await
+    {
+        Ok(done) => done,
+        Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
+        Err(e) => panic!("the jump was cancelled: {e}"),
+    };
+    let mut world = world;
+    crate::time::set_ahead(world.ahead());
+    let now = now_ms();
+    deliver(&mut world, conns, outs, now);
+    world
 }
 
 /// Sends each message to its connections. A connection whose queue is full
@@ -285,6 +350,28 @@ mod tests {
             received += 1;
         }
         assert_eq!(received, 3);
+    }
+
+    #[test]
+    fn actions_queued_during_a_jump_are_refused() {
+        // Slice 17: what a page sent before `jumping` reached it is for the
+        // café before the jump; being here and leaving still count.
+        use crate::protocol::{Emote, Tile};
+        for msg in [
+            ClientMsg::WalkTo { tile: Tile { x: 1, y: 1 } },
+            ClientMsg::Say {
+                text: "hi".into(),
+                to: None,
+            },
+            ClientMsg::Emote { emote: Emote::Wave },
+            ClientMsg::SetClock { minute: Some(60) },
+            ClientMsg::AddBot {},
+        ] {
+            assert!(moved_on(&msg), "{msg:?}");
+        }
+        for msg in [ClientMsg::Leave {}, ClientMsg::Here {}, ClientMsg::Presence { hidden: true }] {
+            assert!(!moved_on(&msg), "{msg:?}");
+        }
     }
 
     #[test]

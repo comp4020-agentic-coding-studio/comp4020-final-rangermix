@@ -6,7 +6,7 @@
 //! ask answers with `jumping` to everyone and holds the jump; the world task
 //! then runs it off the runtime and sends everyone a fresh welcome.
 use super::{Out, Pending, To, World, error, walk_tile};
-use crate::protocol::{ErrorCode, Place, ServerMsg};
+use crate::protocol::{ClientMsg, ErrorCode, Place, ServerMsg};
 use crate::room::Walker;
 
 /// A jump asked for and not yet run: who asked, and to when.
@@ -45,6 +45,22 @@ impl World {
             to: To::All,
             msg: ServerMsg::Jumping { by, to },
         });
+    }
+
+    /// An action its page sent before it heard of a jump: refused, and
+    /// logged as a refusal like any other (crit 10).
+    pub fn refuse_moved_on(&self, id: u32, msg: &ClientMsg) -> Vec<Out> {
+        let mut out = Vec::new();
+        error(
+            &mut out,
+            id,
+            ErrorCode::MovedOn,
+            "The café's clock moved on before that reached it.",
+        );
+        if let Some(what) = super::action_name(msg) {
+            self.log_refusal(id, what, &self.about(id, msg), &out);
+        }
+        out
     }
 
     /// The jump the last ask held, for the world task to run.
