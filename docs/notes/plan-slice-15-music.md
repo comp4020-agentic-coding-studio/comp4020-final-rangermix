@@ -77,3 +77,29 @@ Where the build departed from this plan, as it happened.
   encoded). So the script limits 2 dB under the ceiling before encoding,
   which keeps every file under −1.5 dBTP and takes a few tenths off the
   loudness, still within the 1 LU the test holds.
+- **Tasks 3 and 4 in one commit** (2026-11-05): the panel's wiring and its
+  remembering share `musicPanel.ts` and `main.ts`, and were built
+  together, each test seen failing first.
+  - **The files are found by Vite,** not copied by a step in
+    `vite.config.ts` (decision 3): `import.meta.glob` over
+    `content/music/*.mp3` with `?url` gives each file a hashed address in
+    the build and fetches nothing. A new track is still a file and a
+    playlist entry.
+  - **The browser's rule, in the checks.** Headless Chromium keeps the
+    autoplay rule, but a check's own `page.evaluate` counts as a press
+    there, which hid a refusal in a first probe. `spec/music.test.ts`
+    keeps the rule by the page's own input, as the HTML standard words it
+    (a key or a mouse button going down, a finger lifting), and the checks
+    that judge starting use it.
+  - **Waiting music starts as a finger lifts,** not as it lands: a browser
+    lets a tap start sound only at `pointerup`, so starting at
+    `pointerdown` was refused for the very tap meant to start it (found by
+    the phone's check). Keys still start it as they go down.
+  - **The drawer is placed from the bars, measured.** At 390 px the status
+    bar wraps to two rows and the drawer, fixed 72 px down, covered Whole
+    room and Leave (it did before this slice; the music's row made it
+    plain). `main.ts` now measures the status and talk bars and sets the
+    drawer's top, bottom and room; the phone's check taps each bar button
+    with the drawer open.
+  - **The Pause label changes at once,** not at the `pause` event a task
+    later, so a quick second press reads the panel truly.

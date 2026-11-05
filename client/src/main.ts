@@ -11,6 +11,7 @@ import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
 import { Floating } from "./floating";
+import { Music } from "./musicPanel";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
@@ -78,14 +79,33 @@ function enter(me: ApiMe): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>("#emotes button")) {
     button.onclick = () => cafe.send({ type: "emote", emote: button.dataset.emote as Emote });
   }
+  // The music, this visitor's own (slice 15): nothing of it reaches the
+  // café but the presence ping any press sends (touched, above). It isn't
+  // the café's, so it stays live while the café wakes, drawn over the
+  // dusting cover.
+  const music = new Music({
+    audio: $<HTMLAudioElement>("music-audio"),
+    title: $("music-title"),
+    artist: $("music-artist"),
+    play: $<HTMLButtonElement>("music-play"),
+    previous: $<HTMLButtonElement>("music-previous"),
+    next: $<HTMLButtonElement>("music-next"),
+    volume: $<HTMLInputElement>("music-volume"),
+  });
   const touched = () => cafe.touched();
+  // Music remembered on that the browser wouldn't play yet starts at the
+  // first press in the café (slice 15): as the finger lifts, since a
+  // browser lets a tap start sound only then, or as a key goes down.
+  const pressed = (e: Event) => music.pressed(e.target);
   const visibility = () => cafe.send({ type: "presence", hidden: document.hidden });
   document.addEventListener("pointerdown", touched);
   document.addEventListener("keydown", touched);
+  document.addEventListener("pointerup", pressed);
+  document.addEventListener("keydown", pressed);
   document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
   // On a desktop the panels float over the room's corners (slice 14).
-  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel")]);
+  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel"), $("music-panel")]);
   const bubbles = new Bubbles(overlay, stage);
   const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"), (why) => {
     toast(overlay, why);
@@ -131,7 +151,24 @@ function enter(me: ApiMe): void {
   $("drawer-toggle").onclick = () => {
     const open = document.body.classList.toggle("drawer-open");
     $("drawer-toggle").setAttribute("aria-expanded", String(open));
+    fitDrawer();
   };
+  // The drawer stands between the bars, measured, since the status bar
+  // wraps to two rows on a narrow phone: the music's row at its top, then
+  // who's here and your cats sharing what's left (slice 15).
+  const fitDrawer = () => {
+    const top = document.querySelector(".status")!.getBoundingClientRect().bottom;
+    const talk = document.querySelector(".talk")!.getBoundingClientRect().top;
+    const row = $("music-panel").offsetHeight;
+    const root = document.documentElement.style;
+    root.setProperty("--drawer-top", `${Math.round(top)}px`);
+    root.setProperty("--drawer-bottom", `${Math.round(window.innerHeight - talk)}px`);
+    root.setProperty("--music-row", `${row}px`);
+    root.setProperty("--drawer-space", `${Math.max(80, Math.round(talk - top - row - 32))}px`);
+  };
+  const drawerWatch = new ResizeObserver(fitDrawer);
+  for (const el of [document.querySelector(".status")!, document.querySelector(".talk")!, $("music-panel")]) drawerWatch.observe(el);
+  window.addEventListener("resize", fitDrawer);
   phoneQuery.addEventListener("change", applyLayout);
   // A ring sits round a tile: when the room pans under it, it follows the tile.
   let ringTile: { x: number; y: number } | null = null;
@@ -349,6 +386,10 @@ function enter(me: ApiMe): void {
     floating.changed();
   });
   function stop(): void {
+    // Leaving, being signed out or walked out: the music stops (slice 15).
+    music.dispose();
+    drawerWatch.disconnect();
+    window.removeEventListener("resize", fitDrawer);
     floating.dispose();
     detach();
     talk.dispose();
@@ -358,6 +399,8 @@ function enter(me: ApiMe): void {
     hideBoard();
     document.removeEventListener("pointerdown", touched);
     document.removeEventListener("keydown", touched);
+    document.removeEventListener("pointerup", pressed);
+    document.removeEventListener("keydown", pressed);
     document.removeEventListener("visibilitychange", visibility);
   }
   function showLeft(text: string): void {
@@ -375,6 +418,9 @@ function enter(me: ApiMe): void {
   cafe.start();
   stage.start();
   canvas.focus();
+  // Remembered on, it plays as the café opens, or at the first press if
+  // the browser won't let it yet (slice 15).
+  music.enter();
 }
 
 void start();

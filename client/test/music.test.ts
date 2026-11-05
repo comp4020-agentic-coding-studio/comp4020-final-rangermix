@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { canberraHour } from "../src/canberra";
-import { type Loaded, ended, next, parsePlaylist, playlist, previous, setAt, settle, start, trackOf } from "../src/music";
+import { type Loaded, ended, next, parsePlaylist, playlist, previous, rememberMusic, rememberedMusic, setAt, settle, start, trackOf } from "../src/music";
 
 // Slice 15: the player's choices, with no sound in them. Which set the
 // Canberra hour picks (night from 17:00 until 6:00), which track Next and
@@ -108,5 +108,59 @@ describe("crossing 17:00 or 6:00 mid-song", () => {
     const l = start(at("16:50"));
     expect(title(settle(l, at("17:00"), 0))).toBe("Moon Unit");
     expect(settle(l, at("16:59"), 0)).toEqual(l);
+  });
+});
+
+describe("remembering the music on this device", () => {
+  /** Runs `fn` with localStorage throwing, as a browser blocking storage does. */
+  function blocked(fn: () => void): void {
+    const real = Object.getOwnPropertyDescriptor(window, "localStorage")!;
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    });
+    try {
+      fn();
+    } finally {
+      Object.defineProperty(window, "localStorage", real);
+    }
+  }
+
+  it("starts off, at 40%, on a device that remembers nothing", () => {
+    localStorage.removeItem("cafe.music");
+    expect(rememberedMusic()).toEqual({ on: false, volume: 40 });
+  });
+
+  it("remembers on or off and the volume under cafe.music, and nothing else", () => {
+    rememberMusic({ on: true, volume: 65 });
+    expect(localStorage.getItem("cafe.music")).toBe(JSON.stringify({ on: true, volume: 65 }));
+    expect(rememberedMusic()).toEqual({ on: true, volume: 65 });
+    rememberMusic({ on: false, volume: 65 });
+    expect(rememberedMusic()).toEqual({ on: false, volume: 65 });
+    localStorage.removeItem("cafe.music");
+  });
+
+  it("reads what it can of a damaged record, and the starting values for the rest", () => {
+    for (const [text, want] of [
+      ["not json", { on: false, volume: 40 }],
+      [JSON.stringify({ on: "yes", volume: 70 }), { on: false, volume: 70 }],
+      [JSON.stringify({ on: true, volume: 400 }), { on: true, volume: 40 }],
+      [JSON.stringify({ on: true, volume: -5 }), { on: true, volume: 40 }],
+      [JSON.stringify({ on: true, volume: "loud" }), { on: true, volume: 40 }],
+      [JSON.stringify(null), { on: false, volume: 40 }],
+    ] as const) {
+      localStorage.setItem("cafe.music", text);
+      expect(rememberedMusic(), text).toEqual(want);
+    }
+    localStorage.removeItem("cafe.music");
+  });
+
+  it("keeps it for the visit when the device won't store it", () => {
+    blocked(() => {
+      rememberMusic({ on: true, volume: 30 });
+      expect(rememberedMusic()).toEqual({ on: true, volume: 30 });
+    });
   });
 });

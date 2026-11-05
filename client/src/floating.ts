@@ -2,17 +2,19 @@ import { announce } from "./announce";
 import { PHONE, type PanelSpot, type PanelsSaved, panelAt, savePanels, savedPanels, spotFor } from "./layout";
 
 // The panels over the room on a desktop (slice 14, ADR 0018): the
-// chalkboard, your cats and who's here float in the room's empty corners,
-// kept inside the stage. Each moves by dragging its title or its grip with
-// a mouse or a finger, or by its grip and the arrows; where each is stays
-// on this device. Below 960 px they stand as the phone's layouts have them,
-// and none of this applies.
+// chalkboard, your cats, who's here and the music (slice 15) float in the
+// room's empty corners, kept inside the stage. Each moves by dragging its
+// title or its grip with a mouse or a finger, or by its grip and the
+// arrows; where each is stays on this device. Below 960 px they stand as
+// the phone's layouts have them, and none of this applies.
 
 /** Where each panel starts: in the corners the room's diamond leaves. */
 export const START: Record<string, PanelSpot> = {
   chalkboard: { h: "left", x: 8, v: "top", y: 8 },
   "cats-panel": { h: "left", x: 8, v: "bottom", y: 8 },
   "here-panel": { h: "right", x: 8, v: "top", y: 8 },
+  // The music (slice 15), under who's here.
+  "music-panel": { h: "right", x: 8, v: "bottom", y: 8 },
 };
 
 /** Where a spot is, in words: "top left", "bottom right", "middle left" (a third of the stage each way). */
@@ -26,7 +28,7 @@ function whereOn(spot: PanelSpot, stage: { width: number; height: number }, size
 }
 
 /** Each panel's share of the stage's height, and the room left between and round them, in CSS pixels. */
-const SHARE: Record<string, number> = { chalkboard: 0.42, "cats-panel": 0.58, "here-panel": 1 };
+const SHARE: Record<string, number> = { chalkboard: 0.42, "cats-panel": 0.58, "here-panel": 0.7, "music-panel": 0.3 };
 const GAP = 16;
 
 /** How far an arrow moves a panel, in CSS pixels; with Shift, four times as far. */

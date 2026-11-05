@@ -149,7 +149,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   @supports ((backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0))) and (color: rgb(from red r g b)) {
     .panel { color: var(--panel-ink); background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
     .panel.dim { background: rgb(from var(--card) r g b / var(--glass-alpha-dim)); }
-    .panel .hint, .panel .chalk-lines time, .panel .chalk-lines .empty { color: var(--panel-muted); }
+    .panel .hint, .panel .chalk-lines time, .panel .chalk-lines .empty, .panel .music-by { color: var(--panel-muted); }
   }
 }
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }
@@ -162,6 +162,17 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .emotes button { padding: 0.3rem 0.5rem; line-height: 1.2; }
 .put-treat { white-space: nowrap; }
 .talk-to { white-space: nowrap; border-radius: 999px; padding: 0.2rem 0.7rem; }
+/* The music (slice 15): what's playing, then Previous, Play or Pause, Next
+   and the volume, in a row. */
+.music-now { margin: 0 0 0.4rem; overflow-wrap: anywhere; }
+.music-title { font-weight: 600; }
+.music-by { color: var(--muted); font-size: 0.9em; }
+.music-controls { display: flex; align-items: center; gap: 0.35rem; }
+.music-controls button { display: grid; place-items: center; width: 2.4rem; height: 2.2rem; padding: 0; }
+.music-controls svg { width: 1rem; height: 1rem; fill: currentColor; }
+.music-play .pause-icon, .music-play.playing .play-icon { display: none; }
+.music-play.playing .pause-icon { display: block; }
+.music-volume { flex: 1; min-width: 4rem; width: auto; height: 2rem; padding: 0; border: none; background: none; accent-color: var(--accent); }
 .said { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.95rem; overflow-wrap: anywhere; }
 .said .who { font-weight: 600; }
 .cat-row { display: grid; gap: 0.25rem; margin-bottom: 0.75rem; }
@@ -220,14 +231,26 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
     height: auto;
     min-height: 100vh;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto;
-    grid-template-areas: "status" "stage" "talk" "here" "cats";
+    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-areas: "status" "stage" "talk" "music" "here" "cats";
     gap: 8px;
     padding: 8px 0;
   }
   .status, .panel, .talk { margin: 0 8px; }
   .here-panel { grid-area: here; }
   .cats-panel { grid-area: cats; }
+  .music-panel { grid-area: music; }
+  /* The music in one slim row (slice 15): what's playing on the left, two
+     short lines cut off with an ellipsis, and the controls on the right.
+     Its heading stays for a screen reader. */
+  .music-panel { position: relative; padding: 0.35rem 0.6rem; }
+  .music-panel .panel-bar { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .music-body { display: flex; align-items: center; gap: 0.5rem; overflow: visible; }
+  .music-now { flex: 1; min-width: 0; margin: 0; display: grid; line-height: 1.25; font-size: 0.9rem; }
+  .music-now > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .music-controls { flex: none; gap: 0.25rem; }
+  .music-controls button { width: 2.25rem; }
+  .music-volume { flex: none; width: 4.5rem; min-width: 0; }
   /* Below 960 px the panels stand still: nothing to move or pin. */
   .panel-bar button { display: none; }
   .stage { place-items: start center; }
@@ -261,8 +284,15 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
    and who's here come with the drawer, so Tab never reaches what nobody can
    see (slice 09's review, finding 4). */
 .layout-b .panel.chalkboard { display: block; }
-.layout-b.drawer-open .cats-panel, .layout-b.drawer-open .here-panel { display: flex; position: fixed; left: 8px; right: 8px; z-index: 4; margin: 0; }
-.layout-b.drawer-open .here-panel { top: 72px; max-height: 40vh; }
-.layout-b.drawer-open .cats-panel { bottom: 132px; max-height: 25vh; }
+/* The drawer: the music's slim row at its top (slice 15), who's here, then
+   your cats, between the bars. main.ts measures them (--drawer-top and
+   --drawer-bottom, how far each bar reaches into the screen; --music-row;
+   --drawer-space, what's left for the two lists), since the status bar
+   wraps to two rows on a narrow phone and the drawer must never cover its
+   buttons. */
+.layout-b.drawer-open .cats-panel, .layout-b.drawer-open .here-panel, .layout-b.drawer-open .music-panel { display: flex; position: fixed; left: 8px; right: 8px; z-index: 4; margin: 0; }
+.layout-b.drawer-open .music-panel { top: calc(var(--drawer-top, 64px) + 8px); }
+.layout-b.drawer-open .here-panel { top: calc(var(--drawer-top, 64px) + var(--music-row, 52px) + 16px); max-height: calc(var(--drawer-space, 60vh) * 0.55); }
+.layout-b.drawer-open .cats-panel { bottom: calc(var(--drawer-bottom, 124px) + 8px); max-height: calc(var(--drawer-space, 60vh) * 0.45); }
 .menu.ring { position: absolute; inset: 0; display: block; min-width: 0; padding: 0; background: none; border: none; box-shadow: none; pointer-events: none; }
 .menu.ring button { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 88px; min-height: 44px; border-radius: 999px; font-size: 0.85rem; padding: 0.3rem; box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }

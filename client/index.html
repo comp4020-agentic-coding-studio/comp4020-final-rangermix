@@ -130,6 +130,27 @@
         </span>
         <button type="button" id="put-treat" class="put-treat" hidden>Put a treat down</button>
       </form>
+      <!-- The music (slice 15): each visitor's own, and nothing sent to the
+           café. A fourth floating panel on a desktop, starting bottom right;
+           a slim row under the talk bar in layout A, and at the drawer's top
+           in layout B. After the talk bar, so Tab reaches it from there. -->
+      <section id="music-panel" class="panel music-panel" aria-labelledby="music-heading">
+        <div class="panel-bar">
+          <h2 id="music-heading">Music</h2>
+          <button type="button" class="grip" aria-label="Move the music">⠿</button>
+          <button type="button" class="pin" aria-label="Pin the music" data-name="the music">Pin</button>
+        </div>
+        <div class="panel-body music-body">
+          <p class="music-now"><span id="music-title" class="music-title"></span> <span class="music-by">by <span id="music-artist"></span></span></p>
+          <div class="music-controls" role="group" aria-label="Music controls">
+            <button type="button" id="music-previous" class="music-skip" aria-label="Previous track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zM13 3v10L6 8z"/></svg></button>
+            <button type="button" id="music-play" class="music-play" aria-label="Play"><svg class="play-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg><svg class="pause-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zM9 3h3v10H9z"/></svg></button>
+            <button type="button" id="music-next" class="music-skip" aria-label="Next track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
+            <input type="range" id="music-volume" class="music-volume" aria-label="Volume" />
+          </div>
+        </div>
+        <audio id="music-audio" preload="none"></audio>
+      </section>
     </div>
 
     <div id="board-backdrop" class="board-backdrop" hidden></div>

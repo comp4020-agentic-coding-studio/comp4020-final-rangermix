@@ -118,3 +118,49 @@ export function settle(l: Loaded, hour: number, played: number): Loaded {
   if (played > 0 || setAt(hour) === l.set) return l;
   return start(hour);
 }
+
+/** What this device remembers of the music: whether it was on, and the volume in percent. Never sent to the server. */
+export interface MusicSaved {
+  on: boolean;
+  volume: number;
+}
+
+/** The volume a first visit starts at, in percent (design.md, "Numbers to tune"). */
+export const START_VOLUME = 40;
+
+const MUSIC_KEY = "cafe.music";
+let musicThisVisit: MusicSaved | null = null;
+
+/**
+ * What this device remembers of the music, or this visit's if it won't
+ * store it: off at 40% to begin with, and what can't be read is left at that.
+ */
+export function rememberedMusic(): MusicSaved {
+  const out: MusicSaved = { on: false, volume: START_VOLUME };
+  let text: string | null;
+  try {
+    text = localStorage.getItem(MUSIC_KEY);
+  } catch {
+    return musicThisVisit ?? out;
+  }
+  if (text === null) return musicThisVisit ?? out;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return out;
+  }
+  const o = parsed as Record<string, unknown> | null;
+  if (o?.on === true) out.on = true;
+  if (typeof o?.volume === "number" && o.volume >= 0 && o.volume <= 100) out.volume = o.volume;
+  return out;
+}
+
+export function rememberMusic(saved: MusicSaved): void {
+  musicThisVisit = { ...saved };
+  try {
+    localStorage.setItem(MUSIC_KEY, JSON.stringify({ on: saved.on, volume: saved.volume }));
+  } catch {
+    // Without storage it lasts this visit only.
+  }
+}
