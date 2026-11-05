@@ -2240,3 +2240,70 @@ Nothing is built.
 - **Open:** five questions in the spec: putting the hour back, the
   accounts' names and password, the bar on a phone, the three sets, and
   the order against slice 16.
+
+*Sent 2026-11-06 05:50:10 AEDT*
+
+> 1A; 2 demo1 demo2 same simple password; 3A; 4A; 5 build the floor presets after slice 16, others at the same time with 16
+
+Answering slice 17's five questions: Canberra time, the accounts, the bar
+on a phone, the three sets, and the order against slice 16.
+
+**Result.** Slice 17 approved, and part 1 (everything but the furniture
+sets) built, reviewed and in a pull request
+([#2](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/pull/2)),
+CI passing; not yet merged, deployed or live.
+- **The answers, as built** ([`5efb730`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5efb730)):
+  "Canberra time" jumps forward to Canberra's hour; the demo accounts are
+  `demo1` and `demo2` with the password `catppuccino`, the agent's pick
+  for "same simple password"; the bar on a phone is one slim row; the
+  three sets as proposed, built after slice 16 as part 2; the README names
+  no set until then.
+- **Built natively, test first, task by task** to the plan
+  ([`a286ae7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a286ae7)):
+  the café's clock gains a lead that only grows, saved and loaded before
+  the clock is read ([`b32d747`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b32d747));
+  demo accounts in the store, and sign-up keeping `demo` and digits and
+  `bot_` ([`08ee9bd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/08ee9bd));
+  `cafe demo seed` ([`763dc43`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/763dc43));
+  the protocol and refusals ([`b986b8c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b986b8c));
+  the jump in the world ([`c7fcba1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c7fcba1))
+  and in the world task, with CI seeding the demo accounts
+  ([`b02fa7e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b02fa7e));
+  bots ([`6daa465`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6daa465));
+  the page keeping the server's clock ([`546d5df`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/546d5df));
+  the demo bar ([`b303a51`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b303a51),
+  kept between the corner panels in [`8ea4b90`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8ea4b90));
+  the narrated logs ([`8456e13`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8456e13)).
+- **The agent's calls**, in the plan's execution log: bots never sit, so
+  none takes the regular's sofa; the bar's card opaque, not glass; the
+  test log sink keeps a second dispatcher, since one let `tracing` cache
+  "never" for a callsite another test reached first; the day-and-night
+  browser checks set the café's hour in its welcome
+  ([`faea3bd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/faea3bd)),
+  since the page no longer follows the device's clock.
+- **The fresh review** (a reviewer on another model, read cold, cut off
+  once by a rate limit and resumed) found 4 major and 9 minor
+  ([`75fa789`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/75fa789)),
+  each fixed test first or answered
+  ([`c3e058b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c3e058b)):
+  every page dropped 25 s after a jump, its silence measured by the café's
+  clock ([`ed0556e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ed0556e));
+  the README's four bots let the newcomer straight back in, now "until six
+  are inside, then one more" ([`086fb45`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/086fb45));
+  trust a cat gave during a jump's replay unsaved
+  ([`20a93b0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/20a93b0));
+  jumps spending everyone's session, the welcome's time behind by the
+  replay, a page opened mid-jump not told, and Canberra time an hour out
+  across daylight saving ([`065cc7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/065cc7a));
+  bots taking treats ([`5a5b2ba`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5a5b2ba));
+  the bar's countdown read out every second and its focus lost
+  ([`702a610`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/702a610)).
+  The lead stays unbounded, and what the public password allows is named
+  in ADR 0022's consequences.
+- **Checked:** `cargo test -p cafe` (344 unit tests and every binary test,
+  among them a page answered 31 s after a jump and a session good after
+  two near-day jumps), the client's 312 tests, and the whole `spec/` (94)
+  against a seeded local café. Still to do: the merge (the user's), the
+  deploy, `cafe demo seed` and a restart on Fly
+  ([notes](notes/slice-17-demo.md)), and the marker's path walked live;
+  then part 2 after slice 16.
