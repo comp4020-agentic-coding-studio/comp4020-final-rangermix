@@ -95,12 +95,15 @@ function enter(me: ApiMe): void {
   const touched = () => cafe.touched();
   // Music remembered on that the browser wouldn't play yet starts at the
   // first press in the café (slice 15): as the finger lifts, since a
-  // browser lets a tap start sound only then, or as a key goes down.
+  // browser lets a tap start sound only then, or as a key goes down; and
+  // at the click a tap ends in, which is what Safari is known to honour
+  // (slice 15's review, finding 8). Once it plays, the rest do nothing.
   const pressed = (e: Event) => music.pressed(e.target);
   const visibility = () => cafe.send({ type: "presence", hidden: document.hidden });
   document.addEventListener("pointerdown", touched);
   document.addEventListener("keydown", touched);
   document.addEventListener("pointerup", pressed);
+  document.addEventListener("click", pressed);
   document.addEventListener("keydown", pressed);
   document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
@@ -148,11 +151,31 @@ function enter(me: ApiMe): void {
     applyLayout();
     announce(ringLayout() ? "The room fills the screen and follows you." : "The whole room is on screen.");
   };
-  $("drawer-toggle").onclick = () => {
-    const open = document.body.classList.toggle("drawer-open");
+  // Opening the drawer takes the focus to its first control, the music's
+  // row at its top, as on screen; Escape inside it closes it and gives the
+  // focus back to its toggle (slice 15's review, finding 6). The drawer's
+  // panels stand apart in the page, after the bar's own buttons and the
+  // talk bar, so Tab alone would reach the music last.
+  const drawerPanels = ["music-panel", "here-panel", "cats-panel"];
+  $("drawer-toggle").setAttribute("aria-controls", drawerPanels.join(" "));
+  const setDrawer = (open: boolean) => {
+    document.body.classList.toggle("drawer-open", open);
     $("drawer-toggle").setAttribute("aria-expanded", String(open));
     fitDrawer();
+    if (open) {
+      const first = drawerPanels.flatMap((id) => [...$(id).querySelectorAll<HTMLElement>("button, input")]).find((el) => el.offsetParent !== null);
+      first?.focus();
+    }
   };
+  $("drawer-toggle").onclick = () => setDrawer(!document.body.classList.contains("drawer-open"));
+  const drawerEscape = (e: KeyboardEvent) => {
+    if (e.key !== "Escape" || !document.body.classList.contains("drawer-open")) return;
+    if (!drawerPanels.some((id) => $(id).contains(document.activeElement))) return;
+    e.preventDefault();
+    setDrawer(false);
+    $("drawer-toggle").focus();
+  };
+  document.addEventListener("keydown", drawerEscape);
   // The drawer stands between the bars, measured, since the status bar
   // wraps to two rows on a narrow phone: the music's row at its top, then
   // who's here and your cats sharing what's left (slice 15).
@@ -400,7 +423,9 @@ function enter(me: ApiMe): void {
     document.removeEventListener("pointerdown", touched);
     document.removeEventListener("keydown", touched);
     document.removeEventListener("pointerup", pressed);
+    document.removeEventListener("click", pressed);
     document.removeEventListener("keydown", pressed);
+    document.removeEventListener("keydown", drawerEscape);
     document.removeEventListener("visibilitychange", visibility);
   }
   function showLeft(text: string): void {

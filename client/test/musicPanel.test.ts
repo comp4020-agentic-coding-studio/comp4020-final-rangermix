@@ -10,12 +10,24 @@ import { Music, type MusicEls } from "../src/musicPanel";
 // what's loaded and says Play or Pause truly.
 
 /** An <audio> that plays nothing but keeps `paused`, as a browser's does, and fires play and pause. */
-function fakeAudio(policy: { refuse: boolean } | boolean = false): HTMLAudioElement {
-  const rule = typeof policy === "boolean" ? { refuse: policy } : policy;
+interface Rule {
+  /** play() refuses, as a browser before a press does. */
+  refuse: boolean;
+  /** The next source set fails to load, as on a dropped connection: the element sits in error and plays nothing until a source is set again. */
+  fail?: boolean;
+}
+
+function fakeAudio(policy: Rule | boolean = false): HTMLAudioElement {
+  const rule: Rule = typeof policy === "boolean" ? { refuse: policy } : policy;
   const a = document.createElement("audio");
   let paused = true;
   let time = 0;
+  let error: MediaError | null = null;
+  /** How many times a source was set: each is a fetch, in a browser. */
+  let loads = 0;
   Object.defineProperty(a, "paused", { get: () => paused });
+  Object.defineProperty(a, "error", { get: () => error });
+  Object.defineProperty(a, "loads", { get: () => loads });
   Object.defineProperty(a, "currentTime", { get: () => time, set: (t: number) => (time = t) });
   // A new source starts from its beginning, as a browser's load does.
   Object.defineProperty(a, "src", {
@@ -23,12 +35,23 @@ function fakeAudio(policy: { refuse: boolean } | boolean = false): HTMLAudioElem
     set: (v: string) => {
       a.setAttribute("src", v);
       time = 0;
+      loads++;
+      error = null;
+      if (rule.fail) {
+        rule.fail = false;
+        error = { code: 4, message: "network" } as MediaError;
+      }
     },
   });
   a.play = () => {
     if (rule.refuse) {
       a.dispatchEvent(new Event("pause"));
       return Promise.reject(new DOMException("no gesture yet", "NotAllowedError"));
+    }
+    // An element in error plays nothing, and fetches nothing, as a browser's.
+    if (error) {
+      a.dispatchEvent(new Event("error"));
+      return Promise.reject(new DOMException("no supported source", "NotSupportedError"));
     }
     paused = false;
     a.dispatchEvent(new Event("play"));
@@ -51,6 +74,7 @@ function panel(audio = fakeAudio()): MusicEls {
   return { audio, title: el("span"), artist: el("span"), play: el("button"), previous: el("button"), next: el("button"), volume };
 }
 
+const loads = (a: HTMLAudioElement) => (a as unknown as { loads: number }).loads;
 const file = (a: HTMLAudioElement) => a.getAttribute("src")?.split("/").pop()?.replace(/[?#].*/, "") ?? "";
 
 describe("the music panel", () => {
@@ -218,5 +242,140 @@ describe("the music panel", () => {
     expect(els.audio.paused).toBe(true);
     music.pressed();
     expect(els.audio.paused).toBe(true);
+  });
+
+  // Slice 15's review, finding 1.
+  it("loads a track again when Play is pressed after it failed to load, rather than doing nothing", async () => {
+    const rule: Rule = { refuse: false, fail: true };
+    const els = panel(fakeAudio(rule));
+    music = new Music(els, () => 10);
+    els.play.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(els.audio.paused).toBe(true);
+    expect(els.play.getAttribute("aria-label")).toBe("Play");
+    expect(loads(els.audio)).toBe(1);
+    els.play.click();
+    await Promise.resolve();
+    expect(loads(els.audio), "the source set again").toBe(2);
+    expect(els.audio.paused).toBe(false);
+    expect(file(els.audio)).toMatch(/^bubbles/);
+  });
+
+  // Slice 15's review, finding 2.
+  it("plays the clock's set when Play is pressed just after 17:00, before the clock is next looked at", () => {
+    let hour = 16;
+    vi.useFakeTimers();
+    const els = panel();
+    music = new Music(els, () => hour);
+    expect(els.title.textContent).toBe("Bubbles");
+    hour = 17;
+    els.play.click();
+    expect(file(els.audio)).toMatch(/^moon-unit/);
+    expect(els.title.textContent).toBe("Moon Unit");
+  });
+
+  it("starts the clock's set at the first press, if the clock has crossed 17:00 while it waited", async () => {
+    rememberMusic({ on: true, volume: 40 });
+    let hour = 16;
+    const rule = { refuse: true };
+    const els = panel(fakeAudio(rule));
+    music = new Music(els, () => hour);
+    music.enter();
+    await Promise.resolve();
+    hour = 17;
+    rule.refuse = false;
+    music.pressed();
+    expect(file(els.audio)).toMatch(/^moon-unit/);
+    expect(els.audio.paused).toBe(false);
+  });
+
+  // Slice 15's review, finding 3.
+  it("remembers a pause or a play from outside the panel, as a media key or a headset's button makes", () => {
+    const els = panel();
+    music = new Music(els, () => 10);
+    els.play.click();
+    expect(rememberedMusic().on).toBe(true);
+    els.audio.pause();
+    expect(rememberedMusic().on, "paused by a media key").toBe(false);
+    expect(els.play.getAttribute("aria-label")).toBe("Play");
+    void els.audio.play();
+    expect(rememberedMusic().on, "played by a media key").toBe(true);
+  });
+
+  it("doesn't count as turning it off the pause the browser makes as a song ends, a refusal, or the visit ending", async () => {
+    rememberMusic({ on: true, volume: 40 });
+    const rule = { refuse: true };
+    const els = panel(fakeAudio(rule));
+    music = new Music(els, () => 10);
+    music.enter();
+    await Promise.resolve();
+    expect(rememberedMusic().on, "a refusal").toBe(true);
+    rule.refuse = false;
+    music.pressed();
+    // A browser fires pause just before ended, with `ended` true.
+    Object.defineProperty(els.audio, "ended", { configurable: true, get: () => true });
+    els.audio.pause();
+    expect(rememberedMusic().on, "a song ending").toBe(true);
+    Object.defineProperty(els.audio, "ended", { configurable: true, get: () => false });
+    els.audio.dispatchEvent(new Event("ended"));
+    expect(els.audio.paused).toBe(false);
+    music.dispose();
+    music = null;
+    expect(rememberedMusic().on, "the visit ending").toBe(true);
+  });
+
+  it("names the track for the system's media controls, and their Next and Previous skip", () => {
+    const handlers: Record<string, () => void> = {};
+    const session = { metadata: null as unknown, setActionHandler: (a: string, fn: (() => void) | null) => (fn ? (handlers[a] = fn) : delete handlers[a]) };
+    Object.defineProperty(navigator, "mediaSession", { configurable: true, value: session });
+    class Meta {
+      constructor(readonly init: { title: string; artist: string }) {}
+    }
+    vi.stubGlobal("MediaMetadata", Meta);
+    try {
+      const els = panel();
+      music = new Music(els, () => 10);
+      els.play.click();
+      expect((session.metadata as Meta).init).toMatchObject({ title: "Bubbles", artist: "HoliznaCC0" });
+      handlers.nexttrack();
+      expect(els.title.textContent).toBe("Ocean Breeze");
+      expect((session.metadata as Meta).init.title).toBe("Ocean Breeze");
+      handlers.previoustrack();
+      expect(els.title.textContent).toBe("Bubbles");
+      music.dispose();
+      music = null;
+      expect(handlers.nexttrack, "let go when the visit ends").toBeUndefined();
+    } finally {
+      delete (navigator as unknown as { mediaSession?: unknown }).mediaSession;
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Slice 15's review, finding 6.
+  it("tells a screen reader what's loaded after a skip", async () => {
+    vi.useFakeTimers();
+    const region = Object.assign(document.createElement("div"), { id: "announcer" });
+    document.body.append(region);
+    const els = panel();
+    music = new Music(els, () => 10);
+    els.next.click();
+    vi.advanceTimersByTime(100);
+    expect(region.textContent).toBe("Ocean Breeze, by HoliznaCC0");
+  });
+
+  // Slice 15's review, finding 4: a source is set only once play() is allowed.
+  it("sets no source while the browser won't play, so nothing can load before the press", async () => {
+    rememberMusic({ on: true, volume: 40 });
+    const rule = { refuse: true };
+    const els = panel(fakeAudio(rule));
+    els.audio.play = function (this: HTMLAudioElement) {
+      return rule.refuse ? Promise.reject(new DOMException("no", "NotAllowedError")) : HTMLMediaElement.prototype.play.call(this);
+    } as typeof els.audio.play;
+    music = new Music(els, () => 10);
+    music.enter();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(els.audio.getAttribute("src"), "no source while refused").toBeNull();
   });
 });

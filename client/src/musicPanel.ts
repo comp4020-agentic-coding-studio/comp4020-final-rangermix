@@ -1,3 +1,4 @@
+import { announce } from "./announce";
 import { canberraHour } from "./canberra";
 import { type Loaded, type MusicSaved, type Track, ended, next, previous, rememberMusic, rememberedMusic, settle, start, trackOf } from "./music";
 
@@ -44,6 +45,8 @@ export class Music {
   private readonly saved: MusicSaved;
   /** Remembered on, and the browser hasn't let it play yet: the first press in the café starts it. */
   private waiting = false;
+  /** Whether the element is playing, by its own play and pause events: a pause counts only after a play. */
+  private sounding = false;
   private readonly ticker: number;
   private readonly undo: (() => void)[] = [];
 
@@ -69,7 +72,7 @@ export class Music {
       this.waiting = false;
       if (audio.paused) {
         this.remember({ on: true });
-        return this.playLoaded();
+        return this.playLoaded(true);
       }
       this.remember({ on: false });
       // `paused` turns true at once, but the pause event comes a task later:
@@ -83,11 +86,30 @@ export class Music {
       audio.volume = Number(volume.value) / 100;
       this.remember({ volume: Number(volume.value) });
     });
-    this.on(audio, "play", () => (this.waiting = false));
+    // On or off, whoever turned it: the panel, a keyboard's media key, a
+    // headset's button or the phone's media controls (slice 15's review,
+    // finding 3). A pause counts only after a play, so a refused play() is
+    // nothing; the pause a browser makes as a song ends isn't the visitor's;
+    // and the pause dispose() makes comes after these are gone.
+    this.on(audio, "play", () => {
+      this.waiting = false;
+      this.sounding = true;
+      this.remember({ on: true });
+    });
+    this.on(audio, "pause", () => {
+      if (!this.sounding) return;
+      this.sounding = false;
+      if (!audio.ended) this.remember({ on: false });
+    });
+    // A track that failed to load leaves the element in error, where play()
+    // fetches and plays nothing: it holds nothing now, so the next Play
+    // sets its source again (slice 15's review, finding 1).
+    this.on(audio, "error", () => (this.held = null));
     for (const type of ["play", "pause", "emptied", "error"]) this.on(audio, type, () => this.show());
+    this.mediaSession(true);
     this.on(audio, "ended", () => {
       this.loaded = ended(this.loaded, this.hour());
-      this.playLoaded();
+      this.playLoaded(true);
     });
     this.ticker = window.setInterval(() => this.look(), LOOK_EVERY);
     this.show();
@@ -114,7 +136,29 @@ export class Music {
   pressed(target?: EventTarget | null): void {
     if (!this.waiting || !this.els.audio.paused) return;
     if (target instanceof Node && this.els.play.contains(target)) return;
-    this.playLoaded();
+    this.playLoaded(true);
+  }
+
+  /**
+   * The system's media controls (a phone's lock screen and notification, a
+   * keyboard's media keys): they name the track, and their Play, Pause,
+   * Next and Previous work as the panel's do (slice 15's review, finding 3).
+   */
+  private mediaSession(on: boolean): void {
+    if (!("mediaSession" in navigator)) return;
+    const handlers: [MediaSessionAction, () => void][] = [
+      ["play", () => this.els.audio.paused && this.els.play.click()],
+      ["pause", () => !this.els.audio.paused && this.els.play.click()],
+      ["nexttrack", () => this.skip(next)],
+      ["previoustrack", () => this.skip(previous)],
+    ];
+    for (const [action, fn] of handlers) {
+      try {
+        navigator.mediaSession.setActionHandler(action, on ? fn : null);
+      } catch {
+        // A browser that doesn't know the action leaves it to the panel.
+      }
+    }
   }
 
   private remember(change: Partial<MusicSaved>): void {
@@ -127,16 +171,35 @@ export class Music {
     this.undo.push(() => target.removeEventListener(type, fn));
   }
 
-  /** Plays the track the panel names: from where it was paused if the element holds it, else from its start. */
-  private playLoaded(): void {
+  /**
+   * Plays the track the panel names: from where it was paused if the
+   * element holds it, else from its start. `pressed` says a press is
+   * happening now, which a browser lets start sound.
+   */
+  private playLoaded(pressed = false): void {
     const { audio } = this.els;
+    // The clock may have crossed 17:00 or 6:00 since it was last looked at:
+    // a track not yet begun follows it now, not up to 30 s later (slice 15's
+    // review, finding 2).
+    this.loaded = settle(this.loaded, this.hour(), this.played());
+    // Nothing is set loading while the browser surely won't play: before
+    // any press in the page, it would refuse (slice 15's review, finding 4).
+    // A browser that can't say tries, and a refusal unloads below.
+    if (!pressed && navigator.userActivation?.hasBeenActive === false) {
+      this.show();
+      return;
+    }
     if (!same(this.held, this.loaded)) {
       audio.src = urlOf(trackOf(this.loaded));
       this.held = { ...this.loaded };
     }
-    // A browser that won't play before a press refuses here; the panel
-    // goes on saying Play, and the press that comes starts it.
-    audio.play().catch(() => this.show());
+    // A browser that won't play before a press refuses here: the element
+    // lets go of its source, so nothing loads, the panel goes on saying
+    // Play, and the press that comes starts it.
+    audio.play().catch((e: unknown) => {
+      if (e instanceof DOMException && e.name === "NotAllowedError" && audio.paused) this.unload();
+      this.show();
+    });
     this.show();
   }
 
@@ -144,11 +207,14 @@ export class Music {
   private skip(to: typeof next): void {
     const playing = !this.els.audio.paused;
     this.loaded = to(this.loaded, this.hour());
-    if (playing) this.playLoaded();
+    if (playing) this.playLoaded(true);
     else {
       this.unload();
       this.show();
     }
+    // What's loaded now, for a screen reader (slice 15's review, finding 6).
+    const track = trackOf(this.loaded);
+    announce(`${track.title}, by ${track.artist}`);
   }
 
   /** Empties the element, so it holds and fetches nothing. */
@@ -184,12 +250,17 @@ export class Music {
     if (this.els.artist.textContent !== track.artist) this.els.artist.textContent = track.artist;
     this.els.play.setAttribute("aria-label", playing ? "Pause" : "Play");
     this.els.play.classList.toggle("playing", playing);
+    if ("mediaSession" in navigator && typeof MediaMetadata !== "undefined") {
+      const now = navigator.mediaSession.metadata;
+      if (now?.title !== track.title) navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.artist, album: "Public Domain Lofi" });
+    }
   }
 
   /** The visit is over: the music stops, and the element lets go of its track. */
   dispose(): void {
     window.clearInterval(this.ticker);
     for (const u of this.undo.splice(0)) u();
+    this.mediaSession(false);
     this.els.audio.pause();
     this.unload();
   }

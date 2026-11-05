@@ -201,7 +201,8 @@ describe("the café's music", { timeout: 60_000 }, () => {
     await expect.poll(async () => (await shown(page)).title).toBe("Bubbles");
     await page.waitForTimeout(500);
     expect((await audio(page)).paused).toBe(true);
-    expect(v.fetched.slice(fetchedBefore).filter((t) => t !== "bubbles"), "nothing else fetched while paused").toEqual([]);
+    // Nothing at all: not even the track a paused Next names (slice 15's review, finding 4).
+    expect(v.fetched.slice(fetchedBefore), "nothing fetched while paused").toEqual([]);
     expect(notPresence(v.sent, from), "what the music sent the café").toEqual([]);
     // Playing, then Leave: it stops.
     await page.getByRole("button", { name: "Play", exact: true }).click();
@@ -323,6 +324,8 @@ describe("the café's music", { timeout: 60_000 }, () => {
     expect(await shown(page)).toEqual({ title: "Bubbles", artist: "HoliznaCC0", button: "Play" });
     expect((await audio(page)).volume, "the remembered volume").toBeCloseTo(0.6, 2);
     expect(Number(await page.locator("#music-volume").inputValue())).toBe(60);
+    expect(v.fetched.slice(fetchedBefore), "nothing fetched before the press (slice 15's review, finding 4)").toEqual([]);
+    expect(await page.evaluate(() => document.getElementById("music-audio")!.hasAttribute("src")), "no source set while the browser won't play").toBe(false);
     // The first press in the café, a key in the room, starts it.
     await page.locator("#room").focus();
     await page.keyboard.press("ArrowRight");
@@ -476,6 +479,79 @@ describe("the café's music", { timeout: 60_000 }, () => {
     await inside(page);
     await expect.poll(async () => page.getByRole("button", { name: "Unpin the music", exact: true }).count()).toBe(1);
     await expect.poll(async () => { const b = await box(); return [Math.round(b.x), Math.round(b.y)]; }).toEqual([Math.round(pinnedAt.x), Math.round(pinnedAt.y)]);
+  });
+
+  // Slice 15's review, finding 1.
+  it("plays a track on a second press after its first load failed, as on a dropped connection", async () => {
+    let failed = 0;
+    const v = await visit({ width: 1920, height: 1080 }, false, {
+      prepare: async (page) => {
+        await page.route(/\/bubbles[^/]*\.mp3/, (route) => {
+          if (failed++ === 0) return route.abort("connectionreset");
+          return route.continue();
+        });
+      },
+    });
+    const page = v.page;
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await expect.poll(async () => (await audio(page)).paused && failed > 0).toBe(true);
+    await page.waitForTimeout(500);
+    expect((await shown(page)).button, "Play, not a false Pause").toBe("Play");
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await playing(page, "bubbles");
+  });
+
+  // Slice 15's review, findings 5 and 7.
+  it("keeps every control and its focus ring whole inside the panel, pinned and not, at 1920×1080 and in a short 960×540 window", async () => {
+    const v = await visit({ width: 1920, height: 1080 });
+    const page = v.page;
+    const RING = 5;
+    const whole = async (what: string) => {
+      const body = (await page.locator(".music-body").boundingBox())!;
+      const panel = (await page.locator("#music-panel").boundingBox())!;
+      for (const id of ["music-previous", "music-play", "music-next", "music-volume"]) {
+        const c = (await page.locator(`#${id}`).boundingBox())!;
+        expect(c.x - RING, `${what}: ${id}'s ring, left`).toBeGreaterThanOrEqual(body.x - 0.5);
+        expect(c.y - RING, `${what}: ${id}'s ring, top`).toBeGreaterThanOrEqual(body.y - 0.5);
+        expect(c.x + c.width + RING, `${what}: ${id}'s ring, right`).toBeLessThanOrEqual(body.x + body.width + 0.5);
+        expect(c.y + c.height + RING, `${what}: ${id}'s ring, bottom`).toBeLessThanOrEqual(body.y + body.height + 0.5);
+        expect(c.y + c.height, `${what}: ${id} inside the panel`).toBeLessThanOrEqual(panel.y + panel.height + 0.5);
+      }
+      const scrolls = await page.evaluate(() => { const b = document.querySelector(".music-body")!; return b.scrollHeight > b.clientHeight + 1; });
+      expect(scrolls, `${what}: the music's body scrolls`).toBe(false);
+    };
+    // The longest title of the six.
+    await page.getByRole("button", { name: "Previous track" }).click();
+    await whole("1920×1080");
+    await page.getByRole("button", { name: "Pin the music", exact: true }).click();
+    await whole("1920×1080, pinned");
+    await page.setViewportSize({ width: 960, height: 540 });
+    await page.waitForTimeout(400);
+    await whole("960×540, pinned");
+    await page.getByRole("button", { name: "Unpin the music", exact: true }).click();
+    await page.waitForTimeout(200);
+    await whole("960×540");
+  });
+
+  // Slice 15's review, finding 6.
+  it("in the bigger room, opening the drawer by keyboard takes the focus to the music, first on screen, and Escape gives it back", async () => {
+    const v = await visit({ width: 390, height: 844 }, true);
+    const page = v.page;
+    await page.waitForFunction(() => document.body.classList.contains("layout-b"));
+    const focused = () => page.evaluate(() => document.activeElement?.id ?? "");
+    await page.locator("#drawer-toggle").focus();
+    await page.keyboard.press("Enter");
+    expect(await focused()).toBe("music-previous");
+    await page.keyboard.press("Tab");
+    expect(await focused()).toBe("music-play");
+    await page.keyboard.press("Escape");
+    expect(await page.evaluate(() => document.body.classList.contains("drawer-open")), "Escape closes the drawer").toBe(false);
+    expect(await focused()).toBe("drawer-toggle");
+    await page.keyboard.press("Enter");
+    // And Next tells a screen reader what's loaded.
+    await page.locator("#music-next").focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(() => page.evaluate(() => document.getElementById("announcer")?.textContent)).toBe("Ocean Breeze, by HoliznaCC0");
   });
 
   it("keeps on, off and the volume for the visit when the device won't store them", async () => {

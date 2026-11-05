@@ -171,6 +171,10 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .music-title { font-weight: 600; }
 .music-by { color: var(--muted); font-size: 0.9em; }
 .music-controls { display: flex; align-items: center; gap: 0.35rem; }
+/* Room inside the body for each control's focus ring (3 px, 2 px out),
+   which a desktop's scrolling body would otherwise cut; the panel's own
+   padding gives back what this takes (slice 15's review, finding 5). */
+.music-body { padding: 5px; margin: -5px; }
 .music-controls button { display: grid; place-items: center; width: 2.4rem; height: 2.2rem; padding: 0; }
 .music-controls svg { width: 1rem; height: 1rem; fill: currentColor; }
 .music-play .pause-icon, .music-play.playing .play-icon { display: none; }

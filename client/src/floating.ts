@@ -28,7 +28,7 @@ function whereOn(spot: PanelSpot, stage: { width: number; height: number }, size
 }
 
 /** Each panel's share of the stage's height, and the room left between and round them, in CSS pixels. */
-const SHARE: Record<string, number> = { chalkboard: 0.42, "cats-panel": 0.58, "here-panel": 0.7, "music-panel": 0.3 };
+const SHARE: Record<string, number> = { chalkboard: 0.42, "cats-panel": 0.58, "here-panel": 1 };
 const GAP = 16;
 
 /** How far an arrow moves a panel, in CSS pixels; with Shift, four times as far. */
@@ -71,6 +71,18 @@ export class Floating {
     return { left: box.left, top: box.top, width: box.width, height: box.height };
   }
 
+  /** The music panel, if it floats with these. */
+  private get music(): HTMLElement | undefined {
+    return this.panels.find((p) => p.id === "music-panel");
+  }
+
+  /** How tall a panel is with all its content shown: its bar, its body's whole height and its padding. */
+  private natural(panel: HTMLElement): number {
+    const body = panel.querySelector<HTMLElement>(".panel-body");
+    if (!body) return panel.offsetHeight;
+    return panel.offsetHeight - body.clientHeight + body.scrollHeight;
+  }
+
   private sizeOf(panel: HTMLElement): { w: number; h: number } {
     return { w: panel.offsetWidth, h: panel.offsetHeight };
   }
@@ -87,7 +99,11 @@ export class Floating {
       // How tall it may grow, from the stage it floats in, not the window:
       // the left two share the stage's height, so they never overlap,
       // whatever wraps the status bar (slice 14's review, finding 9).
-      panel.style.setProperty("--most", `${Math.floor(Math.max(80, stage.height * (SHARE[panel.id] ?? 1) - GAP))}px`);
+      // The music is a fixed size, never growing with the café: it gets
+      // all of itself, and who's here above it what's left (slice 15's
+      // review, finding 7).
+      const most = panel.id === "music-panel" ? this.natural(panel) : panel.id === "here-panel" && this.music ? stage.height - this.natural(this.music) - 2 * GAP : stage.height * (SHARE[panel.id] ?? 1) - GAP;
+      panel.style.setProperty("--most", `${Math.floor(Math.max(80, most))}px`);
       this.show(panel, panelAt(this.saved[panel.id].spot, this.sizeOf(panel), stage));
     }
   }

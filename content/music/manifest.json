@@ -2,6 +2,7 @@
   "target": -16,
   "peak": -1.5,
   "kbps": 128,
+  "ffmpeg": "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
   "files": {
     "bubbles.mp3": {
       "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/bubbles-lofi-bright-relaxed/",
