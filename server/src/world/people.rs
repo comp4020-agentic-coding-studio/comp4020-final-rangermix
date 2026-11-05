@@ -13,7 +13,7 @@ pub(super) fn person_view(p: &Person, now: u64) -> PersonView {
         at: p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now)),
         walk: p.walk.clone(),
         sitting: p.sitting.is_some(),
-        bot: false,
+        bot: p.bot.is_some(),
     }
 }
 
@@ -69,6 +69,7 @@ impl World {
                 sitting: None,
                 furniture: crate::limits::Bucket::new(self.tuning.furniture_burst, 1.0 / self.tuning.furniture_refill_secs, now),
                 demo,
+                bot: None,
             });
             tracing::info!(target: "action", uid = id, who = %name, what = "arrive", outcome = "ok", place = if place == Place::Inside { "inside" } else { "window" });
             let person = person_view(self.person(id).expect("just added"), now);
@@ -130,6 +131,7 @@ impl World {
             to: To::All,
             msg: ServerMsg::PersonLeft { id },
         });
+        self.bots_follow(now, id, out);
         self.promote(now, out);
     }
 
@@ -154,6 +156,7 @@ impl World {
             p.walk = Some(walk.clone());
             let id = p.id;
             tracing::info!(target: "action", uid = id, who = %p.name, what = "come_in", outcome = "ok");
+            let bot = p.bot.is_some();
             out.push(Out {
                 to: To::All,
                 msg: ServerMsg::PersonPlaced {
@@ -163,7 +166,10 @@ impl World {
                     walk: Some(walk),
                 },
             });
-            self.arrivals.push(id);
+            // The cats never meet a bot.
+            if !bot {
+                self.arrivals.push(id);
+            }
         }
     }
 

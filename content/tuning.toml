@@ -42,3 +42,5 @@ chalk_shown = 8               # and shows the latest this many
 
 jump_max_hours = 24           # a demo account's jump moves the clock at most this far (slice 17)
 jump_every_secs = 60          # and at most once in this long, by the café's clock
+bots_max = 6                  # bots demo accounts can add (slice 17)
+bot_stay_mins = 15            # and how long each stays, so a forgotten one frees its seat

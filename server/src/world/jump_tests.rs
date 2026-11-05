@@ -9,7 +9,7 @@ use chrono::TimeZone;
 const HOUR: u64 = 3_600_000;
 const NIGHT: u32 = 23 * 60 + 30;
 
-fn canberra(y: i32, mo: u32, d: u32, h: u32, mi: u32) -> u64 {
+pub(crate) fn canberra(y: i32, mo: u32, d: u32, h: u32, mi: u32) -> u64 {
     chrono_tz::Australia::Sydney
         .with_ymd_and_hms(y, mo, d, h, mi, 0)
         .single()
@@ -17,7 +17,7 @@ fn canberra(y: i32, mo: u32, d: u32, h: u32, mi: u32) -> u64 {
         .timestamp_millis() as u64
 }
 
-fn world_at(now: u64) -> World {
+pub(crate) fn world_at(now: u64) -> World {
     let content = crate::content::repo_content();
     let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
     World::new(

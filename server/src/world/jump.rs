@@ -99,6 +99,7 @@ impl World {
             p.away_since.as_mut().map(later);
             p.hidden_since.as_mut().map(later);
             p.nudged.as_mut().map(later);
+            super::bots::later(p, gap);
         }
         self.people = people;
         self.cats_off_people(to);
@@ -106,8 +107,10 @@ impl World {
         tracing::info!(target: "cafe", what = "jumped", uid = jump.by, who = %who, gap_secs = gap / 1000,
             steps = replay.steps, took_ms = began.elapsed().as_millis() as u64, refills = replay.refills,
             walks = %replay.walks_text());
+        // A bot has no page to welcome.
         self.people
             .iter()
+            .filter(|p| p.bot.is_none())
             .map(|p| Out {
                 to: To::One(p.id),
                 msg: self.welcome(p.id, to),

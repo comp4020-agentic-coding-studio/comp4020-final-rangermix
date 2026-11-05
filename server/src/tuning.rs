@@ -41,6 +41,9 @@ pub struct Tuning {
     pub jump_max_hours: u64,
     /// The café's shortest gap between jumps, by its own clock.
     pub jump_every_secs: u64,
+    /// The most bots demo accounts can add, and how long each stays.
+    pub bots_max: usize,
+    pub bot_stay_mins: u64,
 }
 
 impl Tuning {
@@ -72,6 +75,7 @@ mod tests {
         assert_eq!((t.chalk_hours, t.chalk_shown), (24, 8));
         assert_eq!(t.replay_max_days, 3);
         assert_eq!((t.jump_max_hours, t.jump_every_secs), (24, 60));
+        assert_eq!((t.bots_max, t.bot_stay_mins), (6, 15));
     }
 
     #[test]

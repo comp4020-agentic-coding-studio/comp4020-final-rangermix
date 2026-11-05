@@ -2,7 +2,9 @@
 //! bubbles and the cats. `handle` and `tick` return messages for the
 //! connection layer to route; nothing here touches a socket, and durable
 //! changes go to the store as writes it doesn't wait for.
-mod bots;
+pub mod bots;
+#[cfg(test)]
+mod bots_tests;
 mod cat_life;
 #[cfg(test)]
 mod cats_tests;
@@ -100,6 +102,8 @@ struct Person {
     furniture: crate::limits::Bucket,
     /// A demo account, with the bar of controls (slice 17).
     demo: bool,
+    /// A bot the server runs for a demo account (slice 17).
+    bot: Option<bots::Bot>,
 }
 
 /// Something a person asked for that happens when their walk ends.
@@ -438,6 +442,7 @@ impl World {
             }
         }
         self.quiet_tick(now, &mut out);
+        self.bots_tick(now, &mut out);
         self.bowls_tick(now, &mut out);
         self.treats_tick(now, &mut out);
         self.cats_tick(now, dt, &mut out);

@@ -378,14 +378,14 @@ impl World {
         let people: Vec<(u32, f32)> = self
             .people
             .iter()
-            .filter(|p| p.place == Place::Inside)
+            .filter(|p| p.place == Place::Inside && p.bot.is_none())
             .map(|p| (p.id, self.trust.value(&id, p.id)))
             .collect();
         // A lap no other cat is on, heading for, or sitting where it is.
         let laps: Vec<(u32, f32)> = self
             .people
             .iter()
-            .filter(|p| p.sitting.is_some() && !self.cat_bound(p.at, i, now))
+            .filter(|p| p.sitting.is_some() && p.bot.is_none() && !self.cat_bound(p.at, i, now))
             .filter(|p| !self.cats.iter().any(|c| c.lap == Some(p.id) || c.plan == Plan::Lap(p.id)))
             .map(|p| (p.id, self.trust.value(&id, p.id)))
             .collect();

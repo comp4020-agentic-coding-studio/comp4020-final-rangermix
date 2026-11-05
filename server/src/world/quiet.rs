@@ -37,7 +37,11 @@ impl World {
         let (hidden_ms, idle_ms, answer_ms) = (t.quiet_hidden_secs * 1000, t.quiet_idle_secs * 1000, t.nudge_answer_secs * 1000);
         let secs = t.nudge_answer_secs as u32;
         let mut unanswered = Vec::new();
-        for p in self.people.iter_mut().filter(|p| p.place == Place::Inside && !p.leaving) {
+        for p in self
+            .people
+            .iter_mut()
+            .filter(|p| p.place == Place::Inside && !p.leaving && p.bot.is_none())
+        {
             match p.nudged {
                 Some(_) if !waiting => {
                     p.nudged = None;

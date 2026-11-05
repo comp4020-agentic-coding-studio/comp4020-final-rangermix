@@ -70,4 +70,40 @@ describe.skipIf(!password)("demo accounts", () => {
     await visitor.leave();
     await demo.leave();
   });
+
+  it("bots fill the café, so the next visitor waits at the window until one goes", async () => {
+    const demo = await Visitor.connect(await logIn("demo2", password!));
+    const people = demo.welcome.snapshot.people as Msg[];
+    const free = demo.welcome.cap - people.filter((p) => p.place === "inside").length;
+    // Bots left by an earlier run of this check, if its demo2 is back within its grace period.
+    const already = people.filter((p) => p.bot).length;
+    let from = demo.messages.length;
+    for (let n = 0; n < free; n++) demo.send({ type: "addBot" });
+    for (let n = 0; n < free; n++) {
+      const joined = await demo.next((m) => m.type === "personJoined" && m.person.id !== demo.welcome.you, 3000, from);
+      expect(joined.person.bot).toBe(true);
+      from = demo.messages.indexOf(joined) + 1;
+    }
+    const newcomer = await Visitor.connect((await signUp()).cookie);
+    const me = (newcomer.welcome.snapshot.people as Msg[]).find((p) => p.id === newcomer.welcome.you);
+    expect(me?.place).toBe("window");
+    const fromNewcomer = newcomer.messages.length;
+    demo.send({ type: "removeBot" });
+    const placed = await newcomer.next(
+      (m) => m.type === "personPlaced" && m.id === newcomer.welcome.you && m.place === "inside",
+      3000,
+      fromNewcomer,
+    );
+    expect(placed.place).toBe("inside");
+    await newcomer.leave();
+    // Leaving takes the demo account's bots with it.
+    const watcher = await Visitor.connect((await signUp()).cookie);
+    const fromWatcher = watcher.messages.length;
+    await demo.leave();
+    await watcher.next((m) => m.type === "personLeft" && m.id === demo.welcome.you, 3000, fromWatcher);
+    await new Promise((r) => setTimeout(r, 200));
+    const left = watcher.messages.slice(fromWatcher).filter((m) => m.type === "personLeft").length;
+    expect(left).toBe(1 + already + free - 1);
+    await watcher.leave();
+  });
 });
