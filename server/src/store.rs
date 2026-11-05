@@ -70,6 +70,8 @@ const MIGRATIONS: &[&str] = &[
         line TEXT NOT NULL
     );
     CREATE INDEX chalkboard_at ON chalkboard (at);",
+    // Slice 17: demo accounts, marked only by the operator's seed.
+    "ALTER TABLE users ADD COLUMN demo INTEGER NOT NULL DEFAULT 0;",
 ];
 
 impl Store {
@@ -167,6 +169,9 @@ pub struct UserRow {
     pub recovery_hash: String,
     pub avatar: u8,
     pub colour: u8,
+    /// A demo account (slice 17): it can move the clock and add bots.
+    #[allow(dead_code)] // read by the world task (slice 17, task 4)
+    pub demo: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -178,7 +183,7 @@ pub struct TrustRow {
     pub gained_today: f32,
 }
 
-const USER_COLUMNS: &str = "id, name, password_hash, recovery_hash, avatar, colour";
+const USER_COLUMNS: &str = "id, name, password_hash, recovery_hash, avatar, colour, demo";
 
 fn user_from(row: &rusqlite::Row) -> rusqlite::Result<UserRow> {
     Ok(UserRow {
@@ -188,6 +193,7 @@ fn user_from(row: &rusqlite::Row) -> rusqlite::Result<UserRow> {
         recovery_hash: row.get(3)?,
         avatar: row.get(4)?,
         colour: row.get(5)?,
+        demo: row.get(6)?,
     })
 }
 
@@ -232,6 +238,13 @@ pub fn set_secrets(conn: &Connection, id: i64, password_hash: &str, recovery_has
         "UPDATE users SET password_hash = ?1, recovery_hash = ?2 WHERE id = ?3",
         params![password_hash, recovery_hash, id],
     )?;
+    Ok(())
+}
+
+/// Marks an account a demo account, or not (slice 17): the operator's seed only.
+#[allow(dead_code)] // the operator's seed uses it (slice 17, task 3)
+pub fn set_demo(conn: &Connection, id: i64, demo: bool) -> rusqlite::Result<()> {
+    conn.execute("UPDATE users SET demo = ?1 WHERE id = ?2", params![demo, id])?;
     Ok(())
 }
 
@@ -358,6 +371,14 @@ pub struct TreatRow {
     pub received: u32,
 }
 
+/// Lifts every ban the cats hold against one person: the operator's seed,
+/// putting a demo account back as it was (slice 17).
+#[allow(dead_code)] // the operator's seed uses it (slice 17, task 3)
+pub fn delete_bans_for(conn: &Connection, user_id: i64) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM bans WHERE user_id = ?1", params![user_id])?;
+    Ok(())
+}
+
 pub fn all_treats(conn: &Connection) -> rusqlite::Result<Vec<TreatRow>> {
     let mut stmt = conn.prepare("SELECT user_id, day, used, received FROM treats")?;
     let rows = stmt.query_map([], |r| {
@@ -436,6 +457,36 @@ mod tests {
         let mut conn = Connection::open(dir.path().join("t.db")).unwrap();
         migrate(&mut conn).unwrap();
         (dir, conn)
+    }
+
+    #[test]
+    fn a_user_is_a_demo_account_only_when_set() {
+        // Slice 17: the operator's seed sets it; nobody else can.
+        let (_dir, c) = db();
+        let id = insert_user(&c, "demo1", "p", "r", 0, 0, 1).unwrap().unwrap();
+        assert!(!user_by_name(&c, "demo1").unwrap().unwrap().demo);
+        set_demo(&c, id, true).unwrap();
+        assert!(user_by_name(&c, "DEMO1").unwrap().unwrap().demo);
+        assert!(user_by_id(&c, id).unwrap().unwrap().demo);
+    }
+
+    #[test]
+    fn one_persons_bans_can_be_lifted() {
+        let (_dir, c) = db();
+        let a = insert_user(&c, "a", "p", "r", 0, 0, 1).unwrap().unwrap();
+        let b = insert_user(&c, "b", "p", "r", 0, 0, 1).unwrap().unwrap();
+        for user_id in [a, b] {
+            let ban = BanRow {
+                cat_id: "tora".into(),
+                user_id,
+                action: "pick_up".into(),
+                until: 9_000,
+            };
+            put_ban(&c, &ban).unwrap();
+        }
+        delete_bans_for(&c, a).unwrap();
+        let left: Vec<i64> = live_bans(&c, 0).unwrap().into_iter().map(|b| b.user_id).collect();
+        assert_eq!(left, vec![b]);
     }
 
     #[test]

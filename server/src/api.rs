@@ -177,6 +177,13 @@ async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req:
     if !auth::valid_username(&req.name) {
         return Err(bad_input("A name is 3 to 20 letters, digits, _ or -."));
     }
+    if auth::reserved_username(&req.name) {
+        return Err(Failure(
+            StatusCode::CONFLICT,
+            ApiErrorCode::NameTaken,
+            "That name is the café's own.",
+        ));
+    }
     if !auth::valid_password(&req.password) {
         return Err(bad_input("A password is 8 to 128 characters."));
     }
@@ -323,6 +330,22 @@ mod tests {
     use axum::http::Request;
     use serde_json::json;
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn the_cafes_own_names_cant_be_signed_up() {
+        // Slice 17: `demo` and digits, and `bot_`, are the café's.
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::http::tests::app(dir.path()).layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        for name in ["demo7", "Bot_7"] {
+            let body = json!({"name": name, "password": "correct horse", "look": {"avatar": 0, "colour": 0}});
+            let req = Request::post("/api/signup")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap();
+            let res = app.clone().oneshot(req).await.unwrap();
+            assert_eq!(res.status(), StatusCode::CONFLICT, "{name}");
+        }
+    }
 
     #[tokio::test]
     async fn account_refusals_say_why_but_not_who_and_a_logout_is_logged() {

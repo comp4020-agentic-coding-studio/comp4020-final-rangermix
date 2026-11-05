@@ -15,6 +15,16 @@ pub fn valid_username(name: &str) -> bool {
     (3..=20).contains(&name.chars().count()) && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
+/// The café's own names (slice 17): `demo` and only digits, for the demo
+/// accounts, and anything starting `bot_`, for bots. Ignoring case.
+pub fn reserved_username(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    let demo = name
+        .strip_prefix("demo")
+        .is_some_and(|rest| !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit()));
+    demo || name.starts_with("bot_")
+}
+
 pub fn valid_password(password: &str) -> bool {
     (8..=128).contains(&password.chars().count())
 }
@@ -86,6 +96,17 @@ pub fn cookie_value<'a>(cookie_header: &'a str, name: &str) -> Option<&'a str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_cafes_own_names_are_reserved() {
+        // Slice 17: no visitor can pass for a demo account or a bot.
+        for name in ["demo1", "demo2", "DEMO42", "Demo7", "bot_1", "Bot_x", "BOT_"] {
+            assert!(reserved_username(name), "{name} is the café's");
+        }
+        for name in ["demo", "demox", "demo_1", "demo1a", "robot_1", "demolish", "sam", "bot-1"] {
+            assert!(!reserved_username(name), "{name} is anyone's");
+        }
+    }
 
     #[test]
     fn names_are_three_to_twenty_safe_characters() {
