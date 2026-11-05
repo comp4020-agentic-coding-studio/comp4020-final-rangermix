@@ -2025,3 +2025,26 @@ music session's, numbered 16, as its prompt came after. Every check ran
 again on the rebased tree: 230 client tests, all 77 of `spec/` against a
 local café (the rug check with slice 14's panels over the room) and
 `cargo test`, all passing. Live once merged and deployed.
+
+### 15. Music in the café (continued)
+
+*Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-05 12:23:52 AEDT*
+
+> add credit for the music
+
+**Result.** `README.md` is the user's, and this was their ask to write
+the credit proposed for it. A **Credits** section at its end, the user's
+text untouched
+([`d70120f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d70120f)):
+the six tracks from HoliznaCC0's *Public Domain Lofi*, under CC0 1.0,
+each linked to its page on the Free Music Archive, three by day and
+three by night, noted as playing once slice 15 is built (it is still
+proposed). Catppuccin is credited beside it, under the MIT licence, as
+the opening paragraph already names it. The links to the slice and to
+`content/sprites/CREDITS.md` are full GitHub addresses, because
+`/readme/` serves only images from `docs/` and a relative link would
+404 on the live café. Checked on a local server: `/readme/` renders the
+section with every link, and `spec/invariants.test.ts` (the README's
+headings on the served page, in order) passes.
