@@ -215,8 +215,13 @@ renamed.
 
 ## The room
 
-- **12 by 10 tiles**, seen from inside at an angle, with the street wall
-  (row 0) standing at the back left. That wall holds the window, where the
+- **13 by 13 tiles**, a floor 13 wide and 12 deep under the street wall
+  (12 by 10 until slice 16, grown so the room fills the 1920×1080 viewport
+  at 4×; [ADR 0021](adr/0021-grow-the-floor-and-float-the-bars.md)), seen
+  from inside at an angle, with the street wall (row 0) standing at the
+  back left. A café saved on the old floor woke on the new one with its
+  pieces where they were, and room.toml's pieces on the new strip added
+  once: the saved arrangement keeps the floor it was saved on. That wall holds the window, where the
   line's faces peek in; the door, with a walkway that's never blocked; and
   the chalkboard beside it. A floor plan is in
   [notes/mockups/client-layouts.html](notes/mockups/client-layouts.html).
@@ -397,11 +402,16 @@ renamed.
   2026-11-05,
   [ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
   the room spans the window at the largest whole-number scale that fits,
-  4× at 1920×1080, with the status bar above and the talk box under it,
-  and a small menu beside whatever you click. The chalkboard, your cats
+  4× at 1920×1080 (3× at 1440×900), and since slice 16 the status line and
+  the talk bar float over it as layout B's do: the status a glass pill top
+  left with its buttons top right, the talk bar a glass bar across the
+  bottom middle, on the panels' tokens. A small menu opens beside whatever
+  you click, kept between the bars. The chalkboard, your cats
   and who's here (who's inside, who's at the window and what was said
   this visit) float over the room's empty corners, top left, bottom left
-  and top right, half see-through and kept inside the stage. Each moves
+  and top right, half see-through, 17rem wide so where they start every
+  floor tile's middle stays clear, and kept inside the stage between the
+  bars. Each moves
   by dragging its title or grip, by mouse or finger, or by its grip and
   the arrows, and can be pinned: a pinned panel can't be moved or
   selected, its grip goes, and a click, tap or hover on it reaches the
@@ -448,13 +458,14 @@ renamed.
 - **Drawing:** the canvas uses the largest whole-number scale that fits, so
   pixels stay crisp and a resize mid-use just refits; the room is coloured
   by the Canberra hour's light (below), with nothing laid over it.
-  *Proposed 2026-11-06* ([slice 16](slices/16-the-cafe-fills-the-window.md),
-  [ADR 0021](adr/0021-grow-the-floor-and-float-the-bars.md),
-  from [notes/slice-16-study.md](notes/slice-16-study.md)), not yet
-  decided: the floor grows at 32-px tiles so the room fills the 1920×1080
-  viewport, the status and talk bars float over it on a desktop, the
-  street runs across the whole window, and a terrace fills the room's
-  bottom corners.
+  The canvas is worked out from `content/room.toml`'s floor, which the
+  client reads as the server does: (w + d) × 16 by (w + d) × 8 + 64 px at
+  1×, 400 by 264 for 13 by 12 (slice 16). The street runs on past it to
+  the window's edges, on a canvas behind it at the room's scale, lined up
+  to the pixel (slice 16). On a phone the whole room (layout A) is shown at
+  1× centred on its middle, so at 390 px its two side tips are cut by 5 px
+  each, at the user's asking ("it's okay to hide a bit of the corner of
+  the room for now").
 - **The look** is chosen
   ([ADR 0017](adr/0017-draw-the-cafe-isometric-in-catppuccin-led-colours.md),
   from [notes/visual-direction.md](notes/visual-direction.md)) and built in
@@ -462,7 +473,7 @@ renamed.
   - **A 2:1 isometric camera** on the same grid (slice 09, built), kept
     over a top-down 3/4 one on 2026-11-04
     ([ADR 0018](adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)):
-    32×16 diamonds on a 336×232 canvas. Things are drawn so nothing wholly behind
+    32×16 diamonds on a canvas the floor's size (400×264 since slice 16). Things are drawn so nothing wholly behind
     another comes after it, and things on one spot go piece, treat, cat,
     person, a cat on their lap; what stands on a piece is drawn up on it. A
     click or tap acts on what's drawn under it, up off its tile, before the
@@ -516,7 +527,14 @@ renamed.
     `content/street.toml` (the skyline's height, the towers' widths and
     heights, the windows, each cloud's spot, the warm band), with
     its colours in the palette's "street" slots by day and by night; it
-    takes no click.
+    takes no click. Since slice 16 it runs to the window's edges, and the
+    café's terrace stands in the room's two bottom corners: by the floor's
+    left edge a bench between two planters, out front a table under an
+    umbrella with two chairs and a street lamp, lit at night. Each thing is
+    a `[[terrace]]` line in `street.toml` (its kind, the floor's edge it
+    stands by, how far along and how far out); each kind is drawn as its
+    own few blocks in the furniture's colours. It's scenery: off the
+    café's grid, nearest the viewer of all, taking no click.
   - **Crisp, with outlines and shadows** (slice 13, built;
     [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
     every pixel of the room one colour, with no anti-aliasing: shapes are
