@@ -162,6 +162,9 @@ pub struct World {
     treat_day: String,
     /// The chalkboard's lines of the last day, oldest first.
     chalk: VecDeque<ChalkLine>,
+    /// How far a demo account has moved the café's clock on (slice 17),
+    /// saved with the clock so a restart never takes it back.
+    ahead: u64,
 }
 
 impl World {
@@ -204,6 +207,7 @@ impl World {
             answered: false,
             treat_day: crate::time::canberra_day(now),
             chalk: VecDeque::new(),
+            ahead: 0,
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -425,6 +429,17 @@ impl World {
         out
     }
 
+    /// How far a demo account has moved the café's clock on.
+    #[allow(dead_code)] // the jump uses it (slice 17, task 5)
+    pub fn ahead(&self) -> u64 {
+        self.ahead
+    }
+
+    /// The lead saved before the café last stopped.
+    pub fn restore_ahead(&mut self, ahead: u64) {
+        self.ahead = ahead;
+    }
+
     pub fn snapshot_for(&self, id: u32, now: u64) -> Snapshot {
         Snapshot {
             room: self.room.view(),
@@ -466,6 +481,7 @@ impl World {
         let rng = serde_json::to_string(&self.rng).expect("the random state serialises");
         let arrangement = self.arrangement_json();
         let chalk = board.then(|| self.chalk_rows());
+        let ahead = self.ahead.to_string();
         store.fire(move |conn| {
             for (id, json) in &cats {
                 crate::store::put_cat_state(conn, id, json, now)?;
@@ -473,6 +489,7 @@ impl World {
             crate::store::put_world(conn, "bowls", &bowls)?;
             crate::store::put_world(conn, "rng", &rng)?;
             crate::store::put_world(conn, "arrangement", &arrangement)?;
+            crate::store::put_world(conn, "ahead", &ahead)?;
             if let Some(rows) = &chalk {
                 crate::store::replace_chalk(conn, rows)?;
             }

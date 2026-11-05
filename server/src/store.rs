@@ -78,7 +78,9 @@ impl Store {
     /// mustn't serve an empty one.
     pub fn open(path: &Path) -> anyhow::Result<Store> {
         let mut conn = Connection::open(path)?;
-        conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;")?;
+        conn.execute_batch(
+            "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;",
+        )?;
         migrate(&mut conn)?;
         let (tx, rx) = mpsc::channel::<Job>();
         std::thread::Builder::new().name("store".into()).spawn(move || run(conn, rx))?;

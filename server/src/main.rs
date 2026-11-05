@@ -54,6 +54,9 @@ async fn run() -> anyhow::Result<()> {
     std::fs::create_dir_all(&config.data_dir)?;
     let db = config.data_dir.join("cafe.db");
     let store = store::Store::open(&db).with_context(|| format!("can't open the database at {}", db.display()))?;
+    // How far a demo account moved the café's clock on (slice 17): before
+    // the clock is read, so the café never wakes behind its own last save.
+    time::set_ahead(wake::saved_ahead(&store).await?);
     let content = content::load(&config.content_dir)?;
     let tuning = content.tuning.clone();
     let build = config.build_id();
@@ -68,7 +71,7 @@ async fn run() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     // The port it took: `PORT=0` lets the OS choose, as the binary tests do.
     let port = listener.local_addr()?.port();
-    tracing::info!(target: "sys", port, build = %build, clock = %clock, "listening");
+    tracing::info!(target: "sys", port, build = %build, clock = %clock, ahead_ms = time::ahead_ms(), "listening");
     // Set by the stop signal: a replay that ends after it doesn't start a café
     // that's about to exit (slice 07's review, finding 2).
     let stopping = Arc::new(AtomicBool::new(false));
