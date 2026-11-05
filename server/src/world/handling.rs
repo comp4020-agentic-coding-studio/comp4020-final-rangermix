@@ -309,6 +309,9 @@ impl World {
         let Some(i) = self.holding_cat(id) else {
             return error(out, id, ErrorCode::NotHolding, "You aren't holding a cat.");
         };
+        if self.bot_or_refuse(to, id, out) {
+            return;
+        }
         let Some(them) = self.present(to, id).map(|p| p.name.clone()) else {
             return error(out, id, ErrorCode::UnknownPerson, "They aren't inside.");
         };

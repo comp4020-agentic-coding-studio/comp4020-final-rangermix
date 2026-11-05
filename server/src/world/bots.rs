@@ -14,6 +14,8 @@ pub const BOT_IDS: u32 = 4_000_000_000;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bot {
     pub by: u32,
+    /// Who added it, by name, for its leaving line even after they've gone.
+    pub by_name: String,
     pub until: u64,
     pub next: u64,
 }
@@ -36,10 +38,12 @@ impl World {
         };
         let mut joining = Vec::new();
         self.join(now, id, name.clone(), look, false, &mut joining);
+        let self_name = self.name_of(by);
         let first = now + self.bot_pause();
         if let Some(p) = self.people.iter_mut().find(|p| p.id == id) {
             p.bot = Some(Bot {
                 by,
+                by_name: self_name.clone(),
                 until: now + self.tuning.bot_stay_mins * 60_000,
                 next: first,
             });
@@ -74,6 +78,16 @@ impl World {
         let who = self.person(by).map(|p| p.name.clone()).unwrap_or_default();
         tracing::info!(target: "action", uid = by, who = %who, what = "remove_bot", outcome = "ok", bot = %name);
         self.remove(now, id, "removed", out);
+    }
+
+    /// True, with `by` told so, when `to` is a bot: it takes no treat and no
+    /// cat (slice 17's review, finding 6).
+    pub(super) fn bot_or_refuse(&self, to: u32, by: u32, out: &mut Vec<Out>) -> bool {
+        let Some(name) = self.person(to).filter(|p| p.bot.is_some()).map(|p| p.name.clone()) else {
+            return false;
+        };
+        error(out, by, ErrorCode::UnknownPerson, &format!("{name} is a bot: it can't take that."));
+        true
     }
 
     /// A demo account that leaves takes its bots with it.

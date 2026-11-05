@@ -103,6 +103,17 @@ describe("panels", () => {
     expect(box.textContent).toContain("At the window (1)");
   });
 
+  it("marks a bot as a bot, so no name can pass for one (slice 17's review, finding 13)", () => {
+    const box = document.createElement("div");
+    const people = new Map(s.people);
+    const look = { avatar: 0, colour: 0 };
+    people.set(9, { id: 9, name: "bot_1", look, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: true });
+    people.set(10, { id: 10, name: "bot-2", look, place: "inside", at: { x: 4, y: 3 }, walk: null, sitting: false, bot: false });
+    renderHere(box, { ...s, people });
+    expect(box.textContent).toContain("bot_1 (a bot)");
+    expect(box.textContent).not.toContain("bot-2 (a bot)");
+  });
+
   it("keeps Your cats' rows in place through every update", () => {
     // Phase 3's review, finding 3: a cat moving mustn't rebuild the panel.
     const box = document.createElement("div");

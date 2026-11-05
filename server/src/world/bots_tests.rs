@@ -153,6 +153,52 @@ fn bots_come_through_a_jump() {
 }
 
 #[test]
+fn a_bots_leaving_says_who_added_it_and_why() {
+    // Slice 17's review, finding 13: the spec asks for who added it, too.
+    let sink = crate::test_logs::LogSink::default();
+    let _logging = sink.capture();
+    let t0 = canberra(2026, 11, 6, 14, 0);
+    let mut w = world_at(t0);
+    join_demo(&mut w, 1, t0);
+    send(&mut w, 1, t0, ClientMsg::AddBot {});
+    send(&mut w, 1, t0 + 1_000, ClientMsg::RemoveBot {});
+    let left = sink
+        .lines()
+        .into_iter()
+        .find(|l| l["what"] == "leave" && l["who"] == "bot_1")
+        .expect("the bot's leave line");
+    assert_eq!(
+        (left["why"].as_str(), left["added_by"].as_str()),
+        (Some("removed"), Some("demo1")),
+        "{left}"
+    );
+}
+
+#[test]
+fn a_bot_takes_no_treat_and_no_cat() {
+    // Slice 17's review, finding 6: a treat handed to a bot was spent, and
+    // the café tried to store it.
+    let t0 = canberra(2026, 11, 6, 14, 0);
+    let mut w = world_at(t0);
+    join_demo(&mut w, 1, t0);
+    join(&mut w, 2, t0);
+    send(&mut w, 1, t0, ClientMsg::AddBot {});
+    let bot = BOT_IDS + 1;
+    let settled = t0 + 10_000;
+    w.tick(settled);
+    let outs = send(&mut w, 2, settled, ClientMsg::GiveTreat { to: bot });
+    assert_eq!(refused(&outs, 2), vec![ErrorCode::UnknownPerson]);
+    assert_eq!(w.treats_left(2, settled), 3, "no treat spent");
+    // Holding a cat, beside the bot: it isn't passed.
+    let at = w.person(2).unwrap().at;
+    w.cats[0].held_by = Some(2);
+    w.cats[0].at = at;
+    let outs = send(&mut w, 2, settled, ClientMsg::PassCat { to: bot });
+    assert_eq!(refused(&outs, 2), vec![ErrorCode::UnknownPerson]);
+    assert_eq!(w.cats[0].held_by, Some(2));
+}
+
+#[test]
 fn bots_wander_and_wave_but_never_sit_or_talk() {
     let t0 = canberra(2026, 11, 6, 14, 0);
     let mut w = world_at(t0);

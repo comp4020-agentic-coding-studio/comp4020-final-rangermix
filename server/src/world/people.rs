@@ -126,7 +126,9 @@ impl World {
         self.let_go_of_cat(now, id, out);
         let i = self.people.iter().position(|p| p.id == id).expect("checked above");
         let gone = self.people.remove(i);
-        tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", outcome = "ok", why);
+        // A bot's line says which demo account added it (slice 17).
+        let added_by = gone.bot.as_ref().map(|b| b.by_name.clone());
+        tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", outcome = "ok", why, added_by);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::PersonLeft { id },

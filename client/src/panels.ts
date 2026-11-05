@@ -83,7 +83,8 @@ export function renderChalkboard(list: HTMLElement, state: CafeState, localNow =
 
 export function renderHere(box: HTMLElement, state: CafeState): void {
   const people = [...state.people.values()];
-  const name = (p: { id: number; name: string }) => (p.id === state.you ? `${p.name} (you)` : p.name);
+  // A bot is marked as one, so no visitor's name can pass for one (slice 17).
+  const name = (p: { id: number; name: string; bot: boolean }) => (p.id === state.you ? `${p.name} (you)` : p.bot ? `${p.name} (a bot)` : p.name);
   const inside = people.filter((p) => p.place === "inside");
   const waiting = people.filter((p) => p.place === "window");
   const parts: Node[] = [el("h3", null, `Inside (${inside.length}/${state.cap})`), el("p", null, inside.map(name).join(" · ") || "Nobody yet.")];
