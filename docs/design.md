@@ -535,13 +535,25 @@ renamed.
   you"). Reduced-motion settings are honoured.
 - **Music** (decided 2026-11-05,
   [ADR 0020](adr/0020-play-public-domain-lofi-each-visitor-their-own.md);
-  [slice 15](slices/15-music-while-you-sit.md), proposed): quiet lofi by
+  [slice 15](slices/15-music-while-you-sit.md), built): quiet lofi by
   HoliznaCC0, released under CC0, six tracks in `content/music/` with a
-  playlist and credits, three for day and three for night by the Canberra
-  hour, the night set from 17:00. Each visitor has their own player:
-  Play or Pause, Previous, Next and a volume, in a fourth floating panel
-  on a desktop and a row on a phone. Whether it was on, and how loud, is
-  remembered per device and never reaches the server. *Why not Bensound,
+  playlist (`playlist.toml`, data as a cat is) and credits
+  (`CREDITS.md`), three for day and three for night by the Canberra
+  hour, the night set from 17:00 until 6:00. `scripts/music.ts`
+  re-encoded each once from its original to 128 kbps at −16 LUFS, and
+  `manifest.json` records each file's hash and measured loudness, which a
+  client test holds the files to (CI has no ffmpeg). Each visitor has
+  their own player (`client/src/music.ts` chooses, `musicPanel.ts`
+  plays): the track's title and artist, Play or Pause, Previous, Next and
+  a volume, in a fourth floating panel on a desktop (bottom right; pinned,
+  its five controls stay live), a slim row under the talk bar in layout
+  A, and at the top of the drawer in layout B. A set plays in order and
+  loops; a song begun when the clock crosses 17:00 or 6:00 finishes, then
+  the new set's first track follows. No track is fetched until it plays.
+  Whether it was on, and how loud (40% to start), is remembered per device
+  under `cafe.music` and never reaches the server; remembered on, it plays
+  on entering, or at the first press in the café if the browser won't let
+  it yet (a key going down, or a finger lifting). Leaving stops it. *Why not Bensound,
   as first asked:* its free licence covers online videos, not a website's
   background music, and a paid track's files couldn't go in the public
   repo. *Why each their own:* pause and skip are personal, and a shared
@@ -667,7 +679,7 @@ renamed.
 | Sign-up, log-in and recovery attempts | 5 a minute per name from one address, so nobody elsewhere can lock a name out; 60 a minute per IP address, since a whole venue can share one |
 | Password hashing | argon2id, 19 MiB, 2 iterations, at most 2 at once |
 | Avatar looks | 4 avatars in 6 colours |
-| Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start; about 128 kbps, loudness evened (slice 15, proposed) |
+| Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start, in steps of 5; 128 kbps stereo MP3 at −16 LUFS integrated, true peak under −1.5 dBTP (slice 15) |
 
 ## Harness
 
