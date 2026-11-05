@@ -21,6 +21,8 @@ can be made again. It isn't the slice's code, and nothing from it merges.
 
 ![the study by day](screens/slice-16-study/compare-day.png)
 
+Screens are numbered as on these sheets, 1 to 8.
+
 The same at night: [compare-night.png](screens/slice-16-study/compare-night.png).
 
 ## 1. What holds the room back is the window's height
@@ -80,7 +82,7 @@ on the 336×232 backdrop; all of these become the tile's numbers.
 ## 2. The bottom corners
 
 The room's diamond leaves a triangle in each bottom corner. Today the
-street's pavement fills them, darkening down (screen 0), and the cats and
+street's pavement fills them, darkening down (screen 1), and the cats and
 music panels float over part of them. The study tried four things, each
 with the street end to end (section 3):
 
@@ -117,7 +119,7 @@ Things the study didn't try, and why:
 
 ## 3. The street end to end
 
-Today the street is drawn only inside the room's canvas (screen 0), and
+Today the street is drawn only inside the room's canvas (screen 1), and
 the page's flat background frames it. The study drew the canvas over the
 whole window at the room's scale, the room in its middle, the street's
 sky, towers and pavement carried out to every edge (screen 4). The

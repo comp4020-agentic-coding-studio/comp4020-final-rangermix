@@ -2090,3 +2090,44 @@ the opening paragraph already names it. The links to the slice and to
 404 on the live café. Checked on a local server: `/readme/` renders the
 section with every link, and `spec/invariants.test.ts` (the README's
 headings on the served page, in order) passes.
+
+### 14. Finishing slices 11 to 14 (continued)
+
+*Session `004fb600`, Claude Code (Opus 5.5), run as a background job, its
+context compacted again.*
+
+*Sent 2026-11-06 01:28:18 AEDT*
+
+> 1. at 1080p the [Image #4] cafe won't fill whole page. instead of changing the zoom, increase the tile size of the cafe
+> 2. the bottom left and right corner of the cafe is empty, think about ways we can improve that
+> 3. let the background extend end to end to fill the whole page, even if the cafe itself won't
+
+The image: the café at 1920×1080 by night, the room at 4× with the page's
+background round it, and the floating panels in its corners.
+
+**Result.** Slice 16 is proposed, from a study, and not built: its choices
+are the user's
+([`92199ca`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/92199ca)).
+- **The study.** A throwaway build of the client, its change kept as a
+  patch beside the screens so they can be made again, was shot at
+  1920×1080 by day and by night in eight variants: as now, 36-px tiles,
+  the bars floating, the street to the window's edges, a terrace, a
+  garden, a deeper plinth, and a terrace with the plinth. Two labelled
+  sheets compare them ([notes/slice-16-study.md](notes/slice-16-study.md)).
+- **What it found.** The room is held back by the window's height, not
+  its width: at 1920×1080 there are 38 px to spare down and 560 across. A
+  36-px tile fits at 4× only if the status and talk bars float over the
+  room, as layout B's do; with the bars in rows it drops to 3× and the
+  room gets smaller. A maximised browser on a 1080p screen is nearer
+  1920×955, where 36-px tiles give 3× but 32-px tiles with the bars
+  floating give 4×. So floating the bars does most of the work, and a
+  fixed 36 is a gamble on the window.
+- **Proposed** ([slice 16](slices/16-the-cafe-fills-the-window.md),
+  [ADR 0021](adr/0021-grow-the-room-by-its-tile-and-float-the-bars.md)):
+  float the bars on a desktop; choose the tile, 32 or 36, by the window,
+  so the room is never smaller than today's (1512×1040 at 1920×1080);
+  keep cats and people at 24 and 32 px, since no new art was wanted; a
+  terrace in the bottom corners, as scenery in `content/street.toml`
+  taking no click; the street on its own canvas across the whole window.
+  Four open questions: how the room grows, the corners, the floating
+  bars' shape, and the figures at 36-px tiles.
