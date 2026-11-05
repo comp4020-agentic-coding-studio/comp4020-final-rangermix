@@ -70,7 +70,8 @@ mod tests {
     fn the_repo_content_loads() {
         let c = repo_content();
         assert_eq!(c.tuning.cap, 6);
-        assert_eq!(c.room.pieces.len(), 14);
+        // Fourteen, and three on the floor slice 16 added.
+        assert_eq!(c.room.pieces.len(), 17);
     }
 
     #[test]

@@ -188,7 +188,7 @@ mod tests {
     /// Where each movable piece stands, toppled or not: a night may knock
     /// things over, but it moves nothing.
     fn places(arrangement: &str) -> Vec<(String, u8, u8)> {
-        let saved: Vec<crate::room::Saved> = serde_json::from_str(arrangement).unwrap();
+        let (_, saved) = crate::room::read_arrangement(arrangement).unwrap();
         let mut places: Vec<(String, u8, u8)> = saved.into_iter().map(|s| (s.kind, s.x, s.y)).collect();
         places.sort();
         places

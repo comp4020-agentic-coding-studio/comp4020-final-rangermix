@@ -75,6 +75,35 @@ pub struct Saved {
     pub toppled: bool,
 }
 
+/// The arrangement as the store keeps it since slice 16: the floor it was
+/// saved on, width and height, and its pieces.
+#[derive(Serialize, Deserialize)]
+struct SavedFloor {
+    floor: (u8, u8),
+    pieces: Vec<Saved>,
+}
+
+/// An arrangement as JSON for the store, with the floor it's on.
+pub fn arrangement_json(width: u8, height: u8, pieces: &[Saved]) -> String {
+    serde_json::to_string(&SavedFloor {
+        floor: (width, height),
+        pieces: pieces.to_vec(),
+    })
+    .expect("an arrangement serialises")
+}
+
+/// A stored arrangement: its floor, if it was kept (a bare list is a café
+/// saved before slice 16), and its pieces.
+pub type StoredArrangement = (Option<(u8, u8)>, Vec<Saved>);
+
+/// A stored arrangement read back; None if it can't be read.
+pub fn read_arrangement(json: &str) -> Option<StoredArrangement> {
+    if let Ok(saved) = serde_json::from_str::<SavedFloor>(json) {
+        return Some((Some(saved.floor), saved.pieces));
+    }
+    serde_json::from_str::<Vec<Saved>>(json).ok().map(|pieces| (None, pieces))
+}
+
 /// The cushion-only arrangement phase 1 saved, keyed by list position.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Placed {
@@ -126,6 +155,9 @@ pub struct Room {
     /// Every kind of furniture there is, for the catalogue.
     pub kinds: HashMap<String, FurnitureKind>,
     next_id: u32,
+    /// Where room.toml stands each movable piece, for a café saved on a
+    /// floor of another size (slice 16).
+    planned: Vec<Saved>,
 }
 
 impl Room {
@@ -172,6 +204,17 @@ impl Room {
             pieces: Vec::new(),
             kinds: kinds.clone(),
             next_id: file.furniture.len() as u32 + 1,
+            planned: file
+                .furniture
+                .iter()
+                .filter(|p| kinds.get(&p.kind).is_some_and(|k| k.movable))
+                .map(|p| Saved {
+                    kind: p.kind.clone(),
+                    x: p.x,
+                    y: p.y,
+                    toppled: false,
+                })
+                .collect(),
         };
         anyhow::ensure!(
             room.ground(room.entry) == Ground::Floor && manhattan(room.entry, door) == 1,
@@ -353,6 +396,33 @@ impl Room {
                 toppled: p.toppled,
             })
             .collect()
+    }
+
+    /// A saved arrangement put back on this floor (slice 16): as `restore`,
+    /// and if it was saved on a floor of another size (`floor`, width and
+    /// height, or None for a save from before the floor was kept), each
+    /// piece room.toml stands wholly on tiles that floor didn't have is
+    /// added too, if it fits and the café holds fewer than `cap` movable
+    /// pieces. Saved again, the arrangement knows this floor, so they're
+    /// added once.
+    pub fn restore_saved(&mut self, saved: &[Saved], floor: Option<(u8, u8)>, cap: usize) {
+        self.restore(saved);
+        if floor == Some((self.width, self.height)) {
+            return;
+        }
+        // Before the floor was kept, every save was of the 12 by 10 floor.
+        let (w, h) = floor.unwrap_or((12, 10));
+        for p in self.planned.clone() {
+            if self.movable_count() >= cap {
+                break;
+            }
+            let Some(piece) = self.new_piece(&p.kind, Tile { x: p.x, y: p.y }) else {
+                continue;
+            };
+            if piece.tiles().iter().all(|t| t.x >= w || t.y >= h) && self.check_place(&piece, &[]).is_ok() {
+                self.pieces.push(piece);
+            }
+        }
     }
 
     /// Replaces every movable piece with a saved arrangement, rugs first so
@@ -806,7 +876,7 @@ mod tests {
         let mut r = room();
         let id = cushion(&r);
         assert!(r.place(id, t(3, 0)).is_err(), "the window");
-        assert!(r.place(id, t(12, 5)).is_err(), "past the edge");
+        assert!(r.place(id, t(r.width, 5)).is_err(), "past the edge");
         assert!(r.place(id, t(255, 255)).is_err(), "far past the edge");
         assert!(r.place(id, t(1, 5)).is_err(), "the sofa");
         assert_eq!(r.place(id, t(5, 5)), Ok(()), "a cushion can go on the rug");
@@ -902,6 +972,109 @@ mod tests {
         let r = room();
         let v = r.view();
         assert_eq!(v.furniture.len(), r.pieces.len());
-        assert_eq!(v.tiles[0], "WWGGGGWDCWWW");
+        assert_eq!(v.tiles[0], r.rows[0]);
+        assert_eq!(v.tiles.len(), r.height as usize);
+    }
+
+    /// Slice 16: the floor is 13 wide and 12 deep, the street wall's row
+    /// above it, so at 1920×1080 the room fills the window at 4×.
+    #[test]
+    fn the_floor_is_13_wide_and_12_deep() {
+        let r = room();
+        assert_eq!((r.width, r.height), (13, 13));
+        assert!(
+            r.rows[1..].iter().all(|row| row.chars().all(|c| c == '.')),
+            "every row under the street wall is floor"
+        );
+    }
+
+    /// The pieces room.toml sets on the floor slice 16 added: the column at
+    /// x = 12 and the rows below y = 9.
+    fn on_the_new_strip(r: &Room) -> Vec<(String, u8, u8)> {
+        let mut out: Vec<(String, u8, u8)> = r
+            .pieces
+            .iter()
+            .filter(|p| p.spec.movable && p.tiles().iter().all(|t| t.x >= 12 || t.y >= 10))
+            .map(|p| (p.kind.clone(), p.x, p.y))
+            .collect();
+        out.sort();
+        out
+    }
+
+    /// A café saved before slice 16 knew a 12 by 10 floor: its arrangement
+    /// is a bare list. Waking on the bigger floor, every saved piece stands
+    /// where it was and room.toml's pieces on the new strip are added, once.
+    #[test]
+    fn a_cafe_saved_on_the_old_floor_keeps_its_pieces_and_gains_the_new_strips() {
+        let fresh = room();
+        let strip = on_the_new_strip(&fresh);
+        assert!(strip.len() >= 3, "room.toml puts pieces on the new strip: {strip:?}");
+        // What a café saved on the old floor holds: today's pieces less the
+        // new strip's, with the cushion moved.
+        let mut old: Vec<Saved> = fresh
+            .arrangement()
+            .into_iter()
+            .filter(|s| !strip.iter().any(|(k, x, y)| *k == s.kind && *x == s.x && *y == s.y))
+            .collect();
+        let cushion = old.iter_mut().find(|s| s.kind == "cushion").unwrap();
+        (cushion.x, cushion.y) = (3, 8);
+        let mut r = room();
+        r.restore_saved(&old, None, 30);
+        for s in &old {
+            assert!(r.pieces.iter().any(|p| p.kind == s.kind && (p.x, p.y) == (s.x, s.y)), "{s:?} kept");
+        }
+        assert_eq!(on_the_new_strip(&r), strip, "the new strip's pieces added");
+        // Saved again, it knows its floor: waking once more adds nothing,
+        // so a piece someone carried off the new strip stays gone.
+        let mut taken = r.arrangement();
+        taken.retain(|s| !(s.kind == strip[0].0 && s.x == strip[0].1 && s.y == strip[0].2));
+        let mut again = room();
+        again.restore_saved(&taken, Some((r.width, r.height)), 30);
+        assert_eq!(again.arrangement().len(), taken.len(), "nothing added on a café saved at this size");
+    }
+
+    #[test]
+    fn the_new_strips_pieces_are_not_added_past_the_furniture_cap_or_where_something_stands() {
+        let fresh = room();
+        let strip = on_the_new_strip(&fresh);
+        let old: Vec<Saved> = fresh
+            .arrangement()
+            .into_iter()
+            .filter(|s| !strip.iter().any(|(k, x, y)| *k == s.kind && *x == s.x && *y == s.y))
+            .collect();
+        let mut capped = room();
+        capped.restore_saved(&old, None, old.len() + 1);
+        assert_eq!(capped.movable_count(), old.len() + 1, "only up to the cap");
+        // Something saved where a strip piece would go: that one isn't added.
+        let (kind, x, y) = strip[0].clone();
+        let mut there = old.clone();
+        there.push(Saved {
+            kind: "cushion".into(),
+            x,
+            y,
+            toppled: false,
+        });
+        let mut r = room();
+        r.restore_saved(&there, None, 30);
+        assert!(
+            !r.pieces.iter().any(|p| p.kind == kind && (p.x, p.y) == (x, y)),
+            "the {kind} would overlap"
+        );
+    }
+
+    /// The arrangement as the store holds it now: the floor it was saved on
+    /// and its pieces. A bare list is a café saved before the floor was kept.
+    #[test]
+    fn the_saved_arrangement_carries_its_floor_and_reads_a_bare_list_as_unknown() {
+        let r = room();
+        let json = arrangement_json(r.width, r.height, &r.arrangement());
+        let (floor, pieces) = read_arrangement(&json).unwrap();
+        assert_eq!(floor, Some((13, 13)));
+        assert_eq!(pieces, r.arrangement());
+        let bare = serde_json::to_string(&r.arrangement()).unwrap();
+        let (floor, pieces) = read_arrangement(&bare).unwrap();
+        assert_eq!(floor, None);
+        assert_eq!(pieces, r.arrangement());
+        assert!(read_arrangement("not json").is_none());
     }
 }
