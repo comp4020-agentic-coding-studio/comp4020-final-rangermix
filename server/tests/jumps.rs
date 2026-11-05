@@ -2,8 +2,33 @@
 //! binary on a mocked clock, seeded by its own subcommand.
 mod common;
 
-use common::{Cafe, HOUR, Socket, login, repo, seed_demo};
+use common::{Cafe, HOUR, Socket, login, repo, seed_demo, signup};
 use std::time::Duration;
+
+#[test]
+fn a_jump_cuts_nobody_off() {
+    // Slice 17's review, finding 1: a connection's silence was measured by
+    // the café's clock, which a jump moves on, so every page was dropped at
+    // its next ping, 25 s after any jump.
+    let data = tempfile::tempdir().unwrap();
+    let content = repo().join("content");
+    assert!(seed_demo(data.path(), &content, "catppuccino"));
+    let cafe = Cafe::start(data.path(), &content, Some("2026-11-06T14:00:00+11:00"));
+    let (_, cookie) = signup(&cafe, "sam");
+    let mut sam = Socket::open(&cafe, &cookie);
+    sam.welcome();
+    let mut demo = Socket::open(&cafe, &login(&cafe, "demo1", "catppuccino"));
+    demo.welcome();
+    demo.send_text(r#"{"type":"setClock","minute":900}"#);
+    sam.next_where(Duration::from_secs(10), |m| m["type"] == "jumping");
+    sam.next_where(Duration::from_secs(30), |m| m["type"] == "welcome");
+    // Past the next ping, with nothing sent: still there, still heard.
+    std::thread::sleep(Duration::from_secs(31));
+    sam.send_text(r#"{"type":"emote","emote":"wave"}"#);
+    let waved = sam.next_where(Duration::from_secs(5), |m| m["type"] == "emoted");
+    assert_eq!(waved["emote"], "wave");
+    cafe.stop(Duration::from_secs(10));
+}
 
 #[test]
 fn the_clock_stays_ahead_across_a_restart() {

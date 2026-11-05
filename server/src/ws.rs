@@ -263,12 +263,17 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
         return;
     }
     let t = &app.tuning;
-    let now = now_ms();
+    // The connection's own time, for its silence and its rate limits: a
+    // duration, never the café's clock, which a jump moves on hours at once
+    // (slice 17's review, finding 1).
+    let opened = std::time::Instant::now();
+    let since = move || opened.elapsed().as_millis() as u64;
+    let now = since();
     let mut speech = Bucket::new(t.bubble_burst, 1.0 / t.bubble_refill_secs, now);
     let mut actions = Bucket::new(t.action_burst, t.action_per_sec, now);
     // Fly's proxy drops connections that go quiet; a ping keeps a calm café open.
     let mut ping = tokio::time::interval(Duration::from_secs(25));
-    let mut last_heard = now_ms();
+    let mut last_heard = since();
     loop {
         tokio::select! {
             out = rx.recv() => match out {
@@ -282,9 +287,9 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
             },
             incoming = stream.next() => match incoming {
                 Some(Ok(Message::Text(frame))) => {
-                    last_heard = now_ms();
+                    last_heard = since();
                     let Ok(msg) = serde_json::from_str::<ClientMsg>(frame.as_str()) else { continue };
-                    let now = now_ms();
+                    let now = since();
                     let allowed = match msg {
                         ClientMsg::Say { .. } | ClientMsg::Call { .. } | ClientMsg::Emote { .. } => speech.take(now),
                         _ => actions.take(now),
@@ -306,10 +311,10 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
                 }
                 Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
                 // Pongs, and anything else, still say the other end is there.
-                Some(Ok(_)) => last_heard = now_ms(),
+                Some(Ok(_)) => last_heard = since(),
             },
             _ = ping.tick() => {
-                if gone_silent(last_heard, now_ms()) {
+                if gone_silent(last_heard, since()) {
                     break;
                 }
                 if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
