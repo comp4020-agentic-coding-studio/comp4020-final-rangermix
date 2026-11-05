@@ -164,8 +164,9 @@ the three sets are as proposed; and the sets wait for slice 16.
   presets.
 - **A bot is a visitor, without words or hands.** It walks in through the
   door, or joins the line at the window if the café is full. Now and then
-  it walks to a free tile, sits on a free seat or emotes. It never talks,
-  handles a cat or touches furniture.
+  it walks to a free tile or emotes. It never sits, talks, handles a cat
+  or touches furniture: a bot on the sofa would take the seat the regular
+  needs for a lap (the agent's call, 2026-11-06, in the plan).
 - **Bots count toward the six inside.** When a seat frees, the first in
   line walks in, bot or person.
 - **A bot is never stored or met.** It isn't an account, it can't log in,
