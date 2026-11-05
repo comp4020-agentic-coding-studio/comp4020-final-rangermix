@@ -74,7 +74,7 @@
            top of the room; in layout A it stands between the status bar and
            the room, its groups opening one at a time below their buttons. -->
       <section id="demo-bar" class="demo-bar" aria-label="Demo controls" hidden>
-        <p class="demo-clock"><span class="demo-label">Café time</span> <strong id="demo-time">--:--</strong> <span id="demo-ahead"></span></p>
+        <p class="demo-clock"><span class="demo-label">Café time</span> <strong id="demo-time" tabindex="-1">--:--</strong> <span id="demo-ahead"></span></p>
         <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-times">Time</button>
         <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-bots">Bots</button>
         <div id="demo-times" class="demo-group" role="group" aria-label="Move the café's clock on">
@@ -82,7 +82,7 @@
           <label class="demo-at">At <input type="time" id="demo-at" step="60" /></label>
           <button type="button" id="demo-go">Go</button>
           <button type="button" id="demo-canberra">Canberra time</button>
-          <span id="demo-wait" class="demo-wait" role="status" hidden></span>
+          <span id="demo-wait" class="demo-wait" hidden></span>
         </div>
         <div id="demo-bots" class="demo-group" role="group" aria-label="Bots">
           <button type="button" id="demo-remove-bot" aria-label="Remove a bot">−</button>

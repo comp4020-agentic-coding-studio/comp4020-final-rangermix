@@ -1,6 +1,7 @@
 // The demo bar (slice 17, ADR 0022): what a demo account moves the café's
 // clock on with, and adds or removes bots with. Only a demo account sees it;
 // the server checks every ask, and everyone sees what it did.
+import { announce } from "./announce";
 import type { ClientMsg } from "./protocol/ClientMsg";
 import { type CafeState, serverNow } from "./state";
 
@@ -63,6 +64,11 @@ export function waitText(nextJump: number, cafeNow: number): string | null {
   return `Next move in ${Math.ceil((nextJump - cafeNow) / 1000)} s`;
 }
 
+/** Said once, when a jump lands: the countdown itself isn't read out every second. */
+export function movesAgainAt(nextJump: number): string {
+  return `The clock can move on again at ${clockText(nextJump)}.`;
+}
+
 export function botsText(n: number): string {
   return n === 0 ? "No bots" : n === 1 ? "1 bot" : `${n} bots`;
 }
@@ -90,6 +96,8 @@ export interface DemoBarEls {
 export class DemoBar {
   private state: CafeState | null = null;
   private waking = false;
+  /** The wait last said, so it's announced once (slice 17's review, finding 7). */
+  private told: number | null = null;
   private readonly presets: HTMLButtonElement[];
 
   constructor(
@@ -172,16 +180,31 @@ export class DemoBar {
     this.els.ahead.textContent = aheadText(state.ahead);
     const bots = [...state.people.values()].filter((p) => p.bot).length;
     this.els.botCount.textContent = botsText(bots);
-    this.disable(this.waking, waitText(state.nextJump, now));
+    const wait = waitText(state.nextJump, now);
+    if (wait !== null && state.demo && this.told !== state.nextJump) {
+      this.told = state.nextJump;
+      announce(movesAgainAt(state.nextJump));
+    }
+    this.disable(this.waking, wait, bots === 0);
   }
 
-  /** While the café wakes or jumps, nothing; until the clock can move, not the time. */
-  private disable(waking: boolean, wait: string | null): void {
+  /**
+   * While the café wakes or jumps, nothing; until the clock can move, not
+   * the time; with no bots, no removing one. A control disabled under the
+   * keyboard's focus hands it to the bar's clock, so the focus is never
+   * lost (slice 17's review, finding 7).
+   */
+  private disable(waking: boolean, wait: string | null, noBots = true): void {
     const timeControls = [...this.presets, this.els.hourOn, this.els.go, this.els.canberra];
-    for (const b of timeControls) b.disabled = waking || wait !== null;
-    this.els.at.disabled = waking;
-    this.els.addBot.disabled = waking;
-    this.els.removeBot.disabled = waking;
+    const off = new Set<HTMLElement>();
+    for (const b of timeControls) if (waking || wait !== null) off.add(b);
+    if (waking) off.add(this.els.at).add(this.els.addBot);
+    if (waking || noBots) off.add(this.els.removeBot);
+    if (off.has(document.activeElement as HTMLElement)) this.els.time.focus();
+    for (const b of timeControls) b.disabled = off.has(b);
+    this.els.at.disabled = off.has(this.els.at);
+    this.els.addBot.disabled = off.has(this.els.addBot);
+    this.els.removeBot.disabled = off.has(this.els.removeBot);
     this.els.wait.textContent = wait ?? "";
     this.els.wait.hidden = wait === null;
   }

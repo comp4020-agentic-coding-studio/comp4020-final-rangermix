@@ -1767,6 +1767,14 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     expect(demo.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
     await page.locator("#waking").waitFor({ state: "hidden", timeout: 15_000 });
     await expect.poll(() => page.locator("#demo-time").textContent()).toBe(target);
+    // The field was disabled under the keyboard's focus while the café lived
+    // the hours: the focus went to the bar's clock, not nowhere (finding 7).
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("demo-time");
+    // By mouse: a bot in, and out again.
+    await page.locator("#demo-add-bot").click();
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("1 bot");
+    await page.locator("#demo-remove-bot").click();
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("No bots");
     // The visitor's page went with it.
     await visitor.page.waitForFunction(() => document.getElementById("waking")!.hidden);
     expect(visitor.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
@@ -1776,6 +1784,8 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     const demo = await visitAs("demo2", { width: 390, height: 844 }, true);
     const page = demo.page;
     const toggle = page.locator("#demo-bar .demo-toggle", { hasText: "Bots" });
+    // With no bots there's none to remove, and the count says so (finding 7).
+    expect(await page.locator("#demo-remove-bot").isDisabled()).toBe(true);
     await toggle.tap();
     expect(await toggle.getAttribute("aria-expanded")).toBe("true");
     await page.locator("#demo-add-bot").tap();
@@ -1788,6 +1798,12 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     expect(await toggle.getAttribute("aria-expanded")).toBe("false");
     await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("Bots");
     expect(await page.locator("#demo-bots").isHidden()).toBe(true);
+    // Layout A: the bar stands in the page between the status bar and the room.
+    await page.locator("#layout-switch").tap();
+    await page.waitForFunction(() => !document.body.classList.contains("layout-b"));
+    const above = (await page.locator("#demo-bar").boundingBox())!;
+    const room = (await page.locator("#stage").boundingBox())!;
+    expect(above.y + above.height).toBeLessThanOrEqual(room.y);
     // Mid-use, to a desktop: the groups stand in one row, no buttons to open them.
     await page.setViewportSize({ width: 1920, height: 1080 });
     await expect.poll(() => page.locator("#demo-bots").isVisible()).toBe(true);

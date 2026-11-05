@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { PRESETS, aheadText, botsText, clockText, hourOn, minuteOf, waitText } from "../src/demoBar";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { PRESETS, aheadText, botsText, clockText, hourOn, minuteOf, movesAgainAt, waitText } from "../src/demoBar";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -49,6 +51,17 @@ describe("the demo bar", () => {
     expect(waitText(100_000, 99_001)).toBe("Next move in 1 s");
     expect(waitText(100_000, 100_000)).toBeNull();
     expect(waitText(0, 5_000)).toBeNull();
+  });
+
+  it("says once, not every second, when the clock can move again (slice 17's review, finding 7)", () => {
+    expect(movesAgainAt(Date.parse("2026-11-06T12:31:00Z"))).toBe("The clock can move on again at 23:31.");
+  });
+
+  it("keeps an opaque card, so its text holds 4.5:1 by the page's own colours (slice 17's review, finding 11)", () => {
+    const css = readFileSync(join(process.cwd(), "src/style.css"), "utf8");
+    const rule = /\.demo-bar \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toContain("background: var(--card)");
+    expect(css).not.toMatch(/\.demo-bar[^{]*\{[^}]*backdrop-filter/);
   });
 
   it("counts the bots", () => {
