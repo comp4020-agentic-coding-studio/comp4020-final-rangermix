@@ -1919,6 +1919,48 @@ up against someone's chest.
   for now, in the spec.
 - **Slice 11 merged first**, as asked; the music (slice 15) next.
 
+**Result, continued: slice 15, the music.** Built by the plan
+([`72faa7c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/72faa7c)), test first, reviewed cold, every finding fixed, merged
+and deployed, and checked on the live café.
+- **The files** ([`a455fe2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a455fe2)): the six originals re-encoded once by
+  `scripts/music.ts` to 128 kbps at −16.4 to −16.8 LUFS, 15.5 MB. ffmpeg's
+  loudness pass alone left *One Night in France* over 0 dBTP once
+  encoded, since the MP3 encoder overshoots by about 2 dB, so the script
+  limits 2 dB under the ceiling first. A manifest records each file's
+  hash and loudness, which a client test holds them to, as CI has no
+  ffmpeg.
+- **The player** ([`4c6a8ea`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4c6a8ea)): the set by the Canberra hour, Next and
+  Previous round it, a song finishing across 17:00 or 6:00, tested with a
+  fake clock.
+- **The panel** ([`cadc38f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/cadc38f), [`e586bd9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e586bd9)): a fourth floating panel
+  on a desktop (pinned, its five controls stay live), a slim row in both
+  phone layouts; no track fetched until it plays; on and the volume
+  remembered per device; nothing sent to the café but presence. Two
+  things the checks found: headless Chromium keeps the browser's
+  autoplay rule, but a check's own script counts as a press there, so
+  the checks keep the rule by the page's real input; and a phone lets a
+  tap start sound only as the finger lifts. The phone's drawer had
+  covered the status bar's second row since before this slice; it's now
+  placed from the measured bars.
+- **The review** ([`3a7523c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3a7523c)): 9 findings, 1 major (after a failed
+  load, Play did nothing). All fixed test first ([`64c284d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/64c284d)): a
+  retry after a failed load, the clock's set at the press, a pause from a
+  media key remembered and the track named for the system's controls, no
+  source set while the browser won't play, whole focus rings, the panel
+  sized to itself, the drawer taking the focus, a skip announced, and
+  the script fetching its originals (rerun, it remade the committed
+  files byte for byte).
+- **`main` was red** since the rug's pull request merged: its test
+  fixtures lacked slice 11's `perch` flag, so nothing had deployed.
+  Fixed ([`a6d970e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a6d970e)), with a settle wait in slice 14's corner check
+  ([`6505db3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6505db3)).
+- **Live** ([`17c27bd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/17c27bd)): one `agent_` visit; nothing fetched before
+  Play, Bubbles then Ocean Breeze played from the live build, nothing
+  sent but presence, and Leave stopped it. Still owed: a real iPhone's
+  first tap, and the user's judgement of the sets by ear and of the
+  panel from the screens. The README's credit says the tracks play "once
+  slice 15 is built"; that clause is the user's to drop.
+
 ### 15. Music in the café
 
 *Session `94671824`, Claude Code (Opus 5.5), run as a background job.*
