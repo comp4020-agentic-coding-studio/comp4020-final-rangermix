@@ -491,4 +491,84 @@ execution log.
 
 ## Answers
 
-*(For the builder.)*
+By the builder, session `f6949123`, 2026-11-06. Every finding is fixed,
+test first where it's behaviour, or answered. After the fixes: `cargo test
+-p cafe` (344 unit tests and every binary test), the client's 312 tests,
+and the whole `spec/` against a seeded local café pass.
+
+1. **Fixed** in [`ed0556e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ed0556e). A connection's silence and its rate limits
+   are measured by its own monotonic time, never the café's clock. Test
+   first: `tests/jumps.rs`'s `a_jump_cuts_nobody_off` keeps a page open
+   31 s past a jump and is still answered; it failed with the socket closed
+   under it.
+2. **Fixed** in [`086fb45`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/086fb45). The README's step 7 and the spec's step 6:
+   bots until six are inside, then one more, who waits at the window and
+   takes the seat the newcomer leaves. `spec/demo.test.ts` now follows
+   exactly that path.
+3. **Fixed** in [`20a93b0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/20a93b0). Trust changed while a replay holds the
+   store back is noted and written in the replay's end save. Test first:
+   `jump_tests::trust_a_cat_gives_during_a_jump_is_stored`, with a real
+   store (it failed: Burakku's 0.3 in p1 missing from the store).
+4. **Fixed and answered** in [`065cc7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/065cc7a). Sessions and the accounts'
+   rate limits keep Canberra's own clock (`time::canberra_now_ms`), so a
+   jump spends nobody's session; test first in `tests/jumps.rs`: a
+   day-long session still good after two jumps of nearly a day (it failed
+   with a 401). The lead stays unbounded, now said in ADR 0022's
+   consequences: a ceiling would end jumps for good once reached, since
+   the lead never shrinks, and with sessions on Canberra's clock nothing
+   else breaks with a long lead.
+5. **Fixed** in [`065cc7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/065cc7a). The world task moves the clock on, catches
+   the world up to the café's time as it is after the replay, and
+   welcomes everyone at that time. Test first: the next walk starts
+   within 500 ms of the welcome's time (it was 1508 ms behind).
+6. **Fixed** in [`5a5b2ba`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5a5b2ba). Giving a bot a treat, or passing it a cat,
+   is refused ("bot_1 is a bot: it can't take that."), nothing spent, no
+   store job. Test first: `bots_tests::a_bot_takes_no_treat_and_no_cat`.
+7. **Fixed** in [`702a610`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/702a610). The countdown is plain text, no live
+   region; the page says once "The clock can move on again at 23:31." A
+   control disabled under the keyboard's focus hands it to the bar's
+   clock (`tabindex="-1"`); the browser check now asserts the focus after
+   a keyboard jump. With no bots, − is disabled and the count says why.
+   **Answered** for + at six: it stays pressable and says why when
+   pressed ("The café takes no more bots."); the client isn't told
+   `bots_max`, and six bots is a state a marker reaches only on purpose.
+8. **Fixed** in [`065cc7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/065cc7a). The lead grows by exactly the gap asked
+   for (`Jump.from`); "Canberra time" aims for what Canberra's own clock
+   reads, by the local date and time (`time::realign_target`), so
+   daylight saving can't leave it an hour out; `next_time_of_day` takes
+   both instants of April's repeated hour; the bar's hours round down.
+   Tests: `time::tests::the_repeated_hour_counts_both_times`,
+   `canberra_time_is_canberras_hour_by_the_calendar`, and
+   `demoBar.test.ts`.
+9. **Fixed** in [`065cc7a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/065cc7a). The running jump's message is published
+   beside `awake`, and a page that opens meanwhile gets it at once. Test
+   first in `tests/jumps.rs`: a socket opened mid-jump hears `jumping`
+   first.
+10. **Answered.** An action that arrives after a short jump has ended is
+    done at the new hour, checked against the café as it is then, so no
+    rule is broken; making each page echo a jump counter would add a
+    protocol round for no visitor's gain. The design and the spec now say
+    "an action that reached the café while it jumped is refused", which is
+    what holds, and `ws::tests::what_queued_during_a_jump_is_refused_and_told`
+    tests the drain itself.
+11. **Fixed** in [`8b42a46`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8b42a46) and [`702a610`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/702a610): a held cat and a lap
+    in a jump (`a_jump_puts_a_held_cat_down_and_ends_a_lap`), the drain's
+    routing, the bar's card held opaque by a client test, and the browser
+    checks adding a mouse click, layout A on a phone, the focus after a
+    keyboard jump, and − disabled with no bots. The spec's "done when"
+    table now names what holds each line (the restart by `tests/jumps.rs`,
+    not `spec/restart.test.ts`). **Answered** for the replay's own rules
+    (midnight's trust day, bans running down, the board): they are the
+    same `replay` a sleep uses, held by its tests, and finding 3 was the
+    one way the two differed.
+12. **Answered** in ADR 0022's consequences, both accepted: a scripted
+    demo connection can hold seats with bots for as long as it runs, a
+    small step past six sign-ups; and every jump past midnight is a new
+    trust day for everyone inside, which, for markers, is the point.
+13. **Fixed** in [`5a5b2ba`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5a5b2ba) and with these answers: `design.md`'s
+    "not yet built" corrected; the notes' full-suite line filled in; a
+    bot's leave line carries `added_by`, kept on the bot so it's there even
+    when it leaves with its demo account; who's here marks each bot
+    "(a bot)", so `bot-1` can't pass for one. **Answered** for the seed's
+    narration: its lines go to the `fly ssh` console, not `fly logs`, so
+    `pnpm logs` never sees them; the plan's mention of it is dropped.

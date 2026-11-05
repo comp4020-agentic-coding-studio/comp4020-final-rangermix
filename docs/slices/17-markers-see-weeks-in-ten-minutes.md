@@ -1,6 +1,8 @@
 # 17. Markers see weeks of the café in ten minutes
 
-- **Status:** Approved 2026-11-06 by the user's answers to its questions
+- **Status:** Part 1 built and reviewed 2026-11-06 (4 major and 9 minor
+  findings, each fixed or answered: [findings](../notes/reviews/slice-17-findings.md));
+  live once merged, deployed and seeded. Approved 2026-11-06 by the user's answers to its questions
   (below). Built in two parts: **part 1**, everything but the furniture
   sets, alongside slice 16; **part 2**, the three furniture sets, after
   slice 16, since it changes the floor they're laid out on. What's still
@@ -279,15 +281,16 @@ in window 2 only.
 | A demo account's jump goes to the next time of day it asked for, at most 24 hours on, never back; anyone else's ask is refused | `cargo test` and `spec/` (a new account's ask refused) |
 | A jump replays the gap with the café's rules: the cats' rhythms, the 7:00, 12:00 and 18:00 refills, midnight's treats and trust day, bans running down, the board's lines; the same save and the same jump make the same café | `cargo test` on mocked time |
 | People inside come through a jump: nothing held, carried or on a lap, no cat on their tile, nobody walked out by it | `cargo test` |
-| Every page in the café waits during a jump and gets the new time within a second of its end; an action sent meanwhile is refused as while waking | `spec/` (two clients) |
-| How far ahead the café is survives a restart; its clock never goes back | `cargo test` (the binary on mocked time: a jump, a stop, a start) and `spec/restart.test.ts` |
+| Every page in the café waits during a jump and gets the new time within a second of its end; a page that opens meanwhile is told at once; the welcome's time is the café's own; an action that reached the café while it jumped is refused (`movedOn`) | `spec/demo.test.ts` (two clients), `server/tests/jumps.rs` (a page opened mid-jump; the next walk within 500 ms of the welcome's time) and `ws::tests::what_queued_during_a_jump_is_refused_and_told` |
+| A jump cuts no connection, and spends nobody's session | `server/tests/jumps.rs` (a page still answered 31 s after a jump; a day-long session good after two jumps of nearly a day) |
+| How far ahead the café is survives a restart; its clock never goes back | `server/tests/jumps.rs` (the binary on mocked time: a jump, a stop, a start five minutes later) |
 | One jump at a time, at most one a minute | `cargo test` |
 | Part 2: each of the three furniture sets passes every placement rule | `cargo test` (every file in `content/layouts/`) |
 | Part 2: a demo account's set is laid out at once for everyone, without spending the rate limit; carried pieces go back, nobody is left on a blocking piece, cats jump off what moves | `cargo test` and `spec/` (a second client sees the set within a second) |
-| Bots: up to six, counted in the cap; the seventh in the café waits at the window; they leave when removed, when their demo account leaves, or after 15 minutes; no trust, no board line, nothing stored | `cargo test` and `spec/` (four bots, then a new visitor lands at the window) |
+| Bots: up to six, counted in the cap; the seventh in the café waits at the window; they leave when removed, when their demo account leaves, or after 15 minutes; no trust, no board line, no treat or cat handed them, nothing stored | `cargo test` (`world::bots_tests`) and `spec/demo.test.ts` (the README's path: bots until six are inside and one more, the newcomer leaves and comes back to the window, a bot removed lets them in) |
 | `cafe demo seed` creates and marks the demo accounts and sets their trust from `content/demo.toml`, logged per account and cat; no other account's trust changes | `cargo test` |
 | Sign-up refuses `demo` followed only by digits, and names starting `bot_`, ignoring case | `spec/accounts.test.ts` |
-| The demo bar shows only to a demo account; every control works by keyboard, touch and mouse at 390×844 and 1920×1080, through a resize; its text is 4.5:1 or better over anything behind it | browser checks and client unit tests (`contrast`) |
+| The demo bar shows only to a demo account; every control works by keyboard, touch and mouse at 390×844 (layouts A and B) and 1920×1080, through a resize; the keyboard's focus survives a jump; its text is 4.5:1 or better over anything behind it | browser checks, and client unit tests (`contrast` for ink and muted on a card; `demoBar.test.ts` holds the bar's card opaque) |
 | One log line per jump, set laid out and bot, and per refused ask; nothing anyone said | `cargo test` (log tests) and CI's log check |
 | On the live café, the demo accounts exist with their seed, and the marker's path works end to end at both sizes | judged: an agent walks the path on the live café after the deploy, recorded in `docs/notes/slice-17-demo.md` with screens |
 | The README's "For markers" matches what's built | judged: the user, reading `/readme/` on the live café |

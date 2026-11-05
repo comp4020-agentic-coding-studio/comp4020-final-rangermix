@@ -113,7 +113,18 @@ The details are [slice 17](../slices/17-markers-see-weeks-in-ten-minutes.md)'s.
   change the furniture, fill the café with bots, and be unkind to the
   regular's cats. Jumps are limited, bots leave on their own, and the
   operator's seed can be run again, but the café's clock can be pushed
-  days ahead of Canberra's and can't be brought back.
+  days ahead of Canberra's and can't be brought back. Nothing bounds how
+  far: a ceiling would end jumps for good once reached, since the lead
+  never shrinks. Sessions keep Canberra's own clock, so however far ahead
+  the café runs, nobody is logged out by it. (Named after slice 17's
+  review, findings 4 and 12, before this ADR reached `main`.)
+- **Two more things the public password allows, accepted:** a scripted demo
+  connection that re-adds its bots every 15 minutes can hold seats for as
+  long as it runs, a small step past what six sign-ups could do already;
+  and every jump past Canberra's midnight is a new trust day for everyone
+  inside, so trust's daily cap resets with it, and a newcomer beside a
+  demo account can gain a day's trust a jump. For markers that is the
+  point: weeks in ten minutes.
 - **The demo accounts' password is public by design**, unlike the agents'
   test accounts, whose passwords are never written down. Their recovery
   codes are made at random and never shown, so nobody can change the

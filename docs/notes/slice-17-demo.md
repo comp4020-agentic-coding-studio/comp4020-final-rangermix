@@ -20,7 +20,15 @@ furniture sets, waits for slice 16.
 - **`spec/` against a local café** seeded with `cafe demo seed`
   (`APP_DEMO_PASSWORD=catppuccino`): `demo.test.ts`, the new browser checks
   of the bar, `accounts.test.ts` (the café's own names), and
-  `narrate.test.ts`. The full suite's run is below.
+  `narrate.test.ts`. The whole suite, after the review's fixes: 94 passed,
+  `restart.test.ts` skipped (it needs `APP_RESTART`, which CI gives).
+  Its first whole run caught three checks that faked only the device's
+  clock, fixed in `faea3bd` (see the plan's execution log).
+- **CI** on the pull request
+  ([#2](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/pull/2)):
+  the `check` job (the image, the seed on its volume, the whole spec with
+  `APP_DEMO_PASSWORD`, the log check with `catppuccino` never logged) and
+  the `rust` job passed at `8ea4b90`.
 - **The seed by hand:** without `CAFE_DEMO_PASSWORD` it stops with one
   error line; with it, it makes `demo1` and `demo2` and logs one
   `operator` line per account and per cat, and no line holds the
@@ -45,9 +53,19 @@ refuses, naming it, and touches nothing: then choose other names in
 seed again whenever someone has been unkind to the regular's cats; it puts
 the trust back and lifts any bans.
 
+## The review
+
+A reviewer who didn't build it read part 1 cold
+([brief](reviews/slice-17-brief.md), [findings](reviews/slice-17-findings.md)):
+4 major and 9 minor findings, each fixed test first or answered in the
+findings' Answers. The majors: every page was dropped 25 s after a jump
+(silence measured by the café's clock); the README's bots step let the
+newcomer straight back in; trust a cat gave during a jump's replay wasn't
+stored; and jumps spent everyone's session.
+
 ## Still to do
 
-- The fresh review of part 1, its findings answered.
-- The merge, the deploy, the seed and a restart on Fly, then the marker's
-  path walked on the live café at both sizes, recorded here.
+- The merge (the user's), the deploy, then the seed and a restart on Fly
+  (above), then the marker's path walked on the live café at both sizes,
+  recorded here.
 - Part 2, the furniture sets, after slice 16.

@@ -291,8 +291,10 @@ Written 2026-11-06 from the code at `5efb730` (main at `5a3a1df`).
 
 ### Task 10: Logs told as sentences; the docs
 
-- [ ] `scripts/narrate.ts`: `set_clock`, `jumped`, `add_bot`, `remove_bot`,
-  `demo_seed`; `spec/narrate.test.ts` cases first.
+- [ ] `scripts/narrate.ts`: `set_clock`, `jumped`, `add_bot`, `remove_bot`;
+  `spec/narrate.test.ts` cases first. (Not `demo_seed`, as first written:
+  the seed's lines go to the `fly ssh` console, never `fly logs`. Slice 17's
+  review, finding 13.)
 - [ ] `docs/design.md` "Showing it to markers" marked built (part 1), its
   numbers in "Numbers to tune"; `docs/notes/slice-17-demo.md` (what was
   checked, and how to seed the live café); root plan's status.

@@ -58,8 +58,9 @@ under [Numbers to tune](#numbers-to-tune).
   in one place has one clock, and a night visit becomes a different visit.
   A demo account can move that clock on, never back; from then the café
   runs ahead of Canberra's wall clock
-  ([Showing it to markers](#showing-it-to-markers), decided 2026-11-06,
-  not yet built).
+  ([Showing it to markers](#showing-it-to-markers); slice 17, part 1
+  built). Accounts and their sessions keep Canberra's own clock, so a jump
+  logs nobody out.
 
 ## People
 
@@ -432,8 +433,16 @@ and Burakku at 25.
   and replays the gap off the runtime as it replays a sleep; then it brings
   everyone back with their timers moved on by the gap, so nobody is walked
   out by a jump, moves any cat off someone's tile, and welcomes everyone
-  at the new time. An action a page sent before it heard is refused
-  (`movedOn`). How far ahead the café is (`world.ahead`) is saved with the
+  at the new time, the world first caught up to the café's clock as it is
+  after the replay, so no page runs behind. A page that opens meanwhile is
+  told at once. An action that reached the café while it lived the hours is
+  refused (`movedOn`); one that arrives after a short jump has ended is
+  done at the new hour, checked against the café as it is then. The lead
+  grows by exactly the gap asked for, and "Canberra time" aims for the
+  time Canberra's own clock reads, by the local date and time, so daylight
+  saving can't leave it an hour out. Sessions and the accounts' rate
+  limits keep Canberra's own clock, so a jump spends nobody's session
+  (slice 17's review, findings 4, 5, 8, 9 and 10). How far ahead the café is (`world.ahead`) is saved with the
   replay's end and loaded before the clock is first read, so the clock
   never goes back, across restarts too.
 - **A demo account lays out one of three furniture sets** from
@@ -442,7 +451,8 @@ and Burakku at 25.
 - **A demo account adds and removes bots**: up to six (`bots_max`),
   `bot_1` to `bot_6`, visitors the server runs, which take seats and join
   the line, now and then walk to free floor or wave, and never talk, sit,
-  handle a cat or touch furniture. They leave when removed (the newest
+  handle a cat or touch furniture. A visitor can't hand one a treat or
+  pass it a cat, and who's here marks each "(a bot)". They leave when removed (the newest
   first), with the demo account that added them, or after 15 minutes
   (`bot_stay_mins`), which a jump doesn't spend. The cats never meet one,
   the quiet seat passes them by, and nothing about them is stored.
