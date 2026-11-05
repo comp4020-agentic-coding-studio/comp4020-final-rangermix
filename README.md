@@ -27,11 +27,11 @@ Let's define good from two side:
 
 ## For markers
 
-The cats get to know you over days, and the café keeps Canberra time, so ten minutes as a newcomer shows little of either. A demo account lets you see weeks in those ten minutes. Log in as `demo_regular` (or `demo_regular_2`, if the first is open elsewhere), password `<password to come>`. The cats already know this regular: Mochi naps on their lap, Tora greets them at the door, Burakku comes when called. A bar at the top of the room moves the café's clock forward (the café lives through the hours between, for everyone inside), lays out one of three furniture sets, and adds or removes bots.
+The cats get to know you over days, and the café keeps Canberra time, so ten minutes as a newcomer shows little of either. A demo account lets you see weeks in those ten minutes. Log in as `demo1` (or `demo2`, if the first is open elsewhere), password `catppuccino`. The cats already know this regular: Mochi naps on their lap, Tora greets them at the door, Burakku comes when called. A bar at the top of the room moves the café's clock forward (the café lives through the hours between, for everyone inside), and adds or removes bots.
 
 1. Window 1 at 1920×1080: sign up as yourself. Window 2 at 390×844: the demo account.
 2. Both say "Mochi": she comes to the regular, and only looks up at you. Have the regular pass her to you: she won't go to a stranger.
-3. Bar: **Afternoon**, then **Lap time**. Sit the regular on the sofa, and Mochi takes the lap.
+3. Bar: **Afternoon**. Sit the regular on the sofa, and Mochi takes the lap.
 4. Bar: **Night**. Burakku is up and the others asleep; the board shows the hours you skipped. Talk a lot, and she hides.
 5. Bar: **Morning**. The regular walks out and back in, and Tora greets them at the door.
 6. As yourself, keep picking Tora up: she refuses, then scratches, then bans you for a while.

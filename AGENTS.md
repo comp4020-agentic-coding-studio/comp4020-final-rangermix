@@ -97,9 +97,10 @@ The user lets agents test on the deployed café and its Fly app
   never written down, since the repo goes public. Accounts can't be deleted
   and real visitors see a test visit while it lasts (who's here, and a
   cat's "met agent_… for the first time" on the board), so keep visits
-  short and few. The demo accounts (`demo_…`) are the exception: their
-  password is in the README for markers, and an agent may use them, but
-  their recovery codes are the user's and never written down.
+  short and few. The demo accounts (`demo1`, `demo2`) are the exception: their
+  password is in the README for markers, and an agent may use them. Their
+  recovery codes are never shown to anyone; only the operator's seed
+  (`cafe demo seed`) sets their password.
 - **Fly:** read the logs, stop, start or restart the machine, open a
   console on it, or deploy a build to it, as testing needs. Never change
   the course's fixed shape in `fly.toml` (one machine, 256 MB, the volume,

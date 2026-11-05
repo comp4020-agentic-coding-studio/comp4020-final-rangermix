@@ -116,6 +116,6 @@ The details are [slice 17](../slices/17-markers-see-weeks-in-ten-minutes.md)'s.
   days ahead of Canberra's and can't be brought back.
 - **The demo accounts' password is public by design**, unlike the agents'
   test accounts, whose passwords are never written down. Their recovery
-  codes are the user's and aren't written in the repo, so nobody else can
-  change the password.
+  codes are made at random and never shown, so nobody can change the
+  password but the operator, by running the seed again.
 - The commits that carry it out are slice 17's.

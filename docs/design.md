@@ -399,9 +399,9 @@ renamed.
 
 Decided 2026-11-06 by the user
 ([ADR 0022](adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md));
-built as [slice 17](slices/17-markers-see-weeks-in-ten-minutes.md), whose
-spec is proposed and not yet built. The details marked proposed there are
-still open.
+built as [slice 17](slices/17-markers-see-weeks-in-ten-minutes.md), approved
+the same day and not yet built: part 1 alongside slice 16, the furniture
+sets (part 2) after it. The demo accounts are `demo1` and `demo2`.
 
 - **Markers get a regular's account.** They have about ten minutes and a
   new account, which every cat treats as a stranger, and a lap is at least
@@ -413,8 +413,9 @@ still open.
   `cafe demo seed`, a subcommand of the server's binary run over
   `fly ssh console`, creates them, marks them and sets each cat's trust in
   them from `content/demo.toml`; a restart loads it. Their password is in
-  the README, public by design; their recovery codes stay with the user.
-  Sign-up refuses names starting `demo_` or `bot_`.
+  the README, public by design. Their recovery codes are never shown, so
+  only running the seed again changes the password.
+  Sign-up refuses `demo` followed only by digits, and names starting `bot_`.
 - **The page keeps the café's clock**, set from the welcome's `now`: the
   light, the street, the window, the music set and the board's times follow
   the server, not the device.
