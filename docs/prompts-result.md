@@ -2131,3 +2131,36 @@ are the user's
   taking no click; the street on its own canvas across the whole window.
   Four open questions: how the room grows, the corners, the floating
   bars' shape, and the figures at 36-px tiles.
+
+*Sent 2026-11-06 04:40:19 AEDT*
+
+> 1. I was asking to increase the size of room, from 9x12 to 10x13 or something else. try different size for both 3x and 4x zoom. keep the 32 px tiles.
+> 2. A
+> 3. A
+> 4. A
+>
+> the course explicitly asked for 1080p viewport instead of screen resolution, which I think justifies the expansion. you can double check with course spec.
+
+Answering slice 16's four questions: how the room grows, the corners
+(the terrace), the floating bars (as in the study) and the figures (as
+drawn).
+
+**Result.** The spec now grows the floor at 32-px tiles, and a second
+study shows sizes at 4× and 3×
+([`c215e03`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c215e03)).
+- **The course agrees.** Its marking environment is "**1920×1080** ---
+  desktop" and "390×844 --- phone", and "Those are _viewports_, not
+  monitor sizes", so the room is sized to exactly that.
+- **The arithmetic.** At an angle, the room's box on screen depends only
+  on the floor's width plus depth. With the bars floating, 1920×1080
+  holds it at 4× up to a sum of 25, and at 3× up to 35. The phone's
+  layout A shows the whole room at 1× up to 24.
+- **The screens.** The café was served with 13×10, 13×12, 16×13 and
+  20×15 floors, furniture spread over each, by day and by night
+  ([notes/slice-16-study.md](notes/slice-16-study.md), round 2). At 3×
+  everything in the room is three quarters the size, and 20×15 reads as
+  empty for six people and three cats.
+- **Proposed: 12 by 12 at 4×**, 144 tiles (+33%), the biggest that fits
+  both 1920×1080 at 4× and a phone at 1×. 13 by 12 fills the window a
+  little more but is 10 px too wide for the phone. The size is the
+  user's to choose; ADR 0021 renamed to the floor decision.
