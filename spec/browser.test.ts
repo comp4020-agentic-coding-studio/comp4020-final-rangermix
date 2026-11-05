@@ -276,6 +276,18 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const { page } = await visit({ width: 1920, height: 1080 });
     expect(await roomWidth(page)).toBe("1344px");
     const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
+    // The panels are placed again once their content is in and they grow
+    // (a resize observer, the frame after): wait for them to settle inside
+    // the stage before reading, as the laptop check does. A café with a
+    // full chalkboard grows them late.
+    await expect
+      .poll(async () => {
+        const s = await box("#stage");
+        const all = await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box));
+        return all.every((p) => p.y >= s.y - 0.5 && p.y + p.height <= s.y + s.height + 0.5);
+      }, { timeout: 3000 })
+      .toBe(true)
+      .catch(() => {});
     const stage = await box("#stage");
     const panels = { chalkboard: await box("#chalkboard"), cats: await box("#cats-panel"), here: await box("#here-panel") };
     for (const [name, p] of Object.entries(panels)) {
