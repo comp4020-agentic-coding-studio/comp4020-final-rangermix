@@ -1,4 +1,4 @@
-# 0021. Grow the room by its tile, float the bars, and carry the street to the window's edges
+# 0021. Grow the room's floor, float the bars, and carry the street to the window's edges
 
 - **Status:** Proposed
 - **Date:** 2026-11-06
@@ -57,29 +57,31 @@ in its middle, or a second canvas behind the room for the street alone.
 
 ## Decision
 
-Proposed, for the user to decide (slice 16's open questions): float the
-bars on a desktop; choose the tile, 32 or 36, by the window (option 1);
-keep cats and people at 24 and 32 px; put the terrace in the bottom
-corners, as data in `content/street.toml`; draw the street on a canvas of
-its own behind the room, across the whole window.
+The user answered on 2026-11-06: "I was asking to increase the size of
+room, from 9x12 to 10x13 or something else. try different size for both
+3x and 4x zoom. keep the 32 px tiles", with the terrace, the floating
+bars as in the study, and cats and people as drawn. The course marks at
+a 1920×1080 *viewport*, not a screen, so the room is sized to that.
+
+We will keep 32-px tiles and **grow the floor** instead, float the
+status and talk bars on a desktop, draw the street across the whole
+window, and put a terrace in the bottom corners as data in
+`content/street.toml`. The floor's size is still the user's to choose
+(slice 16, question 1); proposed, 12 by 12 at 4×, the biggest that also
+fits a phone at 1×. The tile options above are not taken.
 
 ## Consequences
 
-- **ADR 0018's "32-px tiles" becomes "32 or 36, by the window"** if
-  accepted; its camera, its walking and its floating panels stand. The
-  design's "the largest whole-number scale, so pixels stay crisp" still
-  holds: the scale stays whole, and the tile is the new choice.
-- **Nothing reaches the server or the protocol.** The grid, walks and every
-  rule stay about tiles; the tile's size in pixels is the client's.
-- **Every sum from a pointer to a tile depends on the tile now**, and a
-  resize can change it. The browser checks that hold 336 and 1344 read
-  the room's size from the client instead, and run at both tiles.
+- **ADR 0018 stands**: 32-px tiles, its camera, walking and panels. The
+  floor grows in `content/room.toml`, which the server reads; a café
+  saved at the old size wakes at the new one.
+- **The world grows**, but no rule changes: the cap, the walkway and
+  every check stay about tiles.
+- **The client's room size comes from the floor**, not a constant; the
+  browser checks that hold 336 and 1344 read it from the client.
 - **The status and talk bars move over the room** on a desktop. They must
   hide no floor tile and keep every control reachable by keyboard, touch
   and mouse, with text at 4.5:1 over anything behind.
-- **Cats and people look a little smaller in a 36-px room**: a cat is two
-  thirds of a tile instead of three quarters. Redrawing them is a slice of
-  its own, if the user wants it.
 - **The street is the page's background on a desktop**, so it must cover
   the window by day and by night with nothing of the page showing; the
   phone's layout A keeps its column.

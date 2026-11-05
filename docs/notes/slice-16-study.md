@@ -146,3 +146,50 @@ and its street can stay inside the room.
 ## What the user decides
 
 See the spec's open questions.
+
+## Round 2: a bigger floor, 32-px tiles (2026-11-06)
+
+The user answered round 1: "I was asking to increase the size of room,
+from 9x12 to 10x13 or something else. try different size for both 3x and
+4x zoom. keep the 32 px tiles." With the terrace, the floating bars as
+shown, and figures as drawn. And: "the course explicitly asked for 1080p
+viewport instead of screen resolution". The course's marking
+environment says so: "**1920×1080** --- desktop", "Those are
+_viewports_, not monitor sizes". So the maximised-browser rows of the
+table above don't decide anything; 1920×1080 does.
+
+**The arithmetic.** Seen isometrically, the room's box on screen depends
+only on the floor's width plus its depth: (w + d) × 16 px across, and
+(w + d) × 8 + 64 px high (the walls and the slab), at 1×. Today 12 + 9 =
+21 gives 336×232. With the bars floating, 1920×1080 holds the room at
+4× while w + d ≤ 25 and at 3× while w + d ≤ 35. The phone's layout A
+holds the whole room at 1× in 390 px while w + d ≤ 24.
+
+**The screens** ([screens/slice-16-floor/](screens/slice-16-floor/)) are
+the café served with a `room.toml` of each size (beside the screens):
+the street wall widened with more panes, today's pieces spread over the
+new floor, and a few more added in the bigger rooms. All shot with the
+bars floating, the street to the edges and the terrace.
+
+![floor sizes by day](screens/slice-16-floor/compare-day.png)
+
+| Floor | Tiles | Scale | Room on screen | Phone layout A at 1× |
+| --- | --- | --- | --- | --- |
+| 12 × 9, today | 108 | 4× | 1344×928 | fits (336 px) |
+| 13 × 10, the user's example | 130 (+20%) | 4× | 1472×992 | fits (368 px) |
+| 12 × 12 (not shot; between these) | 144 (+33%) | 4× | 1536×1024 | fits (384 px) |
+| 13 × 12, the most at 4× | 156 (+44%) | 4× | 1600×1056 | 10 px too wide |
+| 16 × 13 | 208 (+93%) | 3× | 1392×864 | doesn't fit |
+| 20 × 15, the most at 3× | 300 (+178%) | 3× | 1680×1032 | doesn't fit |
+
+What the screens show: at 4× the room grows and the cats and people stay
+the size they are today. At 3× everything in the room is three quarters
+the size, and the floor nearly doubles or triples. With the cap at six
+people and three cats, 20 by 15 reads as empty, and a cat across the room
+is small. 13 by 12 fills the window best of the 4× sizes, with the
+terrace's corners shrinking to slivers. 12 by 12 gives up 64 px of width
+for a phone that still shows the whole room.
+
+The round's throwaway change is
+[screens/slice-16-floor/spike.patch](screens/slice-16-floor/spike.patch),
+on `main` at 270cc8d, as round 1's.

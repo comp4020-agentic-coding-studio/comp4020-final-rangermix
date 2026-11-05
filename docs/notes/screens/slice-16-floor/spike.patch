@@ -1,0 +1,475 @@
+diff --git a/client/src/corners.ts b/client/src/corners.ts
+new file mode 100644
+index 0000000..d9e744b
+--- /dev/null
++++ b/client/src/corners.ts
+@@ -0,0 +1,119 @@
++// SPIKE (slice 16 study, not for main): what fills the room's two bottom
++// corners, the triangles left of and right of the floor's front point,
++// chosen by ?corners= (none, terrace, garden).
++//   terrace: the pavement in front of the café as paving, with a bench and
++//     a planter on the left and a lamp post and a bicycle rack on the right.
++//   garden: grass round the café, a hedge along its front edges and a tree
++//     and a flower bed in each corner.
++import type { Light } from "./canberra";
++import { ISO, K, toCanvas } from "./iso";
++import { SLAB, block, poly, up } from "./render";
++import type { RoomView } from "./protocol/RoomView";
++import type { Palette } from "./sprites";
++
++type Ctx = CanvasRenderingContext2D;
++
++const Q = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
++export const CORNERS = Q.get("corners") ?? "none";
++
++/** The ground round the café's slab, under it: paving or grass, gridded by the room's own tiles. */
++export function drawGround(ctx: Ctx, room: RoomView, palette: Palette, light: Light): void {
++  if (CORNERS === "none") return;
++  const night = light >= 1;
++  const W = room.width;
++  const H = room.height;
++  // Everything below the floor's back corners, outside the slab, is ground.
++  const paving = night ? ["#3a3a4f", "#34344a"] : ["#d9cfc7", "#cfc4bc"];
++  const grass = night ? ["#2d3b39", "#293634"] : ["#a6d39f", "#98c891"];
++  const [a, b] = CORNERS === "garden" ? grass : paving;
++  for (let y = -4; y < H + 14; y++) {
++    for (let x = -14; x < W + 6; x++) {
++      if (x >= 0 && x < W && y >= 1 && y < H) continue;
++      // Only ground in front of the floor's two front edges (x < 0, y >= H):
++      // nothing behind the street wall or the plain wall.
++      if (y < 1 || x >= W) continue;
++      const p = [up(x, y, -SLAB), up(x + 1, y, -SLAB), up(x + 1, y + 1, -SLAB), up(x, y + 1, -SLAB)];
++      poly(ctx, p, (x + y) % 2 ? a : b);
++    }
++  }
++  if (CORNERS === "terrace") {
++    // The kerb: where the pavement meets the road, a line across the bottom.
++    const kerb = night ? "#2a2a3c" : "#b8aca4";
++    for (let x = -14; x < W + 6; x++) {
++      const y = H + 4;
++      poly(ctx, [up(x, y, -SLAB), up(x + 1, y, -SLAB), up(x + 1, y + 0.25, -SLAB), up(x, y + 0.25, -SLAB)], kerb);
++    }
++  }
++}
++
++/** The things standing in the two corners, in front of everything in the room. */
++export function drawCorners(ctx: Ctx, room: RoomView, palette: Palette, light: Light): void {
++  if (CORNERS === "none") return;
++  const night = light >= 1;
++  const W = room.width;
++  const H = room.height;
++  const F = palette.furniture;
++  const z = (v: number) => Math.round(v * K) - SLAB;
++  const at = (x: number, y: number, w: number, h: number, top: number, colour: string, bottom = 0) => block(ctx, x, y, w, h, z(top), colour, z(bottom));
++  // Placed from the floor's size: the left side's middle, the front's right part.
++  const L = Math.round(H / 2);
++  const R = W - 12;
++  if (CORNERS === "terrace") {
++    // Left corner, along the slab's left edge: a bench and two planters.
++    at(-1.75, L + 0.0, 0.12, 0.12, 7, F[12]);
++    at(-1.75, L + 2.2, 0.12, 0.12, 7, F[12]);
++    at(-1.3, L + 0.0, 0.12, 0.12, 7, F[12]);
++    at(-1.3, L + 2.2, 0.12, 0.12, 7, F[12]);
++    at(-1.85, L - 0.1, 0.7, 2.5, 9, F[14], 7);
++    at(-1.85, L - 0.1, 0.15, 2.5, 18, F[14], 9);
++    for (const [px, py] of [
++      [-2.7, L - 0.1],
++      [-1.0, H - 0.9],
++    ]) {
++      at(px, py, 0.9, 0.9, 10, F[8]);
++      at(px + 0.08, py + 0.08, 0.74, 0.74, 18, F[6], 10);
++      at(px + 0.2, py + 0.2, 0.5, 0.5, 23, F[7], 18);
++    }
++    // Right corner, in front of the slab's front edge: a table out on the
++    // pavement under an umbrella, two chairs, and a street lamp.
++    at(R + 5.4, H + 1.3, 0.7, 0.7, 9, F[12], 0);
++    at(R + 4.9, H + 1.9, 0.6, 0.6, 9, F[11]);
++    at(R + 4.9, H + 1.9, 0.15, 0.6, 16, F[11], 9);
++    at(R + 6.4, H + 0.9, 0.6, 0.6, 9, F[11]);
++    at(R + 6.4, H + 0.9, 0.6, 0.15, 16, F[11], 9);
++    at(R + 5.15, H + 1.05, 1.2, 1.2, 15, F[5], 13);
++    at(R + 5.7, H + 1.6, 0.1, 0.1, 40, F[12], 15);
++    at(R + 4.9, H + 0.8, 1.7, 1.7, 42, F[1], 40);
++    at(R + 5.3, H + 1.2, 0.9, 0.9, 44, F[1], 42);
++    at(R + 9.3, H + 1.0, 0.18, 0.18, 46, F[12]);
++    at(R + 9.15, H + 0.85, 0.48, 0.48, 52, night ? "#f9e2af" : F[5], 46);
++  } else if (CORNERS === "garden") {
++    const hedge = night ? "#3f5a4a" : F[7];
++    const leaf = night ? "#4b6b57" : F[6];
++    // A low hedge along the slab's two front edges.
++    at(-0.75, 1.4, 0.5, H - 1.6, 8, hedge);
++    at(0.2, H + 0.25, W - 0.6, 0.5, 8, hedge);
++    // A tree in each corner: a trunk and a crown.
++    for (const [tx, ty] of [
++      [-2.6, 4.6],
++      [7.6, 11.2],
++    ]) {
++      at(tx + 0.4, ty + 0.4, 0.3, 0.3, 30, F[12]);
++      at(tx, ty, 1.1, 1.1, 54, leaf, 26);
++      at(tx + 0.15, ty + 0.15, 0.8, 0.8, 62, hedge, 54);
++    }
++    // A flower bed by each tree.
++    for (const [fx, fy] of [
++      [-1.9, 7.0],
++      [4.0, 11.2],
++    ]) {
++      at(fx, fy, 1.6, 0.8, 3, F[4]);
++      for (let k = 0; k < 4; k++) {
++        const p = toCanvas(fx + 0.3 + k * 0.35, fy + 0.4);
++        ctx.fillStyle = [F[1], F[9], F[3], F[15]][k];
++        ctx.fillRect(Math.round(p.x), Math.round(p.y - z(5)), 2, 2);
++      }
++    }
++  }
++  void ISO;
++}
+diff --git a/client/src/floating.ts b/client/src/floating.ts
+index 32583c2..a46b9d1 100644
+--- a/client/src/floating.ts
++++ b/client/src/floating.ts
+@@ -8,13 +8,16 @@ import { PHONE, type PanelSpot, type PanelsSaved, panelAt, savePanels, savedPane
+ // arrows; where each is stays on this device. Below 960 px they stand as
+ // the phone's layouts have them, and none of this applies.
+ 
++const SPIKE_FLOAT = typeof location !== "undefined" && new URLSearchParams(location.search).get("float") === "1";
++const SPIKE_TOP = SPIKE_FLOAT ? 60 : 8;
++const SPIKE_BOTTOM = SPIKE_FLOAT ? 64 : 8;
+ /** Where each panel starts: in the corners the room's diamond leaves. */
+ export const START: Record<string, PanelSpot> = {
+-  chalkboard: { h: "left", x: 8, v: "top", y: 8 },
+-  "cats-panel": { h: "left", x: 8, v: "bottom", y: 8 },
+-  "here-panel": { h: "right", x: 8, v: "top", y: 8 },
++  chalkboard: { h: "left", x: 8, v: "top", y: SPIKE_TOP },
++  "cats-panel": { h: "left", x: 8, v: "bottom", y: SPIKE_BOTTOM },
++  "here-panel": { h: "right", x: 8, v: "top", y: SPIKE_TOP },
+   // The music (slice 15), under who's here.
+-  "music-panel": { h: "right", x: 8, v: "bottom", y: 8 },
++  "music-panel": { h: "right", x: 8, v: "bottom", y: SPIKE_BOTTOM },
+ };
+ 
+ /** Where a spot is, in words: "top left", "bottom right", "middle left" (a third of the stage each way). */
+diff --git a/client/src/iso.ts b/client/src/iso.ts
+index c19c3e1..82a3638 100644
+--- a/client/src/iso.ts
++++ b/client/src/iso.ts
+@@ -6,17 +6,42 @@
+ // floor's far edge (y = 1), in its order from the left, and a plain wall up
+ // the back right (x = 12). Turned so on 2026-10-22, at the user's asking.
+ 
++/** SPIKE (slice 16 study, round 2): 32-px tiles; the floor's size from ?cols= and ?rows= (rows counts the street wall's row 0). */
++const Q = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
++const T = 32;
++const HW = T / 2;
++const HH = T / 4;
++const WALL = 56;
++export const K = 1;
++const COLS = Number(Q.get("cols") ?? 12);
++const ROWS = Number(Q.get("rows") ?? 10);
++/** SPIKE: the room's own box at 1x, whatever the canvas. */
++export const ROOM_W = (COLS + ROWS - 1) * HW;
++export const ROOM_H = WALL + (COLS + ROWS - 1) * HH + 8;
++/**
++ * SPIKE (?fill=1): the canvas covers the whole window at the room's
++ * whole-number scale, the room centred in it, so the street runs end to
++ * end. Worked out once, at load: the study is shot at one size.
++ */
++export const FILL = Q.get("fill") === "1";
++const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
++const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
++export const FILL_SCALE = Math.max(1, Math.floor(Math.min((vw - 16) / ROOM_W, (vh - 16) / ROOM_H)));
++const CW = FILL ? Math.ceil(vw / FILL_SCALE) + 1 : ROOM_W;
++const CH = FILL ? Math.ceil(vh / FILL_SCALE) + 1 : ROOM_H;
++/** Where the room's own box sits in the canvas, in room pixels. */
++export const ROOM_AT = { x: Math.floor((CW - ROOM_W) / 2), y: Math.floor((CH - ROOM_H) / 2) };
+ /** The canvas, the walls' height and where grid point (0,0) lands, in canvas pixels at 1x. */
+ export const ISO = {
+-  width: 336,
+-  height: 232,
+-  wall: 56,
+-  originX: -16,
+-  originY: 144,
++  width: CW,
++  height: CH,
++  wall: WALL,
++  originX: -HW + ROOM_AT.x,
++  originY: WALL + (COLS - 1) * HH + ROOM_AT.y,
+   /** Half a diamond across, and half down. */
+-  halfW: 16,
+-  halfH: 8,
+-} as const;
++  halfW: HW,
++  halfH: HH,
++};
+ 
+ /** Where grid point (gx, gy), on the floor, lands on the canvas. */
+ export function toCanvas(gx: number, gy: number): { x: number; y: number } {
+diff --git a/client/src/main.ts b/client/src/main.ts
+index caf5f93..9fbf398 100644
+--- a/client/src/main.ts
++++ b/client/src/main.ts
+@@ -17,6 +17,12 @@ import type { ApiMe } from "./protocol/ApiMe";
+ import type { Emote } from "./protocol/Emote";
+ import { pieceName } from "./state";
+ import { Stage } from "./stage";
++import { FILL, ISO } from "./iso";
++{
++  const q = new URLSearchParams(location.search);
++  document.body.classList.toggle("spike-float", q.get("float") === "1");
++  document.body.classList.toggle("spike-fill", FILL);
++}
+ import { Talk } from "./talk";
+ 
+ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+@@ -135,7 +141,7 @@ function enter(me: ApiMe): void {
+     const centre = middle(tile);
+     if (ringLayout()) return centre;
+     // Beside the tile's diamond: its left and right corners, from its top.
+-    return { left: centre.left - 16 * stage.scale, top: centre.top - 8 * stage.scale, right: centre.left + 16 * stage.scale };
++    return { left: centre.left - ISO.halfW * stage.scale, top: centre.top - ISO.halfH * stage.scale, right: centre.left + ISO.halfW * stage.scale };
+   };
+   // The phone's two layouts: B unless this device chose A, remembered (slice 09).
+   const phoneQuery = matchMedia(PHONE);
+diff --git a/client/src/pieces.ts b/client/src/pieces.ts
+index d4fbc4b..c28fd85 100644
+--- a/client/src/pieces.ts
++++ b/client/src/pieces.ts
+@@ -4,6 +4,7 @@
+ 
+ import models from "../../content/sprites/furniture-models.json";
+ import type { FurnitureView } from "./protocol/FurnitureView";
++import { K } from "./iso";
+ 
+ /** How far in from its footprint's edges a small piece's block stands, in tiles. */
+ export const INSET: Record<string, number> = { plant: 0.28, toys: 0.32, bowls: 0.18, chair: 0.2, cat_bed: 0.12, box: 0.15, cushion: 0.15, scratching_post: 0.3, lamp: 0.3 };
+@@ -23,7 +24,7 @@ export interface Box {
+  * lower and longer.
+  */
+ export function pieceBox(f: FurnitureView, heights: Record<string, number>): Box {
+-  const z = heights[f.kind] ?? 8;
++  const z = Math.round((heights[f.kind] ?? 8) * K);
+   const i = INSET[f.kind] ?? 0.06;
+   const [x, y, w, h] = [f.x + i, f.y + i, f.w - 2 * i, f.h - 2 * i];
+   if (!f.toppled) return { x, y, w, h, z };
+@@ -53,7 +54,7 @@ export function pieceParts(f: FurnitureView, heights: Record<string, number>): P
+   // In the model's own order: whoever draws a kind knows what's in front of
+   // what (a post through two platforms isn't one sort), so the parts are
+   // listed back to front and bottom to top, and drawn so.
+-  return model.map((m) => ({ x: f.x + m.x * f.w, y: f.y + m.y * f.h, w: m.w * f.w, h: m.h * f.h, z0: m.z0, z: m.z1, slot: m.slot }));
++  return model.map((m) => ({ x: f.x + m.x * f.w, y: f.y + m.y * f.h, w: m.w * f.w, h: m.h * f.h, z0: Math.round(m.z0 * K), z: Math.round(m.z1 * K), slot: m.slot }));
+ }
+ 
+ /** How many room pixels a tile is along the floor, for turning heights into lengths: a 32-px tile's true rise (shadows.ts). */
+@@ -76,8 +77,8 @@ function lyingDown(f: FurnitureView, model: Model, heights: Record<string, numbe
+     y: f.y + f.h * 0.05 + m.z0 * k,
+     w: m.w * f.w,
+     h: Math.max(0.04, (m.z1 - m.z0) * k),
+-    z0: m.y * f.h * TILE_PX * 0.5,
+-    z: (m.y + m.h) * f.h * TILE_PX * 0.5,
++    z0: m.y * f.h * TILE_PX * 0.5 * K,
++    z: (m.y + m.h) * f.h * TILE_PX * 0.5 * K,
+     slot: m.slot,
+   }));
+   // Back to front again, now along y: what was low (the base) is at the back.
+diff --git a/client/src/render.ts b/client/src/render.ts
+index 306ed9f..4c02285 100644
+--- a/client/src/render.ts
++++ b/client/src/render.ts
+@@ -5,7 +5,8 @@ import { pieceBox, pieceParts, topAt } from "./pieces";
+ import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
+ import { shadowMask } from "./shadows";
+ import { streetSlot } from "./street";
+-import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
++import { ISO, K, ROOM_AT, ROOM_H, ROOM_W, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
++import { drawCorners, drawGround } from "./corners";
+ import { type Spot, positionAt } from "./motion";
+ import type { FurnitureView } from "./protocol/FurnitureView";
+ import type { Look } from "./protocol/Look";
+@@ -77,9 +78,10 @@ function drawStreet(ctx: Ctx, colours: string[], light: Light): void {
+   for (let y = 0; y < ISO.height; y++) {
+     let x = 0;
+     while (x < ISO.width) {
+-      const slot = streetSlot(x, y, ISO.width, ISO.height, night);
++      const at = (px: number) => streetSlot(px - ROOM_AT.x, y - ROOM_AT.y, ROOM_W, ROOM_H, night);
++      const slot = at(x);
+       let end = x + 1;
+-      while (end < ISO.width && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
++      while (end < ISO.width && at(end) === slot) end++;
+       ctx.fillStyle = colours[slot];
+       ctx.fillRect(x, y, end - x, 1);
+       x = end;
+@@ -109,18 +111,18 @@ function rgb(hex: string): [number, number, number] {
+ }
+ 
+ /** `hex` darkened by `k` (0 to 1), or lightened by a negative `k`. */
+-function shade(hex: string, k: number): string {
++export function shade(hex: string, k: number): string {
+   const [r, g, b] = rgb(hex).map((v) => Math.round(Math.max(0, Math.min(255, k >= 0 ? v * (1 - k) : v + (255 - v) * -k))));
+   return `rgb(${r} ${g} ${b})`;
+ }
+ 
+ /** A polygon filled crisp, by whole room pixels (slice 13): no edge is blended. */
+-function poly(ctx: Ctx, pts: Pt[], colour: string): void {
++export function poly(ctx: Ctx, pts: Pt[], colour: string): void {
+   fillCrisp(ctx, pts, colour);
+ }
+ 
+ /** A floor point raised by `z` pixels. */
+-function up(gx: number, gy: number, z = 0): Pt {
++export function up(gx: number, gy: number, z = 0): Pt {
+   const p = toCanvas(gx, gy);
+   return { x: p.x, y: p.y - z };
+ }
+@@ -131,7 +133,7 @@ function up(gx: number, gy: number, z = 0): Pt {
+  * street wall's near end, at x, and the one toward the front, at y + h),
+  * then its top.
+  */
+-function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string, z0 = 0): void {
++export function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string, z0 = 0): void {
+   // Lit from the street wall's windows, a little from +x (shadows.ts): the
+   // left face (toward -x) turns from the light a little, the front face
+   // (toward +y) most, as in the study the look was chosen from (slice 13's
+@@ -463,6 +465,7 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
+   drawFigureShadows(ctx, state, localNow, layer);
+ 
+   for (const item of drawOrder(state, localNow)) if (!item.inLayer) item.paint(ctx, sprites);
++  drawCorners(ctx, room, palette, light);
+ 
+   if (pointer.ghost) {
+     const { piece, at, ok } = pointer.ghost;
+@@ -491,7 +494,7 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
+ const SEAM = 0.06;
+ 
+ /** How deep the floor's slab shows under its front edges, in room pixels (slice 13): the room as a diorama. */
+-const SLAB = 6;
++export const SLAB = Number(typeof location !== "undefined" ? (new URLSearchParams(location.search).get("plinth") ?? 6) : 6);
+ 
+ function drawFloor(ctx: Ctx, room: RoomView): void {
+   // The slab the floor stands on, seen under its two front edges: lit on
+@@ -531,6 +534,7 @@ export function floorLayer(room: RoomView, light: Light, shaded = true): Raster
+   const layer = new Raster(ISO.width, ISO.height);
+   const ctx = layer.context();
+   drawStreet(ctx, palette.street, light);
++  drawGround(ctx, room, palette, light);
+   drawFloor(ctx, room);
+   for (const f of inDrawOrder(room.furniture.filter((f) => f.under))) drawPiece(ctx, f);
+   if (shaded) shadeLayer(layer, shadowMask(room, room.furniture, HEIGHT));
+@@ -604,15 +608,15 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
+   // The plain wall, up the back right.
+   const W = room.width;
+   poly(ctx, [up(W, 1), up(W, room.height), up(W, room.height, H), up(W, 1, H)], shade(wall, 0.22));
+-  poly(ctx, [up(W, 1), up(W, room.height), up(W, room.height, 14), up(W, 1, 14)], shade(wainscot, 0.2));
++  poly(ctx, [up(W, 1), up(W, room.height), up(W, room.height, 14 * K), up(W, 1, 14 * K)], shade(wainscot, 0.2));
+   // The street wall, up the back left.
+   poly(ctx, [up(0, 1), up(W, 1), up(W, 1, H), up(0, 1, H)], shade(wall, 0.08));
+-  poly(ctx, [up(0, 1), up(W, 1), up(W, 1, 14), up(0, 1, 14)], wainscot);
++  poly(ctx, [up(0, 1), up(W, 1), up(W, 1, 14 * K), up(0, 1, 14 * K)], wainscot);
+   // The walls' tops (slice 13): a light edge along each, two room pixels
+   // deep, so the walls read as cut away, the room as a diorama.
+   poly(ctx, [up(0, 1, H), up(W, 1, H), up(W, 1, H - 2), up(0, 1, H - 2)], shade(wall, -0.35));
+   poly(ctx, [up(W, 1, H), up(W, room.height, H), up(W, room.height, H - 2), up(W, 1, H - 2)], shade(wall, -0.2));
+-  const panel = (x0: number, x1: number, z0: number, z1: number, colour: string) => poly(ctx, [up(x0, 1, z0), up(x1, 1, z0), up(x1, 1, z1), up(x0, 1, z1)], colour);
++  const panel = (x0: number, x1: number, z0: number, z1: number, colour: string) => poly(ctx, [up(x0, 1, Math.round(z0 * K)), up(x1, 1, Math.round(z0 * K)), up(x1, 1, Math.round(z1 * K)), up(x0, 1, Math.round(z1 * K))], colour);
+   const tiles = room.tiles[0] ?? "";
+   const line = [...state.people.values()].filter((p) => p.place === "window");
+   const windows = windowTiles(room);
+@@ -624,7 +628,7 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
+       const who = line[windows.findIndex((w) => w.x === x)];
+       if (who) {
+         const img = sprites.avatar(who.look, "stand");
+-        const face = up(x + 0.5, 1, 30);
++        const face = up(x + 0.5, 1, Math.round(30 * K));
+         // The head of a 32-px sprite (slice 11), its columns 8 to 23, rows 0
+         // to 11, centred in the pane (slice 11's review, finding 6).
+         if (img) ctx.drawImage(img, 8, 0, 16, 12, Math.round(face.x - 8), Math.round(face.y - 10), 16, 12);
+@@ -632,7 +636,7 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
+     } else if (ch === "D") {
+       panel(x + 0.08, x + 0.92, 0, 42, ROOM[5]);
+       panel(x + 0.16, x + 0.84, 0, 39, ROOM[9]);
+-      const knob = up(x + 0.75, 1, 20);
++      const knob = up(x + 0.75, 1, Math.round(20 * K));
+       poly(ctx, [knob, { x: knob.x + 2, y: knob.y + 1 }, { x: knob.x + 2, y: knob.y + 3 }, { x: knob.x, y: knob.y + 2 }], ROOM[10]);
+     } else if (ch === "C") {
+       panel(x + 0.12, x + 0.9, 20, 40, ROOM[5]);
+diff --git a/client/src/scale.ts b/client/src/scale.ts
+index b51fc0a..64cb313 100644
+--- a/client/src/scale.ts
++++ b/client/src/scale.ts
+@@ -1,9 +1,10 @@
+-import { ISO } from "./iso";
++import { FILL, FILL_SCALE, ROOM_H, ROOM_W } from "./iso";
+ 
+ /** The top-down room's tile, in pixels; the sprites are still drawn at this size until slice 11. */
+ export const TILE = 16;
+ 
+ /** The largest whole-number scale at which the room's canvas fits, so pixels stay crisp; never below 1. */
+ export function fitScale(availWidth: number, availHeight: number): number {
+-  return Math.max(1, Math.floor(Math.min(availWidth / ISO.width, availHeight / ISO.height)));
++  if (FILL) return FILL_SCALE;
++  return Math.max(1, Math.floor(Math.min(availWidth / ROOM_W, availHeight / ROOM_H)));
+ }
+diff --git a/client/src/shadows.ts b/client/src/shadows.ts
+index 53ccef1..fec7453 100644
+--- a/client/src/shadows.ts
++++ b/client/src/shadows.ts
+@@ -6,7 +6,7 @@
+ // and kept while the furniture is the same: furniture moves seldom, frames
+ // come sixty times a second.
+ 
+-import { ISO, fromCanvas } from "./iso";
++import { ISO, K, fromCanvas } from "./iso";
+ import { pieceParts } from "./pieces";
+ import type { FurnitureView } from "./protocol/FurnitureView";
+ 
+@@ -31,7 +31,7 @@ const TILE_HEIGHT = ISO.halfW * 2 * 0.6124;
+ const FOOT = 0.08;
+ /** The street wall's height in tiles, and its window panes' bottom and top. */
+ const WALL = ISO.wall / TILE_HEIGHT;
+-const PANE = { from: 22 / TILE_HEIGHT, to: 48 / TILE_HEIGHT, inset: 0.1 };
++const PANE = { from: (22 * K) / TILE_HEIGHT, to: (48 * K) / TILE_HEIGHT, inset: 0.1 };
+ 
+ interface Room {
+   width: number;
+diff --git a/client/src/stage.ts b/client/src/stage.ts
+index ad2c7d0..e2ebb93 100644
+--- a/client/src/stage.ts
++++ b/client/src/stage.ts
+@@ -2,7 +2,7 @@ import type { Cafe } from "./cafe";
+ import { canberraHour, lightAt } from "./canberra";
+ import { type Layout, PHONE, panOffset } from "./layout";
+ import { positionAt } from "./motion";
+-import { ISO, pickTile, toCanvas } from "./iso";
++import { ISO, K, pickTile, toCanvas } from "./iso";
+ import { type Pointer, draw, hitAt } from "./render";
+ import { fitScale } from "./scale";
+ import { Sprites } from "./sprites";
+@@ -11,8 +11,8 @@ import { serverNow } from "./state";
+ /** How tall someone stands, in canvas pixels at 1x: 32 since slice 11 (render.ts's PERSON). */
+ const FIGURE = 30;
+ /** A face in the window is drawn from 30 to 39 px up the street wall, over a sill at 20 (render.ts). */
+-const FACE_TOP = 39;
+-const SILL = 20;
++const FACE_TOP = Math.round(39 * K);
++const SILL = Math.round(20 * K);
+ 
+ /** The room on screen: sized to the largest whole-number scale that fits, drawn every frame. */
+ export class Stage {
+diff --git a/client/src/style.css b/client/src/style.css
+index dbca706..5c9f293 100644
+--- a/client/src/style.css
++++ b/client/src/style.css
+@@ -303,3 +303,15 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
+ .layout-b.drawer-open .cats-panel { bottom: calc(var(--drawer-bottom, 124px) + 8px); max-height: calc(var(--drawer-space, 60vh) * 0.45); }
+ .menu.ring { position: absolute; inset: 0; display: block; min-width: 0; padding: 0; background: none; border: none; box-shadow: none; pointer-events: none; }
+ .menu.ring button { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 88px; min-height: 44px; border-radius: 999px; font-size: 0.85rem; padding: 0.3rem; box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); }
++
++/* SPIKE (slice 16 study): ?float=1 lets the status and talk bars float over
++   the room, as layout B's do, so the room has the whole window's height. */
++@media (min-width: 960px) {
++  .spike-float .cafe { display: block; padding: 0; }
++  .spike-float .stage { position: fixed; inset: 0; }
++  .spike-float .status { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 3; }
++  .spike-float .status > * { background: rgb(from var(--card) r g b / 0.7); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
++  .spike-float #status-text { flex: none; padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid var(--line); margin-right: auto; }
++  .spike-float .talk { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); width: min(60rem, calc(100vw - 16px)); z-index: 3; padding: 0.4rem; border-radius: 12px; border: 1px solid var(--line); background: rgb(from var(--card) r g b / 0.55); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
++  .spike-fill #room { border-radius: 0; box-shadow: none; }
++}

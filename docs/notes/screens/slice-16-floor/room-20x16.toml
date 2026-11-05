@@ -1,0 +1,143 @@
+# Slice 16 study: a 20 by 15 floor (rows counts the street wall's row 0).
+width = 20
+height = 16
+tiles = [
+  "WWGGGGGGWDCWWWWWWWWW",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+]
+entry = { x = 9, y = 1 }
+walkway = [{ x = 9, y = 1 }, { x = 9, y = 2 }, { x = 9, y = 3 }]
+
+[[furniture]]
+kind = "cat_tower"
+x = 0
+y = 1
+
+[[furniture]]
+kind = "window_seat"
+x = 2
+y = 1
+
+[[furniture]]
+kind = "plant"
+x = 19
+y = 1
+
+[[furniture]]
+kind = "table"
+x = 15
+y = 4
+
+[[furniture]]
+kind = "chair"
+x = 15
+y = 6
+
+[[furniture]]
+kind = "chair"
+x = 17
+y = 6
+
+[[furniture]]
+kind = "rug"
+x = 7
+y = 6
+
+[[furniture]]
+kind = "sofa"
+x = 0
+y = 8
+
+[[furniture]]
+kind = "cat_bed"
+x = 0
+y = 11
+
+[[furniture]]
+kind = "toys"
+x = 12
+y = 13
+
+[[furniture]]
+kind = "box"
+x = 2
+y = 14
+
+[[furniture]]
+kind = "plant"
+x = 10
+y = 14
+
+[[furniture]]
+kind = "bowls"
+x = 17
+y = 14
+
+[[furniture]]
+kind = "cushion"
+x = 15
+y = 11
+
+[[furniture]]
+kind = "sofa"
+x = 16
+y = 13
+
+[[furniture]]
+kind = "cushion"
+x = 3
+y = 14
+
+[[furniture]]
+kind = "plant"
+x = 19
+y = 15
+
+[[furniture]]
+kind = "lamp"
+x = 19
+y = 8
+
+[[furniture]]
+kind = "table"
+x = 9
+y = 10
+
+[[furniture]]
+kind = "chair"
+x = 9
+y = 11
+
+[[furniture]]
+kind = "chair"
+x = 10
+y = 11
+
+[[furniture]]
+kind = "cat_bed"
+x = 18
+y = 2
+
+[[furniture]]
+kind = "box"
+x = 2
+y = 12
+
+[[furniture]]
+kind = "rug"
+x = 13
+y = 3

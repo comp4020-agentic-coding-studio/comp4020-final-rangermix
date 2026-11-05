@@ -449,10 +449,10 @@ renamed.
   pixels stay crisp and a resize mid-use just refits; the room is coloured
   by the Canberra hour's light (below), with nothing laid over it.
   *Proposed 2026-11-06* ([slice 16](slices/16-the-cafe-fills-the-window.md),
-  [ADR 0021](adr/0021-grow-the-room-by-its-tile-and-float-the-bars.md),
+  [ADR 0021](adr/0021-grow-the-floor-and-float-the-bars.md),
   from [notes/slice-16-study.md](notes/slice-16-study.md)), not yet
-  decided: on a desktop the status and talk bars float over the room, the
-  tile is 32 or 36 px by the window so the room is as big as it fits, the
+  decided: the floor grows at 32-px tiles so the room fills the 1920×1080
+  viewport, the status and talk bars float over it on a desktop, the
   street runs across the whole window, and a terrace fills the room's
   bottom corners.
 - **The look** is chosen

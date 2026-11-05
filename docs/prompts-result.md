@@ -2123,7 +2123,7 @@ are the user's
   floating give 4×. So floating the bars does most of the work, and a
   fixed 36 is a gamble on the window.
 - **Proposed** ([slice 16](slices/16-the-cafe-fills-the-window.md),
-  [ADR 0021](adr/0021-grow-the-room-by-its-tile-and-float-the-bars.md)):
+  [ADR 0021](adr/0021-grow-the-floor-and-float-the-bars.md)):
   float the bars on a desktop; choose the tile, 32 or 36, by the window,
   so the room is never smaller than today's (1512×1040 at 1920×1080);
   keep cats and people at 24 and 32 px, since no new art was wanted; a
