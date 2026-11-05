@@ -131,3 +131,6 @@ Where the build departed from this plan, task by task.
   the slice 13 rim test now leaves out pixels the room has without its
   pieces. The browser check clicks the bench's seat and the table's top,
   having read that what's drawn there is the thing.
+- **Task 6.** As planned. The stage places the phone's whole room from
+  the left to a whole pixel, centring it on any phone: cut 5 px each side
+  at 390, centred with room to spare at 430.

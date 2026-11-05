@@ -257,4 +257,29 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       expect(sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what a click on ${what} sent`).toEqual([]);
     }
   });
+
+  it("shows the phone's whole room at 1× centred on the room's middle, its two side corners cut evenly, with no sideways scroll", async () => {
+    const { page } = await visit({ width: 390, height: 844 }, true);
+    await page.locator("#layout-switch").tap();
+    await page.waitForFunction(() => !document.body.classList.contains("layout-b"));
+    await page.waitForTimeout(300);
+    const room = await boxOf(page, "#room");
+    expect(Math.round(room.width), "the room at 1×").toBe(400);
+    // Centred: as much cut off at the left as at the right, 5 px each.
+    const left = -room.x;
+    const right = room.x + room.width - 390;
+    expect(Math.round(left), "cut at the left").toBe(5);
+    expect(Math.round(right), "cut at the right").toBe(5);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), "no sideways scroll").toBeLessThanOrEqual(390);
+    // Every floor tile's middle is still on screen and can be tapped.
+    for (const t of await floorTiles(page)) {
+      const mid = { x: t.corners.reduce((n, c) => n + c.x, 0) / 4, y: t.corners.reduce((n, c) => n + c.y, 0) / 4 };
+      expect(mid.x >= 0 && mid.x <= 390, `tile (${t.x}, ${t.y})'s middle on screen`).toBe(true);
+    }
+    // On a wider phone it fits, and stays centred.
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.waitForTimeout(300);
+    const wide = await boxOf(page, "#room");
+    expect(Math.round(wide.x), "centred on a 430 px phone").toBe(15);
+  });
 });

@@ -147,8 +147,13 @@ export class Stage {
       // it (slice 16): the room fits it less 8 px each side.
       const margin = phone ? 0 : 16;
       this.scale = fitScale(this.box.clientWidth - margin, phone ? Infinity : this.box.clientHeight - margin);
-      this.canvas.style.left = "";
       this.canvas.style.top = "";
+      // The phone's whole room, centred on the room's middle to a whole
+      // pixel, so it stays crisp: on a narrow phone it's wider than the
+      // screen (400 px for the 13 by 12 floor in 390), and its side corners
+      // are cut evenly (the user, 2026-11-06). On a desktop the stage centres it.
+      const over = ISO.width * this.scale - this.box.clientWidth;
+      this.canvas.style.left = phone ? `${-Math.floor(over / 2)}px` : "";
     }
     // The canvas holds the room at its scale, so a walker can be placed to a
     // screen pixel (slice 12); the room is drawn into it in room pixels.

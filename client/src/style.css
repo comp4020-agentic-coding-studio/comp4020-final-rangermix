@@ -291,6 +291,8 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   /* Below 960 px the panels stand still: nothing to move or pin. */
   .panel-bar button { display: none; }
   .stage { place-items: start center; }
+  /* The whole room wider than the phone is placed from the left, by stage.ts, centred to a whole pixel (slice 16). */
+  body:not(.layout-b) #room { justify-self: start; }
   .talk { flex-wrap: wrap; }
   .talk input { flex: 1 1 10rem; }
   /* The emotes and the treat button share a row under the talk box (slice 14). */
