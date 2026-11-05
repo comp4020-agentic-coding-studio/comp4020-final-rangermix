@@ -134,3 +134,9 @@ Where the build departed from this plan, task by task.
 - **Task 6.** As planned. The stage places the phone's whole room from
   the left to a whole pixel, centring it on any phone: cut 5 px each side
   at 390, centred with room to spare at 430.
+- **The live café's upgrade, tried end to end.** A café saved by `main`'s
+  server (5a3a1df) on the 12 by 10 floor, its arrangement a bare list of
+  13 pieces, the cushion then moved to (3, 8) in the store as a visitor
+  might, woke on this branch's server with all 13 where they were, the
+  cushion at (3, 8), and the new strip's sofa, lamp and plant added: 16,
+  saved with floor [13, 13]. Woken again, still 16. No errors logged.
