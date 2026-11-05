@@ -242,7 +242,6 @@ pub fn set_secrets(conn: &Connection, id: i64, password_hash: &str, recovery_has
 }
 
 /// Marks an account a demo account, or not (slice 17): the operator's seed only.
-#[allow(dead_code)] // the operator's seed uses it (slice 17, task 3)
 pub fn set_demo(conn: &Connection, id: i64, demo: bool) -> rusqlite::Result<()> {
     conn.execute("UPDATE users SET demo = ?1 WHERE id = ?2", params![demo, id])?;
     Ok(())
@@ -373,7 +372,6 @@ pub struct TreatRow {
 
 /// Lifts every ban the cats hold against one person: the operator's seed,
 /// putting a demo account back as it was (slice 17).
-#[allow(dead_code)] // the operator's seed uses it (slice 17, task 3)
 pub fn delete_bans_for(conn: &Connection, user_id: i64) -> rusqlite::Result<()> {
     conn.execute("DELETE FROM bans WHERE user_id = ?1", params![user_id])?;
     Ok(())

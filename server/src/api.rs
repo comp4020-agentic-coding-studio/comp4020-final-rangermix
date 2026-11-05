@@ -11,8 +11,8 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use std::net::SocketAddr;
 
-const AVATARS: u8 = 4;
-const COLOURS: u8 = 6;
+pub const AVATARS: u8 = 4;
+pub const COLOURS: u8 = 6;
 
 pub struct Failure(StatusCode, ApiErrorCode, &'static str);
 

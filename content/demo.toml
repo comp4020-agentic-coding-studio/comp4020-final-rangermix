@@ -1,0 +1,21 @@
+# The demo accounts markers log into from the README (slice 17, ADR 0022).
+# `cafe demo seed`, run by the operator over `fly ssh console`, creates or
+# resets each with the password in CAFE_DEMO_PASSWORD, marks it a demo
+# account, lifts any bans the cats hold against it, and sets each cat's
+# trust in it to what's below: a regular of a few weeks, in the order the
+# cats' trust rates would give. Restart the café afterwards to load it.
+
+[[account]]
+name = "demo1"
+avatar = 1
+colour = 3
+
+[[account]]
+name = "demo2"
+avatar = 2
+colour = 5
+
+[trust]
+mochi = 85.0     # devoted: naps on your lap
+tora = 55.0      # friend: greets you at the door
+burakku = 25.0   # familiar: comes when called

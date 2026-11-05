@@ -6,6 +6,7 @@ mod auth;
 mod cats;
 mod config;
 mod content;
+mod demo;
 mod http;
 mod limits;
 mod protocol;
@@ -36,7 +37,13 @@ async fn main() {
     }));
     // Failures are loud (design.md, "Persistence and fast-forward"), and in
     // the café's own JSON lines, like everything else it says.
-    match run().await {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let ran = match args.first().map(String::as_str) {
+        // The operator's command over `fly ssh console` (slice 17).
+        Some("demo") => seed_demo(&args[1..]).await,
+        _ => run().await,
+    };
+    match ran {
         // Without waiting for a replay a stop cut short: the save it started
         // from still stands.
         Ok(()) => std::process::exit(0),
@@ -45,6 +52,31 @@ async fn main() {
             std::process::exit(1);
         }
     }
+}
+
+/// `cafe demo seed`: makes or resets the demo accounts from
+/// `content/demo.toml` with the password in `CAFE_DEMO_PASSWORD` (slice 17,
+/// ADR 0022). Run beside the café; restart it afterwards to load the seed.
+async fn seed_demo(args: &[String]) -> anyhow::Result<()> {
+    if args != ["seed"] {
+        anyhow::bail!("usage: CAFE_DEMO_PASSWORD=… cafe demo seed");
+    }
+    let password = std::env::var("CAFE_DEMO_PASSWORD").map_err(|_| anyhow::anyhow!("CAFE_DEMO_PASSWORD isn't set"))?;
+    if !auth::valid_password(&password) {
+        anyhow::bail!("CAFE_DEMO_PASSWORD must be 8 to 128 characters");
+    }
+    let config = config::Config::from_env();
+    start_clock(&config)?;
+    std::fs::create_dir_all(&config.data_dir)?;
+    let db = config.data_dir.join("cafe.db");
+    let store = store::Store::open(&db).with_context(|| format!("can't open the database at {}", db.display()))?;
+    time::set_ahead(wake::saved_ahead(&store).await?);
+    let content = content::load(&config.content_dir)?;
+    let seed = demo::read(&config.content_dir, &content.cats)?;
+    demo::seed(&store, &seed, &password, time::now_ms()).await?;
+    store.flush().await?;
+    tracing::info!(target: "operator", what = "demo_seeded", accounts = seed.accounts.len(), "restart the café to load it");
+    Ok(())
 }
 
 async fn run() -> anyhow::Result<()> {
