@@ -18,7 +18,6 @@ static OFFSET: OnceLock<i64> = OnceLock::new();
 /// ADR 0022). It only grows: the café's clock never goes back.
 static AHEAD: AtomicU64 = AtomicU64::new(0);
 
-#[allow(dead_code)] // the jump uses it (slice 17, task 5)
 pub const DAY_MS: u64 = 86_400_000;
 
 fn wall_ms() -> u64 {
@@ -55,7 +54,6 @@ fn clock_at(offset: i64, ahead: u64, wall: u64) -> u64 {
 /// midnight, to the second: later today, tomorrow, or, when that time falls
 /// in daylight saving's spring gap, the day after. None for a minute that
 /// isn't one of the day's.
-#[allow(dead_code)] // the jump uses it (slice 17, task 5)
 pub fn next_time_of_day(now: u64, minute: u32) -> Option<u64> {
     let time = NaiveTime::from_hms_opt(minute / 60, minute % 60, 0).filter(|_| minute < 24 * 60)?;
     let today = canberra(now).date_naive();
@@ -68,7 +66,6 @@ pub fn next_time_of_day(now: u64, minute: u32) -> Option<u64> {
 
 /// How far to move the café's clock on so its hour is Canberra's again: to
 /// the next whole day ahead. None when it already is.
-#[allow(dead_code)] // the jump uses it (slice 17, task 5)
 pub fn realign_gap(ahead: u64) -> Option<u64> {
     let part = ahead % DAY_MS;
     (part != 0).then(|| DAY_MS - part)

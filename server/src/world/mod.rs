@@ -15,7 +15,9 @@ mod furniture;
 #[cfg(test)]
 mod furniture_tests;
 mod handling;
-mod jump;
+pub mod jump;
+#[cfg(test)]
+mod jump_tests;
 #[cfg(test)]
 mod log_tests;
 mod people;
@@ -173,6 +175,10 @@ pub struct World {
     /// How far a demo account has moved the café's clock on (slice 17),
     /// saved with the clock so a restart never takes it back.
     ahead: u64,
+    /// A jump asked for, waiting for the world task to run it (slice 17).
+    jump: Option<jump::Jump>,
+    /// When, by the café's clock, the last jump landed.
+    last_jump: Option<u64>,
 }
 
 impl World {
@@ -216,6 +222,8 @@ impl World {
             treat_day: crate::time::canberra_day(now),
             chalk: VecDeque::new(),
             ahead: 0,
+            jump: None,
+            last_jump: None,
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -441,7 +449,6 @@ impl World {
     }
 
     /// How far a demo account has moved the café's clock on.
-    #[allow(dead_code)] // the jump uses it (slice 17, task 5)
     pub fn ahead(&self) -> u64 {
         self.ahead
     }
