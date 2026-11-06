@@ -2353,3 +2353,25 @@ CI passing; not yet merged, deployed or live.
   deploy, `cafe demo seed` and a restart on Fly
   ([notes](notes/slice-17-demo.md)), and the marker's path walked live;
   then part 2 after slice 16.
+
+*Sent 2026-11-06 23:04:40 AEDT*
+
+> result conflicts
+
+Pull request #2 could no longer merge: slice 16 had landed on `main`.
+
+**Result.** `main` merged into the branch, without a rebase or a force
+push ([`8d85e8e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8d85e8e));
+the pull request merges cleanly again.
+- **Three conflicts.** The stage's light: slice 16 painted the street from
+  the device's hour, slice 17 takes the café's from the server, so both
+  now take the café's. The root plan: slice 16's row as built, and slice
+  17's. The prompt log's end: the slice 16 session's entry (05:46)
+  continues its own section, and this session's follows.
+- **One clash no merge marked:** slice 16's new fill checks faked only the
+  device's clock, which the page no longer follows. Their welcome now
+  says the faked hour too, as the earlier day-and-night checks' does.
+- **Checked on the merged tree:** `cargo test -p cafe` (349 unit tests and
+  every binary test), the client's 333 tests, and the whole `spec/` (105)
+  against a freshly seeded local café; the demo bar looked at beside slice
+  16's floating bars at 1920×1080 and 390×844.
