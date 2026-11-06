@@ -107,7 +107,7 @@ width = 20
 kind = "planter"
 side = "left"
 along = 4.0
-out = 1.4
+out = 1.8
 
 [[terrace]]
 kind = "bench"
@@ -119,10 +119,13 @@ out = 1.3
 kind = "planter"
 side = "left"
 along = 7.2
-out = 1.4
+out = 1.8
 
-# Out front, right of the middle: a table under an umbrella with two
-# chairs, and a street lamp, lit at night.
+# Out front, right of the middle: a table with a folded parasol and two
+# chairs, and a low lantern, lit at night. Everything here is low and set
+# out from the floor's edges: something tall out front stands over the
+# floor's front tiles on screen, hiding who's there and taking clicks
+# meant for them (slice 16's review, finding 2). A render test holds it.
 [[terrace]]
 kind = "table"
 side = "front"
@@ -151,4 +154,4 @@ out = 1.7
 kind = "lamp"
 side = "front"
 along = 9.2
-out = 1.1
+out = 1.7

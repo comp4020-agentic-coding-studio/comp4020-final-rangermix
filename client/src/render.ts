@@ -690,18 +690,21 @@ function drawTerrace(ctx: Ctx, t: TerraceThing, room: RoomView, light: Light): v
       box(0, 0, 1.1, 1.1, 15, FURNITURE[5], 13);
       break;
     case "umbrella":
-      box(0, 0, 0.1, 0.1, 40, dark, 15);
-      box(0, 0, 1.8, 1.8, 42, FURNITURE[1], 40);
-      box(0, 0, 0.9, 0.9, 44, FURNITURE[1], 42);
+      // Folded, a closed parasol over the table: tall things out front
+      // would stand over the floor's front tiles on screen (slice 16's
+      // review, finding 2), so the terrace stays low.
+      box(0, 0, 0.08, 0.08, 26, dark, 15);
+      box(0, 0, 0.26, 0.26, 24, FURNITURE[1], 17);
       break;
     case "chair":
       box(0, 0, 0.55, 0.55, 9, FURNITURE[11]);
       box(0, 0.2, 0.55, 0.15, 17, FURNITURE[11], 9);
       break;
     case "lamp":
-      box(0, 0, 0.2, 0.2, 46, dark);
+      // A low lantern on a short post, not a street lamp (finding 2).
+      box(0, 0, 0.16, 0.16, 12, dark);
       // Lit at night in the window's glass, warm yellow then.
-      box(0, 0, 0.5, 0.5, 52, light >= 1 ? ROOM[8] : FURNITURE[5], 46);
+      box(0, 0, 0.42, 0.42, 18, light >= 1 ? ROOM[8] : FURNITURE[5], 12);
       break;
   }
 }

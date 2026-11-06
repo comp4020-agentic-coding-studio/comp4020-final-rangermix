@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import palettes from "../content/sprites/palettes.json";
@@ -218,44 +217,67 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     expect(seen, "edge points looked at").toBeGreaterThan(20);
   });
 
-  it("draws the terrace in the bottom corners, and a click or tap on it does nothing", async () => {
+  it("draws the terrace in the bottom corners, and a click or tap anywhere on it does nothing", { timeout: 90_000 }, async () => {
     const { page, sent } = await visit({ width: 1920, height: 1080 });
     await page.waitForTimeout(500);
-    // The bench stands by the floor's left edge (content/street.toml): its
-    // spot on the page, by the café's map, a tile's middle being (x + .5, y + .5).
-    const terrace = [...readFileSync(new URL("../content/street.toml", import.meta.url), "utf8").matchAll(/\[\[terrace\]\]\s*kind = "(\w+)"\s*side = "(\w+)"\s*along = ([\d.]+)\s*out = ([\d.]+)/g)].map((m) => ({
-      kind: m[1],
-      side: m[2],
-      along: Number(m[3]),
-      out: Number(m[4]),
-    }));
-    const bench = terrace.find((t) => t.kind === "bench")!;
-    const table = terrace.find((t) => t.kind === "table")!;
-    const spot = (gx: number, gy: number) =>
-      page.evaluate(([gx, gy]) => (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(gx - 0.5, gy - 0.5), [gx, gy]);
-    // Up the bench's seat a little, and the table's top: the pixels drawn there.
-    const scale = (await boxOf(page, "#room")).width / 400;
-    for (const [what, gx, gy, up] of [
-      ["the bench", -bench.out, 1 + bench.along, 6 + 8],
-      ["the table", table.along, 13 + table.out, 6 + 14],
-    ] as const) {
-      const at = await spot(gx, gy);
-      const p = { x: at.x, y: at.y - (up - 6) * scale };
-      expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [p.x, p.y]), `${what} is on the room's canvas, clear of the panels`).toBe("room");
-      // What's drawn there is the thing, not the street's pavement round it.
-      const colour = await page.evaluate(([x, y]) => {
-        const c = document.getElementById("room") as HTMLCanvasElement;
-        const r = c.getBoundingClientRect();
-        const [cr, cg, cb] = c.getContext("2d")!.getImageData(Math.floor(((x - r.left) / r.width) * c.width), Math.floor(((y - r.top) / r.height) * c.height), 1, 1).data;
-        return `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-      }, [p.x, p.y]);
-      expect(streetColours("day"), `${what} is drawn at the point clicked (${colour})`).not.toContain(colour);
-      const before = sent.length;
+    // Every point off the room's floor and walls, in reach of a click, whose
+    // pixel isn't the street's: the terrace's own drawn pixels, whatever its
+    // things, sampled every 6 px. That none of them falls over the floor,
+    // the walls or anyone standing there, where a click would reach the
+    // café behind, is held by the render test that draws the real floor
+    // with and without the terrace (slice 16's review, finding 2): this
+    // check can't tell a terrace pixel over the floor from the floor's own.
+    const points = await page.evaluate((street) => {
+      const canvas = document.getElementById("room") as HTMLCanvasElement;
+      const r = canvas.getBoundingClientRect();
+      const ctx = canvas.getContext("2d")!;
+      const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+      const scale = r.width / room.size.width;
+      // The floor and its walls as drawn, from the café's own map.
+      const corner = (gx: number, gy: number) => {
+        const m = room.tileAt(gx, gy);
+        const right = room.tileAt(gx + 1, gy);
+        const down = room.tileAt(gx, gy + 1);
+        return { x: m.x - (right.x - m.x) / 2 - (down.x - m.x) / 2, y: m.y - (right.y - m.y) / 2 - (down.y - m.y) / 2 };
+      };
+      const size = Math.round((room.size.width / 16 + 1) / 2);
+      const [left, back, rightTip, front] = [corner(0, 1), corner(size, 1), corner(size, size), corner(0, size)];
+      const shape = [
+        { x: left.x, y: left.y - 56 * scale },
+        { x: back.x, y: back.y - 56 * scale },
+        { x: rightTip.x, y: rightTip.y - 56 * scale },
+        { x: rightTip.x, y: rightTip.y + 8 * scale },
+        { x: front.x, y: front.y + 8 * scale },
+        { x: left.x, y: left.y + 8 * scale },
+      ];
+      const inRoom = (x: number, y: number) => {
+        let inside = false;
+        for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+          const [a, b] = [shape[i], shape[j]];
+          if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+        }
+        return inside;
+      };
+      const out: { x: number; y: number }[] = [];
+      for (let y = Math.max(0, r.top); y < Math.min(innerHeight, r.bottom); y += 6)
+        for (let x = Math.max(0, r.left); x < Math.min(innerWidth, r.right); x += 6) {
+          if (inRoom(x, y) || document.elementFromPoint(x, y)?.id !== "room") continue;
+          const [cr, cg, cb] = ctx.getImageData(Math.floor(((x - r.left) / r.width) * canvas.width), Math.floor(((y - r.top) / r.height) * canvas.height), 1, 1).data;
+          if (!street.includes(`#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`)) out.push({ x, y });
+        }
+      return out;
+    }, streetColours("day"));
+    // The terrace is there, by the left edge and out front.
+    const room = await boxOf(page, "#room");
+    expect(points.filter((p) => p.x < room.x + room.width / 2).length, "terrace pixels by the left edge").toBeGreaterThan(10);
+    expect(points.filter((p) => p.x > room.x + room.width / 2).length, "terrace pixels out front").toBeGreaterThan(10);
+    const before = sent.length;
+    for (const p of points) {
       await page.mouse.click(p.x, p.y);
-      await page.waitForTimeout(200);
-      expect(await page.locator(".menu").count(), `a click on ${what}`).toBe(0);
-      expect(sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what a click on ${what} sent`).toEqual([]);
+      if ((await page.locator(".menu").count()) > 0) throw new Error(`a click on the terrace at (${p.x}, ${p.y}) opened a menu`);
     }
+    await page.waitForTimeout(300);
+    expect(sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what ${points.length} clicks on the terrace sent`).toEqual([]);
   });
 
   it("shows the phone's whole room at 1× centred on the room's middle, its two side corners cut evenly, with no sideways scroll", async () => {
