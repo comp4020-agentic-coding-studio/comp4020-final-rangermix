@@ -520,7 +520,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.mouse.move(title.x + 200, title.y + 150, { steps: 5 });
     await page.mouse.up();
     expect(await box()).toEqual(pinnedAt);
-    const text = (await page.locator("#your-cats .cat-row").first().boundingBox())!;
+    // Your cats is drawn again on every message from the café, so the row is
+    // read until it's there (CI caught it between two, 2026-11-06).
+    let text: { x: number; y: number; width: number; height: number } | null = null;
+    await expect.poll(async () => (text = await page.locator("#your-cats .cat-row").first().boundingBox())).not.toBeNull();
+    text = text!;
     await page.mouse.move(text.x + 2, text.y + 4);
     await page.mouse.down();
     await page.mouse.move(text.x + text.width - 2, text.y + text.height - 2, { steps: 5 });
