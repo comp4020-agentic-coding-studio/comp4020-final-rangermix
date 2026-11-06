@@ -2411,3 +2411,30 @@ proposed from a study, and not built: its two choices are the user's
 - **The study's screens** first came out at night by day: since slice 17
   the page keeps the server's hour, not the browser's, so the café was
   restarted with its clock at 10:00 and 22:00 for each light.
+
+*Sent 2026-11-07 00:59:54 AEDT*
+
+> 1A but keep the deeper building edge under the deck in consideration for now; 2 the city background make it a bit wierd or too "floaty". can we try something between A and B? for example the building start to fade at the current street height, or something extending the cafe's wall, or something else. I need more idea on this.
+
+Answering slice 18's two questions: the edge is the 18-px glass, and the
+city below the balcony is turned down.
+
+**Result.** The glass is settled; what shows below the balcony goes to a
+second round of the study, and slice 18 stays proposed
+([`44d3396`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/44d3396)).
+- **Why the city floats:** the towers across the road ran on down past
+  the balcony with nothing between, so it hung in front of them with
+  nothing under it. What was missing is the café's own building.
+- **Three more shots**, each with the deck and the 18-px glass, by day and
+  by night, beside the first two
+  ([notes/slice-18-study.md](notes/slice-18-study.md), section 5): the
+  towers fading into haze below the street's height (the user's first
+  example), which puts sky under the balcony and floats more; the café's
+  wall carried on down as its building, storeys of windows lit here and
+  there at night, the street behind as now (the user's second example,
+  and the deep edge kept); and the building with the haze behind it,
+  which shows only past the building's corners.
+- **Proposed: the café's building.** The balcony stands out from a
+  building and the building on the street, so nothing floats, and it
+  answers both of the user's examples. The spec's question 2 re-asked
+  with all five.

@@ -1,6 +1,7 @@
 // Slice 18's study: the café's terrace as it is, and on a balcony deck with
-// a glass balustrade (12 or 18 px), a low parapet, a deep slab, or the
-// towers carried on below, at 1920×1080 by day and by night, and on the
+// a glass balustrade (12 or 18 px) or a low parapet; and below the deck a
+// deep slab, the towers carried on down, the towers fading into haze, or
+// the café's own building (round 2), at 1920×1080 by day and by night, and on the
 // phone, against a café built with spike.patch applied to main at 4740c3b
 // (APP_URL, default http://localhost:18917). Usage, from spec/ (for its
 // playwright): RESTART=<script> node ../docs/notes/screens/slice-18-study/shoot.mjs
