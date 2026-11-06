@@ -15,7 +15,13 @@
   --error: #d20f39; /* red */
   --placeholder: #5c5f77; /* subtext1, as muted */
   --track: #ccd0da; /* surface0: the trust bar at 3:1 */
-  --focus: #1e66f5; /* blue */
+  /* The focus ring: an outline in --focus and a halo just outside it in
+     --focus-halo, so over the room and the street, whatever is behind, one
+     of the two holds 3:1 (slice 16's review, finding 4). Over the street's
+     mid tones Latte's blue can't, so the light theme's ring is crust on
+     white. */
+  --focus: #11111b; /* crust */
+  --focus-halo: #ffffff;
   /* A panel over the room (slice 14): what's behind is frosted (blurred,
      then squeezed toward white), and the card goes over it thinly, a
      quarter, or a tenth dimmed, so the room shows through as soft shapes
@@ -43,6 +49,7 @@
     --placeholder: #a6adc8; /* subtext0, as muted */
     --track: #45475a; /* surface1 */
     --focus: #89b4fa; /* blue */
+    --focus-halo: #000000;
     /* Squeezed toward black instead. */
     --glass-filter: blur(3px) contrast(1) brightness(0.37);
     --glass-alpha: 0.25;
@@ -62,7 +69,7 @@ button[type="submit"], button.primary { background: var(--accent); color: var(--
 button.link { background: none; border: none; color: var(--accent); text-decoration: underline; padding: 0.25rem 0; justify-self: start; }
 button:disabled { opacity: 0.6; cursor: progress; }
 #add-furniture:disabled { cursor: not-allowed; }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 7px var(--focus-halo); }
 input { font: inherit; width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
 /* The browser's own grey is short of 4.5:1 on either base (slice 10's review, finding 2). */
 ::placeholder { color: var(--placeholder); opacity: 1; }
@@ -86,7 +93,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .look-row canvas { display: block; width: 48px; height: 48px; image-rendering: pixelated; border: 2px solid var(--line); border-radius: 8px; background: var(--paper); }
 .swatch { display: block; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); }
 .look-row input:checked + canvas, .look-row input:checked + .swatch { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-.look-row input:focus-visible + canvas, .look-row input:focus-visible + .swatch { outline: 3px solid var(--focus); outline-offset: 2px; }
+.look-row input:focus-visible + canvas, .look-row input:focus-visible + .swatch { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 7px var(--focus-halo); }
 .recovery-code code { font-size: 1.25rem; letter-spacing: 0.08em; background: var(--paper); padding: 0.3rem 0.5rem; border-radius: 6px; }
 .error { color: var(--error); min-height: 1.5em; margin: 0.5rem 0 0; }
 .left-cafe { min-height: 100vh; display: grid; place-content: center; text-align: center; gap: 1rem; padding: 16px; }
@@ -319,6 +326,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .layout-b .cafe { display: block; height: 100vh; padding: 0; }
 .layout-b .stage { position: fixed; inset: 0; display: block; overflow: hidden; z-index: 0; }
 .layout-b #room { position: absolute; border-radius: 0; box-shadow: none; }
+.layout-b #room:focus-visible { box-shadow: 0 0 0 7px var(--focus-halo); }
 .layout-b .status { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.35rem 0.6rem; }
 .layout-b .talk { position: fixed; bottom: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; }
 .layout-b .panel { display: none; }

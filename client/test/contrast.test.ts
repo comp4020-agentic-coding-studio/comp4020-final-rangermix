@@ -207,3 +207,28 @@ describe("the panels over the room (slice 14)", () => {
     expect(glass).toMatch(/\.panel\.dim\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha-dim\)\)/);
   });
 });
+
+// Slice 16's review, finding 4: the room's canvas and the floating status
+// buttons sit over the street now, where the focus ring alone (Mocha's blue
+// in the dark theme) was the day sky's own colour. The ring is two tones:
+// the outline in --focus and a halo just outside it in --focus-halo, so
+// against anything the room and street can show, one of them holds 3:1
+// (WCAG 1.4.11), and the two hold 3:1 against each other.
+describe("the keyboard's focus ring over the room and the street (slice 16)", () => {
+  for (const theme of ["light", "dark"] as const) {
+    it(`shows against every colour the room and street are drawn in, in the ${theme} theme`, () => {
+      const t = tokens(theme);
+      expect(t.focus && t["focus-halo"], "--focus and --focus-halo").toBeTruthy();
+      expect(contrast(t.focus, t["focus-halo"]), `the ring's two tones (${t.focus}, ${t["focus-halo"]})`).toBeGreaterThanOrEqual(3);
+      const weak: string[] = [];
+      for (const behind of behindColours()) {
+        if (Math.max(contrast(t.focus, behind), contrast(t["focus-halo"], behind)) < 3) weak.push(behind);
+      }
+      expect(weak, "colours neither tone holds 3:1 against").toEqual([]);
+    });
+  }
+
+  it("draws the halo round every focused control, from the token", () => {
+    expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus\)[^}]*box-shadow:\s*0 0 0 \d+px var\(--focus-halo\)/);
+  });
+});
