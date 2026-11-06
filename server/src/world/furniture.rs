@@ -3,7 +3,7 @@
 //! your hands; putting it down walks you beside the spot. The world handles
 //! one message at a time, so the first grab wins. Also sitting, which shares
 //! the walk-then-act shape.
-use super::{Out, Pending, To, World, error, walk_tile};
+use super::{Out, Pending, To, World, error, walk_steps};
 use crate::protocol::{ErrorCode, HeldView, Reaction, ServerMsg, Tile};
 use crate::room::{Piece, Placed, Saved, Walker, chebyshev};
 use std::collections::HashMap;
@@ -39,12 +39,9 @@ impl World {
         self.people
             .iter()
             .filter(|p| p.place == crate::protocol::Place::Inside)
+            // By step, not by tile: a walk that turned back crosses a tile twice.
             .flat_map(|p| match &p.walk {
-                Some(w) => {
-                    let here = walk_tile(w, now);
-                    let from = w.path.iter().position(|&t| t == here).unwrap_or(0);
-                    w.path[from..].to_vec()
-                }
+                Some(w) => w.path[walk_steps(w, now)..].to_vec(),
                 None => vec![p.at],
             })
             .collect()
@@ -63,10 +60,11 @@ impl World {
 
     /// Gets someone up off their seat where they are, for everyone to see.
     fn stand_up(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
+        // Seated, so not walking: the walk of no steps sets off where they sit.
         if self.person(id).is_some_and(|p| p.sitting.is_some())
-            && let Some(here) = self.person_tile(id, now)
+            && let Some(set_off) = self.person_set_off(id, now)
         {
-            self.start_walk(now, id, here, vec![here], None, out);
+            self.start_walk(now, id, set_off, vec![set_off.from], None, out);
         }
     }
 

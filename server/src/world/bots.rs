@@ -147,7 +147,8 @@ impl World {
     /// A walk to the free floor nearest a tile picked at random: never onto
     /// someone, or the door's walkway.
     fn bot_wander(&mut self, now: u64, id: u32, out: &mut Vec<Out>) {
-        let Some(from) = self.person_tile(id, now) else { return };
+        let Some(set_off) = self.person_set_off(id, now) else { return };
+        let from = set_off.from;
         let pick = Tile {
             x: self.rng.random_range(0..self.room.width),
             y: self.rng.random_range(1..self.room.height),
@@ -169,7 +170,7 @@ impl World {
             return;
         };
         if let Some(path) = self.room.path(from, to, Walker::Person).filter(|p| p.len() > 1) {
-            self.start_walk(now, id, from, path, None, out);
+            self.start_walk(now, id, set_off, path, None, out);
         }
     }
 }

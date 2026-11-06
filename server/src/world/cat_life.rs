@@ -3,7 +3,7 @@
 //! play, perch, investigate, knock things over, nap on a lap, and answer a
 //! noisy room, their names, and a friend at the door. How they answer being
 //! handled is in handling.rs.
-use super::{Heard, Out, To, World, walk_end, walk_tile};
+use super::{Heard, Out, SetOff, To, World, walk_end, walk_tile};
 use crate::cats::{CatDef, Choice, Doing, Saved, SavedPlan, Situation, drift, options, pick};
 use crate::protocol::{CatView, ChalkWhat, Place, Pose, Reaction, ServerMsg, Tile, Walk};
 use crate::room::{FurnitureKind, Piece, Walker, chebyshev, manhattan};
@@ -542,32 +542,35 @@ impl World {
         (!tiles.is_empty()).then(|| tiles[self.rng.random_range(0..tiles.len())])
     }
 
+    /// Sends a cat to `target` for `plan`. One partway through a step finishes
+    /// it, and turns there; one with nowhere new to go settles where it is,
+    /// or where the step under way arrives.
     pub(super) fn walk_cat(&mut self, i: usize, now: u64, minute: u32, target: Tile, plan: Plan, out: &mut Vec<Out>) {
-        let from = self.cats[i].tile(now);
+        let cat = &self.cats[i];
+        let set_off = SetOff::at(cat.walk.as_ref(), cat.at, now);
         self.cats[i].plan = plan;
-        match self.room.path(from, target, Walker::Cat) {
-            Some(path) if path.len() > 1 => {
-                let speed = self.tuning.cat_speed * self.cats[i].def.speed_factor(minute);
-                let walk = Walk { path, start: now, speed };
-                let cat = &mut self.cats[i];
-                cat.told = None;
-                cat.at = from;
-                cat.walk = Some(walk.clone());
-                cat.pose = Pose::Walk;
-                out.push(Out {
-                    to: To::All,
-                    msg: ServerMsg::CatMoved {
-                        cat: cat.def.id.clone(),
-                        walk,
-                    },
-                });
-            }
-            _ => {
-                let cat = &mut self.cats[i];
-                cat.at = from;
-                cat.walk = None;
-                self.settle(i, now, out);
-            }
+        let path = self
+            .room
+            .path(set_off.from, target, Walker::Cat)
+            .unwrap_or_else(|| vec![set_off.from]);
+        let speed = self.tuning.cat_speed * self.cats[i].def.speed_factor(minute);
+        let walk = set_off.walk(path, now, speed);
+        let cat = &mut self.cats[i];
+        cat.at = walk.path[0];
+        if walk.path.len() > 1 {
+            cat.told = None;
+            cat.walk = Some(walk.clone());
+            cat.pose = Pose::Walk;
+            out.push(Out {
+                to: To::All,
+                msg: ServerMsg::CatMoved {
+                    cat: cat.def.id.clone(),
+                    walk,
+                },
+            });
+        } else {
+            cat.walk = None;
+            self.settle(i, now, out);
         }
     }
 
@@ -963,6 +966,34 @@ mod tests {
             })
             .sum();
         assert!(moved > 0, "nobody moved in ten minutes");
+    }
+
+    #[test]
+    fn a_cat_sent_elsewhere_mid_step_carries_on_from_where_it_is() {
+        // As for people (the user's ask, 2026-11-07): a cat called, or off to
+        // hide, partway through a step finishes the step and turns there.
+        use super::super::people::tests::drawn_at;
+        let mut w = world();
+        let tora = hold(&mut w, "tora", T(2, 8));
+        w.walk_cat(tora, 10_000, 600, T(5, 8), Plan::Idle, &mut Vec::new());
+        let first = w.cats[tora].walk.clone().expect("tora sets off");
+        let now = first.start + (1.5 * 1000.0 / first.speed as f64) as u64;
+        let was = drawn_at(&first, now);
+        assert!((was.0 - 3.5).abs() < 0.05 && was.1 == 8.0, "{was:?}");
+        let mut out = Vec::new();
+        w.walk_cat(tora, now, 600, T(3, 11), Plan::Idle, &mut out);
+        let second = w.cats[tora].walk.clone().expect("off again");
+        let now_drawn = drawn_at(&second, now);
+        assert!(
+            (now_drawn.0 - was.0).abs() < 0.005 && (now_drawn.1 - was.1).abs() < 0.005,
+            "{now_drawn:?} vs {was:?}"
+        );
+        assert_eq!(&second.path[..2], &[T(3, 8), T(4, 8)]);
+        assert_eq!(*second.path.last().unwrap(), T(3, 11));
+        assert!(
+            out.iter()
+                .any(|o| matches!(&o.msg, ServerMsg::CatMoved { walk, .. } if *walk == second))
+        );
     }
 
     #[test]

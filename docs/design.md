@@ -299,6 +299,13 @@ renamed.
 - **Walks are paths.** Each walk is sent once (path, start time, speed) and
   animated locally: few messages, smooth motion on a slow connection, and a
   newcomer can place everyone mid-stride.
+- **A new walk carries on from mid-step.** Someone (or a cat) given a new
+  destination partway through a step finishes that step, then turns. The new
+  walk is led by the step under way and started earlier by the part of it
+  already walked, so every screen draws them where they were, with no jump
+  back. *Why:* routing from the tile last reached snapped walkers back to it
+  (the user's ask, 2026-11-07;
+  [notes](notes/walk-turns-mid-step.md)).
 - **The server decides.** Clients send intents; the world checks them and
   broadcasts the outcome, which the sender renders like everyone else.
 - **Falling behind heals by snapshot.** Reconnects retry with backoff and the

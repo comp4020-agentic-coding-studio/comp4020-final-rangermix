@@ -77,8 +77,8 @@ impl World {
         // Whatever they carried goes back first.
         self.put_back(now, id, Some("walked_out"), out);
         self.let_go_of_cat(now, id, out);
-        let Some(from) = self.person_tile(id, now) else { return };
-        let door = self.room.door;
+        let Some(set_off) = self.person_set_off(id, now) else { return };
+        let (from, door) = (set_off.from, self.room.door);
         let path = self.room.path(from, door, Walker::Person).unwrap_or_else(|| vec![from, door]);
         let Some(p) = self.people.iter_mut().find(|p| p.id == id) else {
             return;
@@ -86,7 +86,7 @@ impl World {
         p.leaving = true;
         p.nudged = None;
         tracing::info!(target: "action", uid = id, who = %p.name, what = "walk_out");
-        self.start_walk(now, id, from, path, None, out);
+        self.start_walk(now, id, set_off, path, None, out);
         self.promote(now, out);
     }
 }

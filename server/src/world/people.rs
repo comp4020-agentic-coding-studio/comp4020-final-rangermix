@@ -1,6 +1,6 @@
 //! People in the café: arriving, the line at the window (ADR 0008), walking,
 //! talking (ADR 0010), dropping out, coming back and leaving.
-use super::{Heard, Out, Pending, Person, To, World, error, walk_end, walk_tile};
+use super::{Heard, Out, Pending, Person, SetOff, To, World, error, walk_end, walk_tile};
 use crate::protocol::{Emote, ErrorCode, Look, PersonView, Place, ServerMsg, Tile, Walk};
 use crate::room::Walker;
 
@@ -33,6 +33,11 @@ impl World {
     /// Where someone is now, mid-walk or standing.
     pub(super) fn person_tile(&self, id: u32, now: u64) -> Option<Tile> {
         self.person(id).map(|p| p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now)))
+    }
+
+    /// Where a new walk of someone's sets off: past the end of any step under way.
+    pub(super) fn person_set_off(&self, id: u32, now: u64) -> Option<SetOff> {
+        self.person(id).map(|p| SetOff::at(p.walk.as_ref(), p.at, now))
     }
 
     pub(super) fn join(&mut self, now: u64, id: u32, name: String, look: Look, demo: bool, out: &mut Vec<Out>) {
@@ -223,33 +228,33 @@ impl World {
         if !self.inside_or_refuse(id, out) {
             return;
         }
-        let from = self.person_tile(id, now).expect("checked above");
-        let Some(path) = self.room.path(from, tile, Walker::Person) else {
+        let set_off = self.person_set_off(id, now).expect("checked above");
+        let Some(path) = self.room.path(set_off.from, tile, Walker::Person) else {
             return error(out, id, ErrorCode::BadTile, "You can't stand there.");
         };
-        self.start_walk(now, id, from, path, None, out);
+        self.start_walk(now, id, set_off, path, None, out);
         let name = self.person(id).map(|p| p.name.clone()).unwrap_or_default();
         tracing::info!(target: "action", uid = id, who = %name, what = "walk", outcome = "ok", x = tile.x, y = tile.y);
     }
 
     /// Walks to `target` and does `then` on arrival. False if there's no way there.
     pub(super) fn approach(&mut self, now: u64, id: u32, target: Tile, then: Pending, out: &mut Vec<Out>) -> bool {
-        let Some(from) = self.person_tile(id, now) else { return false };
-        let Some(path) = self.room.path(from, target, Walker::Person) else {
+        let Some(set_off) = self.person_set_off(id, now) else {
             return false;
         };
-        self.start_walk(now, id, from, path, Some(then), out);
+        let Some(path) = self.room.path(set_off.from, target, Walker::Person) else {
+            return false;
+        };
+        self.start_walk(now, id, set_off, path, Some(then), out);
         true
     }
 
-    pub(super) fn start_walk(&mut self, now: u64, id: u32, from: Tile, path: Vec<Tile>, then: Option<Pending>, out: &mut Vec<Out>) {
-        let walk = Walk {
-            path,
-            start: now,
-            speed: self.tuning.person_speed,
-        };
+    /// Sets someone off along `path`, which starts at `set_off.from`; a step
+    /// under way is finished first, so nobody snaps back to the tile it left.
+    pub(super) fn start_walk(&mut self, now: u64, id: u32, set_off: SetOff, path: Vec<Tile>, then: Option<Pending>, out: &mut Vec<Out>) {
+        let walk = set_off.walk(path, now, self.tuning.person_speed);
         let p = self.person_mut(id).expect("callers check the person is here");
-        p.at = from;
+        p.at = walk.path[0];
         p.walk = Some(walk.clone());
         // A new walk stands you up, and replaces whatever waited at the old one's end.
         p.sitting = None;
@@ -668,6 +673,126 @@ pub(crate) mod tests {
         assert_eq!(*walk.path.last().unwrap(), Tile { x: 1, y: 8 });
         let outs = send(&mut w, 1, 6_000, ClientMsg::WalkTo { tile: Tile { x: 0, y: 0 } });
         assert_eq!(errors(&outs), vec![(To::One(1), ErrorCode::BadTile)]);
+    }
+
+    fn moved(outs: &[Out], id: u32) -> Walk {
+        outs.iter()
+            .find_map(|o| match &o.msg {
+                ServerMsg::PersonMoved { id: who, walk } if *who == id => Some(walk.clone()),
+                _ => None,
+            })
+            .expect("a walk")
+    }
+
+    /// Where a walk puts someone at `now`, in fractional tiles, as every
+    /// client draws it (client/src/motion.ts, `positionAt`).
+    pub(crate) fn drawn_at(walk: &Walk, now: u64) -> (f64, f64) {
+        let steps = (now.saturating_sub(walk.start) as f64 * walk.speed as f64 / 1000.0).max(0.0);
+        let last = walk.path.len() - 1;
+        if steps >= last as f64 {
+            let end = walk.path[last];
+            return (end.x as f64, end.y as f64);
+        }
+        let i = steps.floor() as usize;
+        let f = steps - i as f64;
+        let (a, b) = (walk.path[i], walk.path[i + 1]);
+        (
+            a.x as f64 + (b.x as f64 - a.x as f64) * f,
+            a.y as f64 + (b.y as f64 - a.y as f64) * f,
+        )
+    }
+
+    /// Within 0.005 of a tile: a walk starts on a whole millisecond.
+    fn close(a: (f64, f64), b: (f64, f64)) -> bool {
+        (a.0 - b.0).abs() < 0.005 && (a.1 - b.1).abs() < 0.005
+    }
+
+    const T: fn(u8, u8) -> Tile = |x, y| Tile { x, y };
+
+    /// Person 1 standing still at (2, 10), on a row with nothing on it, and
+    /// setting off along it at 10 s, three tiles a second.
+    fn setting_off_along_row_10() -> (World, Walk) {
+        let mut w = world();
+        join(&mut w, 1, 0);
+        let p = w.people.iter_mut().find(|p| p.id == 1).unwrap();
+        (p.walk, p.at) = (None, T(2, 10));
+        let walk = moved(&send(&mut w, 1, 10_000, ClientMsg::WalkTo { tile: T(12, 10) }), 1);
+        assert_eq!(walk.path, (2..=12).map(|x| T(x, 10)).collect::<Vec<_>>());
+        (w, walk)
+    }
+
+    #[test]
+    fn a_new_destination_carries_on_from_mid_step_instead_of_snapping_back() {
+        // The user's ask, 2026-11-07: changing where you're going reset the
+        // walk to the last tile reached. Instead the step under way goes on to
+        // its next tile, and the walk turns there for the new destination.
+        let (mut w, first) = setting_off_along_row_10();
+        // At 10.5 s they're halfway from (3, 10) to (4, 10).
+        let now = 10_500;
+        let was = drawn_at(&first, now);
+        assert!(close(was, (3.5, 10.0)), "{was:?}");
+        let second = moved(&send(&mut w, 1, now, ClientMsg::WalkTo { tile: T(9, 12) }), 1);
+        assert!(
+            close(drawn_at(&second, now), was),
+            "drawn at {:?}, not {was:?}",
+            drawn_at(&second, now)
+        );
+        assert_eq!(&second.path[..2], &[T(3, 10), T(4, 10)], "finishes the step first");
+        assert_eq!(*second.path.last().unwrap(), T(9, 12));
+        // Then four-way steps on to the new destination, every one a tile apart.
+        assert!(
+            second.path.windows(2).all(|s| crate::room::manhattan(s[0], s[1]) == 1),
+            "{:?}",
+            second.path
+        );
+        // The server agrees with the screens: mid-step they're still leaving (3, 10).
+        assert_eq!(w.person_tile(1, now), Some(T(3, 10)));
+        assert_eq!(w.person_tile(1, now + 200), Some(T(4, 10)));
+    }
+
+    #[test]
+    fn turning_back_mid_step_finishes_the_step_then_comes_back() {
+        let (mut w, first) = setting_off_along_row_10();
+        let now = 10_400;
+        let was = drawn_at(&first, now);
+        let back = moved(&send(&mut w, 1, now, ClientMsg::WalkTo { tile: T(2, 10) }), 1);
+        assert!(close(drawn_at(&back, now), was), "{:?} vs {was:?}", drawn_at(&back, now));
+        assert_eq!(back.path, vec![T(3, 10), T(4, 10), T(3, 10), T(2, 10)]);
+    }
+
+    #[test]
+    fn a_new_destination_on_a_tile_boundary_needs_no_extra_step() {
+        let (mut w, _) = setting_off_along_row_10();
+        // Exactly on (5, 10), three steps in: nothing under way to finish.
+        let now = 11_000;
+        let back = moved(&send(&mut w, 1, now, ClientMsg::WalkTo { tile: T(2, 10) }), 1);
+        assert_eq!(back.path, vec![T(5, 10), T(4, 10), T(3, 10), T(2, 10)]);
+        assert_eq!(back.start, now);
+    }
+
+    #[test]
+    fn a_new_destination_where_the_step_arrives_just_finishes_the_step() {
+        let (mut w, first) = setting_off_along_row_10();
+        let now = 10_500;
+        let was = drawn_at(&first, now);
+        let stop = moved(&send(&mut w, 1, now, ClientMsg::WalkTo { tile: T(4, 10) }), 1);
+        assert_eq!(stop.path, vec![T(3, 10), T(4, 10)]);
+        assert!(close(drawn_at(&stop, now), was));
+    }
+
+    #[test]
+    fn heading_for_something_mid_step_carries_on_too() {
+        // A grab (or a pet, a sit) walks you beside it: from where you are,
+        // not from the tile you last stood on.
+        let (mut w, first) = setting_off_along_row_10();
+        let now = 10_500;
+        let was = drawn_at(&first, now);
+        let cushion = w.room.pieces.iter().find(|p| p.kind == "cushion").expect("a cushion").id;
+        let outs = send(&mut w, 1, now, ClientMsg::Grab { id: cushion });
+        assert_eq!(errors(&outs), vec![]);
+        let second = moved(&outs, 1);
+        assert!(close(drawn_at(&second, now), was), "{:?} vs {was:?}", drawn_at(&second, now));
+        assert_eq!(&second.path[..2], &[T(3, 10), T(4, 10)]);
     }
 
     #[test]

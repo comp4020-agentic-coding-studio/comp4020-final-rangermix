@@ -95,6 +95,63 @@ describe("real time", () => {
     expect(placed.place).toBe("inside");
   }, 20_000);
 
+  it("a new destination mid-step carries the walk on from where it is, not from the tile last reached", async () => {
+    // The user's ask, 2026-11-07: changing where you're going snapped you
+    // back to the last tile you'd reached. A walk is drawn from its path,
+    // start and speed (design.md, "Real-time"), so the new walk must put you
+    // where the old one had you when it began, and finish the step first.
+    const v = await visitor();
+    const me = v.welcome.you as number;
+    const room = v.welcome.snapshot.room as Msg;
+    const blocked = (x: number, y: number) =>
+      room.tiles[y][x] !== "." ||
+      room.furniture.some((f: Msg) => f.blocks && x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h) ||
+      v.welcome.snapshot.people.some((p: Msg) => p.id !== me && p.at.x === x && p.at.y === y);
+    // A clear run of six tiles, off the door's walkway, to walk along.
+    let run: { x: number; y: number } | null = null;
+    for (let y = room.height - 1; y > 3 && !run; y--)
+      for (let x = 0; x + 5 < room.width && !run; x++)
+        if ([0, 1, 2, 3, 4, 5].every((d) => !blocked(x + d, y))) run = { x, y };
+    expect(run, "a clear run of floor").not.toBeNull();
+    const walkTo = async (x: number, y: number) => {
+      const from = v.messages.length;
+      v.send({ type: "walkTo", tile: { x, y } });
+      const m = await v.next((m) => (m.type === "personMoved" && m.id === me) || m.type === "error", 3000, from);
+      expect(m.type, JSON.stringify(m)).toBe("personMoved");
+      return m.walk as { path: { x: number; y: number }[]; start: number; speed: number };
+    };
+    // To the run's start, and let the walk end.
+    const there = await walkTo(run!.x, run!.y);
+    await new Promise((r) => setTimeout(r, ((there.path.length - 1) / there.speed) * 1000 + 300));
+    // Along it, then mid-way through its second step, turn back.
+    const along = await walkTo(run!.x + 5, run!.y);
+    await new Promise((r) => setTimeout(r, 1.5 * (1000 / along.speed)));
+    const back = await walkTo(run!.x, run!.y);
+    const at = (w: typeof along, t: number) => {
+      const steps = Math.max(0, ((t - w.start) * w.speed) / 1000);
+      const i = Math.min(Math.floor(steps), w.path.length - 1);
+      const b = w.path[Math.min(i + 1, w.path.length - 1)];
+      const f = steps - i;
+      return { x: w.path[i].x + (b.x - w.path[i].x) * f, y: w.path[i].y + (b.y - w.path[i].y) * f };
+    };
+    // It finishes the step under way, then comes back along the run.
+    expect(back.path.slice(0, 2)).toEqual(along.path.slice(1, 3));
+    expect(back.path.at(-1)).toEqual({ x: run!.x, y: run!.y });
+    // Over that step, the old walk and the new one put you in the same
+    // place at every moment: the walk carries on, with no jump back. (Before
+    // the fix, the new walk started on the step's first tile when it came.)
+    const step = 1000 / back.speed;
+    for (const part of [0.1, 0.5, 0.9]) {
+      const t = back.start + step * part;
+      const old = at(along, t);
+      const now = at(back, t);
+      expect(Math.abs(now.x - old.x) + Math.abs(now.y - old.y), `${part}: ${JSON.stringify(now)} vs ${JSON.stringify(old)}`).toBeLessThan(0.01);
+    }
+    // And it was sent mid-step: it starts when that step did, to the
+    // millisecond its start is rounded to.
+    expect(Math.abs(back.start - (along.start + step))).toBeLessThanOrEqual(1);
+  }, 20_000);
+
   it("the cats remember you when you come back", async () => {
     const account = await signUp();
     const v = await visitor(account.cookie);

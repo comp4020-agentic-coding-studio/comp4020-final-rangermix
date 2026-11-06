@@ -599,10 +599,74 @@ fn error(out: &mut Vec<Out>, id: u32, code: ErrorCode, detail: &str) {
     });
 }
 
+/// How many of a walk's steps are done at `now`: the index in its path of
+/// the tile most recently reached.
+pub fn walk_steps(walk: &Walk, now: u64) -> usize {
+    let steps = (now.saturating_sub(walk.start) as f64 * walk.speed as f64 / 1000.0) as usize;
+    steps.min(walk.path.len() - 1)
+}
+
 /// The tile a walk has most recently reached at `now`.
 pub fn walk_tile(walk: &Walk, now: u64) -> Tile {
-    let steps = (now.saturating_sub(walk.start) as f64 * walk.speed as f64 / 1000.0) as usize;
-    walk.path[steps.min(walk.path.len() - 1)]
+    walk.path[walk_steps(walk, now)]
+}
+
+/// Where a new walk sets off at `now`, for someone (or a cat) who may be
+/// partway through a step of the one they're on. A new destination doesn't
+/// take them back to the tile that step left: the step goes on to its next
+/// tile, and the new route starts there (the user's ask, 2026-11-07).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SetOff {
+    /// The tile to route from: where they stand, or where the step under way arrives.
+    pub from: Tile,
+    /// The step under way: the tile it left, and how far along it they are,
+    /// as a fraction of the step (0 to 1, both excluded).
+    step: Option<(Tile, f64)>,
+}
+
+impl SetOff {
+    /// Standing on `at`, or partway along `walk`.
+    pub fn at(walk: Option<&Walk>, at: Tile, now: u64) -> SetOff {
+        let Some(w) = walk else {
+            return SetOff { from: at, step: None };
+        };
+        let i = walk_steps(w, now);
+        let done = now.saturating_sub(w.start) as f64 * w.speed as f64 / 1000.0;
+        let along = done - i as f64;
+        if i + 1 < w.path.len() && along > 0.0 {
+            SetOff {
+                from: w.path[i + 1],
+                step: Some((w.path[i], along)),
+            }
+        } else {
+            SetOff {
+                from: w.path[i],
+                step: None,
+            }
+        }
+    }
+
+    /// A walk along `path`, which starts at `self.from`, at `speed` tiles a
+    /// second: led by the step under way and started as far back as the part
+    /// of it already walked takes at `speed`, so every client draws it
+    /// carrying on from exactly where it was.
+    pub fn walk(&self, path: Vec<Tile>, now: u64, speed: f32) -> Walk {
+        debug_assert_eq!(path.first(), Some(&self.from), "a route from where the walk sets off");
+        match self.step {
+            None => Walk { path, start: now, speed },
+            Some((left, along)) => {
+                let mut whole = Vec::with_capacity(path.len() + 1);
+                whole.push(left);
+                whole.extend(path);
+                let back = (along * 1000.0 / speed as f64).round() as u64;
+                Walk {
+                    path: whole,
+                    start: now.saturating_sub(back),
+                    speed,
+                }
+            }
+        }
+    }
 }
 
 /// When a walk reaches its last tile.
