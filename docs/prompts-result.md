@@ -2438,3 +2438,33 @@ second round of the study, and slice 18 stays proposed
   building and the building on the street, so nothing floats, and it
   answers both of the user's examples. The spec's question 2 re-asked
   with all five.
+
+### 18. A walk that turns mid-step
+
+*Session `e02519a7`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-07 01:10:53 AEDT*
+
+> currently changing the move destination will cause the walking animation to reset from the last cell the user is in. the reset shouldn't occur; the current move to the next immediate cell should keep going then continue to the new destination, which should fix this issue.
+
+**Result.** Fixed on the server, as the user described: a walk given a
+new destination mid-step finishes that step, then turns, with no jump
+back ([`1db9fde`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1db9fde);
+[notes/walk-turns-mid-step.md](notes/walk-turns-mid-step.md)).
+- **The cause was the server, not the client.** Every new walk was
+  routed from the tile last reached and started at once. Clients draw a
+  walk from its path, start and speed, so they all drew the walker back
+  on that tile. Cats did the same when called, sent to hide, or off to
+  greet someone mid-walk.
+- **The fix:** a walk set off mid-step is led by the step under way and
+  started earlier by the part of it already walked, so every screen
+  draws it where the old one had the walker. It is one helper, `SetOff`,
+  for people (walking, going to a cat or piece, bots, walking out) and
+  cats alike. No protocol or client change: the walk cycle runs off the
+  wall clock, not a walk's start.
+- **Checked:** six `cargo test` cases written first, five seen failing on
+  the bug. A spec check over the WebSocket failed against a café built
+  from unfixed `main` and passes against the fix, with all of `spec/`. In
+  a real browser, by mouse at 1920×1080 and by touch at 390×844, the
+  largest move between two frames across the turn was 0.049 of a tile,
+  one frame's ordinary walking. The live café waits on `main`'s deploy.
