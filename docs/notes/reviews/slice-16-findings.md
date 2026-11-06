@@ -493,4 +493,77 @@ next section lists them).
 
 ## Answers
 
-(For the builder.)
+By the builder, 2026-11-06. Nine fixed, each seen failing first; two
+nits answered in the spec.
+
+1. **Fixed** ([`1a699d7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1a699d7)). The desktop stage is an absolute box in a
+   café that fills the window, which makes no layer of its own; the waking
+   screen is lifted over the panels by its own z. A browser check drags
+   the chalkboard over an open menu and a bubble at 1920×1080 and
+   1440×900: every menu item is what a click reaches, and over half the
+   bubble's inside is its own paper. With the stage fixed again, 8% of it
+   was.
+2. **Fixed** ([`c6f0158`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c6f0158)), as you proposed. A render test draws the
+   café's real floor, from `room.toml`, with and without the terrace and
+   holds that nothing changes over the floor, the walls, or a figure's
+   column over any floor tile: 1107 pixels did. The open umbrella is now
+   a folded parasol, the street lamp a low lantern, the left planters set
+   a little further out. This departs from the approved spec's "a table
+   under an umbrella … and a street lamp": the user is told. The browser
+   check clicks every terrace pixel off the room's shape, about 70, and
+   says plainly that it can't tell one over the floor from the floor's
+   own, which the render test holds. The slice 13 carried-chair test,
+   which found its chair by colour, now looks only in its carrier's column.
+3. **Fixed** ([`bdc003a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bdc003a)). A refusal's note is placed at the foot of
+   the band the bars leave clear, as menus and rings are, in both layouts.
+   A browser check sends a real refusal frame at 1920×1080, 1440×900 and
+   390×844 (layout B), and holds the note above the talk bar with nothing
+   floating over it.
+4. **Fixed** ([`2a71593`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2a71593)). The ring is two tones: the outline, and a
+   halo just outside it. Your contrast sums found no single halo for
+   Latte's blue: its mid tones and the street's fall under 3:1 against
+   both. So the light theme's ring is crust on white, and the dark
+   theme's Mocha blue on black. A contrast test holds that against every
+   colour the room and street are drawn in, one of the two holds 3:1, and
+   the two hold 3:1 against each other. The look picker and layout B's
+   focused room carry the halo too.
+5. **Fixed** ([`c136883`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c136883)). `Floating` watches the status line and the
+   talk bar. A browser check at 960×800, the café updated and something
+   carried, holds both top panels' title, grip and pin reachable.
+6. **Fixed** ([`6a7a530`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6a7a530)). The check sets the bars aside for its
+   sample, so it reads the screen's own edges; with `#street` hidden it
+   fails at the foot below the room. The log's sentence is struck out and
+   corrected. It later caught finding 8's first cut, and the room's new
+   focus ring along the screen's edge, which it now puts away to sample.
+7. **Fixed** ([`7f5ccb2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7f5ccb2)), your first way. Each panel's height is
+   capped so that, from its starting corner, it covers none of the floor's
+   four corner tiles, and it scrolls instead. The cap is worked out from
+   that corner wherever the panel's been moved: worked out from where it
+   stands, it grew a moved panel 10 px mid-move and changed its height
+   across a reload, which two slice 14 checks caught. A unit test holds
+   the cap's sums. A browser check adds a fourth cat and fourteen lines
+   said and holds every floor tile's middle the room's; before, (0, 1) was
+   under your cats and (12, 12) under who's here.
+8. **Fixed** ([`b0fd0e6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b0fd0e6)). The street reaches as far past the room as
+   the stage is bigger than it, the whole gap either side, since layout B
+   pans the room against an edge: 2240×1104 (2.5 M px) at 1920×1080,
+   1200×900 on a phone. Measured: no long task as the light turns at
+   1920×1080; one of 72 ms on a phone at a quarter speed, which includes
+   the room's own floor layer.
+9. **Fixed** ([`b2cebec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b2cebec)). The render tests' room is `room.toml`'s
+   (`FLOOR`), and the slab test reads its edges from it. The checks read
+   the grid from `window.cafeRoom.grid`, now exposed, and the welcome's
+   room, for the cats' far corner, the tiles set aside, the bare-tile
+   search and the street-click shape. A server test wakes a store holding
+   the live café's bare list and saved cats through `wake()`, and fails
+   if the strip isn't added. 400 by 264 and 1600 wide stay fixed where a
+   check holds the spec's chosen floor itself.
+10. **Answered in the spec.** The phone's whole room is held at 390, the
+    size the course marks at and the user accepted the cut for. Narrower
+    phones are cut more, and a corner tile there is reached by tapping
+    its visible part.
+11. **Answered in the spec.** The "no floor tile wholly under a bar" line
+    holds at 1920×1080 and at every laptop and maximised size you tried;
+    windows under about 600 px tall at 2× put the front tile under the
+    talk bar. The marked viewport isn't one, and Tab still reaches the
+    tile.

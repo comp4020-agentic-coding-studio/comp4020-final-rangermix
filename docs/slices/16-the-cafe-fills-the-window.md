@@ -80,6 +80,19 @@ phone", and "Those are _viewports_, not monitor sizes"
 | The phone's layouts work at 390×844 with the bigger floor: A shows the whole room, B pans to every edge | the existing browser checks, at the new size |
 | It looks right: the room's size, the bars over it, the street to the edges, the terrace, by day and by night | judged: the user, from screens in `docs/notes/screens/slice-16/` |
 
+## Limits found in review
+
+- **Narrower phones.** The whole room (layout A) is held at 390 px, the
+  size the course marks at. At 360 px it's cut 20 px a side, and the
+  floor's two side corner tiles have their middles off screen; each is
+  still tapped on its visible part (slice 16's review, finding 10).
+- **Very short windows.** Under about 600 px tall at 2× the floor's
+  front tile is wholly under the floating talk bar; Tab still reaches it.
+  It holds at 1920×1080 and at every laptop size (finding 11).
+- **The terrace is low.** Anything tall out front stands over the floor's
+  front tiles on screen, so the table's parasol is folded and the lamp is
+  a low lantern, not the umbrella and street lamp first proposed (finding 2).
+
 ## Rules it touches
 
 - **Every action works by keyboard, touch and mouse, at 390×844 and at
