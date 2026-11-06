@@ -282,4 +282,69 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     const wide = await boxOf(page, "#room");
     expect(Math.round(wide.x), "centred on a 430 px phone").toBe(15);
   });
+
+  // Slice 16's review, finding 1: the stage made no layer of its own, so a
+  // menu, a bubble or the waking screen paints over a panel dragged there.
+  it("paints an open menu and a speech bubble over a panel dragged across them", { timeout: 90_000 }, async () => {
+    for (const viewport of [
+      { width: 1920, height: 1080 },
+      { width: 1440, height: 900 },
+    ]) {
+      const { page } = await visit(viewport);
+      // A bubble: say something.
+      await page.locator("#talk-input").fill("over the panels");
+      await page.locator("#talk-input").press("Enter");
+      const bubble = page.locator(".bubble", { hasText: "over the panels" });
+      await bubble.waitFor();
+      // A menu, by keyboard, on whatever Tab reaches first.
+      await page.locator("#room").focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Enter");
+      const menu = page.locator(".menu");
+      await menu.waitFor();
+      // The chalkboard dragged by its title over the menu, then over the bubble.
+      const drag = async (to: Box) => {
+        const title = await boxOf(page, "#chalkboard .panel-bar h2");
+        await page.mouse.move(title.x + 10, title.y + title.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
+        await page.mouse.up();
+      };
+      const topAt = (b: Box) => page.evaluate(([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        return el?.closest(".menu") ? "menu" : el?.closest(".bubble") ? "bubble" : el?.closest(".panel")?.id ?? el?.id ?? "";
+      }, [b.x + b.width / 2, b.y + b.height / 2]);
+      const m = await boxOf(page, ".menu");
+      await drag(m);
+      for (const item of await menu.getByRole("menuitem").all()) {
+        expect(await topAt((await item.boundingBox())!), `${viewport.width}: a menu item under the chalkboard`).toBe("menu");
+      }
+      await page.keyboard.press("Escape");
+      await drag(await bubble.boundingBox().then((b) => b!));
+      // A bubble takes no pointer, so what's painted is read from the page
+      // itself: its middle is the bubble's own paper, not the panel's frost.
+      const b = (await bubble.boundingBox())!;
+      const p = await boxOf(page, "#chalkboard");
+      expect(p.x < b.x + b.width / 2 && b.x + b.width / 2 < p.x + p.width && p.y < b.y + b.height / 2 && b.y + b.height / 2 < p.y + p.height, "the chalkboard is over the bubble's middle").toBe(true);
+      // The bubble's inside, inset past its 2 px border: most of it is its
+      // paper, which the panel's frost never is exactly.
+      const clip = { x: Math.round(b.x + 4), y: Math.round(b.y + 4), width: Math.round(b.width - 8), height: Math.round(b.height - 8) };
+      const shot = await page.screenshot({ clip });
+      const paper = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        [c.width, c.height] = [img.width, img.height];
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (d[i] === 0xff && d[i + 1] === 0xfd && d[i + 2] === 0xf9) n++;
+        return n / (d.length / 4);
+      }, shot.toString("base64"));
+      expect(paper, `${viewport.width}: the bubble's paper shows over the chalkboard`).toBeGreaterThan(0.5);
+    }
+  });
 });
