@@ -220,7 +220,10 @@ mod tests {
             let x = c["x"].as_integer().expect("a cloud's x, in whole pixels");
             let y = c["y"].as_integer().expect("a cloud's y, in whole pixels");
             let w = c["width"].as_integer().expect("a cloud's width, in whole pixels");
-            assert!((0..across).contains(&x) && (0..down).contains(&y) && (6..=80).contains(&w), "cloud {c}");
+            assert!(
+                (0..across).contains(&x) && (0..down).contains(&y) && (6..=80).contains(&w),
+                "cloud {c}"
+            );
         }
         let glow = street["glow"]
             .as_float()

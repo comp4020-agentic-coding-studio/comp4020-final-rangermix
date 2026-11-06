@@ -65,11 +65,11 @@ const boxOf = async (page: Page, selector: string): Promise<Box> => (await page.
 /** Every floor tile's diamond on the page, its four corners, from the café's own read-only map. */
 async function floorTiles(page: Page): Promise<{ x: number; y: number; corners: { x: number; y: number }[] }[]> {
   return page.evaluate(() => {
-    const room = (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+    const room = (window as unknown as { cafeRoom: { grid: { width: number; height: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
     const out: { x: number; y: number; corners: { x: number; y: number }[] }[] = [];
     // tileAt gives a tile's middle; its corners are half a tile along each axis.
-    for (let y = 1; y < 13; y++) {
-      for (let x = 0; x < 13; x++) {
+    for (let y = 1; y < room.grid.height; y++) {
+      for (let x = 0; x < room.grid.width; x++) {
         const c = room.tileAt(x, y);
         const right = room.tileAt(x + 1, y);
         const down = room.tileAt(x, y + 1);
@@ -242,7 +242,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       const canvas = document.getElementById("room") as HTMLCanvasElement;
       const r = canvas.getBoundingClientRect();
       const ctx = canvas.getContext("2d")!;
-      const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+      const room = (window as unknown as { cafeRoom: { size: { width: number }; grid: { width: number; height: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
       const scale = r.width / room.size.width;
       // The floor and its walls as drawn, from the café's own map.
       const corner = (gx: number, gy: number) => {
@@ -251,8 +251,8 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
         const down = room.tileAt(gx, gy + 1);
         return { x: m.x - (right.x - m.x) / 2 - (down.x - m.x) / 2, y: m.y - (right.y - m.y) / 2 - (down.y - m.y) / 2 };
       };
-      const size = Math.round((room.size.width / 16 + 1) / 2);
-      const [left, back, rightTip, front] = [corner(0, 1), corner(size, 1), corner(size, size), corner(0, size)];
+      const { width: gw, height: gh } = room.grid;
+      const [left, back, rightTip, front] = [corner(0, 1), corner(gw, 1), corner(gw, gh), corner(0, gh)];
       const shape = [
         { x: left.x, y: left.y - 56 * scale },
         { x: back.x, y: back.y - 56 * scale },

@@ -17,7 +17,7 @@ import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
 import { pieceName } from "./state";
 import { Stage } from "./stage";
-import { ISO } from "./iso";
+import { FLOOR, ISO } from "./iso";
 import { Talk } from "./talk";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -147,6 +147,8 @@ function enter(me: ApiMe): void {
   (window as unknown as { cafeRoom: unknown }).cafeRoom = Object.freeze({
     /** The room's canvas at 1×, which grows with the floor (slice 16). */
     size: Object.freeze({ width: ISO.width, height: ISO.height }),
+    /** The grid: its columns, and its rows with the street wall's row 0 (slice 16's review, finding 9). */
+    grid: Object.freeze({ ...FLOOR }),
     tileAt(x: number, y: number): { x: number; y: number } {
       const box = $("stage").getBoundingClientRect();
       const at = middle({ x, y });

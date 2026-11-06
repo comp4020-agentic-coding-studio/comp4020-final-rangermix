@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
 import heights from "../../content/sprites/heights.json";
 import palettes from "../../content/sprites/palettes.json";
-import { ISO, toCanvas } from "../src/iso";
+import { FLOOR, ISO, toCanvas } from "../src/iso";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
 import type { Light } from "../src/canberra";
 import { Sprites, frameGrid } from "../src/sprites";
@@ -24,10 +24,12 @@ function welcome(): Welcome {
     chalkHours: 24,
     chalkShown: 8,
     snapshot: {
+      // The café's own floor, room.toml's, 13 by 13 since slice 16, so the
+      // room drawn here is the one the client draws (slice 16's review, finding 9).
       room: {
-        width: 12,
-        height: 10,
-        tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")],
+        width: FLOOR.width,
+        height: FLOOR.height,
+        tiles: ["WWGGGGWDCWWW".padEnd(FLOOR.width, "W"), ...Array<string>(FLOOR.height - 1).fill(".".repeat(FLOOR.width))],
         door: { x: 7, y: 0 },
         walkway: [],
         furniture: [piece(1, "sofa", 0, 5, 3, 1), piece(2, "rug", 4, 4, 4, 3, true)],
@@ -953,10 +955,11 @@ describe("the room as a diorama", () => {
     const street = new Set((palettes.day as unknown as { street: string[] }).street.map((c) => c.toLowerCase()));
     const room = new Set(palettes.day.room.map((c) => c.toLowerCase()));
     // Just under the floor's front corner, and under the middle of each front edge: the slab, not street.
+    const { width: W, height: H } = w.snapshot.room;
     for (const [gx, gy] of [
-      [0, 10],
-      [6, 10],
-      [0, 5.5],
+      [0, H],
+      [Math.floor(W / 2), H],
+      [0, H / 2],
     ]) {
       const c = toCanvas(gx, gy);
       const under = p.at(Math.round(c.x), Math.round(c.y) + 3);
@@ -967,11 +970,11 @@ describe("the room as a diorama", () => {
     // below it; the row above is sky.
     const lum = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).reduce((a, b) => a + b, 0);
     for (const [gx, gy] of [
-      [12, 5.5],
-      [6, 1],
+      [W, H / 2],
+      [Math.floor(W / 2), 1],
     ]) {
       const c = toCanvas(gx, gy);
-      const x = Math.round(c.x) - (gx === 12 ? 1 : 0);
+      const x = Math.round(c.x) - (gx === W ? 1 : 0);
       // Down from the sky to the first pixel that isn't street: the wall's top edge.
       let y = Math.round(c.y) - 70;
       while (y < c.y && street.has(p.at(x, y) ?? "")) y++;

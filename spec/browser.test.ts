@@ -491,8 +491,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const sentBefore = v.sent.length;
     const bare = await (async () => {
       const b = await box();
-      for (let y = 1; y < 10; y++)
-        for (let x = 0; x < 12; x++) {
+      const floor = v.frames.find((f) => f.type === "welcome")!.snapshot.room;
+      for (let y = 1; y < floor.height; y++)
+        for (let x = 0; x < floor.width; x++) {
           if (x === CAT.x && y === CAT.y) continue;
           const at = await tileAt(page, { x, y });
           const inPanel = at.x > b.x + 4 && at.x < b.x + b.width - 4 && at.y > b.y + 4 && at.y < b.y + b.height - 4;
@@ -670,7 +671,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
         server.onMessage((m) => {
           const f = JSON.parse(String(m));
           if (f.type === "welcome") {
-            f.snapshot.cats.forEach((c: Frame, i: number) => Object.assign(c, { at: { x: 11, y: 9 - i }, walk: null, pose: "sit", heldBy: null }));
+            // The far column's floor, from the front, past anything standing there.
+            const room = f.snapshot.room;
+            const x = room.width - 1;
+            const free = Array.from({ length: room.height - 1 }, (_, i) => room.height - 1 - i).filter((y) => !room.furniture.some((p: Frame) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h));
+            f.snapshot.cats.forEach((c: Frame, i: number) => Object.assign(c, { at: { x, y: free[i] }, walk: null, pose: "sit", heldBy: null }));
             ws.send(JSON.stringify(f));
           } else if (!f.cat) ws.send(m);
         });
@@ -1357,9 +1362,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // the cats later is held back; it still answers everything.
     const CAT = { x: 6, y: 6 };
     const FLOOR = { x: 9, y: 8 };
+    // By the plain wall at the back, x = the room's last column (12 for the
+    // 13 by 12 floor, slice 16), clear of room.toml's plant at (11, 1).
     const ASIDE = [
-      { x: 11, y: 1 },
-      { x: 11, y: 2 },
+      { x: 12, y: 1 },
+      { x: 12, y: 2 },
     ];
     let coat = "";
     const pinned = (page: Page) =>
@@ -1505,9 +1512,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
         // The floor and its walls as drawn, from the café's own map: the
         // floor's diamond, raised by the walls' height, and its slab under
         // it. A point off all of it is the street, whatever its colour.
-        const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+        const room = (window as unknown as { cafeRoom: { size: { width: number }; grid: { width: number; height: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
         const scale = r.width / room.size.width;
-        const [w, h] = [13, 13];
+        const { width: w, height: h } = room.grid;
         const corner = (gx: number, gy: number) => {
           // tileAt gives a tile's middle: a corner is half a tile back on each axis.
           const m = room.tileAt(gx, gy);
