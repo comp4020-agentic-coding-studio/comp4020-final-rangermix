@@ -1,6 +1,6 @@
 # 16. The café fills the window
 
-- **Status:** Built 2026-11-06 ([plan](../notes/plan-slice-16-fill.md), [screens](../notes/screens/slice-16/)); approved 2026-11-06: the floor 13 by 12 at 4× (question 1, C), on the phone's layout A the room centred with its side corners cut a little; the terrace, the bars as in the study, cats and people as drawn (questions 2 to 4, A)
+- **Status:** Reviewed and deployed 2026-11-06, checked live ([findings](../notes/reviews/slice-16-findings.md), [notes](../notes/slice-16-fill.md)); built 2026-11-06 ([plan](../notes/plan-slice-16-fill.md), [screens](../notes/screens/slice-16/)); approved 2026-11-06: the floor 13 by 12 at 4× (question 1, C), on the phone's layout A the room centred with its side corners cut a little; the terrace, the bars as in the study, cats and people as drawn (questions 2 to 4, A)
 - **Plan:** [`docs/notes/plan-slice-16-fill.md`](../notes/plan-slice-16-fill.md)
 - **Design:** The client ("Desktop (1920×1080)", "Drawing", "The look");
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)
