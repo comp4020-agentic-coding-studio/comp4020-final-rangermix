@@ -415,4 +415,50 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       expect(over, `${viewport.width}: nothing floats over the refusal`).toEqual([]);
     }
   });
+
+  // Slice 16's review, finding 5: a status line wrapped to two rows (the
+  // café updated and something carried, in a narrow window) covered the
+  // top-left panel's controls, and the panels didn't move for it.
+  it("moves the panels clear of a status line that wraps to two rows", { timeout: 60_000 }, async () => {
+    const context = await browser.newContext({ viewport: { width: 960, height: 800 } });
+    contexts.push(context);
+    const page = await context.newPage();
+    // The café's own frames, the welcome's build id changed, so the page says the café was updated.
+    await page.routeWebSocket(/\/ws$/, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((m) => {
+        const f = JSON.parse(String(m));
+        if (f.type === "welcome") ws.send(JSON.stringify({ ...f, build: "another-build" }));
+        else ws.send(m);
+      });
+      ws.onMessage((m) => server.send(m));
+    });
+    await page.goto(baseUrl);
+    await page.locator("#signup input[name=name]").fill(uniqueName("f"));
+    await page.locator("#signup input[name=password]").fill("correct horse");
+    await page.locator("#signup button[type=submit]").click();
+    await page.locator("#code-done").click();
+    await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    await page.locator("#outdated").waitFor();
+    // Something carried: a piece from the catalogue.
+    await page.locator("#add-furniture").click();
+    await page.locator(".menu").getByRole("menuitem").first().click();
+    await page.locator("#carrying").waitFor();
+    const status = await boxOf(page, ".status");
+    expect(status.height, "the status line wrapped").toBeGreaterThan(60);
+    // Every panel's title, grip and pin are what a click reaches.
+    await expect
+      .poll(async () => {
+        const out: string[] = [];
+        for (const id of ["chalkboard", "here-panel"]) {
+          for (const sel of [".panel-bar h2", ".grip", ".pin"]) {
+            const b = await boxOf(page, `#${id} ${sel}`);
+            const hit = await page.evaluate(([x, y, id]) => document.elementFromPoint(x, y)?.closest(".panel")?.id === id, [b.x + b.width / 2, b.y + b.height / 2, id] as const);
+            if (!hit) out.push(`${id} ${sel}`);
+          }
+        }
+        return out;
+      }, { timeout: 3000 })
+      .toEqual([]);
+  });
 });

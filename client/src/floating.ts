@@ -65,6 +65,10 @@ export class Floating {
     // Looked at once a second, and whenever the café changes (changed()).
     this.ticker = window.setInterval(() => this.changed(), 1000);
     this.observer.observe(stage);
+    // The bars float over the stage's top and foot (slice 16), and the
+    // panels keep clear of them: a status line that wraps to two rows
+    // moves them (slice 16's review, finding 5).
+    for (const bar of document.querySelectorAll(".status, .talk")) this.observer.observe(bar);
     window.addEventListener("resize", this.onResize);
     this.phone.addEventListener("change", this.onResize);
     this.place();

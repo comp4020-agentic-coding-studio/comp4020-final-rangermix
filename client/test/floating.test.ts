@@ -269,3 +269,29 @@ describe("the music panel's height (slice 16)", () => {
     }
   });
 });
+
+describe("the panels and the floating bars (slice 16's review, finding 5)", () => {
+  it("watches the status line and the talk bar, so a bar that wraps moves the panels clear of it", async () => {
+    const watched: Element[] = [];
+    const saved = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      observe(el: Element) {
+        watched.push(el);
+      }
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    try {
+      const { Floating } = await import("../src/floating");
+      document.body.innerHTML = `<header class="status"></header><div id="stage"></div><form class="talk"></form><section id="cats-panel" class="panel"><div class="panel-bar"><h2>Your cats</h2><button class="grip" aria-label="Move your cats"></button><button class="pin" aria-label="Pin your cats" data-name="your cats">Pin</button></div><div class="panel-body"></div></section>`;
+      const f = new Floating(document.getElementById("stage")!, [document.getElementById("cats-panel")!]);
+      expect(watched).toContain(document.querySelector(".status"));
+      expect(watched).toContain(document.querySelector(".talk"));
+      f.dispose();
+    } finally {
+      globalThis.ResizeObserver = saved;
+      localStorage.clear();
+    }
+  });
+});
