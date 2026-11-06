@@ -2375,3 +2375,39 @@ the pull request merges cleanly again.
   every binary test), the client's 333 tests, and the whole `spec/` (105)
   against a freshly seeded local café; the demo bar looked at beside slice
   16's floating bars at 1920×1080 and 390×844.
+
+### 14. Finishing slices 11 to 14 (continued)
+
+*Session `004fb600`, Claude Code (Opus 5.5), run as a background job, its
+context compacted again.*
+
+*Sent 2026-11-06 23:28:27 AEDT*
+
+> 1. slice 16 looks great
+> 2. it looks like the stuff on terrace is floating. how can we improve that? maybe some ground, or fencing? The cafe feels like it belongs to a shopping centre or business building, so maybe some balcony tiles with glass fence? what do you think
+
+**Result.** Slice 16 is live, its judged line passed; slice 18 is
+proposed from a study, and not built: its two choices are the user's
+([`74ce20e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/74ce20e)).
+- **Why the terrace floats.** Its things are drawn in the room's angle,
+  but the street behind the room is a flat backdrop, its pavement a level
+  band across the screen. Nothing under them is in their perspective, so
+  nothing says where they touch down.
+- **The study** ([notes/slice-18-study.md](notes/slice-18-study.md)): a
+  throwaway build, its change kept as a patch beside the screens, drew a
+  deck of stone tiles in the room's angle round its two front edges and
+  ran it onto the street's canvas so it reaches the window's edges. Six
+  variants at 1920×1080 by day and by night, and on the phone: as live;
+  glass at 12 px; glass at 18 px; a 7-px parapet; a deep slab for the
+  building's face, which falls off the window's foot and is dropped; and
+  the towers carried on below the glass, the café upstairs.
+- **Agreed with the user's idea:** balcony tiles and a glass fence ground
+  the terrace, and read as a building's balcony more than a parapet does.
+- **Proposed** ([slice 18](slices/18-a-balcony-under-the-terrace.md)):
+  the deck and an 18-px glass balustrade, half a person's height, as
+  content in `street.toml`; the glass filled by whole pixels so it stays
+  crisp. Two questions: the edge (18-px glass, 12-px glass, or a parapet),
+  and what shows below (the city, so the café is upstairs, or the street).
+- **The study's screens** first came out at night by day: since slice 17
+  the page keeps the server's hour, not the browser's, so the café was
+  restarted with its clock at 10:00 and 22:00 for each light.
