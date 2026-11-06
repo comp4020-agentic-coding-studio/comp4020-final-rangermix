@@ -20,8 +20,8 @@ export function closeMenu(): void {
   open = null;
 }
 
-/** The part of `overlay` a ring may use: on screen, clear of the bars floating over the room. */
-function freeArea(overlay: HTMLElement): { left: number; top: number; right: number; bottom: number } {
+/** The part of `overlay` a ring, a menu or a note may use: on screen, clear of the bars floating over the room. */
+export function freeArea(overlay: HTMLElement): { left: number; top: number; right: number; bottom: number } {
   const box = overlay.getBoundingClientRect();
   const top = document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top;
   const bottom = document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom;

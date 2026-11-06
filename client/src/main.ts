@@ -6,7 +6,7 @@ import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { type Target, attachInput } from "./input";
-import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
+import { closeMenu, freeArea, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
@@ -28,11 +28,16 @@ async function start(): Promise<void> {
   else showAuth(enter);
 }
 
-/** A short note over the room, for refusals ("Mochi moved away"). */
+/**
+ * A short note over the room, for refusals ("Mochi moved away"), at the
+ * foot of the band the floating bars leave clear, so the talk bar never
+ * covers it (slice 16's review, finding 3).
+ */
 function toast(overlay: HTMLElement, text: string): void {
   const note = document.createElement("div");
   note.className = "toast";
   note.textContent = text;
+  note.style.bottom = `${Math.max(0, overlay.clientHeight - freeArea(overlay).bottom) + 8}px`;
   overlay.append(note);
   window.setTimeout(() => note.remove(), 2500);
 }

@@ -369,4 +369,50 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       expect(paper, `${viewport.width}: the bubble's paper shows over the chalkboard`).toBeGreaterThan(0.5);
     }
   });
+
+  // Slice 16's review, finding 3: the café's refusals showed at the stage's
+  // foot, under the floating talk bar, so a sighted visitor saw nothing.
+  it("shows the café's refusal clear of the talk bar, on a desktop and in the phone's bigger room", { timeout: 60_000 }, async () => {
+    for (const [viewport, touch] of [
+      [{ width: 1920, height: 1080 }, false],
+      [{ width: 1440, height: 900 }, false],
+      [{ width: 390, height: 844 }, true],
+    ] as const) {
+      const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+      contexts.push(context);
+      const page = await context.newPage();
+      // The café's own frames through, and one refusal after the welcome, as the café sends it.
+      await page.routeWebSocket(/\/ws$/, (ws) => {
+        const server = ws.connectToServer();
+        server.onMessage((m) => {
+          ws.send(m);
+          if (JSON.parse(String(m)).type === "welcome") {
+            setTimeout(() => ws.send(JSON.stringify({ type: "error", code: "cantPlace", detail: "The way in from the door stays clear." })), 800);
+          }
+        });
+      });
+      await page.goto(baseUrl);
+      await page.locator("#signup input[name=name]").fill(uniqueName("f"));
+      await page.locator("#signup input[name=password]").fill("correct horse");
+      await page.locator("#signup button[type=submit]").click();
+      await page.locator("#code-done").click();
+      const toast = page.locator(".toast", { hasText: "stays clear" });
+      await toast.waitFor();
+      const t = (await toast.boundingBox())!;
+      const talk = await boxOf(page, ".talk");
+      expect(t.y + t.height, `${viewport.width}: the refusal above the talk bar`).toBeLessThanOrEqual(talk.y + 0.5);
+      // A note takes no pointer, so what covers it is read from the boxes
+      // that float: no bar, panel or menu overlaps it.
+      const over = await page.evaluate((t) => {
+        const hit: string[] = [];
+        for (const e of document.querySelectorAll(".status > *, .talk, .panel, .menu")) {
+          const r = e.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0 || getComputedStyle(e).visibility === "hidden") continue;
+          if (r.left < t.x + t.width && t.x < r.right && r.top < t.y + t.height && t.y < r.bottom) hit.push(e.id || e.className);
+        }
+        return hit;
+      }, t);
+      expect(over, `${viewport.width}: nothing floats over the refusal`).toEqual([]);
+    }
+  });
 });
