@@ -25,7 +25,7 @@ for (const [hour, when, scheme] of [["10:00", "day", "light"], ["22:00", "night"
   await page.locator("#signup button[type=submit]").click();
   await page.locator("#code-done").click();
   await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
-  for (const [deck, query] of [["none", "deck=none"], ["glass", "deck=glass"], ["glass-tall", "deck=glass&rail=18"], ["glass-deep", "deck=glass&rail=18&slab=24"], ["glass-high", "deck=glass&rail=18&below=towers"], ["parapet", "deck=parapet"]]) {
+  for (const [deck, query] of [["none", "deck=none"], ["glass", "deck=glass"], ["glass-tall", "deck=glass&rail=18"], ["glass-deep", "deck=glass&rail=18&slab=24"], ["glass-high", "deck=glass&rail=18&below=towers"], ["glass-haze", "deck=glass&rail=18&below=haze"], ["glass-face", "deck=glass&rail=18&face=wall"], ["glass-face-haze", "deck=glass&rail=18&face=wall&below=haze"], ["parapet", "deck=parapet"]]) {
     await page.goto(`${base}/?${query}`);
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     await page.waitForTimeout(1200);
@@ -51,7 +51,7 @@ await p.locator("#signup input[name=name]").fill(`tp${Date.now().toString(36)}`)
 await p.locator("#signup input[name=password]").fill("correct horse battery");
 await p.locator("#signup button[type=submit]").tap();
 await p.locator("#code-done").tap();
-for (const [deck, query] of [["none", "deck=none"], ["glass-tall", "deck=glass&rail=18"]]) {
+for (const [deck, query] of [["none", "deck=none"], ["glass-tall", "deck=glass&rail=18"], ["glass-face", "deck=glass&rail=18&face=wall"]]) {
   await p.goto(`${base}/?${query}`);
   await p.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   await p.waitForTimeout(1200);

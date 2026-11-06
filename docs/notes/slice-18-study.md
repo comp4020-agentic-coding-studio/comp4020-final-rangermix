@@ -22,6 +22,8 @@ code, and nothing from it merges.
 ![the study by day](screens/slice-18-study/compare-day.png)
 
 The same at night: [compare-night.png](screens/slice-18-study/compare-night.png).
+Round 2, what shows below the balcony: [below-day.png](screens/slice-18-study/below-day.png)
+and [below-night.png](screens/slice-18-study/below-night.png) (section 5).
 The front corner, close, by day and night:
 [compare-corner.png](screens/slice-18-study/compare-corner.png). The phone:
 [compare-phone.png](screens/slice-18-study/compare-phone.png).
@@ -109,7 +111,54 @@ Upstairs fits "a shopping centre or business building" and a glass
 balcony; a glass rail at street level reads as a café's outdoor seating.
 Either works with the deck.
 
-## 5. The phone
+## 5. Round 2: between the street and the city
+
+On 2026-11-07 the user chose the 18-px glass, kept the deep building
+edge "in consideration for now", and turned the city down:
+
+> 1A but keep the deeper building edge under the deck in consideration
+> for now; 2 the city background make it a bit wierd or too "floaty". can
+> we try something between A and B? for example the building start to
+> fade at the current street height, or something extending the cafe's
+> wall, or something else. I need more idea on this.
+
+Why the city floats: the towers across the road run on down past the
+balcony with nothing between, so the balcony hangs in front of them with
+nothing under it. What's missing is the café's own building. Three more
+were shot, each with the deck and the 18-px glass, by day and by night,
+and laid beside the first two:
+[below-day.png](screens/slice-18-study/below-day.png),
+[below-night.png](screens/slice-18-study/below-night.png).
+
+![what shows below the balcony, by day](screens/slice-18-study/below-day.png)
+
+- **C. The towers fading into haze below the street's height**: the
+  user's first example. The towers fade, dithered, into the sky's colour
+  over 40 px below the skyline's foot. It's worse than the city: the
+  balcony now has sky under it, and floats more, by day and by night.
+- **D. The café's building**: the user's second example, and the deep
+  edge taken all the way down. The café's own wall carries on below the
+  balcony, in its colours and the room's light (the left face lit a
+  little, the front in shade): the balcony's shadow under its slab, then
+  storeys of windows a tile apart, a band between floors, lit here and
+  there at night. The street and towers behind are as now. The balcony
+  stands out from a building, and the building stands on the city: it
+  reads at once as a café some floors up a tower, and nothing floats. By
+  night its lit windows answer the towers' across the road. At 1920×1080
+  a storey and a half shows under the deck, mostly in the bottom corners
+  and under the talk bar.
+- **E. The café's building with the haze behind it**: D, with C's haze
+  behind. The haze shows only past the building's two corners, in the
+  window's bottom corners, and adds little to D.
+
+On the phone (compare-phone.png), D's building shows in layout A as a
+strip of windows under the balcony, and in layout B as you pan to the
+front.
+
+D answers both of the user's examples at once: it extends the café's
+wall, and it's the deep edge kept. It's the proposal.
+
+## 6. The phone
 
 The deck and the 18-px glass at 390×844 (compare-phone.png): in layout A
 (the whole room at 1×) the rail is a thin bright line round the floor's
@@ -117,11 +166,11 @@ two front edges, and the deck reads as a balcony even that small. In
 layout B (3×, panned) the deck and glass show at the bottom as you walk to
 the front; nothing in the phone's layouts needs to change.
 
-## 6. What it doesn't touch
+## 7. What it doesn't touch
 
 The deck, its rail and what's below are scenery, as the terrace is: off
 the café's grid, taking no click, not in the server's world. Nothing
 reaches the server. The terrace's things keep their spots in
 `content/street.toml`; the deck's width, the rail's kind and height, and
-what shows below would join them there, so the look is changed in
-content, not code.
+what shows below, and the building's storeys, would join them there, so
+the look is changed in content, not code.

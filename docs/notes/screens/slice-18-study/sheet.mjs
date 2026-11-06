@@ -1,6 +1,8 @@
 // Lays the terrace study's screens side by side: compare-day.png and
 // compare-night.png (the whole window, 1920×1080, at half size) and
-// compare-corner.png (the front corner, close, by day and by night).
+// compare-corner.png (the front corner, close, by day and by night);
+// below-day.png and below-night.png (what shows below the balcony); and
+// compare-phone.png.
 // Usage, from spec/ (for its playwright): node ../docs/notes/screens/slice-18-study/sheet.mjs
 import fs from "node:fs";
 import path from "node:path";
@@ -37,7 +39,20 @@ const corners = ["day", "night"].flatMap((when) =>
   SHOWN.map(([f], i) => `<figure><img src="${img(`${f}-${when}-corner.png`)}" width="600" height="367"><figcaption><b>${i + 1}.</b> ${when === "day" ? "By day" : "By night"}</figcaption></figure>`),
 ).join("");
 await sheet(`<!doctype html><meta charset="utf-8">${style(1832)}<main style="grid-template-columns: repeat(3, 600px)">${corners}</main>`, 1832, "compare-corner.png");
-const phones = [["phone-a-none", "Phone, the whole room, as live"], ["phone-a-glass-tall", "Phone, the whole room, deck and 18-px glass"], ["phone-b-none", "Phone, the room at 3×, as live"], ["phone-b-glass-tall", "Phone, the room at 3×, deck and 18-px glass"]]
+// What shows below the balcony (slice 18's question 2, round 2), each with
+// the 18-px glass.
+const BELOW = [
+  ["glass-tall", "B. The street's pavement, as now"],
+  ["glass-high", "A. The city: the towers carried on below"],
+  ["glass-haze", "C. The towers fading into haze below the street's height"],
+  ["glass-face", "D. The café's building: its wall carried on down, storeys of windows"],
+  ["glass-face-haze", "E. The café's building, with the haze behind it"],
+];
+for (const when of ["day", "night"]) {
+  const cells = BELOW.map(([f, label]) => `<figure><img src="${img(`${f}-${when}.png`)}" width="960" height="540"><figcaption>${label}</figcaption></figure>`).join("");
+  await sheet(`<!doctype html><meta charset="utf-8">${style(1936)}<main style="grid-template-columns: repeat(2, 960px)">${cells}</main>`, 1936, `below-${when}.png`);
+}
+const phones = [["phone-a-none", "Phone, the whole room, as live"], ["phone-a-glass-tall", "Phone, the whole room, deck and 18-px glass"], ["phone-b-none", "Phone, the room at 3×, as live"], ["phone-b-glass-tall", "Phone, the room at 3×, deck and 18-px glass"], ["phone-a-glass-face", "Phone, the whole room, with the café's building (D)"], ["phone-b-glass-face", "Phone, the room at 3×, with the café's building (D)"]]
   .map(([f, label]) => `<figure><img src="${img(`${f}.png`)}" width="390" height="844"><figcaption>${label}</figcaption></figure>`).join("");
-await sheet(`<!doctype html><meta charset="utf-8">${style(1624)}<main style="grid-template-columns: repeat(4, 390px)">${phones}</main>`, 1624, "compare-phone.png");
+await sheet(`<!doctype html><meta charset="utf-8">${style(1218)}<main style="grid-template-columns: repeat(3, 390px)">${phones}</main>`, 1218, "compare-phone.png");
 await browser.close();

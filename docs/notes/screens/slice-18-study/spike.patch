@@ -1,5 +1,5 @@
 diff --git a/client/src/render.ts b/client/src/render.ts
-index f2d9b6a..d582329 100644
+index f2d9b6a..409290d 100644
 --- a/client/src/render.ts
 +++ b/client/src/render.ts
 @@ -459,12 +459,14 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
@@ -17,7 +17,7 @@ index f2d9b6a..d582329 100644
  
    if (pointer.ghost) {
      const { piece, at, ok } = pointer.ghost;
-@@ -494,6 +496,87 @@ const SEAM = 0.06;
+@@ -494,6 +496,133 @@ const SEAM = 0.06;
  
  /** How deep the floor's slab shows under its front edges, in room pixels (slice 13): the room as a diorama. */
  const SLAB = 6;
@@ -62,6 +62,52 @@ index f2d9b6a..d582329 100644
 +  poly(ctx, [up(xo, yo, z), up(W, yo, z), up(W, yo, z - DECK_SLAB), up(xo, yo, z - DECK_SLAB)], shade(edge, 0.3));
 +  outline(ctx, [up(xo, 1, z), up(xo, yo, z), up(W, yo, z)], shade(edge, 0.25), 1, false);
 +  if (DECK_SLAB > 8) outline(ctx, [up(xo, 1, z - 4), up(xo, yo, z - 4), up(W, yo, z - 4)], shade(edge, 0.4), 1, false);
++  if (FACE === "wall") drawFacade(ctx, xo, yo, W, z - DECK_SLAB);
++}
++
++/** SPIKE: ?face=wall carries the café's wall on down under the deck, as the building it's in. */
++const FACE = SPIKE.get("face") ?? "none";
++
++/**
++ * SPIKE: the café's building under the balcony: its two faces below the
++ * deck's outer edges, in the café's wall colours lit as the room's blocks
++ * are, the balcony's shadow under the slab, then storeys of windows like
++ * the street wall's, lit here and there at night, down off the window.
++ */
++function drawFacade(ctx: Ctx, xo: number, yo: number, W: number, zt: number): void {
++  const night = LIGHT >= 1;
++  const wall = ROOM[3];
++  const band = ROOM[4];
++  const bottom = zt - 360;
++  // The two faces: toward -x (the left arm's) and toward +y (the front arm's).
++  const left = (a: number, b: number, z0: number, z1: number, c: string) => poly(ctx, [up(xo, a, z0), up(xo, b, z0), up(xo, b, z1), up(xo, a, z1)], c);
++  const front = (a: number, b: number, z0: number, z1: number, c: string) => poly(ctx, [up(a, yo, z0), up(b, yo, z0), up(b, yo, z1), up(a, yo, z1)], c);
++  left(1, yo, bottom, zt, shade(wall, 0.12));
++  front(xo, W, bottom, zt, shade(wall, 0.28));
++  // The balcony's shadow on the wall just under its slab.
++  left(1, yo, zt - 5, zt, shade(wall, 0.4));
++  front(xo, W, zt - 5, zt, shade(wall, 0.5));
++  const STOREY = 56;
++  for (let k = 0; k < 6; k++) {
++    const top = zt - 12 - k * STOREY;
++    // A floor's band, then a row of windows, a pane a tile.
++    left(1, yo, top - 36, top - 39, shade(band, 0.12));
++    front(xo, W, top - 36, top - 39, shade(band, 0.28));
++    const lit = (i: number, j: number) => night && ((i * 7 + j * 13 + k * 5) % 10) < 4;
++    for (let g = 1; g + 0.15 < yo; g++) {
++      const b = Math.min(g + 0.85, yo - 0.1);
++      left(g + 0.15, b, top - 26, top, shade(ROOM[5], 0.12));
++      left(g + 0.22, b - 0.07, top - 24, top - 2, lit(g, 1) ? ROOM[8] : night ? ROOM[7] : shade(ROOM[8], 0.15));
++    }
++    for (let g = Math.ceil(xo); g < W; g++) {
++      const a = Math.max(g + 0.15, xo + 0.1);
++      front(a, g + 0.85, top - 26, top, shade(ROOM[5], 0.28));
++      front(a + 0.07, g + 0.78, top - 24, top - 2, lit(g, 2) ? ROOM[8] : night ? ROOM[7] : shade(ROOM[8], 0.3));
++    }
++  }
++  // The building's two corners we see, at the balcony's ends.
++  outline(ctx, [up(xo, 1, zt), up(xo, 1, bottom)], shade(wall, 0.5), 1, false);
++  outline(ctx, [up(W, yo, zt), up(W, yo, bottom)], shade(wall, 0.6), 1, false);
 +}
 +
 +/** SPIKE: the deck's balustrade along its outer edges: posts, glass and a handrail, or a low parapet. */
@@ -105,7 +151,7 @@ index f2d9b6a..d582329 100644
  
  function drawFloor(ctx: Ctx, room: RoomView): void {
    // The slab the floor stands on, seen under its two front edges: lit on
-@@ -658,6 +741,12 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
+@@ -658,6 +787,12 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
   */
  function drawTerrace(ctx: Ctx, t: TerraceThing, room: RoomView, light: Light): void {
    const at = terraceAt(t, room);
@@ -145,17 +191,23 @@ index 2bd01ea..ab857cf 100644
      }
      // Lined up with the room canvas wherever it sits, panned or centred.
 diff --git a/client/src/street.ts b/client/src/street.ts
-index 8cb930d..019ba4d 100644
+index 8cb930d..a291d35 100644
 --- a/client/src/street.ts
 +++ b/client/src/street.ts
-@@ -109,6 +109,27 @@ function isStar(x: number, y: number): boolean {
+@@ -109,6 +109,33 @@ function isStar(x: number, y: number): boolean {
   */
  export function streetSlot(x: number, y: number, w: number, h: number, night: boolean): number {
    const horizon = Math.round(h * street.horizon);
 +  // SPIKE (terrace study): ?below=towers carries the towers on down past
 +  // the skyline's foot, as seen from a floor high up across the road.
 +  const BELOW = typeof location !== "undefined" ? new URLSearchParams(location.search).get("below") : null;
-+  if (BELOW === "towers" && y >= horizon) {
++  if ((BELOW === "towers" || BELOW === "haze") && y >= horizon) {
++    // SPIKE: ?below=haze fades the towers into the sky's haze over 40 px
++    // below the skyline's foot, dithered, their lit windows thinning out.
++    if (BELOW === "haze") {
++      const f = (y - horizon) / 40;
++      if (f >= 1 || f * 16 > BAYER[(y & 3) * 4 + (x & 3)]) return STREET.sky;
++    }
 +    const total = street.towers.reduce((n, t) => n + t.width, 0);
 +    let at = ((x % total) + total) % total;
 +    let i = 0;
