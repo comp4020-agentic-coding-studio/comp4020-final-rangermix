@@ -43,8 +43,21 @@ async function visit(viewport: { width: number; height: number }, touch = false,
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
   const page = await context.newPage();
-  await page.clock.install({ time: new Date(`2026-11-06T${at}:00+11:00`) });
+  const start = new Date(`2026-11-06T${at}:00+11:00`);
+  await page.clock.install({ time: start });
   await page.clock.resume();
+  // The café's clock is the server's, which the page keeps (slice 17): its
+  // welcome says it's `at` too, so the café's hour starts there and the
+  // faked clock carries it on.
+  const since = Date.now();
+  await page.routeWebSocket(/\/ws$/, (ws) => {
+    const server = ws.connectToServer();
+    server.onMessage((m) => {
+      const f = JSON.parse(String(m));
+      if (f.type === "welcome") f.now = start.getTime() + (Date.now() - since);
+      ws.send(JSON.stringify(f));
+    });
+  });
   const sent: Frame[] = [];
   page.on("websocket", (ws) => ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload)))));
   await page.goto(baseUrl);

@@ -47,7 +47,12 @@ change that breaks one is wrong, whatever else it fixes.
 - **The door's walkway is never blocked.** A placement that would block it is
   refused.
 - **Trust never fades with absence.** Only what a person does to a cat changes
-  that cat's trust in them.
+  that cat's trust in them. The one exception is the operator's seed for demo
+  accounts, from `content/demo.toml`.
+  ([ADR 0022](docs/adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md))
+- **Only a demo account moves the clock, lays out a furniture set or adds
+  bots**, and the server checks it. The café's clock only ever moves
+  forward, through a replay of the gap, at most 24 hours at a time.
 - **Every action works by keyboard, touch and mouse**, at 390×844 and at
   1920×1080, and survives a resize mid-use.
 - **Cats change through `content/`, not code.** A new cat is a data file; code
@@ -92,7 +97,10 @@ The user lets agents test on the deployed café and its Fly app
   never written down, since the repo goes public. Accounts can't be deleted
   and real visitors see a test visit while it lasts (who's here, and a
   cat's "met agent_… for the first time" on the board), so keep visits
-  short and few.
+  short and few. The demo accounts (`demo1`, `demo2`) are the exception: their
+  password is in the README for markers, and an agent may use them. Their
+  recovery codes are never shown to anyone; only the operator's seed
+  (`cafe demo seed`) sets their password.
 - **Fly:** read the logs, stop, start or restart the machine, open a
   console on it, or deploy a build to it, as testing needs. Never change
   the course's fixed shape in `fly.toml` (one machine, 256 MB, the volume,

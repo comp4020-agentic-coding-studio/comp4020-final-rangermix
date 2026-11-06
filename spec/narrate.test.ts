@@ -83,6 +83,12 @@ describe("narrating the logs", () => {
     { target: "cat", cat: "Burakku", what: "knock_over", on: "plant" },
     { target: "cat", cat: "Burakku", what: "lap", on: "sofa", with: "sam" },
     { target: "cafe", what: "bowls_filled", portions: 3 },
+    { target: "action", uid: 1, who: "demo1", what: "set_clock", outcome: "ok", gap_secs: 34_200 },
+    { target: "action", uid: 1, who: "demo1", what: "set_clock", outcome: "refused", code: "tooSoon" },
+    { target: "action", uid: 1, who: "demo1", what: "add_bot", outcome: "ok", bot: "bot_1" },
+    { target: "action", uid: 1, who: "demo1", what: "remove_bot", outcome: "ok", bot: "bot_1" },
+    { target: "action", uid: 3, who: "sam", what: "walk", outcome: "refused", code: "movedOn" },
+    { target: "cafe", what: "jumped", uid: 1, who: "demo1", gap_secs: 34_200, steps: 34_200, took_ms: 1_290, refills: 1, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' },
     { target: "cafe", what: "woke", first: false, gap_secs: 28_920, steps: 28_920, capped: false, took_ms: 412, refills: 1, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' },
   ];
   const jumps = ["put_down", "wont_go", "holder_left", "had_enough", "door", "scratched", "refused", "got_up"];
@@ -156,6 +162,22 @@ describe("narrating the logs", () => {
     expect(woke({ gap_secs: 5, steps: 5, took_ms: 0, walks: "Burakku:1 Mochi:0 Tora:1" })).toBe(
       "19:42:07  The café woke after 5s asleep and caught up in 0 ms; meanwhile Burakku walked once, Mochi 0 and Tora 1",
     );
+  });
+
+  it("tells what demo accounts did: the clock moved on, and bots come and gone (slice 17)", () => {
+    expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "set_clock", outcome: "ok", gap_secs: 34_200 }))).toBe(
+      "19:42:07  demo1 moved the café's clock on 9h 30m",
+    );
+    expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "set_clock", outcome: "refused", code: "tooSoon" }))).toBe(
+      "19:42:07  demo1 tried to move the café's clock on, refused: tooSoon",
+    );
+    expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "add_bot", outcome: "ok", bot: "bot_2" }))).toBe("19:42:07  demo1 added a bot, bot_2");
+    expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "remove_bot", outcome: "ok", bot: "bot_2" }))).toBe("19:42:07  demo1 removed a bot, bot_2");
+    expect(
+      narrate(
+        line({ target: "cafe", what: "jumped", uid: 1, who: "demo1", gap_secs: 34_200, steps: 34_200, took_ms: 1_290, refills: 2, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' }),
+      ),
+    ).toBe("19:42:07  The café lived 9h 30m on for demo1 in 1.3 s; meanwhile Burakku walked 40 times, Mochi 3 and Tora 12, and the bowls were filled twice");
   });
 
   it("runs as a filter from a folder with a space in its name, through a symlink", () => {

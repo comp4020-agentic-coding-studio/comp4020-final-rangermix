@@ -18,6 +18,24 @@ impl LogSink {
     /// Logs into this sink, as the server logs, on this thread until the
     /// guard is dropped.
     pub fn capture(&self) -> tracing::subscriber::DefaultGuard {
+        // With only one dispatcher registered, tracing works out a new
+        // callsite's interest from the default of whichever thread reaches it
+        // first: another test's thread, logging nowhere, would cache "never"
+        // and this sink would miss the line (slice 17's seed, whose callsites
+        // its other tests reach first). A second one kept for the run makes
+        // it ask every dispatcher instead.
+        static ANOTHER: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+        ANOTHER.get_or_init(|| {
+            let (ready, registered) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let _quiet = tracing::subscriber::set_default(tracing::subscriber::NoSubscriber::default());
+                let _ = ready.send(());
+                loop {
+                    std::thread::park();
+                }
+            });
+            let _ = registered.recv();
+        });
         let writer = self.clone();
         let subscriber = tracing_subscriber::fmt()
             .json()

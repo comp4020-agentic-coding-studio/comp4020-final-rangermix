@@ -5,13 +5,18 @@
 //! clock at a chosen instant (`CAFE_CLOCK_START`, slice 08, ADR 0016), and
 //! from there it runs at the wall's speed; otherwise it is the wall clock.
 use anyhow::Context;
-use chrono::{DateTime, TimeZone, Timelike, Utc};
+use chrono::{DateTime, Days, NaiveTime, TimeZone, Timelike, Utc};
 use chrono_tz::Australia::Sydney;
 use chrono_tz::Tz;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// How far the café's clock is from the wall's, in ms: set once at start.
 static OFFSET: OnceLock<i64> = OnceLock::new();
+
+/// How far a demo account has moved the café's clock on, in ms (slice 17,
+/// ADR 0022). It only grows: the café's clock never goes back.
+static AHEAD: AtomicU64 = AtomicU64::new(0);
 
 fn wall_ms() -> u64 {
     std::time::SystemTime::now()
@@ -22,7 +27,69 @@ fn wall_ms() -> u64 {
 
 /// Milliseconds since the Unix epoch, by the café's clock.
 pub fn now_ms() -> u64 {
-    now_with(OFFSET.get().copied().unwrap_or(0), wall_ms())
+    clock_at(OFFSET.get().copied().unwrap_or(0), AHEAD.load(Ordering::SeqCst), wall_ms())
+}
+
+/// Canberra's own clock: the wall's, from where a test started it, without
+/// what demo accounts have moved the café's clock on. Sessions and the
+/// accounts' rate limits keep it, so a jump spends nobody's session.
+pub fn canberra_now_ms() -> u64 {
+    clock_at(OFFSET.get().copied().unwrap_or(0), 0, wall_ms())
+}
+
+/// How far a demo account has moved the café's clock on.
+pub fn ahead_ms() -> u64 {
+    AHEAD.load(Ordering::SeqCst)
+}
+
+/// Moves the café's clock on to `ms` ahead of where it started: the saved
+/// lead at start, or a jump's. A smaller lead is ignored, so the clock never
+/// goes back.
+pub fn set_ahead(ms: u64) {
+    AHEAD.fetch_max(ms, Ordering::SeqCst);
+}
+
+/// The café's clock: the wall's, from where a test started it, plus how far
+/// a demo account has moved it on.
+fn clock_at(offset: i64, ahead: u64, wall: u64) -> u64 {
+    now_with(offset, wall).saturating_add(ahead)
+}
+
+/// The first instant after `now` whose Canberra time is `minute` past
+/// midnight, to the second: later today, tomorrow, or, when that time falls
+/// in daylight saving's spring gap, the day after. Both instants of a time
+/// April's repeated hour has count (slice 17's review, finding 8). None for
+/// a minute that isn't one of the day's.
+pub fn next_time_of_day(now: u64, minute: u32) -> Option<u64> {
+    let time = NaiveTime::from_hms_opt(minute / 60, minute % 60, 0).filter(|_| minute < 24 * 60)?;
+    next_at(now, time)
+}
+
+/// The first instant after `now` at which the café's clock reads what
+/// Canberra's own clock reads at `canberra_now`, to the second, by the local
+/// date and time, so daylight saving can't leave it an hour out. None when
+/// it reads that already (slice 17's review, finding 8).
+pub fn realign_target(cafe_now: u64, canberra_now: u64) -> Option<u64> {
+    let (cafe, wall) = (canberra(cafe_now), canberra(canberra_now));
+    if (cafe.hour(), cafe.minute(), cafe.second()) == (wall.hour(), wall.minute(), wall.second()) {
+        return None;
+    }
+    next_at(cafe_now, wall.time())
+}
+
+/// The first instant after `now` whose Canberra local time is `time`.
+fn next_at(now: u64, time: NaiveTime) -> Option<u64> {
+    let today = canberra(now).date_naive();
+    (0..3)
+        .filter_map(|d| today.checked_add_days(Days::new(d)))
+        .flat_map(|date| {
+            let local = Sydney.from_local_datetime(&date.and_time(time));
+            [local.earliest(), local.latest()]
+        })
+        .flatten()
+        .map(|t| t.timestamp_millis() as u64)
+        .filter(|&t| t > now)
+        .min()
 }
 
 /// Starts the café's clock at `at`; it runs on at the wall's speed. Once
@@ -175,6 +242,78 @@ mod tests {
         assert!(format!("{far:#}").contains("CAFE_CLOCK_START"), "{far:#}");
         assert!(check_near(0, wall).is_err(), "1970");
         assert!(check_near(wall + 367 * 86_400_000, wall).is_err());
+    }
+
+    fn canberra_at(y: i32, mo: u32, d: u32, h: u32, mi: u32) -> u64 {
+        Sydney.with_ymd_and_hms(y, mo, d, h, mi, 0).single().unwrap().timestamp_millis() as u64
+    }
+
+    const HOUR: u64 = 3_600_000;
+
+    #[test]
+    fn the_next_time_of_day_is_later_today_or_tomorrow() {
+        // Slice 17: a demo account's jump goes to the next time it's HH:MM.
+        let two_pm = canberra_at(2026, 11, 6, 14, 0);
+        assert_eq!(next_time_of_day(two_pm, 23 * 60 + 30), Some(two_pm + 9 * HOUR + HOUR / 2));
+        let late = canberra_at(2026, 11, 6, 23, 45);
+        assert_eq!(next_time_of_day(late, 7 * 60), Some(canberra_at(2026, 11, 7, 7, 0)));
+        assert_eq!(
+            next_time_of_day(two_pm, 14 * 60),
+            Some(two_pm + 24 * HOUR),
+            "now itself is a day on"
+        );
+        assert_eq!(next_time_of_day(two_pm + 1, 14 * 60), Some(two_pm + 24 * HOUR));
+        assert_eq!(next_time_of_day(two_pm, 24 * 60), None, "there's no 24:00");
+    }
+
+    #[test]
+    fn a_time_in_the_spring_gap_is_the_next_days() {
+        // 4 October 2026: Canberra's clocks go from 02:00 to 03:00, so 02:30
+        // never happens that night; the next 02:30 is the 5th's, 24.5 h on.
+        let one_am = canberra_at(2026, 10, 4, 1, 0);
+        assert_eq!(next_time_of_day(one_am, 2 * 60 + 30), Some(canberra_at(2026, 10, 5, 2, 30)));
+        assert_eq!(canberra_at(2026, 10, 5, 2, 30) - one_am, 24 * HOUR + HOUR / 2);
+    }
+
+    #[test]
+    fn the_repeated_hour_counts_both_times() {
+        // Slice 17's review, finding 8: 4 April 2027, 03:00 AEDT goes back to
+        // 02:00 AEST, so 02:30 happens twice. Asked at 02:45 AEDT, the next
+        // 02:30 is the AEST one, 45 minutes on, not the next day's.
+        let at = Sydney.with_ymd_and_hms(2027, 4, 4, 2, 45, 0).earliest().unwrap().timestamp_millis() as u64;
+        let again = Sydney.with_ymd_and_hms(2027, 4, 4, 2, 30, 0).latest().unwrap().timestamp_millis() as u64;
+        assert_eq!(again - at, 45 * 60_000);
+        assert_eq!(next_time_of_day(at, 2 * 60 + 30), Some(again));
+    }
+
+    #[test]
+    fn canberra_time_is_canberras_hour_by_the_calendar() {
+        // Slice 17's review, finding 8: the next instant at which the café's
+        // clock reads what Canberra's does, by the local date and time, so
+        // daylight saving can't leave it an hour out.
+        let canberra = canberra_at(2026, 11, 6, 14, 0);
+        assert_eq!(realign_target(canberra, canberra), None, "already on Canberra time");
+        assert_eq!(
+            realign_target(canberra + 24 * HOUR, canberra),
+            None,
+            "a day ahead shows Canberra's hour"
+        );
+        assert_eq!(realign_target(canberra + 3 * HOUR, canberra), Some(canberra + 24 * HOUR));
+        assert_eq!(realign_target(canberra + 27 * HOUR, canberra), Some(canberra + 48 * HOUR));
+        // Across October's change: a lead of 24 h shows 13:00 on the 4th when
+        // Canberra reads 12:00 on the 3rd; the next 12:00 is the 5th's.
+        let noon = canberra_at(2026, 10, 3, 12, 0);
+        assert_eq!(realign_target(noon + 24 * HOUR, noon), Some(canberra_at(2026, 10, 5, 12, 0)));
+        // To the second Canberra's clock reads.
+        let late = canberra_at(2026, 11, 6, 14, 0) + 7_250;
+        assert_eq!(realign_target(late + HOUR, late), Some(late + 24 * HOUR));
+    }
+
+    #[test]
+    fn the_clock_is_wall_plus_offset_plus_ahead() {
+        assert_eq!(clock_at(0, 0, 100_000), 100_000);
+        assert_eq!(clock_at(-5_000, 3_000, 100_000), 98_000);
+        assert_eq!(clock_at(0, 9 * HOUR, 100_000), 100_000 + 9 * HOUR);
     }
 
     #[test]

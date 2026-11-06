@@ -58,6 +58,13 @@ impl TrustBook {
         rows
     }
 
+    /// One cat's record of one person, as a row to store.
+    pub fn row_of(&self, cat: &str, person: u32) -> Option<TrustRow> {
+        self.records
+            .get(&(cat.to_string(), person))
+            .map(|rec| TrustBook::row(cat, person, rec))
+    }
+
     pub fn has_met(&self, cat: &str, person: u32) -> bool {
         self.records.contains_key(&(cat.to_string(), person))
     }

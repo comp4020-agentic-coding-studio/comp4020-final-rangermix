@@ -69,6 +69,27 @@
         <button type="button" id="layout-switch" class="phone-only" aria-pressed="false">Bigger room</button>
         <button type="button" id="leave">Leave</button>
       </header>
+      <!-- The demo bar (slice 17): a demo account's controls, which only a
+           demo account sees. On a desktop and in layout B it floats over the
+           top of the room; in layout A it stands between the status bar and
+           the room, its groups opening one at a time below their buttons. -->
+      <section id="demo-bar" class="demo-bar" aria-label="Demo controls" hidden>
+        <p class="demo-clock"><span class="demo-label">Café time</span> <strong id="demo-time" tabindex="-1">--:--</strong> <span id="demo-ahead"></span></p>
+        <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-times">Time</button>
+        <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-bots">Bots</button>
+        <div id="demo-times" class="demo-group" role="group" aria-label="Move the café's clock on">
+          <button type="button" id="demo-hour-on">An hour on</button>
+          <label class="demo-at">At <input type="time" id="demo-at" step="60" /></label>
+          <button type="button" id="demo-go">Go</button>
+          <button type="button" id="demo-canberra">Canberra time</button>
+          <span id="demo-wait" class="demo-wait" hidden></span>
+        </div>
+        <div id="demo-bots" class="demo-group" role="group" aria-label="Bots">
+          <button type="button" id="demo-remove-bot" aria-label="Remove a bot">−</button>
+          <span id="demo-bot-count">No bots</span>
+          <button type="button" id="demo-add-bot" aria-label="Add a bot">+</button>
+        </div>
+      </section>
       <!-- The panels (slice 14): on a desktop they float over the room, each
            with a bar to move it by and a pin; on a phone they stand under the
            room (layout A) or come with the drawer (layout B). They come before
@@ -117,7 +138,7 @@
             <span class="mote"></span><span class="mote"></span><span class="mote"></span><span class="mote"></span>
             <span class="broom">🧹</span>
           </div>
-          <p>Dusting off the café…</p>
+          <p id="waking-text">Dusting off the café…</p>
         </div>
       </div>
       <form id="talk" class="talk">

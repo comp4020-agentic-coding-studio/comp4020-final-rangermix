@@ -8,4 +8,8 @@ export type PersonView = { id: number, name: string, look: Look, place: Place, a
 /**
  * Sitting on a piece of furniture at `at`.
  */
-sitting: boolean, };
+sitting: boolean, 
+/**
+ * A bot a demo account added (slice 17): the server runs it.
+ */
+bot: boolean, };

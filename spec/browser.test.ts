@@ -81,6 +81,27 @@ async function visit(viewport: { width: number; height: number }, touch = false,
   return { page, frames, sent };
 }
 
+/**
+ * Fakes the page's clock at `at`, and has the café's welcome say it's `at`
+ * too, so the café's hour starts there and the faked clock carries it on.
+ * The page keeps the server's clock, not the device's (slice 17), so a
+ * check that wants an hour of its own sets it in both places.
+ */
+async function cafeAt(page: Page, at: string): Promise<void> {
+  const start = new Date(at).getTime();
+  const since = Date.now();
+  await page.clock.install({ time: new Date(at) });
+  await page.clock.resume();
+  await page.routeWebSocket(/\/ws$/, (ws) => {
+    const server = ws.connectToServer();
+    server.onMessage((m) => {
+      const f = JSON.parse(String(m));
+      if (f.type === "welcome") f.now = start + (Date.now() - since);
+      ws.send(JSON.stringify(f));
+    });
+  });
+}
+
 /** How many animations the waking overlay is running. */
 const wakingAnimations = (page: Page) => page.evaluate(() => document.getElementById("waking")!.getAnimations({ subtree: true }).length);
 
@@ -1373,6 +1394,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
       { x: 12, y: 2 },
     ];
     let coat = "";
+    // The café at 10:00 by its own clock, which the page keeps (slice 17).
+    const at = new Date("2026-10-22T10:00:00+11:00").getTime();
+    const since = Date.now();
     const pinned = (page: Page) =>
       page.routeWebSocket(/\/ws$/, (ws) => {
         const server = ws.connectToServer();
@@ -1380,6 +1404,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
         server.onMessage((m) => {
           const f = JSON.parse(String(m));
           if (f.type === "welcome") {
+            f.now = at + (Date.now() - since);
             f.snapshot.cats.forEach((cat: Frame, i: number) => {
               ids.add(cat.id);
               if (i === 0) coat = cat.coat;
@@ -1464,10 +1489,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
 
   it("stands the room on its street, by day and by night, and takes no click or tap there, at both sizes (slice 13)", async () => {
     const v = await visit({ width: 1920, height: 1080 }, false, {
-      prepare: async (page) => {
-        await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
-        await page.clock.resume();
-      },
+      prepare: (page) => cafeAt(page, "2026-11-04T10:00:00+11:00"),
     });
     const street = (light: "day" | "night") => (palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
     /**
@@ -1586,10 +1608,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // room pans, so the taps go where the canvas shows the street now: points
     // on screen whose canvas pixel is one of the street's colours.
     const phone = await visit({ width: 390, height: 844 }, true, {
-      prepare: async (page) => {
-        await page.clock.install({ time: new Date("2026-11-04T10:00:00+11:00") });
-        await page.clock.resume();
-      },
+      prepare: (page) => cafeAt(page, "2026-11-04T10:00:00+11:00"),
     });
     await phone.page.waitForFunction(() => document.body.classList.contains("layout-b"));
     await phone.page.waitForTimeout(600);
@@ -1747,4 +1766,136 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await waking.waitFor({ state: "hidden", timeout: 10_000 });
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   });
+});
+
+// Slice 17: the demo bar, which only a demo account sees. The café the spec
+// runs against must be seeded (`cafe demo seed`), as CI does; without
+// APP_DEMO_PASSWORD these checks are skipped.
+const demoPassword = process.env.APP_DEMO_PASSWORD;
+
+/** Opens the café in a fresh browser and logs in as `name` through the page. */
+async function visitAs(name: string, viewport: { width: number; height: number }, touch = false, init?: string): Promise<Visit> {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  contexts.push(context);
+  if (init) await context.addInitScript(init);
+  const page = await context.newPage();
+  await hearAnnouncer(page);
+  const frames: Frame[] = [];
+  const sent: Frame[] = [];
+  page.on("websocket", (ws) => {
+    ws.on("framereceived", (f) => frames.push(JSON.parse(String(f.payload))));
+    ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload))));
+  });
+  await page.goto(baseUrl);
+  await page.locator("#tab-login").click();
+  await page.locator("#login input[name=name]").fill(name);
+  await page.locator("#login input[name=password]").fill(demoPassword!);
+  await page.locator("#login input[name=password]").press("Enter");
+  await page.waitForFunction(() => /inside|window/.test(document.getElementById("status-text")?.textContent ?? ""));
+  return { page, frames, sent };
+}
+
+const HHMM = new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/** The light the café's hour gives (design.md, "Numbers to tune"). */
+function lightOf(ms: number): string {
+  const hour = Number(HHMM.format(new Date(ms)).slice(0, 2));
+  return String(hour >= 21 || hour < 6 ? 1 : hour >= 17 ? 0.5 : 0);
+}
+
+describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
+  it("is a demo account's alone; by keyboard it moves the café on, and the page keeps the café's clock", async () => {
+    const visitor = await visit({ width: 1920, height: 1080 });
+    expect(await visitor.page.locator("#demo-bar").isHidden()).toBe(true);
+    // This device's clock is twelve hours out: the café's light must follow
+    // the server's clock all the same.
+    const twelveHours = 12 * 3_600_000;
+    const shifted = `(() => {
+      const Real = Date;
+      class Shifted extends Real {
+        constructor(...args) { super(...(args.length ? args : [Real.now() + ${twelveHours}])); }
+        static now() { return Real.now() + ${twelveHours}; }
+      }
+      globalThis.Date = Shifted;
+    })();`;
+    const demo = await visitAs("demo1", { width: 1920, height: 1080 }, false, shifted);
+    const page = demo.page;
+    await page.locator("#demo-bar").waitFor();
+    const welcome = demo.frames.find((f) => f.type === "welcome")!;
+    expect(welcome.demo).toBe(true);
+    await page.waitForFunction(() => document.getElementById("room")?.dataset.light !== undefined);
+    expect(await page.locator("#room").getAttribute("data-light")).toBe(lightOf(welcome.now));
+    expect(await page.locator("#demo-time").textContent()).toMatch(/^\d\d:\d\d$/);
+    // The bar is in the page's tab order.
+    await page.locator("#leave").focus();
+    let reached = false;
+    for (let n = 0; n < 40 && !reached; n++) {
+      await page.keyboard.press("Tab");
+      reached = await page.evaluate(() => document.getElementById("demo-bar")!.contains(document.activeElement));
+    }
+    expect(reached).toBe(true);
+    // The clock moves at most once a minute: wait out another check's jump.
+    await page.locator("#demo-wait").waitFor({ state: "hidden", timeout: 70_000 });
+    // Two minutes on from the café's time as the bar shows it.
+    const [h, m] = (await page.locator("#demo-time").textContent())!.split(":").map(Number);
+    const t = (h * 60 + m + 2) % (24 * 60);
+    const target = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+    await page.locator("#demo-at").fill(target);
+    await page.locator("#demo-at").focus();
+    await page.keyboard.press("Enter");
+    // Two minutes replay in a moment, so the cover is up too briefly to
+    // catch: what it said is heard, and the café comes back at the new time.
+    const told = `demo1 moved the café on to ${target}. Time passes…`;
+    await page.waitForFunction((t) => (window as unknown as { said: string[] }).said.includes(t), told, { timeout: 10_000 });
+    expect(demo.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
+    await page.locator("#waking").waitFor({ state: "hidden", timeout: 15_000 });
+    await expect.poll(() => page.locator("#demo-time").textContent()).toBe(target);
+    // The field was disabled under the keyboard's focus while the café lived
+    // the hours: the focus went to the bar's clock, not nowhere (finding 7).
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("demo-time");
+    // By mouse: a bot in, and out again.
+    await page.locator("#demo-add-bot").click();
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("1 bot");
+    await page.locator("#demo-remove-bot").click();
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("No bots");
+    // The visitor's page went with it.
+    await visitor.page.waitForFunction(() => document.getElementById("waking")!.hidden);
+    expect(visitor.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
+  }, 120_000);
+
+  it("works by touch on a phone, closes with Escape, and survives a resize", async () => {
+    const demo = await visitAs("demo2", { width: 390, height: 844 }, true);
+    const page = demo.page;
+    const toggle = page.locator("#demo-bar .demo-toggle", { hasText: "Bots" });
+    // With no bots there's none to remove, and the count says so (finding 7).
+    expect(await page.locator("#demo-remove-bot").isDisabled()).toBe(true);
+    await toggle.tap();
+    expect(await toggle.getAttribute("aria-expanded")).toBe("true");
+    await page.locator("#demo-add-bot").tap();
+    await expect.poll(() => demo.frames.some((f) => f.type === "personJoined" && f.person.bot)).toBe(true);
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("1 bot");
+    await page.locator("#demo-remove-bot").tap();
+    await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("No bots");
+    await page.locator("#demo-add-bot").focus();
+    await page.keyboard.press("Escape");
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false");
+    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("Bots");
+    expect(await page.locator("#demo-bots").isHidden()).toBe(true);
+    // Layout A: the bar stands in the page between the status bar and the room.
+    await page.locator("#layout-switch").tap();
+    await page.waitForFunction(() => !document.body.classList.contains("layout-b"));
+    const above = (await page.locator("#demo-bar").boundingBox())!;
+    const room = (await page.locator("#stage").boundingBox())!;
+    expect(above.y + above.height).toBeLessThanOrEqual(room.y);
+    // Mid-use, to a desktop: the groups stand in one row, no buttons to open them.
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await expect.poll(() => page.locator("#demo-bots").isVisible()).toBe(true);
+    expect(await toggle.isHidden()).toBe(true);
+    // Between the corner panels, not over their bars and pins.
+    const bar = (await page.locator("#demo-bar").boundingBox())!;
+    const left = (await page.locator("#chalkboard").boundingBox())!;
+    const right = (await page.locator("#here-panel").boundingBox())!;
+    expect(bar.x).toBeGreaterThanOrEqual(left.x + left.width);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(right.x);
+  }, 60_000);
 });

@@ -1,5 +1,5 @@
 import type { Cafe } from "./cafe";
-import { canberraHour, lightAt } from "./canberra";
+import { cafeHour, lightAt } from "./canberra";
 import { type Layout, PHONE, panOffset } from "./layout";
 import { positionAt } from "./motion";
 import { ISO, pickTile, toCanvas } from "./iso";
@@ -173,8 +173,12 @@ export class Stage {
     }
     if (this.canvas.width !== ISO.width * this.scale) this.fit();
     if (this.layout === "b") this.pan(state);
-    const light = lightAt(canberraHour());
+    // The café's hour, by the server's clock the page keeps (slice 17), for
+    // the street and the room alike.
+    const light = lightAt(cafeHour(state));
     this.paintStreet(light);
+    // For the browser checks: the light the café's clock gives (slice 17).
+    this.canvas.dataset.light = String(light);
     const ctx = this.canvas.getContext("2d");
     if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, light, this.scale);
   }
@@ -234,8 +238,10 @@ export class Stage {
     const at = toCanvas(spot.x + 0.5, Math.max(spot.y, 1) + 0.5);
     // The band the floating bars leave clear, within the stage box.
     const box = this.box.getBoundingClientRect();
+    // The demo bar floats under the status bar for a demo account (slice 17).
+    const tops = [".status", "#demo-bar:not([hidden])"].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom ?? box.top);
     const clear = {
-      top: (document.querySelector(".status")?.getBoundingClientRect().bottom ?? box.top) - box.top,
+      top: Math.max(...tops) - box.top,
       bottom: (document.querySelector(".talk")?.getBoundingClientRect().top ?? box.bottom) - box.top,
     };
     const offset = panOffset(

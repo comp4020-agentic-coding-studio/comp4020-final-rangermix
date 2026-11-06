@@ -105,6 +105,9 @@ impl World {
         if !self.inside_or_refuse(id, out) {
             return;
         }
+        if self.bot_or_refuse(to, id, out) {
+            return;
+        }
         let Some(them) = self.present(to, id).map(|p| p.name.clone()) else {
             return error(out, id, ErrorCode::UnknownPerson, "They aren't inside.");
         };

@@ -2,16 +2,24 @@
 //! bubbles and the cats. `handle` and `tick` return messages for the
 //! connection layer to route; nothing here touches a socket, and durable
 //! changes go to the store as writes it doesn't wait for.
+pub mod bots;
+#[cfg(test)]
+mod bots_tests;
 mod cat_life;
 #[cfg(test)]
 mod cats_tests;
 mod chalk;
 #[cfg(test)]
 mod chalk_tests;
+#[cfg(test)]
+mod demo_tests;
 mod furniture;
 #[cfg(test)]
 mod furniture_tests;
 mod handling;
+pub mod jump;
+#[cfg(test)]
+mod jump_tests;
 #[cfg(test)]
 mod log_tests;
 mod people;
@@ -56,6 +64,8 @@ pub enum Input {
         id: u32,
         name: String,
         look: Look,
+        /// A demo account (slice 17).
+        demo: bool,
     },
     /// The connection dropped; the seat is kept for the grace period.
     Drop {
@@ -90,6 +100,10 @@ struct Person {
     /// Their furniture changes: a burst, then a slow refill (per person, so a
     /// reconnect doesn't refill it).
     furniture: crate::limits::Bucket,
+    /// A demo account, with the bar of controls (slice 17).
+    demo: bool,
+    /// A bot the server runs for a demo account (slice 17).
+    bot: Option<bots::Bot>,
 }
 
 /// Something a person asked for that happens when their walk ends.
@@ -162,6 +176,16 @@ pub struct World {
     treat_day: String,
     /// The chalkboard's lines of the last day, oldest first.
     chalk: VecDeque<ChalkLine>,
+    /// How far a demo account has moved the café's clock on (slice 17),
+    /// saved with the clock so a restart never takes it back.
+    ahead: u64,
+    /// A jump asked for, waiting for the world task to run it (slice 17).
+    jump: Option<jump::Jump>,
+    /// When, by the café's clock, the last jump landed.
+    last_jump: Option<u64>,
+    /// Trust a cat changed while a replay held the store back: written with
+    /// the replay's end save (slice 17's review, finding 3).
+    unsaved_trust: Vec<(String, u32)>,
 }
 
 impl World {
@@ -204,6 +228,10 @@ impl World {
             answered: false,
             treat_day: crate::time::canberra_day(now),
             chalk: VecDeque::new(),
+            ahead: 0,
+            jump: None,
+            last_jump: None,
+            unsaved_trust: Vec::new(),
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -225,7 +253,7 @@ impl World {
     pub fn handle(&mut self, now: u64, input: Input) -> Vec<Out> {
         let mut out = Vec::new();
         match input {
-            Input::Join { id, name, look } => self.join(now, id, name, look, &mut out),
+            Input::Join { id, name, look, demo } => self.join(now, id, name, look, demo, &mut out),
             Input::Drop { id } => self.drop_connection(now, id, &mut out),
             Input::Msg { id, msg } => {
                 // Someone walking out after an unanswered nudge is on their way.
@@ -264,6 +292,9 @@ impl World {
                     ClientMsg::Leave {} => self.remove(now, id, "left", &mut out),
                     ClientMsg::Emote { emote } => self.emote(id, emote, &mut out),
                     ClientMsg::Presence { .. } | ClientMsg::Here {} => {}
+                    ClientMsg::SetClock { minute } => self.ask_jump(now, id, minute, &mut out),
+                    ClientMsg::AddBot {} => self.add_bot(now, id, &mut out),
+                    ClientMsg::RemoveBot {} => self.remove_bot(now, id, &mut out),
                 }
                 if let Some(what) = what {
                     self.log_request(id, what, &about, &out[before..], pending_before);
@@ -415,6 +446,7 @@ impl World {
             }
         }
         self.quiet_tick(now, &mut out);
+        self.bots_tick(now, &mut out);
         self.bowls_tick(now, &mut out);
         self.treats_tick(now, &mut out);
         self.cats_tick(now, dt, &mut out);
@@ -423,6 +455,16 @@ impl World {
             self.save(now);
         }
         out
+    }
+
+    /// How far a demo account has moved the café's clock on.
+    pub fn ahead(&self) -> u64 {
+        self.ahead
+    }
+
+    /// The lead saved before the café last stopped.
+    pub fn restore_ahead(&mut self, ahead: u64) {
+        self.ahead = ahead;
     }
 
     pub fn snapshot_for(&self, id: u32, now: u64) -> Snapshot {
@@ -466,6 +508,11 @@ impl World {
         let rng = serde_json::to_string(&self.rng).expect("the random state serialises");
         let arrangement = self.arrangement_json();
         let chalk = board.then(|| self.chalk_rows());
+        let ahead = self.ahead.to_string();
+        let mut touched = std::mem::take(&mut self.unsaved_trust);
+        touched.sort();
+        touched.dedup();
+        let trust: Vec<crate::store::TrustRow> = touched.iter().filter_map(|(cat, id)| self.trust.row_of(cat, *id)).collect();
         store.fire(move |conn| {
             for (id, json) in &cats {
                 crate::store::put_cat_state(conn, id, json, now)?;
@@ -473,12 +520,22 @@ impl World {
             crate::store::put_world(conn, "bowls", &bowls)?;
             crate::store::put_world(conn, "rng", &rng)?;
             crate::store::put_world(conn, "arrangement", &arrangement)?;
+            crate::store::put_world(conn, "ahead", &ahead)?;
+            for row in &trust {
+                crate::store::put_trust(conn, row)?;
+            }
             if let Some(rows) = &chalk {
                 crate::store::replace_chalk(conn, rows)?;
             }
             crate::store::put_world(conn, "saved_at", &now.to_string())
         });
     }
+}
+
+/// A world on the repo's content at the epoch, for tests outside this module.
+#[cfg(test)]
+pub fn test_world() -> World {
+    people::tests::world()
 }
 
 /// The name an action goes by in the logs; None for what isn't an action
@@ -505,6 +562,9 @@ pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {
         ClientMsg::PutTreat {} => "put_treat",
         ClientMsg::GiveTreat { .. } => "give_treat",
         ClientMsg::Tidy { .. } => "tidy",
+        ClientMsg::SetClock { .. } => "set_clock",
+        ClientMsg::AddBot {} => "add_bot",
+        ClientMsg::RemoveBot {} => "remove_bot",
         ClientMsg::Presence { .. } | ClientMsg::Here {} => return None,
     })
 }
@@ -515,6 +575,18 @@ pub fn code_name(code: ErrorCode) -> String {
         .ok()
         .and_then(|v| v.as_str().map(str::to_string))
         .unwrap_or_default()
+}
+
+impl World {
+    /// True for a demo account; anyone else is told only a demo account can
+    /// (slice 17, AGENTS.md).
+    pub(super) fn demo_or_refuse(&self, id: u32, out: &mut Vec<Out>) -> bool {
+        if self.person(id).is_some_and(|p| p.demo) {
+            return true;
+        }
+        error(out, id, ErrorCode::NotDemo, "Only a demo account can do that.");
+        false
+    }
 }
 
 fn error(out: &mut Vec<Out>, id: u32, code: ErrorCode, detail: &str) {

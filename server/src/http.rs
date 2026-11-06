@@ -34,6 +34,9 @@ pub struct AppState {
     pub conn_ids: Arc<std::sync::atomic::AtomicU64>,
     /// The café has replayed its sleep and the world task is running (slice 07).
     pub awake: Arc<std::sync::atomic::AtomicBool>,
+    /// The jump the café is living now, as its `jumping` message, for a page
+    /// that opens meanwhile (slice 17's review, finding 9).
+    pub jumping: crate::ws::Jumping,
 }
 
 impl AppState {
@@ -59,6 +62,7 @@ impl AppState {
             world,
             conn_ids: Arc::new(std::sync::atomic::AtomicU64::new(1)),
             awake: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            jumping: Default::default(),
         }
     }
 }

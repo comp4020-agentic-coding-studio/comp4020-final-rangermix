@@ -12,6 +12,9 @@ function state() {
       cap: 6,
       chalkHours: 24,
       chalkShown: 8,
+      demo: false,
+      ahead: 0,
+      nextJump: 0,
       snapshot: {
         room: {
           width: 12,
@@ -26,8 +29,8 @@ function state() {
           catalogue: [],
         },
         people: [
-          { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false },
-          { id: 2, name: "sam", look: { avatar: 0, colour: 1 }, place: "inside", at: { x: 9, y: 5 }, walk: null, sitting: false },
+          { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false, bot: false },
+          { id: 2, name: "sam", look: { avatar: 0, colour: 1 }, place: "inside", at: { x: 9, y: 5 }, walk: null, sitting: false, bot: false },
         ],
         cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 6, y: 5 }, pose: "nap", walk: null, heldBy: null }],
         yourTrust: [{ cat: "mochi", value: 4, level: "stranger" }],

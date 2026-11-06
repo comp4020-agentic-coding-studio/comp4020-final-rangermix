@@ -23,6 +23,7 @@ pub enum Command {
         id: u32,
         name: String,
         look: Look,
+        demo: bool,
         conn: u64,
         tx: mpsc::Sender<Arc<str>>,
     },
@@ -41,13 +42,17 @@ pub enum Command {
     },
 }
 
+/// The jump the café is living now, as the `jumping` message every page got,
+/// for a page that opens meanwhile; none between jumps (slice 17).
+pub type Jumping = Arc<std::sync::Mutex<Option<Arc<str>>>>;
+
 /// Each person's current connection: its id, and where to send its messages.
 type Conns = HashMap<u32, (u64, mpsc::Sender<Arc<str>>)>;
 
 /// The world task: what connections send it, one at a time, and ten ticks a
 /// second. `main` makes its inbox before the café wakes, so a connection made
 /// meanwhile waits there (slice 07).
-pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
+pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>, jumping: Jumping) {
     let mut conns: Conns = HashMap::new();
     let mut ticker = tokio::time::interval(Duration::from_millis(100));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -55,45 +60,18 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
         tokio::select! {
             cmd = rx.recv() => {
                 let Some(cmd) = cmd else { break };
-                let now = now_ms();
-                match cmd {
-                    Command::Join { id, name, look, conn, tx } => {
-                        if let Some((_, old)) = conns.insert(id, (conn, tx)) {
-                            // A second tab: the first is told, then let go.
-                            let _ = old.try_send(text(&ServerMsg::Replaced {}));
+                if command(&mut world, &mut conns, cmd, false) == Flow::Stop {
+                    break;
+                }
+                // A demo account moved the clock on (slice 17): everyone has
+                // been told; the café lives the hours between, then goes on.
+                if let Some(jump) = world.take_jump() {
+                    world = run_jump(world, &mut conns, jump, &jumping).await;
+                    // What queued meanwhile was meant for the café before.
+                    while let Ok(cmd) = rx.try_recv() {
+                        if command(&mut world, &mut conns, cmd, true) == Flow::Stop {
+                            return;
                         }
-                        let outs = world.handle(now, Input::Join { id, name, look });
-                        deliver(&mut world, &mut conns, outs, now);
-                    }
-                    Command::Leave { id, conn } => {
-                        if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
-                            conns.remove(&id);
-                            let outs = world.handle(now, Input::Drop { id });
-                            deliver(&mut world, &mut conns, outs, now);
-                        }
-                    }
-                    Command::Msg { id, conn, msg } => {
-                        // A Leave from a page whose welcome never reached it (it
-                        // gave up while the café woke) still walks its person out,
-                        // unless another tab of theirs holds the seat now (slice
-                        // 07's review, finding 1).
-                        let current = conns.get(&id).is_some_and(|(c, _)| *c == conn);
-                        let gave_up = matches!(msg, ClientMsg::Leave {}) && !conns.contains_key(&id);
-                        if current || gave_up {
-                            let leaving = matches!(msg, ClientMsg::Leave {});
-                            let outs = world.handle(now, Input::Msg { id, msg });
-                            deliver(&mut world, &mut conns, outs, now);
-                            // Gone through the door: let the connection go too,
-                            // rather than wait for the page to close it.
-                            if leaving {
-                                conns.remove(&id);
-                            }
-                        }
-                    }
-                    Command::Shutdown { done } => {
-                        world.save(now);
-                        let _ = done.send(());
-                        break;
                     }
                 }
             }
@@ -104,6 +82,109 @@ pub async fn world_task(mut world: World, mut rx: mpsc::Receiver<Command>) {
             }
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+enum Flow {
+    Go,
+    Stop,
+}
+
+/// Handles one command at the café's clock. With `after_jump`, an action
+/// that was sent before its page heard of the jump is refused (`movedOn`)
+/// rather than done at the new hour.
+fn command(world: &mut World, conns: &mut Conns, cmd: Command, after_jump: bool) -> Flow {
+    let now = now_ms();
+    match cmd {
+        Command::Join {
+            id,
+            name,
+            look,
+            demo,
+            conn,
+            tx,
+        } => {
+            if let Some((_, old)) = conns.insert(id, (conn, tx)) {
+                // A second tab: the first is told, then let go.
+                let _ = old.try_send(text(&ServerMsg::Replaced {}));
+            }
+            let outs = world.handle(now, Input::Join { id, name, look, demo });
+            deliver(world, conns, outs, now);
+        }
+        Command::Leave { id, conn } => {
+            if conns.get(&id).is_some_and(|(c, _)| *c == conn) {
+                conns.remove(&id);
+                let outs = world.handle(now, Input::Drop { id });
+                deliver(world, conns, outs, now);
+            }
+        }
+        Command::Msg { id, conn, msg } => {
+            // A Leave from a page whose welcome never reached it (it
+            // gave up while the café woke) still walks its person out,
+            // unless another tab of theirs holds the seat now (slice
+            // 07's review, finding 1).
+            let current = conns.get(&id).is_some_and(|(c, _)| *c == conn);
+            let gave_up = matches!(msg, ClientMsg::Leave {}) && !conns.contains_key(&id);
+            if after_jump && current && moved_on(&msg) {
+                let outs = world.refuse_moved_on(id, &msg);
+                deliver(world, conns, outs, now);
+            } else if current || gave_up {
+                let leaving = matches!(msg, ClientMsg::Leave {});
+                let outs = world.handle(now, Input::Msg { id, msg });
+                deliver(world, conns, outs, now);
+                // Gone through the door: let the connection go too,
+                // rather than wait for the page to close it.
+                if leaving {
+                    conns.remove(&id);
+                }
+            }
+        }
+        Command::Shutdown { done } => {
+            world.save(now);
+            let _ = done.send(());
+            return Flow::Stop;
+        }
+    }
+    Flow::Go
+}
+
+/// An action, as against being here or leaving: what a jump refuses if it
+/// was sent before the page heard of it.
+fn moved_on(msg: &ClientMsg) -> bool {
+    action_name(msg).is_some() && !matches!(msg, ClientMsg::Leave {})
+}
+
+/// Runs a held jump off the runtime, as a wake-up's replay runs, then moves
+/// the café's clock on and welcomes everyone at the new time. A replay that
+/// panics ends the world task the same way, so the process stops and Fly
+/// starts it again from the last save (slice 07).
+async fn run_jump(mut world: World, conns: &mut Conns, jump: crate::world::jump::Jump, jumping: &Jumping) -> World {
+    let told = ServerMsg::Jumping {
+        by: world.name_of(jump.by),
+        to: jump.to,
+    };
+    *jumping.lock().expect("the jumping lock isn't poisoned") = Some(text(&told));
+    let mut world = match tokio::task::spawn_blocking(move || {
+        world.run_jump(now_ms(), jump);
+        world
+    })
+    .await
+    {
+        Ok(done) => done,
+        Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
+        Err(e) => panic!("the jump was cancelled: {e}"),
+    };
+    *jumping.lock().expect("the jumping lock isn't poisoned") = None;
+    crate::time::set_ahead(world.ahead());
+    // The replay took a while: the world catches up to the café's clock as
+    // it is now, and the welcome says that time, so no page runs behind
+    // (slice 17's review, finding 5). Pages are covered until their welcome,
+    // so what the catching up says goes nowhere.
+    let now = now_ms();
+    let _ = world.tick(now);
+    let outs = world.welcomes(now);
+    deliver(&mut world, conns, outs, now);
+    world
 }
 
 /// Sends each message to its connections. A connection whose queue is full
@@ -181,12 +262,21 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
     if !app.awake.load(Ordering::SeqCst) && sink.send(Message::Text(text(&ServerMsg::Waking {}).as_ref().into())).await.is_err() {
         return;
     }
+    // Living a demo account's jump: say so at once, as while waking; the
+    // welcome comes at the new hour (slice 17's review, finding 9).
+    let living = app.jumping.lock().expect("the jumping lock isn't poisoned").clone();
+    if let Some(told) = living
+        && sink.send(Message::Text(told.as_ref().into())).await.is_err()
+    {
+        return;
+    }
     if app
         .world
         .send(Command::Join {
             id,
             name: user.name.clone(),
             look,
+            demo: user.demo,
             conn,
             tx,
         })
@@ -196,12 +286,17 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
         return;
     }
     let t = &app.tuning;
-    let now = now_ms();
+    // The connection's own time, for its silence and its rate limits: a
+    // duration, never the café's clock, which a jump moves on hours at once
+    // (slice 17's review, finding 1).
+    let opened = std::time::Instant::now();
+    let since = move || opened.elapsed().as_millis() as u64;
+    let now = since();
     let mut speech = Bucket::new(t.bubble_burst, 1.0 / t.bubble_refill_secs, now);
     let mut actions = Bucket::new(t.action_burst, t.action_per_sec, now);
     // Fly's proxy drops connections that go quiet; a ping keeps a calm café open.
     let mut ping = tokio::time::interval(Duration::from_secs(25));
-    let mut last_heard = now_ms();
+    let mut last_heard = since();
     loop {
         tokio::select! {
             out = rx.recv() => match out {
@@ -215,9 +310,9 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
             },
             incoming = stream.next() => match incoming {
                 Some(Ok(Message::Text(frame))) => {
-                    last_heard = now_ms();
+                    last_heard = since();
                     let Ok(msg) = serde_json::from_str::<ClientMsg>(frame.as_str()) else { continue };
-                    let now = now_ms();
+                    let now = since();
                     let allowed = match msg {
                         ClientMsg::Say { .. } | ClientMsg::Call { .. } | ClientMsg::Emote { .. } => speech.take(now),
                         _ => actions.take(now),
@@ -239,10 +334,10 @@ async fn connection(socket: WebSocket, app: AppState, user: UserRow) {
                 }
                 Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
                 // Pongs, and anything else, still say the other end is there.
-                Some(Ok(_)) => last_heard = now_ms(),
+                Some(Ok(_)) => last_heard = since(),
             },
             _ = ping.tick() => {
-                if gone_silent(last_heard, now_ms()) {
+                if gone_silent(last_heard, since()) {
                     break;
                 }
                 if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
@@ -283,6 +378,61 @@ mod tests {
             received += 1;
         }
         assert_eq!(received, 3);
+    }
+
+    #[test]
+    fn actions_queued_during_a_jump_are_refused() {
+        // Slice 17: what a page sent before `jumping` reached it is for the
+        // café before the jump; being here and leaving still count.
+        use crate::protocol::{Emote, Tile};
+        for msg in [
+            ClientMsg::WalkTo { tile: Tile { x: 1, y: 1 } },
+            ClientMsg::Say {
+                text: "hi".into(),
+                to: None,
+            },
+            ClientMsg::Emote { emote: Emote::Wave },
+            ClientMsg::SetClock { minute: Some(60) },
+            ClientMsg::AddBot {},
+        ] {
+            assert!(moved_on(&msg), "{msg:?}");
+        }
+        for msg in [ClientMsg::Leave {}, ClientMsg::Here {}, ClientMsg::Presence { hidden: true }] {
+            assert!(!moved_on(&msg), "{msg:?}");
+        }
+    }
+
+    #[test]
+    fn what_queued_during_a_jump_is_refused_and_told() {
+        // Slice 17's review, finding 11: the drain itself, not only which
+        // messages count as actions.
+        use crate::protocol::{Look, Tile};
+        let mut world = crate::world::test_world();
+        let mut conns: Conns = HashMap::new();
+        let (tx, mut rx) = mpsc::channel(64);
+        let join = Command::Join {
+            id: 1,
+            name: "sam".into(),
+            look: Look { avatar: 0, colour: 0 },
+            demo: false,
+            conn: 7,
+            tx,
+        };
+        assert_eq!(command(&mut world, &mut conns, join, false), Flow::Go);
+        while rx.try_recv().is_ok() {}
+        let walk = || Command::Msg {
+            id: 1,
+            conn: 7,
+            msg: ClientMsg::WalkTo { tile: Tile { x: 7, y: 2 } },
+        };
+        command(&mut world, &mut conns, walk(), true);
+        let told: Vec<String> = std::iter::from_fn(|| rx.try_recv().ok()).map(|m| m.to_string()).collect();
+        assert!(told.iter().any(|m| m.contains(r#""code":"movedOn""#)), "{told:?}");
+        assert!(!told.iter().any(|m| m.contains("personMoved")), "{told:?}");
+        // The same walk, not after a jump, goes.
+        command(&mut world, &mut conns, walk(), false);
+        let told: Vec<String> = std::iter::from_fn(|| rx.try_recv().ok()).map(|m| m.to_string()).collect();
+        assert!(told.iter().any(|m| m.contains("personMoved")), "{told:?}");
     }
 
     #[test]

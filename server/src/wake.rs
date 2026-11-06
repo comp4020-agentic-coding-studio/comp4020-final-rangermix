@@ -60,6 +60,8 @@ struct Kept {
     treats: Vec<store::TreatRow>,
     bowls: Option<String>,
     chalk: Vec<(u64, String)>,
+    /// How far a demo account had moved the clock on (slice 17).
+    ahead: u64,
 }
 
 impl Kept {
@@ -99,6 +101,7 @@ impl Kept {
         let treats = store.call(|c| store::all_treats(c)).await?;
         let bowls = store.call(|c| store::get_world(c, "bowls")).await?;
         let chalk = store.call(|c| store::all_chalk(c)).await?;
+        let ahead = saved_ahead(store).await?;
         let rows: i64 = store
             .call(|c| c.query_row("SELECT COUNT(*) FROM chalkboard", [], |r| r.get(0)))
             .await?;
@@ -117,6 +120,7 @@ impl Kept {
             treats,
             bowls,
             chalk,
+            ahead,
         })
     }
 
@@ -136,8 +140,23 @@ impl Kept {
         world.restore_bans(self.bans);
         world.restore_treats(self.bowls, self.treats);
         world.restore_chalk(self.chalk);
+        world.restore_ahead(self.ahead);
         world
     }
+}
+
+/// How far a demo account has moved the café's clock on, as last saved;
+/// nothing saved, or unreadable, is none (with a warning for the latter).
+pub async fn saved_ahead(store: &Store) -> anyhow::Result<u64> {
+    let text = store.call(|c| store::get_world(c, "ahead")).await?;
+    Ok(match text.map(|t| t.parse::<u64>()) {
+        Some(Ok(ms)) => ms,
+        Some(Err(e)) => {
+            tracing::warn!(target: "sys", error = %e, "the saved lead is unreadable; keeping Canberra time");
+            0
+        }
+        None => 0,
+    })
 }
 
 #[cfg(test)]
@@ -196,6 +215,21 @@ mod tests {
 
     fn seen(w: &World, now: u64) -> String {
         serde_json::to_string(&w.snapshot_for(0, now)).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_saved_lead_wakes_with_the_world() {
+        // Slice 17: how far a demo account moved the café's clock on is kept,
+        // so a restart never takes the clock back.
+        let (_dir, store) = store();
+        let t0 = canberra(2026, 11, 6, 14, 0);
+        let mut first = wake(&store, content(), "test".into(), t0, 1).await.unwrap();
+        assert_eq!(first.ahead(), 0, "a new café is on Canberra time");
+        first.restore_ahead(3 * HOUR);
+        first.save(t0 + 1_000);
+        assert_eq!(get(&store, "ahead").await.as_deref(), Some("10800000"));
+        let again = wake(&store, content(), "test".into(), t0 + 2_000, 1).await.unwrap();
+        assert_eq!(again.ahead(), 3 * HOUR);
     }
 
     #[tokio::test]

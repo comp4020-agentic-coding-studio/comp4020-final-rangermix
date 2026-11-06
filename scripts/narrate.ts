@@ -73,6 +73,9 @@ const VERB: Record<string, string> = {
   play: "play with",
   put_treat: "put a treat down",
   recover: "recover an account",
+  remove_bot: "remove a bot",
+  add_bot: "add a bot",
+  set_clock: "move the café's clock on",
   say: "say something",
   sit: "sit on",
   signup: "sign up",
@@ -175,6 +178,13 @@ function action(l: Line): string | null {
       return `${who} was asked if they're still there`;
     case "walk_out":
       return `${who} walked out after going quiet`;
+    // A demo account's controls (slice 17).
+    case "set_clock":
+      return `${who} moved the café's clock on ${duration(Number(l.gap_secs))}`;
+    case "add_bot":
+      return `${who} added a bot, ${String(l.bot)}`;
+    case "remove_bot":
+      return `${who} removed a bot, ${String(l.bot)}`;
     default:
       return null;
   }
@@ -267,7 +277,19 @@ function woke(l: Line): string {
   if (Number(l.steps) === 0) return "The café woke with nothing to catch up on";
   const ms = Number(l.took_ms);
   const took = ms < 1_000 ? `${ms} ms` : `${(ms / 1_000).toFixed(1)} s`;
-  let text = `The café woke after ${duration(Number(l.gap_secs))} asleep and caught up in ${took}${l.capped ? ` (only the last ${duration(Number(l.steps))} of it)` : ""}`;
+  const text = `The café woke after ${duration(Number(l.gap_secs))} asleep and caught up in ${took}${l.capped ? ` (only the last ${duration(Number(l.steps))} of it)` : ""}`;
+  return text + meanwhile(l);
+}
+
+/** A demo account's jump (slice 17): the hours the café lived, as a sleep's. */
+function jumped(l: Line): string {
+  const ms = Number(l.took_ms);
+  const took = ms < 1_000 ? `${ms} ms` : `${(ms / 1_000).toFixed(1)} s`;
+  return `The café lived ${duration(Number(l.gap_secs))} on for ${String(l.who ?? "a demo account")} in ${took}${meanwhile(l)}`;
+}
+
+/** What the cats and the bowls did in hours replayed: "; meanwhile …". */
+function meanwhile(l: Line): string {
   const walks = walksOf(l.walks);
   const clauses: string[] = [];
   if (walks.some((w) => w.n > 0)) {
@@ -277,14 +299,14 @@ function woke(l: Line): string {
   }
   const refills = Number(l.refills ?? 0);
   if (refills > 0) clauses.push(`the bowls were filled ${TIMES[refills] ?? `${refills} times`}`);
-  if (clauses.length > 0) text += `; ${clauses.join(", and ")}`;
-  return text;
+  return clauses.length > 0 ? `; ${clauses.join(", and ")}` : "";
 }
 
 /** What the café itself did. */
 function cafe(l: Line): string {
   if (l.what === "bowls_filled") return `The café filled the bowls (${String(l.portions)} portions)`;
   if (l.what === "woke") return woke(l);
+  if (l.what === "jumped") return jumped(l);
   return `${String(l.target ?? "server")}: ${String(l.message ?? l.what ?? "")}`;
 }
 

@@ -56,6 +56,11 @@ under [Numbers to tune](#numbers-to-tune).
 - **It keeps Canberra time.** Morning light, afternoon sun, lamps in the
   evening, dim at night, and cats with daily rhythms to match. *Why:* one café
   in one place has one clock, and a night visit becomes a different visit.
+  A demo account can move that clock on, never back; from then the café
+  runs ahead of Canberra's wall clock
+  ([Showing it to markers](#showing-it-to-markers); slice 17, part 1
+  built). Accounts and their sessions keep Canberra's own clock, so a jump
+  logs nobody out.
 
 ## People
 
@@ -166,7 +171,9 @@ under [Numbers to tune](#numbers-to-tune).
   It unlocks behaviour: the cat comes when you call; then greets you at the
   door and sits by you; then naps on your lap and puts up with being carried
   longer. Your own trust with each cat is shown to you; others see trust only
-  in what the cats do.
+  in what the cats do. The operator's seed for demo accounts is the one
+  change to trust that isn't a person's doing
+  ([Showing it to markers](#showing-it-to-markers)).
 - **Anger** is per cat per person and kept in memory only: it rises with
   unwelcome handling by temper and cools by grudge. Bans are stored until they
   expire. Pet, play, offer and pick up answer by one rule; a refusal or
@@ -394,6 +401,77 @@ renamed.
   written anywhere. Per-IP rate limits are counted in memory and never written
   down or logged.
 
+## Showing it to markers
+
+Decided 2026-11-06 by the user
+([ADR 0022](adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md));
+built as [slice 17](slices/17-markers-see-weeks-in-ten-minutes.md), approved
+the same day. Part 1, everything but the furniture sets, is built (2026-11-06,
+[plan](notes/plan-slice-17-demo.md), [notes](notes/slice-17-demo.md)); part 2,
+the sets, comes after slice 16. The demo accounts are `demo1` and `demo2`,
+with the password `catppuccino`, each seeded with Mochi at 85, Tora at 55
+and Burakku at 25.
+
+- **Markers get a regular's account.** They have about ten minutes and a
+  new account, which every cat treats as a stranger, and a lap is at least
+  8 days of visits away. So the README gives them a demo account's login
+  beside their own, and the two side by side show what weeks change.
+  *Why:* the café's point is what time builds, and markers can't wait for
+  it.
+- **Demo accounts** are marked as such in the store, by the operator only.
+  `cafe demo seed`, a subcommand of the server's binary run over
+  `fly ssh console`, creates them, marks them and sets each cat's trust in
+  them from `content/demo.toml`; a restart loads it. Their password is in
+  the README, public by design. Their recovery codes are never shown, so
+  only running the seed again changes the password.
+  Sign-up refuses `demo` followed only by digits, and names starting `bot_`.
+- **The page keeps the café's clock**, set from the welcome's `now`: the
+  light, the street, the window, the music set and the board's times follow
+  the server, not the device.
+- **A demo account moves the clock forward** to the next time of day it
+  asks for, at most 24 hours on (`jump_max_hours`), at most once a minute
+  by the café's clock (`jump_every_secs`); "Canberra time" moves it on to
+  the next whole day ahead, so the hour is Canberra's again. Everyone's
+  page is told who moved it and to when, and covers the café ("demo1 moved
+  the café on to 23:30. Time passes…"). The server ends walks where they
+  are, calls off errands, puts back what's carried, sets the people aside,
+  and replays the gap off the runtime as it replays a sleep; then it brings
+  everyone back with their timers moved on by the gap, so nobody is walked
+  out by a jump, moves any cat off someone's tile, and welcomes everyone
+  at the new time, the world first caught up to the café's clock as it is
+  after the replay, so no page runs behind. A page that opens meanwhile is
+  told at once. An action that reached the café while it lived the hours is
+  refused (`movedOn`); one that arrives after a short jump has ended is
+  done at the new hour, checked against the café as it is then. The lead
+  grows by exactly the gap asked for, and "Canberra time" aims for the
+  time Canberra's own clock reads, by the local date and time, so daylight
+  saving can't leave it an hour out. Sessions and the accounts' rate
+  limits keep Canberra's own clock, so a jump spends nobody's session
+  (slice 17's review, findings 4, 5, 8, 9 and 10). How far ahead the café is (`world.ahead`) is saved with the
+  replay's end and loaded before the clock is first read, so the clock
+  never goes back, across restarts too.
+- **A demo account lays out one of three furniture sets** from
+  `content/layouts/` at once, without the rate limit, by the usual
+  placement rules.
+- **A demo account adds and removes bots**: up to six (`bots_max`),
+  `bot_1` to `bot_6`, visitors the server runs, which take seats and join
+  the line, now and then walk to free floor or wave, and never talk, sit,
+  handle a cat or touch furniture. A visitor can't hand one a treat or
+  pass it a cat, and who's here marks each "(a bot)". They leave when removed (the newest
+  first), with the demo account that added them, or after 15 minutes
+  (`bot_stay_mins`), which a jump doesn't spend. The cats never meet one,
+  the quiet seat passes them by, and nothing about them is stored.
+- **The controls are a floating bar at the top of the room**, which only a
+  demo account sees, working by keyboard, touch and mouse at both sizes:
+  the café's time and how far it runs ahead, Morning 07:00, Afternoon
+  13:30, Evening 18:30 and Night 23:30 (picked for the cats), an hour on,
+  any time typed, Canberra time, and the bots. On a desktop it floats in
+  one row under the status bar; on a phone it's one slim row whose Time
+  and Bots open below, one at a time; in layout B the room pans clear of
+  it. Its card is opaque, so its text holds 4.5:1 by the page's own
+  colours. Everyone else sees what it did.
+- **The README's "For markers"** gives the login and a ten-minute path.
+
 ## The client
 
 - **Logged out,** `/` shows the sign-up and log-in card over a still picture of
@@ -614,7 +692,10 @@ renamed.
   dropped or walked out says so. An account refusal is logged with its code
   but not the name typed, since a password sometimes lands in the name field.
   (Phase 3's review, findings 8 and 11 to 15.)
-- **Also logged:** arrivals, departures, the line and walk-outs; cats'
+- **Also logged:** a demo account's asks (`set_clock`, `add_bot`,
+  `remove_bot`) and each jump (one `cafe` line, `what = "jumped"`: who,
+  the gap, the steps, how long, the refills and each cat's walks; slice
+  17); arrivals, departures, the line and walk-outs; cats'
   behaviour changes (a `cat` line when a cat starts to nap, hide, eat, play,
   perch, investigate, knock something over, come to someone, greet, take a
   lap or jump down; never per step); bans; the bowls' refills; each
@@ -666,14 +747,23 @@ renamed.
   a stop and a start of the container, which replays the gap (by the
   restart's own wake-up line) and keeps the furniture, trust and chalkboard
   as they were (CI keeps `/data` on a Docker volume and gives the spec the
-  commands as `APP_RESTART` and `APP_LOGS`; elsewhere it's skipped). After the spec, CI checks the app's own log lines: every
+  commands as `APP_RESTART` and `APP_LOGS`; elsewhere it's skipped); and,
+  on a café seeded with `cafe demo seed` (CI seeds the volume before the
+  app starts and gives the spec `APP_DEMO_PASSWORD`; elsewhere it's
+  skipped), only a demo account moves the clock, two pages get the new
+  hour within a second of each other, and bots fill the café so the next
+  visitor waits at the window (`spec/demo.test.ts`, slice 17). After the spec, CI checks the app's own log lines: every
   line has a time and a target, every start logs its wake-up, and none holds
-  anything said.
+  anything said, or the demo accounts' password.
 - **Browser checks** (Playwright, in `spec/browser.test.ts`): a keyboard-only
   pass at 390×844 and 1920×1080 with a resize mid-use, a tap on a cat by
   touch, the phone layout switch, one visitor's change reaching
-  another's page, and the chalkboard read at both sizes by keyboard, touch
-  and mouse. CI installs Chromium for them, and spec files run one at a
+  another's page, the chalkboard read at both sizes by keyboard, touch
+  and mouse, and the demo bar: a visitor has none, demo1 reaches it by Tab
+  at 1920×1080 and moves the café on by a typed time while the room's light
+  follows the server's clock with the device's twelve hours out, and demo2
+  adds and removes a bot by touch at 390×844, Escape closing its group,
+  through a resize (slice 17). CI installs Chromium for them, and spec files run one at a
   time, since they share one café that seats six.
 - **CI:** a Rust job (format, lint, `cargo test`, type drift) beside the
   existing check job, and the deploy waits for both.
@@ -721,6 +811,8 @@ renamed.
 | Sign-up, log-in and recovery attempts | 5 a minute per name from one address, so nobody elsewhere can lock a name out; 60 a minute per IP address, since a whole venue can share one |
 | Password hashing | argon2id, 19 MiB, 2 iterations, at most 2 at once |
 | Avatar looks | 4 avatars in 6 colours |
+| A demo account's jump | at most 24 hours on, at most once a minute by the café's clock (slice 17) |
+| Bots | at most 6, each staying at most 15 minutes |
 | Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start, in steps of 5; 128 kbps stereo MP3 aimed at −16 LUFS integrated, within 1 LU, true peak under −1.5 dBTP (slice 15) |
 
 ## Harness

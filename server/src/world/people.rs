@@ -13,6 +13,7 @@ pub(super) fn person_view(p: &Person, now: u64) -> PersonView {
         at: p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now)),
         walk: p.walk.clone(),
         sitting: p.sitting.is_some(),
+        bot: p.bot.is_some(),
     }
 }
 
@@ -34,7 +35,7 @@ impl World {
         self.person(id).map(|p| p.walk.as_ref().map_or(p.at, |w| walk_tile(w, now)))
     }
 
-    pub(super) fn join(&mut self, now: u64, id: u32, name: String, look: Look, out: &mut Vec<Out>) {
+    pub(super) fn join(&mut self, now: u64, id: u32, name: String, look: Look, demo: bool, out: &mut Vec<Out>) {
         if let Some(p) = self.person_mut(id) {
             // Back within the grace period, or a second tab: the same seat.
             // Coming back is a sign of life, and answers any "still there?";
@@ -67,6 +68,8 @@ impl World {
                 leaving: false,
                 sitting: None,
                 furniture: crate::limits::Bucket::new(self.tuning.furniture_burst, 1.0 / self.tuning.furniture_refill_secs, now),
+                demo,
+                bot: None,
             });
             tracing::info!(target: "action", uid = id, who = %name, what = "arrive", outcome = "ok", place = if place == Place::Inside { "inside" } else { "window" });
             let person = person_view(self.person(id).expect("just added"), now);
@@ -78,23 +81,30 @@ impl World {
                 self.arrivals.push(id);
             }
         }
-        let snapshot = Box::new(self.snapshot_for(id, now));
-        let welcome = ServerMsg::Welcome {
+        out.insert(
+            0,
+            Out {
+                to: To::One(id),
+                msg: self.welcome(id, now),
+            },
+        );
+    }
+
+    /// The whole café for `id`, as it is at `now`: on joining, and for
+    /// everyone after a jump (slice 17).
+    pub(super) fn welcome(&self, id: u32, now: u64) -> ServerMsg {
+        ServerMsg::Welcome {
             you: id,
             build: self.build.clone(),
             now,
             cap: self.tuning.cap as u32,
             chalk_hours: self.tuning.chalk_hours as u32,
             chalk_shown: self.tuning.chalk_shown as u32,
-            snapshot,
-        };
-        out.insert(
-            0,
-            Out {
-                to: To::One(id),
-                msg: welcome,
-            },
-        );
+            demo: self.person(id).is_some_and(|p| p.demo),
+            ahead: self.ahead,
+            next_jump: self.next_jump_at(),
+            snapshot: Box::new(self.snapshot_for(id, now)),
+        }
     }
 
     /// The seat waits for the grace period; what they carried goes back now,
@@ -116,11 +126,14 @@ impl World {
         self.let_go_of_cat(now, id, out);
         let i = self.people.iter().position(|p| p.id == id).expect("checked above");
         let gone = self.people.remove(i);
-        tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", outcome = "ok", why);
+        // A bot's line says which demo account added it (slice 17).
+        let added_by = gone.bot.as_ref().map(|b| b.by_name.clone());
+        tracing::info!(target: "action", uid = id, who = %gone.name, what = "leave", outcome = "ok", why, added_by);
         out.push(Out {
             to: To::All,
             msg: ServerMsg::PersonLeft { id },
         });
+        self.bots_follow(now, id, out);
         self.promote(now, out);
     }
 
@@ -145,6 +158,7 @@ impl World {
             p.walk = Some(walk.clone());
             let id = p.id;
             tracing::info!(target: "action", uid = id, who = %p.name, what = "come_in", outcome = "ok");
+            let bot = p.bot.is_some();
             out.push(Out {
                 to: To::All,
                 msg: ServerMsg::PersonPlaced {
@@ -154,7 +168,10 @@ impl World {
                     walk: Some(walk),
                 },
             });
-            self.arrivals.push(id);
+            // The cats never meet a bot.
+            if !bot {
+                self.arrivals.push(id);
+            }
         }
     }
 
@@ -369,6 +386,7 @@ pub(crate) mod tests {
                 id,
                 name: format!("p{id}"),
                 look: Look { avatar: 0, colour: 0 },
+                demo: false,
             },
         )
     }

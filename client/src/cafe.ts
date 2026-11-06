@@ -4,7 +4,10 @@ import { Connection } from "./net";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { ClientMsg } from "./protocol/ClientMsg";
 import type { ServerMsg } from "./protocol/ServerMsg";
+import { jumpText } from "./canberra";
 import { type CafeState, type Effect, afterWelcome, apply, fromWelcome, shouldPing } from "./state";
+
+const DUSTING = "Dusting off the café…";
 
 // Which server build this tab last reloaded for. Storage can be missing or
 // refuse (a private window); then the tab simply doesn't reload.
@@ -54,8 +57,10 @@ export interface CafeHooks {
 /** The live café: one connection, the state it keeps up to date, and who's listening. */
 export class Cafe {
   state: CafeState | null = null;
-  /** The café is still replaying its sleep; its welcome is on the way (slice 07). */
+  /** The café is still replaying its sleep, or a jump; its welcome is on the way (slice 07). */
   waking = false;
+  /** What the cover says meanwhile: dusting off, or a demo account's jump (slice 17). */
+  wakingText = DUSTING;
   /** A café shown before a reconnect landed on a waking server, for "said this visit". */
   private parked: CafeState | null = null;
   /** Whether a welcome has come yet, to say "You're walking into the café" once. */
@@ -126,7 +131,7 @@ export class Cafe {
 
   statusLine(): string {
     if (this.replaced) return "You opened the café in another tab.";
-    if (this.waking && !this.state) return "Dusting off the café…";
+    if (this.waking && !this.state) return this.wakingText;
     const s = this.state;
     if (!s || !this.connection.isOpen()) return "Reconnecting to the café…";
     const people = [...s.people.values()];
@@ -137,10 +142,13 @@ export class Cafe {
   }
 
   private receive(msg: ServerMsg): void {
-    if (msg.type === "waking") {
+    if (msg.type === "waking" || msg.type === "jumping") {
       // Nothing of the café until it's awake: not even a stale copy from
-      // before a reconnect (slice 07).
-      if (!this.waking) announce("Dusting off the café…");
+      // before a reconnect (slice 07). A jump covers it the same way while
+      // the café lives the hours between (slice 17).
+      const text = msg.type === "jumping" ? jumpText(msg.by, msg.to) : DUSTING;
+      if (!this.waking || text !== this.wakingText) announce(text);
+      this.wakingText = text;
       this.waking = true;
       this.parked = this.state ?? this.parked;
       this.state = null;
@@ -160,6 +168,7 @@ export class Cafe {
       if (!this.welcomed || this.waking) announce("You're walking into the café.");
       this.welcomed = true;
       this.waking = false;
+      this.wakingText = DUSTING;
       this.parked = null;
       if (document.hidden) this.send({ type: "presence", hidden: true });
     } else if (this.state) {

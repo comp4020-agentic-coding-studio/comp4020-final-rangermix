@@ -24,6 +24,14 @@ describe("accounts", () => {
     expect((await res.json()).error).toBe("nameTaken");
   });
 
+  it("keeps the café's own names: demo and digits, and bot_ (slice 17)", async () => {
+    for (const name of ["demo7", "DEMO42", "bot_7", "Bot_x"]) {
+      const res = await post("/api/signup", { name, password: "another one", look: { avatar: 0, colour: 0 } });
+      expect(res.status, name).toBe(409);
+      expect((await res.json()).error, name).toBe("nameTaken");
+    }
+  });
+
   it("logs in with the right password only", async () => {
     const account = await signUp();
     expect((await post("/api/login", { name: account.name, password: "not it at all" })).status).toBe(401);

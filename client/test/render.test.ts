@@ -23,6 +23,9 @@ function welcome(): Welcome {
     cap: 6,
     chalkHours: 24,
     chalkShown: 8,
+    demo: false,
+    ahead: 0,
+    nextJump: 0,
     snapshot: {
       // The café's own floor, room.toml's, 13 by 13 since slice 16, so the
       // room drawn here is the one the client draws (slice 16's review, finding 9).
@@ -36,8 +39,8 @@ function welcome(): Welcome {
         catalogue: [],
       },
       people: [
-        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 1, y: 6 }, walk: null, sitting: false },
-        { id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 9, y: 8 }, walk: null, sitting: false },
+        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 1, y: 6 }, walk: null, sitting: false, bot: false },
+        { id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 9, y: 8 }, walk: null, sitting: false, bot: false },
       ],
       cats: [
         { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 2, y: 4 }, pose: "sit", walk: null, heldBy: null },
@@ -92,7 +95,7 @@ describe("the room's draw order", () => {
       const w = welcome();
       const at = seat ? { x: seat.x, y: seat.y } : { x: 1, y: 5 };
       if (seat) w.snapshot.room.furniture.push(seat);
-      w.snapshot.people[0] = { ...w.snapshot.people[0], at, sitting: true };
+      w.snapshot.people[0] = { ...w.snapshot.people[0], at, sitting: true, bot: false };
       w.snapshot.cats[0] = { ...w.snapshot.cats[0], at, pose: "nap" };
       const order = drawOrder(fromWelcome(w, 10_000), 10_000).map((d) => d.label);
       expect(order.indexOf("cat mochi"), `on ${seat ? "the chair" : "the sofa"}`).toBeGreaterThan(order.indexOf("person 1"));
@@ -166,7 +169,7 @@ describe("the room's draw order", () => {
 
   it("says how high someone is drawn, for their bubble: up on a seat, or on the floor", () => {
     const w = welcome();
-    w.snapshot.people[0] = { ...w.snapshot.people[0], at: { x: 1, y: 5 }, sitting: true };
+    w.snapshot.people[0] = { ...w.snapshot.people[0], at: { x: 1, y: 5 }, sitting: true, bot: false };
     const s = fromWelcome(w, 10_000);
     // The sofa's seat is 9 px (slice 11's model; its back is 16); someone on it sinks 4 px in.
     expect(personLift(s, s.people.get(1)!, 10_000)).toBe(5);
@@ -628,7 +631,7 @@ describe("a figure's shadow (slice 13's review, finding 5)", () => {
 
   it("casts a small shadow from a cat and a person standing on the open floor, away from the windows", async () => {
     const cat = { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 3, y: 6 }, pose: "sit" as const, walk: null, heldBy: null };
-    const me = { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 8, y: 6 }, walk: null, sitting: false };
+    const me = { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside" as const, at: { x: 8, y: 6 }, walk: null, sitting: false, bot: false };
     const { p, floor } = await scene([cat], [me]);
     expect(darkened(p, floor, 3, 6), "under the cat").toBeGreaterThan(6);
     expect(darkened(p, floor, 8, 6), "under the person").toBeGreaterThan(6);
@@ -995,7 +998,7 @@ describe("the frame for what a cat is doing (slice 11)", () => {
     const w = welcome();
     const at = opts.at ?? { x: 6, y: 6 };
     w.snapshot.room.furniture = opts.furniture ?? [];
-    w.snapshot.people = [{ ...w.snapshot.people[0], at: opts.sitter ? at : { x: 1, y: 6 }, sitting: !!opts.sitter }];
+    w.snapshot.people = [{ ...w.snapshot.people[0], at: opts.sitter ? at : { x: 1, y: 6 }, sitting: !!opts.sitter, bot: false }];
     const walk = opts.walk ? { path: [at, { x: at.x + 1, y: at.y }, { x: at.x + 2, y: at.y }], start: 10_000, speed: 1 } : null;
     w.snapshot.cats = [{ id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at, pose, walk, heldBy: null }];
     const s = fromWelcome(w, 10_000);
@@ -1203,7 +1206,7 @@ describe("standing on the part under you (slice 11's review, finding 3)", () => 
     const w = welcome();
     w.snapshot.room.furniture = [piece(1, "sofa", 4, 5, 3, 1)];
     w.snapshot.cats = [];
-    w.snapshot.people = [{ ...w.snapshot.people[0], at: { x: 5, y: 5 }, sitting: true }];
+    w.snapshot.people = [{ ...w.snapshot.people[0], at: { x: 5, y: 5 }, sitting: true, bot: false }];
     const lift = personLift(fromWelcome(w, 10_000), { walk: null, at: { x: 5, y: 5 } }, 10_000);
     // The seat is 9 px; sinking 4 into it.
     expect(lift).toBe(5);

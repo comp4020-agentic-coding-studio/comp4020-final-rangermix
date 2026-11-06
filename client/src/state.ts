@@ -40,6 +40,12 @@ export interface CafeState {
   cap: number;
   /** Server clock minus local clock, in milliseconds. */
   offset: number;
+  /** You're a demo account, with the bar of controls (slice 17). */
+  demo: boolean;
+  /** How far a demo account has moved the café's clock on, in milliseconds. */
+  ahead: number;
+  /** When, by the café's clock, it can move on again. */
+  nextJump: number;
   room: RoomView;
   people: Map<number, PersonView>;
   cats: Map<string, Cat>;
@@ -113,6 +119,9 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     build: msg.build,
     cap: msg.cap,
     offset: msg.now - localNow,
+    demo: msg.demo,
+    ahead: msg.ahead,
+    nextJump: msg.nextJump,
     room: s.room,
     people: new Map(s.people.map((p) => [p.id, p])),
     cats: new Map(s.cats.map((c) => [c.id, { ...c, reaction: null }])),
@@ -218,6 +227,7 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     case "replaced":
       return [{ kind: "replaced" }];
     case "waking":
+    case "jumping":
       return [];
     case "personJoined": {
       const isNew = !state.people.has(msg.person.id);

@@ -11,11 +11,14 @@ const s = fromWelcome(
     cap: 6,
     chalkHours: 24,
     chalkShown: 8,
+    demo: false,
+    ahead: 0,
+    nextJump: 0,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [
-        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false },
-        { id: 2, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false },
+        { id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 5, y: 5 }, walk: null, sitting: false, bot: false },
+        { id: 2, name: "jo", look: { avatar: 0, colour: 2 }, place: "window", at: { x: 7, y: 0 }, walk: null, sitting: false, bot: false },
       ],
       cats: [{ id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: { x: 6, y: 5 }, pose: "sit", walk: null, heldBy: null }],
       yourTrust: [{ cat: "mochi", value: 23.5, level: "familiar" }],
@@ -98,6 +101,17 @@ describe("panels", () => {
     expect(box.textContent).toContain("Inside (1/6)");
     expect(box.textContent).toContain("me (you)");
     expect(box.textContent).toContain("At the window (1)");
+  });
+
+  it("marks a bot as a bot, so no name can pass for one (slice 17's review, finding 13)", () => {
+    const box = document.createElement("div");
+    const people = new Map(s.people);
+    const look = { avatar: 0, colour: 0 };
+    people.set(9, { id: 9, name: "bot_1", look, place: "inside", at: { x: 3, y: 3 }, walk: null, sitting: false, bot: true });
+    people.set(10, { id: 10, name: "bot-2", look, place: "inside", at: { x: 4, y: 3 }, walk: null, sitting: false, bot: false });
+    renderHere(box, { ...s, people });
+    expect(box.textContent).toContain("bot_1 (a bot)");
+    expect(box.textContent).not.toContain("bot-2 (a bot)");
   });
 
   it("keeps Your cats' rows in place through every update", () => {
