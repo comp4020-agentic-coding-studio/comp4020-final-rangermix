@@ -170,6 +170,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       // Each edge, 2 px in, except where something floats over it: a bar,
       // a panel or a menu, or near enough for its shadow (24 px) to shade it.
       const over = [...document.querySelectorAll(".status > *, .talk, .panel, .menu, .bubble")]
+        .filter((e) => getComputedStyle(e).visibility !== "hidden")
         .map((e) => e.getBoundingClientRect())
         .filter((r) => r.width > 0 && r.height > 0);
       const free = (x: number, y: number) => !over.some((r) => x > r.left - 24 && x < r.right + 24 && y > r.top - 24 && y < r.bottom + 24);
@@ -200,11 +201,13 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     const { page } = await visit({ width: 390, height: 844 }, true);
     await page.waitForFunction(() => document.body.classList.contains("layout-b"));
     await page.locator("#room").focus();
-    // At 3× the room is bigger than the phone and the pan stops at its
-    // edges, so an edge shows the room, as it did before slice 16: never the
-    // page's own background (Latte's base, the light theme's; Mocha's the
-    // dark's). A guard, not a change: it passed before the street was carried.
+    // The bars float over the screen's top and foot, where the 13 by 12 room
+    // at 3× (792 px tall in 844) leaves the street to show: they're set
+    // aside for the sample, so the sample is the screen's own edges (slice
+    // 16's review, finding 6). Nothing of the page may show there.
+    const unfloat = await page.addStyleTag({ content: ".status, .talk { visibility: hidden !important; }" });
     const page_ = ["#eff1f5", "#1e1e2e"];
+    const street = streetColours("day");
     let seen = 0;
     for (const keys of [["ArrowLeft", 13], ["ArrowRight", 13], ["ArrowUp", 13], ["ArrowDown", 13]] as const) {
       for (let i = 0; i < keys[1]; i++) await page.keyboard.press(keys[0]);
@@ -214,7 +217,11 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
         expect(page_, `panned ${keys[0]}: the edge at ${p.at} is the room or the street, not the page`).not.toContain(p.colour);
       }
     }
-    expect(seen, "edge points looked at").toBeGreaterThan(20);
+    expect(seen, "edge points looked at").toBeGreaterThan(80);
+    // Above and below the room the screen is the street's.
+    const shot = await edges(page);
+    expect(shot.some((p) => street.includes(p.colour)), "the street shows past the room").toBe(true);
+    await unfloat.evaluate((el) => el.remove());
   });
 
   it("draws the terrace in the bottom corners, and a click or tap anywhere on it does nothing", { timeout: 90_000 }, async () => {
