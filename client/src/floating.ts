@@ -1,5 +1,5 @@
 import { announce } from "./announce";
-import { PHONE, type PanelSpot, type PanelsSaved, panelAt, savePanels, savedPanels, spotFor } from "./layout";
+import { PHONE, type PanelSpot, type PanelsSaved, clearOf, panelAt, savePanels, savedPanels, spotFor } from "./layout";
 
 // The panels over the room on a desktop (slice 14, ADR 0018): the
 // chalkboard, your cats, who's here and the music (slice 15) float in the
@@ -47,6 +47,12 @@ export class Floating {
   constructor(
     private readonly stage: HTMLElement,
     private readonly panels: HTMLElement[],
+    /**
+     * Points in the window no panel may grow over: the floor's corner
+     * tiles' middles (slice 16's review, finding 7). A panel is capped,
+     * and scrolls, rather than cover one.
+     */
+    private readonly keepClear: () => { x: number; y: number }[] = () => [],
   ) {
     this.saved = savedPanels();
     for (const panel of panels) {
@@ -119,7 +125,13 @@ export class Floating {
       // The music is a fixed size, never growing with the café: it gets
       // all of itself, and who's here above it what's left (slice 15's
       // review, finding 7).
-      const most = panel.id === "music-panel" ? this.natural(panel) : panel.id === "here-panel" && this.music ? stage.height - this.natural(this.music) - 2 * GAP : stage.height * (SHARE[panel.id] ?? 1) - GAP;
+      const share = panel.id === "music-panel" ? this.natural(panel) : panel.id === "here-panel" && this.music ? stage.height - this.natural(this.music) - 2 * GAP : stage.height * (SHARE[panel.id] ?? 1) - GAP;
+      // As tall as it may be where it starts, in the room's empty corner,
+      // clear of the floor's corner tiles however much it holds (slice 16's
+      // review, finding 7). Worked out from that corner wherever it's been
+      // moved, so moving it never grows or shrinks it, nor does a reload.
+      const home = START[panel.id];
+      const most = panel.id === "music-panel" || !home ? share : clearOf(share, home, panel.offsetWidth, stage, this.keepClear());
       panel.style.setProperty("--most", `${Math.floor(Math.max(80, most))}px`);
       this.show(panel, panelAt(this.saved[panel.id].spot, this.sizeOf(panel), stage));
     }

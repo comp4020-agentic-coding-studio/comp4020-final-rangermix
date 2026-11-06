@@ -221,7 +221,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     // Above and below the room the screen is the street's.
     const shot = await edges(page);
     expect(shot.some((p) => street.includes(p.colour)), "the street shows past the room").toBe(true);
-    await unfloat.evaluate((el) => el.remove());
+    await unfloat.evaluate((el) => (el as Element).remove());
   });
 
   it("draws the terrace in the bottom corners, and a click or tap anywhere on it does nothing", { timeout: 90_000 }, async () => {
@@ -467,5 +467,52 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
         return out;
       }, { timeout: 3000 })
       .toEqual([]);
+  });
+
+  // Slice 16's review, finding 7: the panels cleared every tile's middle
+  // only for today's content. A fourth cat (a data file) grew your cats over
+  // the floor's left corner tile, and a long chat grew who's here over its
+  // right tip.
+  it("keeps the floor's corner tiles clear of the panels as their content grows: a fourth cat, a long chat", { timeout: 90_000 }, async () => {
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    contexts.push(context);
+    const page = await context.newPage();
+    // A fourth cat in the welcome, as one more file in content/cats/ would give.
+    await page.routeWebSocket(/\/ws$/, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((m) => {
+        const f = JSON.parse(String(m));
+        if (f.type === "welcome") {
+          const c = f.snapshot.cats[0];
+          f.snapshot.cats.push({ ...c, id: "kuro", name: "Kuro", at: { x: 6, y: 6 }, walk: null, heldBy: null });
+          ws.send(JSON.stringify(f));
+        } else ws.send(m);
+      });
+      ws.onMessage((m) => server.send(m));
+    });
+    await page.goto(baseUrl);
+    await page.locator("#signup input[name=name]").fill(uniqueName("f"));
+    await page.locator("#signup input[name=password]").fill("correct horse");
+    await page.locator("#signup button[type=submit]").click();
+    await page.locator("#code-done").click();
+    await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    await expect.poll(() => page.locator("#your-cats .cat-row").count()).toBe(4);
+    // A long chat: fourteen lines said this visit, paced to the café's
+    // limit on speech (a burst of 5, then one every 2 s).
+    for (let i = 0; i < 14; i++) {
+      await page.locator("#talk-input").fill(`line ${i + 1} of a long chat about the cats and the weather today`);
+      await page.locator("#talk-input").press("Enter");
+      await page.waitForTimeout(i < 4 ? 300 : 2100);
+    }
+    await expect.poll(() => page.locator("#said li").count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(14);
+    await page.waitForTimeout(400);
+    // Every floor tile's middle is the room's.
+    const covered: string[] = [];
+    for (const t of await floorTiles(page)) {
+      const mid = { x: t.corners.reduce((n, c) => n + c.x, 0) / 4, y: t.corners.reduce((n, c) => n + c.y, 0) / 4 };
+      const on = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest(".panel")?.id ?? null, [mid.x, mid.y]);
+      if (on) covered.push(`(${t.x}, ${t.y}) under ${on}`);
+    }
+    expect(covered).toEqual([]);
   });
 });

@@ -114,7 +114,22 @@ function enter(me: ApiMe): void {
   document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
   // On a desktop the panels float over the room's corners (slice 14).
-  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel"), $("music-panel")]);
+  // The floor's corner tiles, in the window: no panel grows over them (slice 16's review, finding 7).
+  const corners = () => {
+    const room = cafe.state?.room;
+    if (!room) return [];
+    const box = $("stage").getBoundingClientRect();
+    return [
+      { x: 0, y: 1 },
+      { x: room.width - 1, y: 1 },
+      { x: 0, y: room.height - 1 },
+      { x: room.width - 1, y: room.height - 1 },
+    ].map((t) => {
+      const at = stage.tileToCss(t.x + 0.5, t.y + 0.5);
+      return { x: box.left + at.left, y: box.top + at.top };
+    });
+  };
+  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel"), $("music-panel")], corners);
   const bubbles = new Bubbles(overlay, stage);
   const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"), (why) => {
     toast(overlay, why);
