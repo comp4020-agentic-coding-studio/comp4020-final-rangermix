@@ -200,8 +200,8 @@ async function tabToCat(v: Visit, ok: (c: CatSeen) => boolean = () => true): Pro
  */
 async function ringFromTile(page: Page, tile: Tile): Promise<{ off: number; px: number }> {
   const room = (await page.locator("#room").boundingBox())!;
-  // A tile's diamond is 32 of the canvas's 336 pixels across.
-  const px = (room.width * 32) / 336;
+  // A tile's diamond is 32 of the canvas's 1× pixels across.
+  const px = (room.width * 32) / (await oneX(page)).width;
   const at = await tileAt(page, tile);
   const ring = page.locator(".menu.ring");
   const centre = { x: Number(await ring.getAttribute("data-centre-x")), y: Number(await ring.getAttribute("data-centre-y")) };
@@ -248,14 +248,19 @@ const tileAt = (page: Page, tile: Tile) =>
 
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute("role") || "");
 const roomWidth = (page: Page) => page.evaluate(() => document.getElementById("room")?.style.width);
+/** The room's canvas at 1×, from the page: it grows with the floor (slice 16), 400 by 264 for 13 by 12. */
+const oneX = (page: Page) => page.evaluate(() => (window as unknown as { cafeRoom: { size: { width: number; height: number } } }).cafeRoom.size);
+/** The room's width on the page at `scale`, as its style says it. */
+const widthAt = async (page: Page, scale: number) => `${(await oneX(page)).width * scale}px`;
 
 describe("in a browser", { timeout: 30_000 }, () => {
   it("does everything by keyboard at both sizes, through a resize mid-use", async () => {
     const { page } = await visit({ width: 1920, height: 1080 });
     expect(await focused(page)).toBe("room");
-    // The room at an angle, 336 pixels wide at 1x, at 4x with the panels
-    // floating over it (slice 14).
-    expect(await roomWidth(page)).toBe("1344px");
+    // The room at an angle at 4× with the panels and bars floating over it
+    // (slices 14 and 16): 1600 px for the 13 by 12 floor.
+    expect(await oneX(page)).toEqual({ width: 400, height: 264 });
+    expect(await roomWidth(page)).toBe(await widthAt(page, 4));
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
@@ -267,7 +272,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(await focused(page)).toBe("room");
     // A phone opens in the bigger room, at 3x, panned to follow you.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1008px");
+    await page.waitForFunction((w) => document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === w, await widthAt(page, 3));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await page.keyboard.press("Escape");
     await page.keyboard.press("Tab");
@@ -276,7 +281,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Enter");
     await page.locator(".bubble", { hasText: "hello by keyboard" }).waitFor();
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === "1344px");
+    await page.waitForFunction((w) => !document.body.classList.contains("layout-b") && document.getElementById("room")?.style.width === w, await widthAt(page, 4));
     await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("room");
     // Forward from the talk box, past Say and the emotes, to the treat
@@ -295,7 +300,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
 
   it("floats the chalkboard, your cats and who's here in the room's corners at 1920×1080, the room at 4× and every tile clear (slice 14)", async () => {
     const { page } = await visit({ width: 1920, height: 1080 });
-    expect(await roomWidth(page)).toBe("1344px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 4));
     const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
     // The panels are placed again once their content is in and they grow
     // (a resize observer, the frame after): wait for them to settle inside
@@ -329,7 +334,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // Two on the left never overlap.
     expect(panels.chalkboard.y + panels.chalkboard.height).toBeLessThanOrEqual(panels.cats.y + 0.5);
     // Nothing important under them where they start: every tile's middle, and the chalkboard's, is the room's.
-    const tiles = [{ x: 8, y: 0 }, ...Array.from({ length: 9 * 12 }, (_, i) => ({ x: i % 12, y: 1 + Math.floor(i / 12) }))];
+    // The floor is 13 by 12 since slice 16, the music panel the fourth.
+    const tiles = [{ x: 8, y: 0 }, ...Array.from({ length: 12 * 13 }, (_, i) => ({ x: i % 13, y: 1 + Math.floor(i / 13) }))];
     for (const t of tiles) {
       const at = await tileAt(page, t);
       expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [at.x, at.y]), `the tile (${t.x}, ${t.y})`).toBe("room");
@@ -404,7 +410,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForFunction(() => document.body.classList.contains("layout-b"));
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => document.getElementById("room")?.style.width === "1344px");
+    await page.waitForFunction((w) => document.getElementById("room")?.style.width === w, await widthAt(page, 4));
     for (const sel of ["#chalkboard", "#cats-panel", "#here-panel"]) await inside(sel);
     // Remembered through a reload.
     const before = await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box));
@@ -476,7 +482,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // Over the cat by keyboard: the panel's middle onto the cat's middle.
     const sprite = async () => {
       const floor = await tileAt(page, CAT);
-      const scale = (await page.locator("#room").boundingBox())!.width / 336;
+      const scale = (await page.locator("#room").boundingBox())!.width / (await oneX(page)).width;
       return { x: floor.x, y: floor.y - (CAT_PX / 2 - 2) * scale };
     };
     const target = await sprite();
@@ -506,8 +512,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const sentBefore = v.sent.length;
     const bare = await (async () => {
       const b = await box();
-      for (let y = 1; y < 10; y++)
-        for (let x = 0; x < 12; x++) {
+      const floor = v.frames.find((f) => f.type === "welcome")!.snapshot.room;
+      for (let y = 1; y < floor.height; y++)
+        for (let x = 0; x < floor.width; x++) {
           if (x === CAT.x && y === CAT.y) continue;
           const at = await tileAt(page, { x, y });
           const inPanel = at.x > b.x + 4 && at.x < b.x + b.width - 4 && at.y > b.y + 4 && at.y < b.y + b.height - 4;
@@ -534,7 +541,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.mouse.move(title.x + 200, title.y + 150, { steps: 5 });
     await page.mouse.up();
     expect(await box()).toEqual(pinnedAt);
-    const text = (await page.locator("#your-cats .cat-row").first().boundingBox())!;
+    // Your cats is drawn again on every message from the café, so the row is
+    // read until it's there (CI caught it between two, 2026-11-06).
+    let text: { x: number; y: number; width: number; height: number } | null = null;
+    await expect.poll(async () => (text = await page.locator("#your-cats .cat-row").first().boundingBox())).not.toBeNull();
+    text = text!;
     await page.mouse.move(text.x + 2, text.y + 4);
     await page.mouse.down();
     await page.mouse.move(text.x + text.width - 2, text.y + text.height - 2, { steps: 5 });
@@ -685,7 +696,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
         server.onMessage((m) => {
           const f = JSON.parse(String(m));
           if (f.type === "welcome") {
-            f.snapshot.cats.forEach((c: Frame, i: number) => Object.assign(c, { at: { x: 11, y: 9 - i }, walk: null, pose: "sit", heldBy: null }));
+            // The far column's floor, from the front, past anything standing there.
+            const room = f.snapshot.room;
+            const x = room.width - 1;
+            const free = Array.from({ length: room.height - 1 }, (_, i) => room.height - 1 - i).filter((y) => !room.furniture.some((p: Frame) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h));
+            f.snapshot.cats.forEach((c: Frame, i: number) => Object.assign(c, { at: { x, y: free[i] }, walk: null, pose: "sit", heldBy: null }));
             ws.send(JSON.stringify(f));
           } else if (!f.cat) ws.send(m);
         });
@@ -818,7 +833,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
       }
       // The sprite's middle: 12 px up the seat, then half its 24 px (slice
       // 11), from feet 2 px below the tile's centre; times the room's scale.
-      const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
+      const scale = (await v.page.locator("#room").boundingBox())!.width / (await oneX(v.page)).width;
       const floor = await tileAt(v.page, SEAT);
       const at = { x: floor.x, y: floor.y - (12 + CAT_PX / 2 - 2) * scale };
       expect(at.x, "the cat is on screen").toBeGreaterThan(0);
@@ -834,10 +849,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
   it("keeps a cat's menu opened low in the room whole on screen, by mouse and by keyboard, at both desktop sizes", async () => {
     // A cat's menu is tall, and opened on the bottom row it ran off the
     // room's bottom, under the talk bar. Cats wander, so this page is shown
-    // one sitting still on the bottom row at (5,9): its welcome says so, and
+    // one sitting still on the bottom row, (5,12) since slice 16's 13 by 12
+    // floor: its welcome says so, and
     // what the café says of that cat later is held back. Only what this page
     // draws changes; every action is still the café's to answer.
-    const LOW = { x: 5, y: 9 };
+    const LOW = { x: 5, y: 12 };
     const lowCat = (page: Page) =>
       page.routeWebSocket(/\/ws$/, (ws) => {
         const server = ws.connectToServer();
@@ -855,8 +871,10 @@ describe("in a browser", { timeout: 30_000 }, () => {
     const expectMenuInStage = async (page: Page) => {
       const menu = page.locator(".menu");
       await menu.waitFor();
-      const [m, s] = await Promise.all([menu.boundingBox(), page.locator("#stage").boundingBox()]);
+      const [m, s, talk] = await Promise.all([menu.boundingBox(), page.locator("#stage").boundingBox(), page.locator(".talk").boundingBox()]);
       expect(m!.y + m!.height, "the menu's bottom within the stage").toBeLessThanOrEqual(s!.y + s!.height + 0.5);
+      // The talk bar floats over the stage's foot on a desktop (slice 16): the menu stays above it.
+      expect(m!.y + m!.height, "the menu's bottom above the talk bar").toBeLessThanOrEqual(talk!.y + 0.5);
       expect(m!.y).toBeGreaterThanOrEqual(s!.y - 0.5);
       expect(m!.x + m!.width, "the menu's right within the stage").toBeLessThanOrEqual(s!.x + s!.width + 0.5);
       expect(m!.x).toBeGreaterThanOrEqual(s!.x - 0.5);
@@ -879,8 +897,8 @@ describe("in a browser", { timeout: 30_000 }, () => {
       await page.keyboard.press("Escape");
       // By keyboard: the pointer to the bottom row's left end, along to the cat, and Enter.
       await page.locator("#room").focus();
-      for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowDown");
-      for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowLeft");
+      for (let i = 0; i < 13; i++) await page.keyboard.press("ArrowDown");
+      for (let i = 0; i < 13; i++) await page.keyboard.press("ArrowLeft");
       for (let i = 0; i < LOW.x; i++) await page.keyboard.press("ArrowRight");
       await page.keyboard.press("Enter");
       await expectMenuInStage(page);
@@ -909,7 +927,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
   it("opens a phone in the bigger room, follows the pointer, opens rings, and remembers a switch to the whole room", async () => {
     const { page } = await visit({ width: 390, height: 844 }, true);
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(true);
-    expect(await roomWidth(page)).toBe("1008px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 3));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     // The keyboard's pointer pulls the view along with it.
     const leftOf = () => page.evaluate(() => document.getElementById("room")?.style.left);
@@ -932,13 +950,13 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.keyboard.press("Escape");
     // The whole room, at 1x across the phone, remembered through a reload.
     await page.locator("#layout-switch").tap();
-    expect(await roomWidth(page)).toBe("336px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 1));
     await page.reload();
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(false);
-    expect(await roomWidth(page)).toBe("336px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 1));
     await page.locator("#layout-switch").tap();
-    expect(await roomWidth(page)).toBe("1008px");
+    expect(await roomWidth(page)).toBe(await widthAt(page, 3));
   });
 
   it("puts a treat down from beside the emotes, by mouse on a desktop and by touch on a phone, and the other visitor sees it (slice 14)", async () => {
@@ -1051,7 +1069,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
       await v.page.waitForTimeout(400);
       // The middle of its sprite, half its 24 px (slice 11) up from feet 2 px
       // below the tile's centre, and up on whatever it's on.
-      const scale = (await v.page.locator("#room").boundingBox())!.width / 336;
+      const scale = (await v.page.locator("#room").boundingBox())!.width / (await oneX(v.page)).width;
       const floor = await tileAt(v.page, cat.at);
       await v.page.touchscreen.tap(floor.x, floor.y - (CAT_PX / 2 - 2 + lift) * scale);
       const pick = v.page.locator(".menu").getByRole("menuitem", { name: `Pick ${cat.name} up` });
@@ -1369,9 +1387,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // the cats later is held back; it still answers everything.
     const CAT = { x: 6, y: 6 };
     const FLOOR = { x: 9, y: 8 };
+    // By the plain wall at the back, x = the room's last column (12 for the
+    // 13 by 12 floor, slice 16), clear of room.toml's plant at (11, 1).
     const ASIDE = [
-      { x: 11, y: 1 },
-      { x: 11, y: 2 },
+      { x: 12, y: 1 },
+      { x: 12, y: 2 },
     ];
     let coat = "";
     // The café at 10:00 by its own clock, which the page keeps (slice 17).
@@ -1416,8 +1436,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
           const box = canvas.getBoundingClientRect();
           // Canvas pixels per CSS pixel, and the room's scale on the page.
           const perCss = canvas.width / box.width;
-          const roomScale = box.width / 336;
-          const at = (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom.tileAt(x, y);
+          const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+          const roomScale = box.width / room.size.width;
+          const at = room.tileAt(x, y);
           const k = roomScale * perCss;
           const cx = Math.round((at.x - box.left) * perCss);
           const cy = Math.round((at.y - box.top) * perCss - up * k);
@@ -1495,22 +1516,84 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // beside the floor's left, right and front tips. Each point is read
     // first, to be sure it's the street that's clicked.
     const box = (await v.page.locator("#room").boundingBox())!;
-    const colourAt = (fx: number, fy: number) =>
-      v.page.evaluate(
-        ([fx, fy]) => {
-          const canvas = document.getElementById("room") as HTMLCanvasElement;
-          const [r, g, b] = canvas.getContext("2d")!.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
-          return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
-        },
-        [fx, fy],
-      );
     const sentBefore = v.sent.length;
-    // The floor's tips at 1×: left (0, 152), right (336, 136) and front (176, 232) of 336 by 232.
-    for (const [fx, fy] of [[0.01, 0.02], [0.99, 0.02], [0.01, 0.97], [0.99, 0.97], [0.01, 0.76], [0.99, 0.72], [0.4, 0.99]]) {
-      expect(street("day"), `the point (${fx}, ${fy}) is the street`).toContain(await colourAt(fx, fy));
-      await v.page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+    // The floor's tips at 1×, for the 13 by 12 floor: left (0, 160), right
+    // (400, 152) and front (192, 256) of 400 by 264; these points are clear of them.
+    // The 13 by 12 room reaches under the panels and the floating bars at
+    // 4× (slice 16), so the points are found, not fixed: in each corner of
+    // the room's canvas, the first point whose pixel is the street's and
+    // where the canvas is what a click reaches. (By the front tip, the
+    // street is under the floating talk bar now.)
+    const regions: [string, number, number, number, number][] = [
+      ["top left", 0, 0.3, 0, 0.35],
+      ["top right", 0.7, 1, 0, 0.35],
+      ["bottom left", 0, 0.3, 0.6, 1],
+      ["bottom right", 0.7, 1, 0.6, 1],
+    ];
+    const points = await v.page.evaluate(
+      ([regions, colours]) => {
+        const canvas = document.getElementById("room") as HTMLCanvasElement;
+        const r = canvas.getBoundingClientRect();
+        const ctx = canvas.getContext("2d")!;
+        // The floor and its walls as drawn, from the café's own map: the
+        // floor's diamond, raised by the walls' height, and its slab under
+        // it. A point off all of it is the street, whatever its colour.
+        const room = (window as unknown as { cafeRoom: { size: { width: number }; grid: { width: number; height: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+        const scale = r.width / room.size.width;
+        const { width: w, height: h } = room.grid;
+        const corner = (gx: number, gy: number) => {
+          // tileAt gives a tile's middle: a corner is half a tile back on each axis.
+          const m = room.tileAt(gx, gy);
+          const right = room.tileAt(gx + 1, gy);
+          const down = room.tileAt(gx, gy + 1);
+          return { x: m.x - (right.x - m.x) / 2 - (down.x - m.x) / 2, y: m.y - (right.y - m.y) / 2 - (down.y - m.y) / 2 };
+        };
+        const [left, back, rightTip, front] = [corner(0, 1), corner(w, 1), corner(w, h), corner(0, h)];
+        const wall = 56 * scale;
+        const slab = 8 * scale;
+        // The room as one shape: up the walls from the back edges, down the slab under the front ones.
+        const shape = [
+          { x: left.x, y: left.y - wall },
+          { x: back.x, y: back.y - wall },
+          { x: rightTip.x, y: rightTip.y - wall },
+          { x: rightTip.x, y: rightTip.y + slab },
+          { x: front.x, y: front.y + slab },
+          { x: left.x, y: left.y + slab },
+        ];
+        const inRoom = (x: number, y: number) => {
+          let inside = false;
+          for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+            const [a, b] = [shape[i], shape[j]];
+            if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+          }
+          return inside;
+        };
+        const out: { where: string; x: number; y: number }[] = [];
+        for (const [where, x0, x1, y0, y1] of regions) {
+          search: for (let fy = y0 + 0.005; fy < y1; fy += 0.01) {
+            for (let fx = x0 + 0.005; fx < x1; fx += 0.01) {
+              const x = r.left + r.width * fx;
+              const y = r.top + r.height * fy;
+              if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight || inRoom(x, y) || document.elementFromPoint(x, y)?.id !== "room") continue;
+              const [cr, cg, cb] = ctx.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
+              if (colours.includes(`#${[cr, cg, cb].map((c) => c.toString(16).padStart(2, "0")).join("")}`)) {
+                out.push({ where, x, y });
+                break search;
+              }
+            }
+          }
+        }
+        return out;
+      },
+      [regions, street("day")] as const,
+    );
+    expect(points.map((p) => p.where), "a street point to click in each corner and by the front").toEqual(regions.map((r) => r[0]));
+    for (const p of points) {
+      const before = v.sent.length;
+      await v.page.mouse.click(p.x, p.y);
       await v.page.waitForTimeout(150);
-      expect(await v.page.locator(".menu").count(), `a click on the street at (${fx}, ${fy})`).toBe(0);
+      expect(await v.page.locator(".menu").count(), `a click on the street ${p.where}`).toBe(0);
+      expect(v.sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what a click on the street ${p.where} (${Math.round(p.x)}, ${Math.round(p.y)}) sent`).toEqual([]);
     }
     expect(v.sent.slice(sentBefore).filter((f) => f.type !== "here").map((f) => f.type), "what clicks on the street sent").toEqual([]);
     // On to 22:00 on the same page: the night's street, with a star or a lit

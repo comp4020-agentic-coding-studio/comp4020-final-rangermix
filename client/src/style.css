@@ -15,7 +15,13 @@
   --error: #d20f39; /* red */
   --placeholder: #5c5f77; /* subtext1, as muted */
   --track: #ccd0da; /* surface0: the trust bar at 3:1 */
-  --focus: #1e66f5; /* blue */
+  /* The focus ring: an outline in --focus and a halo just outside it in
+     --focus-halo, so over the room and the street, whatever is behind, one
+     of the two holds 3:1 (slice 16's review, finding 4). Over the street's
+     mid tones Latte's blue can't, so the light theme's ring is crust on
+     white. */
+  --focus: #11111b; /* crust */
+  --focus-halo: #ffffff;
   /* A panel over the room (slice 14): what's behind is frosted (blurred,
      then squeezed toward white), and the card goes over it thinly, a
      quarter, or a tenth dimmed, so the room shows through as soft shapes
@@ -43,6 +49,7 @@
     --placeholder: #a6adc8; /* subtext0, as muted */
     --track: #45475a; /* surface1 */
     --focus: #89b4fa; /* blue */
+    --focus-halo: #000000;
     /* Squeezed toward black instead. */
     --glass-filter: blur(3px) contrast(1) brightness(0.37);
     --glass-alpha: 0.25;
@@ -62,7 +69,7 @@ button[type="submit"], button.primary { background: var(--accent); color: var(--
 button.link { background: none; border: none; color: var(--accent); text-decoration: underline; padding: 0.25rem 0; justify-self: start; }
 button:disabled { opacity: 0.6; cursor: progress; }
 #add-furniture:disabled { cursor: not-allowed; }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 7px var(--focus-halo); }
 input { font: inherit; width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
 /* The browser's own grey is short of 4.5:1 on either base (slice 10's review, finding 2). */
 ::placeholder { color: var(--placeholder); opacity: 1; }
@@ -86,7 +93,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .look-row canvas { display: block; width: 48px; height: 48px; image-rendering: pixelated; border: 2px solid var(--line); border-radius: 8px; background: var(--paper); }
 .swatch { display: block; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); }
 .look-row input:checked + canvas, .look-row input:checked + .swatch { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-.look-row input:focus-visible + canvas, .look-row input:focus-visible + .swatch { outline: 3px solid var(--focus); outline-offset: 2px; }
+.look-row input:focus-visible + canvas, .look-row input:focus-visible + .swatch { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 7px var(--focus-halo); }
 .recovery-code code { font-size: 1.25rem; letter-spacing: 0.08em; background: var(--paper); padding: 0.3rem 0.5rem; border-radius: 6px; }
 .error { color: var(--error); min-height: 1.5em; margin: 0.5rem 0 0; }
 .left-cafe { min-height: 100vh; display: grid; place-content: center; text-align: center; gap: 1rem; padding: 16px; }
@@ -107,6 +114,28 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .carrying { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .status { flex-wrap: wrap; }
 .outdated { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.3rem 0.2rem 0.8rem; border: 1px solid var(--accent); border-radius: 999px; }
+/* The bars float on a desktop (slice 16), as layout B's do: the room has the
+   window's whole height, so the 13 by 12 floor fits at 4× in 1920×1080. The
+   status line is a small pill top left, its buttons top right, and the talk
+   bar a frosted bar across the bottom middle, on the panels' glass. */
+@media (min-width: 960px) {
+  /* The stage fills the window as an absolute box, not a fixed one: a fixed
+     box is a layer of its own, which put its menus, bubbles, toasts and the
+     waking screen under the panels (slice 16's review, finding 1). */
+  body:not(.layout-b) .cafe { display: block; position: relative; height: 100vh; padding: 0; }
+  body:not(.layout-b) .stage { position: absolute; inset: 0; }
+  body:not(.layout-b) .status { position: fixed; z-index: 3; top: 8px; left: 8px; right: 8px; pointer-events: none; }
+  body:not(.layout-b) .status > * { pointer-events: auto; }
+  body:not(.layout-b) #status-text { flex: none; margin-right: auto; padding: 0.35rem 0.8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--panel-ink); }
+  /* What else the status line shows as it happens (carrying something, the
+     café updated) sits on the same glass as the words, so it reads over the room. */
+  body:not(.layout-b) .carrying, body:not(.layout-b) .outdated { padding: 0.25rem 0.35rem 0.25rem 0.8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--panel-ink); }
+  body:not(.layout-b) .outdated { border-color: var(--accent); }
+  body:not(.layout-b) .talk { position: fixed; z-index: 3; bottom: 8px; left: 50%; transform: translateX(-50%); width: min(60rem, calc(100vw - 16px)); padding: 0.4rem; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  @supports ((backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0))) and (color: rgb(from red r g b)) {
+    body:not(.layout-b) #status-text, body:not(.layout-b) .carrying, body:not(.layout-b) .outdated, body:not(.layout-b) .talk { background: rgb(from var(--card) r g b / var(--glass-alpha)); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter); }
+  }
+}
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem 1rem 0.75rem; min-height: 0; display: flex; flex-direction: column; }
 .panel h2 { font-size: 0.95rem; margin: 0; }
 .panel h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
@@ -131,7 +160,10 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .panel-body > :first-child, #here > :first-child { margin-top: 0; }
 @media (min-width: 960px) {
   /* Fixed over the stage, where floating.ts puts them, and kept inside it. */
-  .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 18rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+  /* 17rem, so where they start they leave every tile's middle of the 13 by
+     12 floor clear at 1920×1080: the floor's left corner tile has its
+     middle 288 px in (slice 16). */
+  .panel { position: fixed; z-index: 1; left: var(--x, 16px); top: var(--y, 64px); width: 17rem; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
   /* As tall as its content, up to its share of the stage (floating.ts sets --most). */
   .panel { max-height: var(--most, 40vh); }
   /* Who's here keeps its headings in view; only what was said scrolls. */
@@ -156,7 +188,15 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   }
 }
 .stage { grid-area: stage; position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; }
-#room { display: block; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); touch-action: manipulation; }
+/* The street behind the room, to the stage's edges (slice 16): drawn at the
+   room's scale and lined up with it by stage.ts; it takes no click. */
+.street { position: absolute; left: 0; top: 0; max-width: none; image-rendering: pixelated; pointer-events: none; z-index: 0; }
+#room { position: relative; z-index: 0; display: block; image-rendering: pixelated; touch-action: manipulation; }
+/* Framed only where the street doesn't carry on past it: the phone's whole room (layout A). */
+@media (max-width: 959px) {
+  body:not(.layout-b) #room { border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.15); }
+  body:not(.layout-b) .street { display: none; }
+}
 #room.placing { cursor: crosshair; }
 .overlay { position: absolute; inset: 0; pointer-events: none; }
 .overlay > * { pointer-events: auto; }
@@ -184,8 +224,9 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .said .who { font-weight: 600; }
 .cat-row { display: grid; gap: 0.25rem; margin-bottom: 0.75rem; }
 /* Waking (slice 07): the café page opens at once while the server replays its
-   sleep, with a broom sweeping and dust rising till the café is ready. */
-.waking { position: absolute; inset: 0; z-index: 1; display: grid; place-content: center; justify-items: center; gap: 0.75rem; background: var(--paper); text-align: center; padding: 16px; }
+   sleep, with a broom sweeping and dust rising till the café is ready. Over
+   the panels (z 1) as well as the room (slice 16's review, finding 1). */
+.waking { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 0.75rem; background: var(--paper); text-align: center; padding: 16px; }
 .waking[hidden] { display: none; }
 .waking p { margin: 0; font-size: 1.1rem; font-weight: 600; }
 .dust { position: relative; width: 7rem; height: 4.5rem; }
@@ -281,6 +322,8 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   /* Below 960 px the panels stand still: nothing to move or pin. */
   .panel-bar button { display: none; }
   .stage { place-items: start center; }
+  /* The whole room wider than the phone is placed from the left, by stage.ts, centred to a whole pixel (slice 16). */
+  body:not(.layout-b) #room { justify-self: start; }
   .talk { flex-wrap: wrap; }
   .talk input { flex: 1 1 10rem; }
   /* The emotes and the treat button share a row under the talk box (slice 14). */
@@ -312,6 +355,7 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .layout-b .cafe { display: block; height: 100vh; padding: 0; }
 .layout-b .stage { position: fixed; inset: 0; display: block; overflow: hidden; z-index: 0; }
 .layout-b #room { position: absolute; border-radius: 0; box-shadow: none; }
+.layout-b #room:focus-visible { box-shadow: 0 0 0 7px var(--focus-halo); }
 .layout-b .status { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.35rem 0.6rem; }
 .layout-b .talk { position: fixed; bottom: 8px; left: 8px; right: 8px; z-index: 3; margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem; }
 .layout-b .panel { display: none; }

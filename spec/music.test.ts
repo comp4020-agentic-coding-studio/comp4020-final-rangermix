@@ -302,7 +302,11 @@ describe("the café's music", { timeout: 60_000 }, () => {
     await paused(page);
     // Across 960 px to a desktop: the panel floats in the stage, and the mouse works it.
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForFunction(() => document.getElementById("room")?.style.width === "1344px");
+    // The room at 4× (slice 16: the bars float, 1600 px for the 13 by 12 floor).
+    await page.waitForFunction(() => {
+      const size = (window as unknown as { cafeRoom: { size: { width: number } } }).cafeRoom.size;
+      return document.getElementById("room")?.style.width === `${size.width * 4}px`;
+    });
     const [stage, floating] = [await box("#stage"), await box("#music-panel")];
     expect(floating.x + floating.width).toBeLessThanOrEqual(stage.x + stage.width + 0.5);
     expect(floating.y + floating.height).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
@@ -532,8 +536,14 @@ describe("the café's music", { timeout: 60_000 }, () => {
       const scrolls = await page.evaluate(() => { const b = document.querySelector(".music-body")!; return b.scrollHeight > b.clientHeight + 1; });
       expect(scrolls, `${what}: the music's body scrolls`).toBe(false);
     };
-    // The longest title of the six.
+    // The longest title of the six, which wraps to two lines in the 17rem
+    // panel (slice 16): the panel grows to it a frame later, once it's
+    // measured again.
     await page.getByRole("button", { name: "Previous track" }).click();
+    await page.waitForFunction(() => {
+      const b = document.querySelector(".music-body")!;
+      return b.scrollHeight <= b.clientHeight + 1;
+    });
     await whole("1920×1080");
     await page.getByRole("button", { name: "Pin the music", exact: true }).click();
     await whole("1920×1080, pinned");

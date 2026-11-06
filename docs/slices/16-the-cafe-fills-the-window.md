@@ -1,7 +1,7 @@
 # 16. The café fills the window
 
-- **Status:** Proposed 2026-11-06, from the user's three asks of that day. Answered the same day: a bigger floor at 32-px tiles, not a bigger tile; the terrace; the bars as in the study; figures as drawn. Still open: the floor's size (question 1)
-- **Plan:** written when the slice starts, as `docs/notes/plan-slice-16-fill.md`
+- **Status:** Reviewed and deployed 2026-11-06, checked live ([findings](../notes/reviews/slice-16-findings.md), [notes](../notes/slice-16-fill.md)); built 2026-11-06 ([plan](../notes/plan-slice-16-fill.md), [screens](../notes/screens/slice-16/)); approved 2026-11-06: the floor 13 by 12 at 4× (question 1, C), on the phone's layout A the room centred with its side corners cut a little; the terrace, the bars as in the study, cats and people as drawn (questions 2 to 4, A)
+- **Plan:** [`docs/notes/plan-slice-16-fill.md`](../notes/plan-slice-16-fill.md)
 - **Design:** The client ("Desktop (1920×1080)", "Drawing", "The look");
   [ADR 0018](../adr/0018-keep-the-isometric-room-and-fix-its-walking-and-corners.md)
   (32-px tiles, the panels in the corners), which
@@ -58,8 +58,10 @@ phone", and "Those are _viewports_, not monitor sizes"
 - A bigger tile, or redrawn cats and people.
 - The phone's layouts get the bigger floor too, since it's the one world,
   but no other change. In layout B at 3× the room pans as now. In layout
-  A the room fits the phone's width at 1×, if a smaller floor still fits
-  it (question 1 has the numbers).
+  A the room is shown at 1× and centred, its side corners cut by 5 px
+  each at 390 px (the user, 2026-11-06: "on the phone put the camera at
+  the central of the room. it's okay to hide a bit of the corner of the
+  room for now").
 - More than six inside: the cap is unchanged.
 - The logged-out page's picture of the café.
 
@@ -77,6 +79,19 @@ phone", and "Those are _viewports_, not monitor sizes"
 | The terrace is drawn in both bottom corners from `content/street.toml`, in the hour's light; a click or tap on it does nothing | client unit tests (the reader) and a browser check (a click on the bench neither walks nor opens a menu) |
 | The phone's layouts work at 390×844 with the bigger floor: A shows the whole room, B pans to every edge | the existing browser checks, at the new size |
 | It looks right: the room's size, the bars over it, the street to the edges, the terrace, by day and by night | judged: the user, from screens in `docs/notes/screens/slice-16/` |
+
+## Limits found in review
+
+- **Narrower phones.** The whole room (layout A) is held at 390 px, the
+  size the course marks at. At 360 px it's cut 20 px a side, and the
+  floor's two side corner tiles have their middles off screen; each is
+  still tapped on its visible part (slice 16's review, finding 10).
+- **Very short windows.** Under about 600 px tall at 2× the floor's
+  front tile is wholly under the floating talk bar; Tab still reaches it.
+  It holds at 1920×1080 and at every laptop size (finding 11).
+- **The terrace is low.** Anything tall out front stands over the floor's
+  front tiles on screen, so the table's parasol is folded and the lamp is
+  a low lantern, not the umbrella and street lamp first proposed (finding 2).
 
 ## Rules it touches
 

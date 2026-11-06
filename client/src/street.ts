@@ -1,9 +1,27 @@
 import streetFile from "../../content/street.toml?raw";
+import { ISO } from "./iso";
 
 // The street behind the café (slice 13, ADR 0018): sky, the towers across
 // the road, the kerb and the pavement, round the room's diamond. Its shape
 // is content/street.toml, its colours the palette's "street" slots, so it
 // changes with the hour as the room does.
+
+/** The kinds of thing the terrace can have: each drawn as its own few blocks (render.ts). */
+export const TERRACE_KINDS = ["bench", "planter", "table", "umbrella", "chair", "lamp"] as const;
+export type TerraceKind = (typeof TERRACE_KINDS)[number];
+
+/**
+ * A thing on the terrace in the room's bottom corners (slice 16): its kind,
+ * the floor's edge it stands by (its left, x = 0, or its front, y = the
+ * floor's last row), how far along that edge from its back end in tiles,
+ * and how far out from it. Scenery: off the server's grid, taking no click.
+ */
+export interface TerraceThing {
+  kind: TerraceKind;
+  side: "left" | "front";
+  along: number;
+  out: number;
+}
 
 export interface Street {
   horizon: number;
@@ -12,6 +30,7 @@ export interface Street {
   windows: { every: number; size: number; lit: number };
   towers: { width: number; height: number }[];
   clouds: { x: number; y: number; width: number }[];
+  terrace: TerraceThing[];
 }
 
 /** The street's slots in the palette's "street" list. */
@@ -23,11 +42,12 @@ export const STREET = { skyTop: 0, sky: 1, tower: 2, towerSide: 3, lit: 4, dark:
  * for this one file, which the server's tests also read with a real parser.
  */
 export function parseStreet(text: string): Street {
-  type Table = Record<string, number>;
+  type Table = Record<string, number | string>;
   const top: Table = {};
   const windows: Table = {};
   const towers: Table[] = [];
   const clouds: Table[] = [];
+  const terrace: Table[] = [];
   let into: Table = top;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.replace(/#.*/, "").trim();
@@ -40,18 +60,30 @@ export function parseStreet(text: string): Street {
     } else if (line === "[[clouds]]") {
       into = {};
       clouds.push(into);
+    } else if (line === "[[terrace]]") {
+      into = {};
+      terrace.push(into);
     } else {
       const m = /^(\w+)\s*=\s*(-?[\d.]+)$/.exec(line);
-      if (!m) throw new Error(`street.toml: can't read ${JSON.stringify(raw)}`);
-      into[m[1]] = Number(m[2]);
+      const q = /^(\w+)\s*=\s*"([^"]*)"$/.exec(line);
+      if (m) into[m[1]] = Number(m[2]);
+      else if (q) into[q[1]] = q[2];
+      else throw new Error(`street.toml: can't read ${JSON.stringify(raw)}`);
     }
   }
+  const things = terrace.map((t): TerraceThing => {
+    if (!TERRACE_KINDS.includes(t.kind as TerraceKind)) throw new Error(`street.toml: the terrace has no ${JSON.stringify(t.kind)}`);
+    if (t.side !== "left" && t.side !== "front") throw new Error(`street.toml: a terrace thing stands by the floor's left or front, not ${JSON.stringify(t.side)}`);
+    return { kind: t.kind as TerraceKind, side: t.side, along: Number(t.along), out: Number(t.out) };
+  });
+  const n = (t: Table, key: string) => Number(t[key]);
   return {
-    horizon: top.horizon,
-    glow: top.glow,
-    windows: { every: windows.every, size: windows.size, lit: windows.lit },
-    towers: towers.map((t) => ({ width: t.width, height: t.height })),
-    clouds: clouds.map((c) => ({ x: c.x, y: c.y, width: c.width })),
+    horizon: n(top, "horizon"),
+    glow: n(top, "glow"),
+    windows: { every: n(windows, "every"), size: n(windows, "size"), lit: n(windows, "lit") },
+    towers: towers.map((t) => ({ width: n(t, "width"), height: n(t, "height") })),
+    clouds: clouds.map((c) => ({ x: n(c, "x"), y: n(c, "y"), width: n(c, "width") })),
+    terrace: things,
   };
 }
 
@@ -142,4 +174,55 @@ function cloudAt(x: number, y: number, _w: number, _horizon: number): number | n
     return v > base - 1.5 ? STREET.cloudShade : STREET.cloud;
   }
   return null;
+}
+
+/** One run of a row of the street: from `x`, `w` room pixels in one slot. */
+export interface StreetRun {
+  y: number;
+  x: number;
+  w: number;
+  slot: number;
+}
+
+/**
+ * The street over a span of room pixels (slice 16), from (x0, y0) to (x1,
+ * y1), which can start left of and above the room's canvas and end past it:
+ * each row as runs of one slot, the slots the room's own street has inside
+ * its canvas and carrying on outside it, so the street runs to the window's
+ * edges behind the room.
+ */
+export function streetRuns(span: { x0: number; y0: number; x1: number; y1: number }, night: boolean): StreetRun[] {
+  const out: StreetRun[] = [];
+  for (let y = span.y0; y < span.y1; y++) {
+    let x = span.x0;
+    while (x < span.x1) {
+      const slot = streetSlot(x, y, ISO.width, ISO.height, night);
+      let end = x + 1;
+      while (end < span.x1 && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
+      out.push({ y, x, w: end - x, slot });
+      x = end;
+    }
+  }
+  return out;
+}
+
+/**
+ * Where a terrace thing stands, in tiles on the floor's grid (beyond it): by
+ * the left edge it's `out` tiles left of x = 0 and `along` down from the
+ * street wall's foot; by the front, `out` past the floor's last row and
+ * `along` from its left corner.
+ */
+export function terraceAt(t: TerraceThing, room: { width: number; height: number }): { x: number; y: number } {
+  return t.side === "left" ? { x: -t.out, y: 1 + t.along } : { x: t.along, y: room.height + t.out };
+}
+
+/**
+ * How far past the room's canvas the street is drawn, in room pixels on
+ * each side (slice 16's review, finding 8): as far as the stage can show
+ * past the room, `stage` and the room's 1× size at scale `k`. The whole gap
+ * either side, since the phone's bigger room can be panned against one
+ * edge; on a desktop, where the room is centred, half of it shows.
+ */
+export function streetMargin(stage: { w: number; h: number }, room: { w: number; h: number }, k: number): { x: number; y: number } {
+  return { x: Math.ceil(Math.max(0, stage.w - room.w * k) / k), y: Math.ceil(Math.max(0, stage.h - room.h * k) / k) };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ServerMsg } from "../src/protocol/ServerMsg";
 import heights from "../../content/sprites/heights.json";
 import palettes from "../../content/sprites/palettes.json";
-import { toCanvas } from "../src/iso";
+import { FLOOR, ISO, toCanvas } from "../src/iso";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
 import type { Light } from "../src/canberra";
 import { Sprites, frameGrid } from "../src/sprites";
@@ -27,10 +27,12 @@ function welcome(): Welcome {
     ahead: 0,
     nextJump: 0,
     snapshot: {
+      // The café's own floor, room.toml's, 13 by 13 since slice 16, so the
+      // room drawn here is the one the client draws (slice 16's review, finding 9).
       room: {
-        width: 12,
-        height: 10,
-        tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")],
+        width: FLOOR.width,
+        height: FLOOR.height,
+        tiles: ["WWGGGGWDCWWW".padEnd(FLOOR.width, "W"), ...Array<string>(FLOOR.height - 1).fill(".".repeat(FLOOR.width))],
         door: { x: 7, y: 0 },
         walkway: [],
         furniture: [piece(1, "sofa", 0, 5, 3, 1), piece(2, "rug", 4, 4, 4, 3, true)],
@@ -483,7 +485,7 @@ describe("the room drawn crisp", () => {
   for (const scale of [1, 3]) {
     it(`asks the canvas for no shape it would anti-alias, and fills only whole pixels, at ${scale}×`, async () => {
       const { pixels } = await import("./pixels");
-      const p = pixels(336 * scale, 232 * scale);
+      const p = pixels(ISO.width * scale, ISO.height * scale);
       const w = welcome();
       w.snapshot.room.furniture = [piece(1, "sofa", 0, 5, 3, 1), piece(2, "rug", 4, 4, 4, 3, true), { ...piece(3, "plant", 6, 9, 1, 1), toppled: true }, piece(4, "toys", 7, 8, 1, 1)];
       // Someone partway along a walk, so sprites stand between whole room
@@ -499,7 +501,7 @@ describe("the room drawn crisp", () => {
 
   it("fills exactly the pixels whose centres are inside a floor diamond", async () => {
     const { pixels } = await import("./pixels");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const w = welcome();
     w.snapshot.room.furniture = [];
     w.snapshot.cats = [];
@@ -535,7 +537,7 @@ describe("the room drawn crisp", () => {
 describe("a piece's self outline", () => {
   it("rims a block's silhouette in its own colour darkened, and leaves its top's middle its own colour", async () => {
     const { pixels } = await import("./pixels");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const w = welcome();
     w.snapshot.room.furniture = [piece(1, "box", 6, 6, 1, 1)];
     w.snapshot.cats = [];
@@ -570,19 +572,23 @@ describe("picking a piece by its outline (slice 13's review, finding 9)", () => 
     w.snapshot.cats = [];
     w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
     const s = fromWelcome(w, 10_000);
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
     const shadeOf = (hex: string, k: number) => {
       const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
       return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v * (1 - k)))).toString(16).padStart(2, "0")).join("")}`;
     };
+    // The same room without its pieces: a pixel in a rim's colour there is
+    // someone else's, the terrace's scenery in the same colours (slice 16).
+    const bare = pixels(ISO.width, ISO.height);
+    draw(bare.ctx, fromWelcome({ ...w, snapshot: { ...w.snapshot, room: { ...w.snapshot.room, furniture: [] } } }, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
     for (const f of s.room.furniture) {
       const slot = { sofa: 1, box: 3, lamp: 5 }[f.kind as "sofa" | "box" | "lamp"];
       const rim = shadeOf(palettes.day.furniture[slot], 0.45);
       let rims = 0;
-      for (let y = 0; y < 232; y++)
-        for (let x = 0; x < 336; x++) {
-          if (p.at(x, y) !== rim) continue;
+      for (let y = 0; y < ISO.height; y++)
+        for (let x = 0; x < ISO.width; x++) {
+          if (p.at(x, y) !== rim || bare.at(x, y) === rim) continue;
           rims++;
           const hit = hitAt(s, x + 0.5, y + 0.5, 10_000);
           const on = hit && hit.x >= f.x && hit.x < f.x + f.w && hit.y >= f.y && hit.y < f.y + f.h;
@@ -603,7 +609,7 @@ describe("a figure's shadow (slice 13's review, finding 5)", () => {
     w.snapshot.cats = cats;
     w.snapshot.people = people;
     const s = fromWelcome(w, 10_000);
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
     return { p, floor: floorLayer(s.room, 0) };
   }
@@ -637,7 +643,7 @@ describe("a figure's shadow (slice 13's review, finding 5)", () => {
 describe("a block lit from the windows (slice 13's review, finding 7)", () => {
   it("shades its front face, turned away from the windows, darker than its left face, which they light a little", async () => {
     const { pixels } = await import("./pixels");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const w = welcome();
     w.snapshot.room.furniture = [piece(1, "cat_tower", 6, 5, 1, 1)];
     w.snapshot.cats = [];
@@ -660,7 +666,7 @@ describe("shadows on the floor", () => {
   it("draws the floor behind a tall piece, away from the windows, darker than the open floor of the same board", async () => {
     const { pixels } = await import("./pixels");
     const { shadowMask, SHADE } = await import("../src/shadows");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const w = welcome();
     w.snapshot.room.furniture = [piece(1, "cat_tower", 6, 4, 2, 2)];
     w.snapshot.cats = [];
@@ -671,8 +677,8 @@ describe("shadows on the floor", () => {
     const floor = new Set([palettes.day.room[0], palettes.day.room[1]].map((c) => c.toLowerCase()));
     let shaded = 0;
     let lit = 0;
-    for (let y = 0; y < 232; y++) {
-      for (let x = 0; x < 336; x++) {
+    for (let y = 0; y < ISO.height; y++) {
+      for (let x = 0; x < ISO.width; x++) {
         const c = p.at(x, y);
         if (!c) continue;
         const m = mask.at(x, y);
@@ -693,7 +699,7 @@ describe("shadows on the floor", () => {
     w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
     w.snapshot.room.furniture = furniture;
     const s = fromWelcome(w, 10_000);
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     draw(p.ctx, s, new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
     return { p, s };
   }
@@ -715,8 +721,8 @@ describe("shadows on the floor", () => {
     const rug = palettes.day.furniture[9].toLowerCase();
     let checked = 0;
     const over = { seam: 0, rug: 0 };
-    for (let y = 0; y < 232; y++) {
-      for (let x = 0; x < 336; x++) {
+    for (let y = 0; y < ISO.height; y++) {
+      for (let x = 0; x < ISO.width; x++) {
         const m = mask.at(x, y);
         const under = bare.at(x, y);
         if (!under) continue;
@@ -740,8 +746,8 @@ describe("shadows on the floor", () => {
     const seam = palettes.day.room[2].toLowerCase();
     const { fromCanvas } = await import("../src/iso");
     let lit = 0;
-    for (let y = 0; y < 232; y++)
-      for (let x = 0; x < 336; x++) {
+    for (let y = 0; y < ISO.height; y++)
+      for (let x = 0; x < ISO.width; x++) {
         const { gx, gy } = fromCanvas(x + 0.5, y + 0.5);
         if (gx > 0.5 && gx < 11.5 && gy > 4 && gy < 9.5 && p.at(x, y) === seam) lit++;
       }
@@ -756,8 +762,8 @@ describe("shadows on the floor", () => {
     const mask = shadowMask(s.room, s.room.furniture, heights);
     const rugColour = palettes.day.furniture[9].toLowerCase();
     let shadedRug = 0;
-    for (let y = 0; y < 232; y++)
-      for (let x = 0; x < 336; x++) {
+    for (let y = 0; y < ISO.height; y++)
+      for (let x = 0; x < ISO.width; x++) {
         if (mask.at(x, y) !== SHADE.shadow) continue;
         if (p.at(x, y) === rugColour) throw new Error(`(${x},${y}) is in the chair's shadow but drawn as the lit rug`);
         if (p.at(x, y) === shadeOf(rugColour, 0.2)) shadedRug++;
@@ -772,7 +778,7 @@ describe("shadows on the floor", () => {
 describe("the street behind the café", () => {
   async function drawn(light: Light) {
     const { pixels } = await import("./pixels");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const w = welcome();
     w.snapshot.cats = [];
     w.snapshot.people = [{ ...w.snapshot.people[0], place: "window" }];
@@ -791,9 +797,9 @@ describe("the street behind the café", () => {
       // The top-left and top-right corners are sky and towers; the bottom corners the street's foot.
       for (const [x, y] of [
         [4, 4],
-        [330, 4],
-        [4, 228],
-        [330, 228],
+        [ISO.width - 6, 4],
+        [4, ISO.height - 4],
+        [ISO.width - 6, ISO.height - 4],
       ]) {
         expect(colours.has(p.at(x, y) ?? ""), `(${x},${y}) is ${p.at(x, y)} at ${name}`).toBe(true);
       }
@@ -810,8 +816,8 @@ describe("the street behind the café", () => {
     const { STREET } = await import("../src/street");
     const seen = new Map<string, number>();
     // The sky above the room: the top band of the canvas, clear of the walls.
-    for (let y = 0; y < 232; y++)
-      for (let x = 0; x < 336; x++) {
+    for (let y = 0; y < ISO.height; y++)
+      for (let x = 0; x < ISO.width; x++) {
         const c = p.at(x, y);
         if (c) seen.set(c, (seen.get(c) ?? 0) + 1);
       }
@@ -823,12 +829,109 @@ describe("the street behind the café", () => {
     expect([day[STREET.skyTop], day[STREET.sky]]).not.toContain(day[STREET.cloud]);
   });
 
+  // Slice 16: the café's terrace in the room's two bottom corners, from street.toml.
+  it("stands the terrace's things in both bottom corners, off the floor, a lantern among them lit only at night", async () => {
+    const { street: data, terraceAt } = await import("../src/street");
+    // The room this test draws: the welcome's.
+    const room = welcome().snapshot.room;
+    for (const [light, name] of [
+      [0, "day"],
+      [1, "night"],
+    ] as const) {
+      const p = await drawn(light);
+      const streetColours = street(name);
+      // Just over each thing's spot on the pavement (the slab's foot, 6 px
+      // under the floor): something not the street's is drawn there.
+      for (const t of data.terrace) {
+        const at = terraceAt(t, room);
+        const foot = toCanvas(at.x, at.y);
+        let drawn = 0;
+        for (let dy = -10; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) if (!streetColours.has(p.at(Math.round(foot.x) + dx, Math.round(foot.y) + 6 + dy) ?? "")) drawn++;
+        expect(drawn, `${name}: the ${t.kind} at (${at.x}, ${at.y}) is drawn`).toBeGreaterThan(4);
+      }
+    }
+    // The lantern, 12 to 18 px up: the window's glass at night, warm yellow (room slot 8), not by day.
+    const lamp = data.terrace.find((t) => t.kind === "lamp")!;
+    const at = terraceAt(lamp, room);
+    const head = toCanvas(at.x, at.y);
+    const glow = (palettes.night as unknown as { room: string[] }).room[8].toLowerCase();
+    const near = (p: { at(x: number, y: number): string | null }) => {
+      const seen = new Set<string>();
+      // The lantern's lit box stands 12 to 18 px over the pavement, 6 px
+      // under the floor: 6 to 12 px over the floor's level at its spot.
+      for (let up = 4; up <= 16; up++) for (let dx = -6; dx <= 6; dx++) seen.add(p.at(Math.round(head.x) + dx, Math.round(head.y) - up) ?? "");
+      return seen;
+    };
+    expect(near(await drawn(1)).has(glow), "the lamp lit at night").toBe(true);
+    expect(near(await drawn(0)).has(glow), "the lamp unlit by day").toBe(false);
+  });
+
+  // Slice 16's review, finding 2: drawn last, the tall umbrella and lamp
+  // covered the front tiles and anyone on them, and a click on them went
+  // to the floor behind. On the café's real floor, room.toml's, nothing the
+  // terrace draws may fall on the floor, the walls, or where a cat or a
+  // person standing on a tile is drawn.
+  it("draws nothing of the terrace over the real floor, its walls or anyone standing on it", async () => {
+    const { pixels } = await import("./pixels");
+    const { street: data } = await import("../src/street");
+    const { FLOOR, fromCanvas: fromIso } = await import("../src/iso");
+    const w = welcome();
+    const { width, height } = FLOOR;
+    w.snapshot.room = { ...w.snapshot.room, width, height, tiles: ["W".repeat(width), ...Array<string>(height - 1).fill(".".repeat(width))], furniture: [] };
+    w.snapshot.cats = [];
+    w.snapshot.people = [];
+    const paint = () => {
+      const p = pixels(ISO.width, ISO.height);
+      draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
+      return p;
+    };
+    const withIt = paint();
+    const kept = data.terrace;
+    data.terrace = [];
+    let without: Awaited<ReturnType<typeof paint>>;
+    try {
+      without = paint();
+    } finally {
+      data.terrace = kept;
+    }
+    // Where the room is: the floor's diamond, the walls standing up from its
+    // two back edges, and over each floor tile the column a figure takes, a
+    // person 32 px wide and 36 tall with a lift, its feet at the tile's middle.
+    const room = (x: number, y: number) => {
+      const g = fromIso(x + 0.5, y + 0.5);
+      if (g.gx >= 0 && g.gx <= width && g.gy >= 1 && g.gy <= height) return "the floor";
+      for (let up = 1; up <= ISO.wall; up++) {
+        const w2 = fromIso(x + 0.5, y + 0.5 + up);
+        if ((Math.abs(w2.gy - 1) < 0.04 && w2.gx >= 0 && w2.gx <= width) || (Math.abs(w2.gx - width) < 0.04 && w2.gy >= 1 && w2.gy <= height)) return "a wall";
+      }
+      return null;
+    };
+    const figure = new Set<string>();
+    for (let ty = 1; ty < height; ty++)
+      for (let tx = 0; tx < width; tx++) {
+        const c = toCanvas(tx + 0.5, ty + 0.5);
+        for (let dy = -36; dy <= 2; dy++) for (let dx = -16; dx < 16; dx++) figure.add(`${Math.round(c.x) + dx},${Math.round(c.y) + dy}`);
+      }
+    const changed: string[] = [];
+    for (let y = 0; y < ISO.height; y++)
+      for (let x = 0; x < ISO.width; x++) {
+        if (withIt.at(x, y) === without!.at(x, y)) continue;
+        const where = room(x, y) ?? (figure.has(`${x},${y}`) ? "a figure's place" : null);
+        if (where) changed.push(`(${x},${y}) on ${where}`);
+      }
+    expect(changed.slice(0, 40), `${changed.length} pixels of the room under the terrace`).toEqual([]);
+    // And the terrace is drawn at all: it changes the pavement.
+    let drawn = 0;
+    for (let y = 0; y < ISO.height; y++) for (let x = 0; x < ISO.width; x++) if (withIt.at(x, y) !== without!.at(x, y)) drawn++;
+    expect(drawn, "the terrace's own pixels").toBeGreaterThan(200);
+  });
+
   it("keeps the night's sky dark: faint clouds, no warm glow", async () => {
     const p = await drawn(1);
     const night = (palettes.night as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
     const { STREET } = await import("../src/street");
     let glow = 0;
-    for (let y = 0; y < 232; y++) for (let x = 0; x < 336; x++) if (p.at(x, y) === night[STREET.glow]) glow++;
+    for (let y = 0; y < ISO.height; y++) for (let x = 0; x < ISO.width; x++) if (p.at(x, y) === night[STREET.glow]) glow++;
     // At night the glow's slot is the sky's own colour, so nothing warm shows.
     expect(night[STREET.glow]).toBe(night[STREET.sky]);
     expect(glow).toBeGreaterThan(0);
@@ -846,7 +949,7 @@ describe("the street behind the café", () => {
 describe("the room as a diorama", () => {
   it("stands the floor on a slab, seen under its front edges, and tops the walls with a light edge", async () => {
     const { pixels } = await import("./pixels");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const w = welcome();
     w.snapshot.cats = [];
     w.snapshot.room.furniture = [];
@@ -855,10 +958,11 @@ describe("the room as a diorama", () => {
     const street = new Set((palettes.day as unknown as { street: string[] }).street.map((c) => c.toLowerCase()));
     const room = new Set(palettes.day.room.map((c) => c.toLowerCase()));
     // Just under the floor's front corner, and under the middle of each front edge: the slab, not street.
+    const { width: W, height: H } = w.snapshot.room;
     for (const [gx, gy] of [
-      [0, 10],
-      [6, 10],
-      [0, 5.5],
+      [0, H],
+      [Math.floor(W / 2), H],
+      [0, H / 2],
     ]) {
       const c = toCanvas(gx, gy);
       const under = p.at(Math.round(c.x), Math.round(c.y) + 3);
@@ -869,11 +973,11 @@ describe("the room as a diorama", () => {
     // below it; the row above is sky.
     const lum = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)).reduce((a, b) => a + b, 0);
     for (const [gx, gy] of [
-      [12, 5.5],
-      [6, 1],
+      [W, H / 2],
+      [Math.floor(W / 2), 1],
     ]) {
       const c = toCanvas(gx, gy);
-      const x = Math.round(c.x) - (gx === 12 ? 1 : 0);
+      const x = Math.round(c.x) - (gx === W ? 1 : 0);
       // Down from the sky to the first pixel that isn't street: the wall's top edge.
       let y = Math.round(c.y) - 70;
       while (y < c.y && street.has(p.at(x, y) ?? "")) y++;
@@ -947,7 +1051,7 @@ describe("the frame for what a cat is doing (slice 11)", () => {
 describe("furniture drawn as its parts (slice 11)", () => {
   async function drawnPiece(kind: string, w: number, h: number) {
     const { pixels } = await import("./pixels");
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const wl = welcome();
     wl.snapshot.room.furniture = [piece(1, kind, 4, 5, w, h)];
     wl.snapshot.cats = [];
@@ -1120,7 +1224,7 @@ describe("what's carried or held, at 32 px (slice 11's review, findings 4 and 11
     w.snapshot.people = [{ ...w.snapshot.people[0], id: 2, at: { x: 6, y: 5 } }];
     w.you = 99;
     extra(w);
-    const p = pixels(336, 232);
+    const p = pixels(ISO.width, ISO.height);
     const images: { img: unknown; x: number; y: number }[] = [];
     const real = p.ctx.drawImage.bind(p.ctx);
     (p.ctx as unknown as { drawImage: (...a: unknown[]) => void }).drawImage = (img: unknown, ...a: unknown[]) => {
@@ -1145,13 +1249,15 @@ describe("what's carried or held, at 32 px (slice 11's review, findings 4 and 11
   }
 
   it("carries a piece above its carrier's head, not over it", async () => {
-    const { p, top } = await scene((w) => {
+    const { p, top, person } = await scene((w) => {
       w.snapshot.held = [{ by: 2, piece: piece(9, "chair", 0, 0, 1, 1) }];
     });
-    // The carried chair's colours (slot 4 and 12 in its model): its lowest pixel row.
+    // The carried chair's colours (slot 4 and 12 in its model): its lowest
+    // pixel row, over its carrier, whose 32-px column it's drawn in (the
+    // terrace's things share those colours elsewhere; slice 16).
     const chair = new Set([palettes.day.furniture[4], palettes.day.furniture[12]].map((c) => c.toLowerCase()));
     let bottom = -1;
-    for (let y = 0; y < 232; y++) for (let x = 0; x < 336; x++) if (chair.has(p.at(x, y) ?? "")) bottom = Math.max(bottom, y);
+    for (let y = 0; y < ISO.height; y++) for (let x = person.x; x < person.x + 32; x++) if (chair.has(p.at(x, y) ?? "")) bottom = Math.max(bottom, y);
     expect(bottom, "the chair is drawn").toBeGreaterThan(0);
     expect(bottom, `the chair's bottom (${bottom}) above the head's top (${top})`).toBeLessThan(top);
   });

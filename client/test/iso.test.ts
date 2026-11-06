@@ -1,28 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { ISO, inDrawOrder, pickTile, toCanvas } from "../src/iso";
+import roomFile from "../../content/room.toml?raw";
+import { FLOOR, ISO, inDrawOrder, parseFloor, pickTile, toCanvas } from "../src/iso";
 
-// The camera (slice 09, ADR 0017): a 2:1 isometric view of the same 12 by 10
-// grid, the floor rows 1 to 9, seen from the room's front-right corner, so
-// the street wall, row 0, stands up the back left, the windows, door and
-// chalkboard on it in their order from the left (turned so on 2026-10-22).
+// The camera (slice 09, ADR 0017): a 2:1 isometric view of the café's grid,
+// row 0 the street wall and the floor under it, seen from the room's
+// front-right corner, so the street wall stands up the back left, the
+// windows, door and chalkboard on it in their order from the left (turned
+// so on 2026-10-22). Since slice 16 the grid is content/room.toml's, 13
+// wide and 13 rows, the canvas worked out from it.
 
-const room = { width: 12, height: 10 };
+const room = { width: 13, height: 13 };
 
 describe("the isometric camera", () => {
-  it("is a 336 by 232 canvas, as in the study the look was chosen from", () => {
-    expect(ISO.width).toBe(336);
-    expect(ISO.height).toBe(232);
+  it("reads the floor's size from content/room.toml, the file the server reads", () => {
+    expect(parseFloor(roomFile)).toEqual({ width: 13, height: 13 });
+    expect(FLOOR).toEqual({ width: 13, height: 13 });
+    expect(parseFloor("# a note\nwidth = 5\nheight = 4\ntiles = []\n")).toEqual({ width: 5, height: 4 });
+    expect(() => parseFloor("height = 4\n")).toThrow(/width/);
+  });
+
+  it("is (w + d) × 16 by (w + d) × 8 + 64 at 1×: 400 by 264 for the 13 by 12 floor (slice 16), as 336 by 232 was for 12 by 9", () => {
+    expect(ISO.width).toBe(400);
+    expect(ISO.height).toBe(264);
   });
 
   it("puts the street wall's corner far left, the plain wall's far right, and the front corner at the bottom", () => {
+    const { width: w, height: h } = room;
     // The floor's back corner, where the two walls meet, top and centre.
-    expect(toCanvas(12, 1)).toEqual({ x: 192, y: 56 });
+    expect(toCanvas(w, 1)).toEqual({ x: 16 * w, y: 56 });
     // The street wall's near end, at the left.
-    expect(toCanvas(0, 1)).toEqual({ x: 0, y: 152 });
+    expect(toCanvas(0, 1)).toEqual({ x: 0, y: 56 + 8 * w });
     // The plain wall's near end, at the right.
-    expect(toCanvas(12, 10)).toEqual({ x: 336, y: 128 });
-    // The front corner, nearest the viewer.
-    expect(toCanvas(0, 10)).toEqual({ x: 144, y: 224 });
+    expect(toCanvas(w, h)).toEqual({ x: ISO.width, y: 56 + 8 * (h - 1) });
+    // The front corner, nearest the viewer, 8 px over the canvas's foot (the slab).
+    expect(toCanvas(0, h)).toEqual({ x: 16 * (h - 1), y: ISO.height - 8 });
   });
 
   it("keeps the street wall's order from the left: going along it, x grows to the right", () => {
@@ -58,9 +69,10 @@ describe("the isometric camera", () => {
 
   it("picks nothing off the room, or on the plain back wall", () => {
     expect(pickTile(2, 2, room)).toBeNull();
-    expect(pickTile(330, 228, room)).toBeNull();
+    // The canvas's bottom-right corner, off the floor's diamond.
+    expect(pickTile(ISO.width - 6, ISO.height - 4, room)).toBeNull();
     // Halfway up the plain back-right wall, by row 5.
-    const foot = toCanvas(12, 5.5);
+    const foot = toCanvas(room.width, 5.5);
     expect(pickTile(foot.x + 2, foot.y - ISO.wall / 2, room)).toBeNull();
     // Above the street wall's top.
     const top = toCanvas(6.5, 1);

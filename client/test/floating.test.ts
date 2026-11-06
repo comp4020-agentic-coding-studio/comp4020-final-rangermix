@@ -242,3 +242,56 @@ describe("moving a panel by keyboard, heard (slice 14's review, finding 10)", ()
     f.dispose();
   });
 });
+
+describe("the music panel's height (slice 16)", () => {
+  it("is measured again when its title or controls change size, since its own box is held at its last height", async () => {
+    const watched: Element[] = [];
+    const saved = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      observe(el: Element) {
+        watched.push(el);
+      }
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    try {
+      const { Floating } = await import("../src/floating");
+      document.body.innerHTML = `<div id="stage"></div><section id="music-panel" class="panel"><div class="panel-bar"><h2>Music</h2><button class="grip" aria-label="Move the music"></button><button class="pin" aria-label="Pin the music" data-name="the music">Pin</button></div><div class="panel-body music-body"><p class="music-now"></p><div class="music-controls"></div></div></section>`;
+      const panel = document.getElementById("music-panel")!;
+      const f = new Floating(document.getElementById("stage")!, [panel]);
+      expect(watched).toContain(panel.querySelector(".music-now"));
+      expect(watched).toContain(panel.querySelector(".music-controls"));
+      f.dispose();
+    } finally {
+      globalThis.ResizeObserver = saved;
+      localStorage.clear();
+    }
+  });
+});
+
+describe("the panels and the floating bars (slice 16's review, finding 5)", () => {
+  it("watches the status line and the talk bar, so a bar that wraps moves the panels clear of it", async () => {
+    const watched: Element[] = [];
+    const saved = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      observe(el: Element) {
+        watched.push(el);
+      }
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    localStorage.clear();
+    try {
+      const { Floating } = await import("../src/floating");
+      document.body.innerHTML = `<header class="status"></header><div id="stage"></div><form class="talk"></form><section id="cats-panel" class="panel"><div class="panel-bar"><h2>Your cats</h2><button class="grip" aria-label="Move your cats"></button><button class="pin" aria-label="Pin your cats" data-name="your cats">Pin</button></div><div class="panel-body"></div></section>`;
+      const f = new Floating(document.getElementById("stage")!, [document.getElementById("cats-panel")!]);
+      expect(watched).toContain(document.querySelector(".status"));
+      expect(watched).toContain(document.querySelector(".talk"));
+      f.dispose();
+    } finally {
+      globalThis.ResizeObserver = saved;
+      localStorage.clear();
+    }
+  });
+});

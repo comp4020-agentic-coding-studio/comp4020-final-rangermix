@@ -70,7 +70,8 @@ mod tests {
     fn the_repo_content_loads() {
         let c = repo_content();
         assert_eq!(c.tuning.cap, 6);
-        assert_eq!(c.room.pieces.len(), 14);
+        // Fourteen, and three on the floor slice 16 added.
+        assert_eq!(c.room.pieces.len(), 17);
     }
 
     #[test]
@@ -207,14 +208,22 @@ mod tests {
         assert!(every >= 2 && size >= 1 && size < every, "windows every {every}, size {size}");
         assert!((0..=10).contains(&lit), "windows lit {lit} in ten");
         // The clouds (the user, 2026-11-05): each where it floats, in room
-        // pixels at 1x on the 336 by 232 backdrop, and how wide.
+        // pixels at 1x on the room's backdrop, and how wide. The backdrop is
+        // the room's canvas, (w + d) × 16 by (w + d) × 8 + 64 for a floor w
+        // wide and d deep (slice 16): 400 by 264 for 13 by 12.
+        let room = repo_content().room;
+        let across = (room.width as i64 + room.height as i64 - 1) * 16;
+        let down = (room.width as i64 + room.height as i64 - 1) * 8 + 64;
         let clouds = street["clouds"].as_array().expect("[[clouds]]");
         assert!(!clouds.is_empty(), "at least one cloud");
         for c in clouds {
             let x = c["x"].as_integer().expect("a cloud's x, in whole pixels");
             let y = c["y"].as_integer().expect("a cloud's y, in whole pixels");
             let w = c["width"].as_integer().expect("a cloud's width, in whole pixels");
-            assert!((0..336).contains(&x) && (0..232).contains(&y) && (6..=80).contains(&w), "cloud {c}");
+            assert!(
+                (0..across).contains(&x) && (0..down).contains(&y) && (6..=80).contains(&w),
+                "cloud {c}"
+            );
         }
         let glow = street["glow"]
             .as_float()

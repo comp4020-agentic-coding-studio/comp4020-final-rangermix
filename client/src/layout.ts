@@ -210,3 +210,29 @@ export function savePanels(panels: PanelsSaved): void {
     // Without storage the panels stay put for this visit only.
   }
 }
+
+/** How far a panel keeps from a point it mustn't cover, in CSS pixels. */
+const CLEAR_BY = 16;
+
+/**
+ * The tallest a panel `width` wide at `spot` in `stage` may grow, from
+ * `most`, so it covers none of `points` in its column (slice 16's review,
+ * finding 7): standing from the top, its foot stays above each; from the
+ * bottom, its top stays below. A point outside its column, or on the side
+ * it grows away from, doesn't cap it.
+ */
+export function clearOf(most: number, spot: PanelSpot, width: number, stage: { left: number; top: number; width: number; height: number }, points: { x: number; y: number }[]): number {
+  const left = spot.h === "left" ? stage.left + spot.x : stage.left + stage.width - spot.x - width;
+  let out = most;
+  for (const p of points) {
+    if (p.x < left || p.x > left + width) continue;
+    if (spot.v === "top") {
+      const top = stage.top + spot.y;
+      if (p.y > top) out = Math.min(out, p.y - CLEAR_BY - top);
+    } else {
+      const foot = stage.top + stage.height - spot.y;
+      if (p.y < foot) out = Math.min(out, foot - p.y - CLEAR_BY);
+    }
+  }
+  return out;
+}

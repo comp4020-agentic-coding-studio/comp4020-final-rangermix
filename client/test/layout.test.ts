@@ -196,3 +196,31 @@ describe("moving a panel, and remembering it (slice 14)", () => {
     }
   });
 });
+
+// Slice 16's review, finding 7: a panel at its corner grows with its
+// content, and grown far enough it covered the floor's corner tile. Its
+// height is capped so it stays clear of the points it must not cover.
+describe("a panel's height kept clear of the floor's corners", () => {
+  const stage = { left: 0, top: 56, width: 1920, height: 960 };
+  const w = 272;
+  it("caps a panel standing from the top so its foot stays above a point in its column", async () => {
+    const { clearOf } = await import("../src/layout");
+    // Top right, 8 in: its column is 1640 to 1912; the point at (1700, 870).
+    expect(clearOf(900, { h: "right", x: 8, v: "top", y: 0 }, w, stage, [{ x: 1700, y: 870 }])).toBe(870 - 56 - 16);
+  });
+  it("caps a panel standing from the bottom so its top stays below a point in its column", async () => {
+    const { clearOf } = await import("../src/layout");
+    // Bottom left, 8 in: its column is 8 to 280; its foot at 1016; the point at (100, 652).
+    expect(clearOf(900, { h: "left", x: 8, v: "bottom", y: 0 }, w, stage, [{ x: 100, y: 652 }])).toBe(1016 - 652 - 16);
+  });
+  it("leaves alone a panel whose column the point is outside, or which is already short enough", async () => {
+    const { clearOf } = await import("../src/layout");
+    expect(clearOf(300, { h: "left", x: 8, v: "bottom", y: 0 }, w, stage, [{ x: 600, y: 652 }])).toBe(300);
+    expect(clearOf(200, { h: "left", x: 8, v: "bottom", y: 0 }, w, stage, [{ x: 100, y: 652 }])).toBe(200);
+  });
+  it("ignores a point on the far side of the panel from where it stands", async () => {
+    const { clearOf } = await import("../src/layout");
+    // Top-anchored, the point above its top: nothing to cap.
+    expect(clearOf(400, { h: "left", x: 8, v: "top", y: 100 }, w, stage, [{ x: 100, y: 120 }])).toBe(400);
+  });
+});

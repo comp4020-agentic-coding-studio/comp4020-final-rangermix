@@ -180,6 +180,23 @@ describe("the panels over the room (slice 14)", () => {
     expect(glass).toMatch(/\.panel \.hint[^{]*\{[^}]*color:\s*var\(--panel-muted\)/);
   });
 
+  it("draws the floating bars' glass and the status line's words from the panels' tokens, so the panels' 4.5:1 holds for them (slice 16)", () => {
+    // The bars float only on a desktop, outside layout B, which has its own.
+    const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
+    const bars = desktop.slice(0, desktop.indexOf(".panel {"));
+    expect(bars).toMatch(/body:not\(\.layout-b\) \.status\s*\{[^}]*position:\s*fixed/);
+    expect(bars).toMatch(/body:not\(\.layout-b\) \.talk\s*\{[^}]*position:\s*fixed/);
+    // The status line's words, the only text on the bars' glass: the
+    // talk bar's box, buttons and emotes keep their own opaque fills.
+    expect(bars).toMatch(/#status-text\s*\{[^}]*color:\s*var\(--panel-ink\)/);
+    // Opaque card where the browser can't filter; the panels' glass where it can.
+    expect(bars).toMatch(/#status-text\s*\{[^}]*background:\s*var\(--card\)/);
+    expect(bars).toMatch(/\.talk\s*\{[^}]*background:\s*var\(--card\)/);
+    const glass = bars.slice(bars.indexOf("@supports"));
+    expect(glass).toMatch(/@supports \(\(backdrop-filter: blur\(0\)\) or \(-webkit-backdrop-filter: blur\(0\)\)\) and \(color: rgb\(from red r g b\)\)/);
+    expect(glass).toMatch(/background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha\)\);\s*-webkit-backdrop-filter:\s*var\(--glass-filter\);\s*backdrop-filter:\s*var\(--glass-filter\)/);
+  });
+
   it("draws the panels' glass from the tokens, and is opaque where a browser can't filter what's behind", () => {
     const desktop = css.slice(css.indexOf("@media (min-width: 960px)"));
     // The filter and relative colours both, or the opaque card (slice 14's review, finding 4).
@@ -188,5 +205,30 @@ describe("the panels over the room (slice 14)", () => {
     expect(glass).toMatch(/\.panel\s*\{[^}]*backdrop-filter:\s*var\(--glass-filter\)/);
     expect(glass).toMatch(/\.panel\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha\)\)/);
     expect(glass).toMatch(/\.panel\.dim\s*\{[^}]*background:\s*rgb\(from var\(--card\) r g b \/ var\(--glass-alpha-dim\)\)/);
+  });
+});
+
+// Slice 16's review, finding 4: the room's canvas and the floating status
+// buttons sit over the street now, where the focus ring alone (Mocha's blue
+// in the dark theme) was the day sky's own colour. The ring is two tones:
+// the outline in --focus and a halo just outside it in --focus-halo, so
+// against anything the room and street can show, one of them holds 3:1
+// (WCAG 1.4.11), and the two hold 3:1 against each other.
+describe("the keyboard's focus ring over the room and the street (slice 16)", () => {
+  for (const theme of ["light", "dark"] as const) {
+    it(`shows against every colour the room and street are drawn in, in the ${theme} theme`, () => {
+      const t = tokens(theme);
+      expect(t.focus && t["focus-halo"], "--focus and --focus-halo").toBeTruthy();
+      expect(contrast(t.focus, t["focus-halo"]), `the ring's two tones (${t.focus}, ${t["focus-halo"]})`).toBeGreaterThanOrEqual(3);
+      const weak: string[] = [];
+      for (const behind of behindColours()) {
+        if (Math.max(contrast(t.focus, behind), contrast(t["focus-halo"], behind)) < 3) weak.push(behind);
+      }
+      expect(weak, "colours neither tone holds 3:1 against").toEqual([]);
+    });
+  }
+
+  it("draws the halo round every focused control, from the token", () => {
+    expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus\)[^}]*box-shadow:\s*0 0 0 \d+px var\(--focus-halo\)/);
   });
 });

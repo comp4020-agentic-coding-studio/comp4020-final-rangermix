@@ -249,9 +249,12 @@ fn a_trace_left_at_the_stop_is_down_after_the_restart() {
     // over, put down here. How it came to be down isn't what's checked, and
     // waiting for a cat to do it took minutes on a seed whose cats all
     // napped (slice 08's review, finding 2).
-    let mut saved: Vec<Value> = serde_json::from_str(&common::world_value(data.path(), "arrangement")).unwrap();
+    // The arrangement as the store keeps it since slice 16: its floor and its pieces.
+    let mut saved: Value = serde_json::from_str(&common::world_value(data.path(), "arrangement")).unwrap();
     let knockable = knockable_kinds(&content);
-    let piece = saved
+    let piece = saved["pieces"]
+        .as_array_mut()
+        .expect("the saved arrangement's pieces")
         .iter_mut()
         .find(|p| knockable.contains(&p["kind"].as_str().unwrap().to_string()) && p["toppled"] != true)
         .expect("a piece a cat could knock over");

@@ -499,13 +499,14 @@ impl World {
                 toppled: false,
             })
         }));
-        serde_json::to_string(&saved).expect("an arrangement serialises")
+        crate::room::arrangement_json(self.room.width, self.room.height, &saved)
     }
 
-    /// Puts back a saved arrangement; anything unreadable is ignored.
+    /// Puts back a saved arrangement, adding room.toml's pieces on any floor
+    /// it was saved without (slice 16); anything unreadable is ignored.
     pub fn restore_arrangement(&mut self, json: &str) {
-        if let Ok(saved) = serde_json::from_str::<Vec<Saved>>(json) {
-            self.room.restore(&saved);
+        if let Some((floor, saved)) = crate::room::read_arrangement(json) {
+            self.room.restore_saved(&saved, floor, self.tuning.furniture_max);
         }
     }
 

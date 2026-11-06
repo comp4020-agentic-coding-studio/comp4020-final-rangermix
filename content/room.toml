@@ -1,18 +1,25 @@
-# The café floor, seen from inside with the street wall at the top.
+# The café floor, seen from inside with the street wall at the top: 13 wide
+# and 12 deep under it since slice 16, so at 1920×1080 the room fills the
+# window at 4×. A café saved on the old 12 by 10 floor wakes on this one with
+# its pieces where they were, and gains the pieces here on the new strip (the
+# column at x = 12 and the rows from y = 10) once (room.rs, restore_saved).
 # W wall, G window, D door, C chalkboard, . floor
-width = 12
-height = 10
+width = 13
+height = 13
 tiles = [
-  "WWGGGGWDCWWW",
-  "............",
-  "............",
-  "............",
-  "............",
-  "............",
-  "............",
-  "............",
-  "............",
-  "............",
+  "WWGGGGWDCWWWW",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
+  ".............",
 ]
 entry = { x = 7, y = 1 }                                    # the floor just inside the door
 walkway = [{ x = 7, y = 1 }, { x = 7, y = 2 }, { x = 7, y = 3 }]   # never blocked (AGENTS.md)
@@ -86,3 +93,21 @@ y = 9
 kind = "cushion"
 x = 9
 y = 7
+
+# The new strip (slice 16): a second sofa along the front, a lamp in the
+# far corner by the plain wall, and a plant by the front corner.
+
+[[furniture]]
+kind = "sofa"
+x = 4
+y = 11
+
+[[furniture]]
+kind = "lamp"
+x = 12
+y = 6
+
+[[furniture]]
+kind = "plant"
+x = 12
+y = 12

@@ -1263,7 +1263,13 @@ mod tests {
     fn saved_cats_come_back_where_they_were_unless_that_is_now_a_wall() {
         let content = crate::content::repo_content();
         let trust = TrustBook::new(content.tuning.trust_levels, content.tuning.trust_daily_cap);
+        // Burakku saved too, so no cat placed at random can land on Mochi's
+        // spot first: which spot a draw lands on depends on the floor's size.
         let saved = vec![
+            (
+                "burakku".to_string(),
+                r#"{"at":{"x":3,"y":8},"tiredness":0.2,"company":0.1}"#.to_string(),
+            ),
             (
                 "mochi".to_string(),
                 r#"{"at":{"x":1,"y":5},"tiredness":0.7,"company":0.1}"#.to_string(),

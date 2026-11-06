@@ -2165,6 +2165,52 @@ study shows sizes at 4× and 3×
   little more but is 10 px too wide for the phone. The size is the
   user's to choose; ADR 0021 renamed to the floor decision.
 
+*Sent 2026-11-06 05:46:08 AEDT*
+
+> C. on the phone put the camera at the central of the room. it's okay to hide a bit of the corner of the room for now. build it and I'll judge it when finished.
+
+Answering slice 16's last question, the floor's size: C, 13 by 12 at 4×,
+the biggest that fits 1920×1080, with the phone's whole room cut a little.
+
+**Result.** Slice 16 is built, reviewed, merged, deployed and checked on
+the live café; it waits on the user's judgement.
+- **Approved and planned** ([`09c3166`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/09c3166)): ADR 0021 accepted. The floor
+  stays content; the saved arrangement keeps the floor it was saved on,
+  so the live café keeps everyone's furniture and gains the new strip's
+  pieces once; the client reads its room from the same `room.toml`.
+- **Built, test first, in seven tasks:** the 13 by 12 floor and an old
+  café waking on it ([`3250c50`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3250c50)); the room's canvas from the floor,
+  400 by 264 at 1× ([`d7a5c11`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d7a5c11)); the status and talk bars floating,
+  the room 1600 by 1056 at 4× ([`50c37bc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/50c37bc)); the street to the window's
+  edges ([`c899a4b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c899a4b)); a terrace in the bottom corners, as data
+  ([`4845b3d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4845b3d)); the phone's whole room centred, 5 px cut a side
+  ([`6190596`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6190596)); screens and design.md ([`244027f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/244027f)). Old checks the
+  bigger room broke found three real faults on the way: the cats panel
+  over a corner tile (panels are 17rem now), menus under the talk bar, and
+  the music panel clipping a wrapped title. A café saved by `main`'s own
+  server on the old floor was woken on this one end to end
+  ([`a2f9452`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a2f9452)).
+- **Reviewed cold** ([`3016ac3`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3016ac3), [`d68e678`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d68e678)): 11 findings, 4 major.
+  Nine fixed, each seen failing first: menus, bubbles and the waking
+  screen under the panels ([`1a699d7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1a699d7)); the terrace's umbrella and
+  street lamp standing over the floor's front tiles and taking their
+  clicks, so the terrace is kept low, a folded parasol and a lantern, a
+  change from what was approved ([`c6f0158`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c6f0158)); refusals hidden under the
+  talk bar ([`bdc003a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/bdc003a)); the focus ring invisible over the street, now
+  two tones, crust on white in the light theme ([`2a71593`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2a71593)); a wrapped
+  status line over the chalkboard's controls ([`c136883`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c136883)); a phone check
+  that couldn't fail ([`6a7a530`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6a7a530)); panels growing over corner tiles
+  with more content ([`7f5ccb2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7f5ccb2)); a street canvas nine times the window
+  ([`b0fd0e6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b0fd0e6)); checks still counting the old floor, and the old save
+  woken through `wake()` ([`b2cebec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b2cebec)). Two nits answered in the spec
+  ([`66cd891`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/66cd891), [`4f3d4fe`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4f3d4fe)).
+- **Deployed and checked live** ([`8ea8ac5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8ea8ac5)): CI succeeded on `4f3d4fe`.
+  One visit as `agent_s16hx8y`: the live café woke on the 13 by 13 grid
+  with its visitors' arrangement kept and the strip's three added once;
+  the room at 4×, the bars floating, the street at the window's edges, a
+  click on the terrace doing nothing
+  ([notes/slice-16-fill.md](notes/slice-16-fill.md)).
+
 ### 17. How markers receive the café
 
 *Session `f6949123`, Claude Code (Opus 5.5), run as a background job.*

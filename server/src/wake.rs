@@ -207,7 +207,7 @@ mod tests {
     /// Where each movable piece stands, toppled or not: a night may knock
     /// things over, but it moves nothing.
     fn places(arrangement: &str) -> Vec<(String, u8, u8)> {
-        let saved: Vec<crate::room::Saved> = serde_json::from_str(arrangement).unwrap();
+        let (_, saved) = crate::room::read_arrangement(arrangement).unwrap();
         let mut places: Vec<(String, u8, u8)> = saved.into_iter().map(|s| (s.kind, s.x, s.y)).collect();
         places.sort();
         places
@@ -329,6 +329,58 @@ mod tests {
             let c = after.cats.iter().find(|c| c.id == cat).unwrap();
             assert_eq!((c.pose, c.at), (crate::protocol::Pose::Nap, at), "seed {seed}: {cat} slept on");
         }
+    }
+
+    /// Slice 16's review, finding 9: the live café's save, as the server
+    /// before slice 16 wrote it, woken on the 13 by 12 floor through `wake()`:
+    /// its arrangement a bare list of the old floor's pieces, a visitor's
+    /// move among them, and its cats where they were.
+    #[tokio::test]
+    async fn a_cafe_saved_on_the_old_floor_wakes_on_the_new_one_with_its_pieces_and_cats_where_they_were() {
+        let (_dir, store) = store();
+        let at = canberra(2026, 11, 6, 12, 0);
+        // The old floor's pieces, as room.toml had them, the cushion moved.
+        let old = r#"[{"kind":"cat_tower","x":0,"y":1},{"kind":"window_seat","x":2,"y":1},{"kind":"plant","x":11,"y":1},{"kind":"table","x":9,"y":3},{"kind":"chair","x":9,"y":4},{"kind":"chair","x":10,"y":4},{"kind":"rug","x":4,"y":4},{"kind":"sofa","x":0,"y":5},{"kind":"cat_bed","x":0,"y":7},{"kind":"toys","x":7,"y":8},{"kind":"box","x":1,"y":9},{"kind":"plant","x":6,"y":9},{"kind":"cushion","x":3,"y":8}]"#;
+        put(&store, "arrangement", old.to_string()).await;
+        put(&store, "saved_at", at.to_string()).await;
+        // The cats where the old floor had them.
+        let cats = [("mochi", 5, 6), ("tora", 8, 2), ("burakku", 2, 8)];
+        for (id, x, y) in cats {
+            let json = format!(r#"{{"at":{{"x":{x},"y":{y}}},"tiredness":0.3,"company":0.5}}"#);
+            store.call(move |c| store::put_cat_state(c, id, &json, at)).await.unwrap();
+        }
+        // Woken at the instant it stopped: no replay to move anything.
+        let mut woken = wake(&store, content(), "test".into(), at, 1).await.unwrap();
+        let now = woken.arrangement_json();
+        let (floor, pieces) = crate::room::read_arrangement(&now).unwrap();
+        assert_eq!(floor, Some((13, 13)), "saved again, it knows its floor");
+        let saved: Vec<crate::room::Saved> = serde_json::from_str(old).unwrap();
+        for s in &saved {
+            assert!(
+                pieces.iter().any(|p| p.kind == s.kind && (p.x, p.y) == (s.x, s.y)),
+                "{s:?} where it was"
+            );
+        }
+        // The new strip's three, added once.
+        for (kind, x, y) in [("sofa", 4, 11), ("lamp", 12, 6), ("plant", 12, 12)] {
+            assert_eq!(
+                pieces.iter().filter(|p| p.kind == kind && (p.x, p.y) == (x, y)).count(),
+                1,
+                "the {kind} at ({x}, {y})"
+            );
+        }
+        assert_eq!(pieces.len(), saved.len() + 3);
+        let seen = woken.snapshot_for(0, at);
+        for (id, x, y) in cats {
+            let c = seen.cats.iter().find(|c| c.id == id).unwrap();
+            assert_eq!((c.at.x, c.at.y), (x, y), "{id} where it was");
+        }
+        // Woken again, nothing more is added.
+        woken.save(at);
+        store.flush().await.unwrap();
+        let again = wake(&store, content(), "test".into(), at, 2).await.unwrap();
+        let (_, twice) = crate::room::read_arrangement(&again.arrangement_json()).unwrap();
+        assert_eq!(twice.len(), pieces.len());
     }
 
     /// What a save holds, written into `store`: the cats, the arrangement,

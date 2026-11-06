@@ -5,7 +5,8 @@ import { positionAt } from "./motion";
 import { ISO, pickTile, toCanvas } from "./iso";
 import { type Pointer, draw, hitAt } from "./render";
 import { fitScale } from "./scale";
-import { Sprites } from "./sprites";
+import { Sprites, paletteAt } from "./sprites";
+import { streetMargin, streetRuns } from "./street";
 import { serverNow } from "./state";
 
 /** How tall someone stands, in canvas pixels at 1x: 32 since slice 11 (render.ts's PERSON). */
@@ -28,6 +29,10 @@ export class Stage {
   holdStill = false;
   private frame = 0;
   private readonly resize = new ResizeObserver(() => this.fit());
+  /** The street behind the room, to the stage's edges (slice 16), if the page has one. */
+  private readonly street: HTMLCanvasElement | null;
+  /** What the street was last drawn for: redrawn only when this changes. */
+  private streetKey = "";
 
   constructor(
     private readonly cafe: Cafe,
@@ -35,6 +40,7 @@ export class Stage {
     private readonly box: HTMLElement,
   ) {
     this.resize.observe(box);
+    this.street = box.querySelector<HTMLCanvasElement>("canvas.street");
   }
 
   start(): void {
@@ -137,9 +143,17 @@ export class Stage {
     } else {
       // On a phone the page scrolls, so only the width limits the room.
       const phone = matchMedia(PHONE).matches;
-      this.scale = fitScale(this.box.clientWidth, phone ? Infinity : this.box.clientHeight);
-      this.canvas.style.left = "";
+      // On a desktop the stage is the whole window, the bars floating over
+      // it (slice 16): the room fits it less 8 px each side.
+      const margin = phone ? 0 : 16;
+      this.scale = fitScale(this.box.clientWidth - margin, phone ? Infinity : this.box.clientHeight - margin);
       this.canvas.style.top = "";
+      // The phone's whole room, centred on the room's middle to a whole
+      // pixel, so it stays crisp: on a narrow phone it's wider than the
+      // screen (400 px for the 13 by 12 floor in 390), and its side corners
+      // are cut evenly (the user, 2026-11-06). On a desktop the stage centres it.
+      const over = ISO.width * this.scale - this.box.clientWidth;
+      this.canvas.style.left = phone ? `${-Math.floor(over / 2)}px` : "";
     }
     // The canvas holds the room at its scale, so a walker can be placed to a
     // screen pixel (slice 12); the room is drawn into it in room pixels.
@@ -159,12 +173,57 @@ export class Stage {
     }
     if (this.canvas.width !== ISO.width * this.scale) this.fit();
     if (this.layout === "b") this.pan(state);
-    const ctx = this.canvas.getContext("2d");
+    // The café's hour, by the server's clock the page keeps (slice 17), for
+    // the street and the room alike.
     const light = lightAt(cafeHour(state));
+    this.paintStreet(light);
     // For the browser checks: the light the café's clock gives (slice 17).
     this.canvas.dataset.light = String(light);
+    const ctx = this.canvas.getContext("2d");
     if (ctx) draw(ctx, state, this.sprites, Date.now(), this.pointer, light, this.scale);
   }
+
+  /**
+   * The street behind the room, over the whole stage (slice 16): at the
+   * room's scale, its room pixels lined up with the room canvas's to the
+   * screen pixel, so the towers and the pavement carry on past the canvas.
+   * It's drawn as the room's box and as much more on each side as the
+   * stage can show past it, so the phone's bigger room pans over it by
+   * moving it, and drawn again only when the light, the scale or the
+   * stage's size changes.
+   */
+  private paintStreet(light: ReturnType<typeof lightAt>): void {
+    const street = this.street;
+    if (!street || street.offsetParent === null) return;
+    const k = this.scale;
+    const w = this.box.clientWidth;
+    const h = this.box.clientHeight;
+    // As far past the room on each side as the stage can show (slice 16's
+    // review, finding 8): a street the stage's size, not nine times it.
+    const { x: mx, y: my } = streetMargin({ w, h }, { w: ISO.width, h: ISO.height }, k);
+    const key = `${light}:${k}:${w}x${h}`;
+    if (key !== this.streetKey) {
+      this.streetKey = key;
+      street.width = (ISO.width + 2 * mx) * k;
+      street.height = (ISO.height + 2 * my) * k;
+      street.style.width = `${street.width}px`;
+      street.style.height = `${street.height}px`;
+      const ctx = street.getContext("2d");
+      if (ctx) {
+        const colours = paletteAt(light).street;
+        for (const r of streetRuns({ x0: -mx, y0: -my, x1: ISO.width + mx, y1: ISO.height + my }, light >= 1)) {
+          ctx.fillStyle = colours[r.slot];
+          ctx.fillRect((r.x + mx) * k, (r.y + my) * k, r.w * k, k);
+        }
+      }
+    }
+    // Lined up with the room canvas wherever it sits, panned or centred.
+    const left = `${this.canvas.offsetLeft - mx * k}px`;
+    const top = `${this.canvas.offsetTop - my * k}px`;
+    if (street.style.left !== left) street.style.left = left;
+    if (street.style.top !== top) street.style.top = top;
+  }
+
 
   /**
    * Keeps your avatar in the middle of the screen in layout B, or the

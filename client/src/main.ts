@@ -8,7 +8,7 @@ import { Cafe } from "./cafe";
 import { DemoBar } from "./demoBar";
 import { cafeHour } from "./canberra";
 import { type Target, attachInput } from "./input";
-import { closeMenu, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
+import { closeMenu, freeArea, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
@@ -19,6 +19,7 @@ import type { ApiMe } from "./protocol/ApiMe";
 import type { Emote } from "./protocol/Emote";
 import { pieceName } from "./state";
 import { Stage } from "./stage";
+import { FLOOR, ISO } from "./iso";
 import { Talk } from "./talk";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -29,11 +30,16 @@ async function start(): Promise<void> {
   else showAuth(enter);
 }
 
-/** A short note over the room, for refusals ("Mochi moved away"). */
+/**
+ * A short note over the room, for refusals ("Mochi moved away"), at the
+ * foot of the band the floating bars leave clear, so the talk bar never
+ * covers it (slice 16's review, finding 3).
+ */
 function toast(overlay: HTMLElement, text: string): void {
   const note = document.createElement("div");
   note.className = "toast";
   note.textContent = text;
+  note.style.bottom = `${Math.max(0, overlay.clientHeight - freeArea(overlay).bottom) + 8}px`;
   overlay.append(note);
   window.setTimeout(() => note.remove(), 2500);
 }
@@ -115,7 +121,22 @@ function enter(me: ApiMe): void {
   document.addEventListener("visibilitychange", visibility);
   const stage = new Stage(cafe, canvas, $("stage"));
   // On a desktop the panels float over the room's corners (slice 14).
-  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel"), $("music-panel")]);
+  // The floor's corner tiles, in the window: no panel grows over them (slice 16's review, finding 7).
+  const corners = () => {
+    const room = cafe.state?.room;
+    if (!room) return [];
+    const box = $("stage").getBoundingClientRect();
+    return [
+      { x: 0, y: 1 },
+      { x: room.width - 1, y: 1 },
+      { x: 0, y: room.height - 1 },
+      { x: room.width - 1, y: room.height - 1 },
+    ].map((t) => {
+      const at = stage.tileToCss(t.x + 0.5, t.y + 0.5);
+      return { x: box.left + at.left, y: box.top + at.top };
+    });
+  };
+  const floating = new Floating($("stage"), [$("chalkboard"), $("cats-panel"), $("here-panel"), $("music-panel")], corners);
   const bubbles = new Bubbles(overlay, stage);
   const talk = new Talk(cafe, $<HTMLFormElement>("talk"), $<HTMLInputElement>("talk-input"), $<HTMLButtonElement>("talk-to"), (why) => {
     toast(overlay, why);
@@ -131,6 +152,10 @@ function enter(me: ApiMe): void {
   // a fraction of the canvas isn't a tile (slice 09). The browser checks find
   // tiles through it, and it tells nothing the canvas doesn't show.
   (window as unknown as { cafeRoom: unknown }).cafeRoom = Object.freeze({
+    /** The room's canvas at 1×, which grows with the floor (slice 16). */
+    size: Object.freeze({ width: ISO.width, height: ISO.height }),
+    /** The grid: its columns, and its rows with the street wall's row 0 (slice 16's review, finding 9). */
+    grid: Object.freeze({ ...FLOOR }),
     tileAt(x: number, y: number): { x: number; y: number } {
       const box = $("stage").getBoundingClientRect();
       const at = middle({ x, y });
