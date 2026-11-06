@@ -86,3 +86,37 @@ describe("the terrace in the room's bottom corners (slice 16)", () => {
     }
   });
 });
+
+// Slice 16's review, finding 8: the street was drawn a whole stage past the
+// room on every side, about nine times the window, and each redraw was a
+// long task. It's drawn only as far past the room as the stage can show.
+describe("how far past the room the street is drawn", () => {
+  // Past the room on each side, as far as the stage is bigger than it: the
+  // whole gap, since the phone's bigger room can be panned against an edge.
+  it("reaches the stage's edges round a room smaller than it, and no further", async () => {
+    const { streetMargin } = await import("../src/street");
+    // 1920×1080 with the 1600×1056 room at 4×: 320 px across (80 room px), 24 down (6).
+    expect(streetMargin({ w: 1920, h: 1080 }, { w: 400, h: 264 }, 4)).toEqual({ x: 80, y: 6 });
+    // 2560×1440 at 5×: 560 across (112), 120 down (24).
+    expect(streetMargin({ w: 2560, h: 1440 }, { w: 400, h: 264 }, 5)).toEqual({ x: 112, y: 24 });
+  });
+  it("reaches past a room bigger than the stage only as far as the stage is past it, as the phone's bigger room pans", async () => {
+    const { streetMargin } = await import("../src/street");
+    // 390×844 with the 1200×792 room at 3×: nothing across, 52 px down (18 room px, rounded up).
+    expect(streetMargin({ w: 390, h: 844 }, { w: 400, h: 264 }, 3)).toEqual({ x: 0, y: 18 });
+  });
+  it("draws the street at most a little more than the stage, never nine times it", async () => {
+    const { streetMargin } = await import("../src/street");
+    for (const [stage, k] of [
+      [{ w: 1920, h: 1080 }, 4],
+      [{ w: 1440, h: 900 }, 3],
+      [{ w: 390, h: 844 }, 3],
+      [{ w: 2560, h: 1440 }, 5],
+    ] as const) {
+      const m = streetMargin(stage, { w: 400, h: 264 }, k);
+      const drawn = (400 + 2 * m.x) * k * (264 + 2 * m.y) * k;
+      // At most the room and the stage's whole gap on both sides: under twice the stage or the room, whichever is bigger.
+      expect(drawn, `${stage.w}×${stage.h}`).toBeLessThanOrEqual(Math.max(stage.w, 400 * k) * Math.max(stage.h, 264 * k) * 2);
+    }
+  });
+});

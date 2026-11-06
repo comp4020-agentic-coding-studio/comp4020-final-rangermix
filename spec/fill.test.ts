@@ -210,8 +210,12 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     const street = streetColours("day");
     let seen = 0;
     for (const keys of [["ArrowLeft", 13], ["ArrowRight", 13], ["ArrowUp", 13], ["ArrowDown", 13]] as const) {
+      await page.locator("#room").focus();
       for (let i = 0; i < keys[1]; i++) await page.keyboard.press(keys[0]);
       await page.waitForTimeout(400);
+      // The keyboard's focus ring runs round the room, along the screen's
+      // edges here: it's put away for the sample, the view where it was.
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       for (const p of await edges(page)) {
         seen++;
         expect(page_, `panned ${keys[0]}: the edge at ${p.at} is the room or the street, not the page`).not.toContain(p.colour);

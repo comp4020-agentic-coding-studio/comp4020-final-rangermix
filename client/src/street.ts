@@ -215,3 +215,14 @@ export function streetRuns(span: { x0: number; y0: number; x1: number; y1: numbe
 export function terraceAt(t: TerraceThing, room: { width: number; height: number }): { x: number; y: number } {
   return t.side === "left" ? { x: -t.out, y: 1 + t.along } : { x: t.along, y: room.height + t.out };
 }
+
+/**
+ * How far past the room's canvas the street is drawn, in room pixels on
+ * each side (slice 16's review, finding 8): as far as the stage can show
+ * past the room, `stage` and the room's 1× size at scale `k`. The whole gap
+ * either side, since the phone's bigger room can be panned against one
+ * edge; on a desktop, where the room is centred, half of it shows.
+ */
+export function streetMargin(stage: { w: number; h: number }, room: { w: number; h: number }, k: number): { x: number; y: number } {
+  return { x: Math.ceil(Math.max(0, stage.w - room.w * k) / k), y: Math.ceil(Math.max(0, stage.h - room.h * k) / k) };
+}

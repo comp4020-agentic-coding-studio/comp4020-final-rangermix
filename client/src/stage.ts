@@ -6,7 +6,7 @@ import { ISO, pickTile, toCanvas } from "./iso";
 import { type Pointer, draw, hitAt } from "./render";
 import { fitScale } from "./scale";
 import { Sprites, paletteAt } from "./sprites";
-import { streetRuns } from "./street";
+import { streetMargin, streetRuns } from "./street";
 import { serverNow } from "./state";
 
 /** How tall someone stands, in canvas pixels at 1x: 32 since slice 11 (render.ts's PERSON). */
@@ -183,9 +183,10 @@ export class Stage {
    * The street behind the room, over the whole stage (slice 16): at the
    * room's scale, its room pixels lined up with the room canvas's to the
    * screen pixel, so the towers and the pavement carry on past the canvas.
-   * It's drawn as the room's box and a stage's size more on every side, so
-   * the phone's bigger room pans over it by moving it, and drawn again only
-   * when the light, the scale or the stage's size changes.
+   * It's drawn as the room's box and as much more on each side as the
+   * stage can show past it, so the phone's bigger room pans over it by
+   * moving it, and drawn again only when the light, the scale or the
+   * stage's size changes.
    */
   private paintStreet(light: ReturnType<typeof lightAt>): void {
     const street = this.street;
@@ -193,9 +194,9 @@ export class Stage {
     const k = this.scale;
     const w = this.box.clientWidth;
     const h = this.box.clientHeight;
-    // A stage's size past the room on each side, in room pixels.
-    const mx = Math.ceil(w / k);
-    const my = Math.ceil(h / k);
+    // As far past the room on each side as the stage can show (slice 16's
+    // review, finding 8): a street the stage's size, not nine times it.
+    const { x: mx, y: my } = streetMargin({ w, h }, { w: ISO.width, h: ISO.height }, k);
     const key = `${light}:${k}:${w}x${h}`;
     if (key !== this.streetKey) {
       this.streetKey = key;
