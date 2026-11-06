@@ -92,5 +92,17 @@ to hide from a noisy room, or went to greet a friend at the door.
     sofa's back), or under another visitor. A tap there opens that sofa's or
     visitor's menu, as it should, so the script was changed to pick clear
     tiles; the café was right.
-- **Not yet checked on the live café:** that waits on `main`'s deploy (CI
-  deploys `main` once its checks pass).
+- **CI on [`06a5618`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/06a5618)**
+  (run 42242550329) passed: the spec against the Docker image, this check
+  among them; the Rust job (fmt, clippy, tests, the generated TypeScript
+  unchanged); and the deploy to Fly.
+- **On the live café, 2026-11-07,** by mouse at 1920×1080, with the same
+  throwaway script and one `agent_` visit of about 15 seconds that left
+  through the door. It walked (0, 12) → (3, 12) and turned mid-way from
+  (1, 12) to (2, 12) for (1, 10). The new walk went `1,12 2,12 2,11 2,10
+  1,10`: it finished the step, then turned. The largest move between two
+  frames across the turn was 0.049 of a tile (0.048 is one frame's
+  walking), and when the new walk came the old one had the walker at
+  1.665 and the new one at 1.666. Unfixed `main` would have sent a walk
+  back from (1, 12). The phone size was checked on the local café only,
+  to keep the live visit short.

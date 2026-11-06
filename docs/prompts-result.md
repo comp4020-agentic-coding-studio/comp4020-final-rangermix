@@ -2467,4 +2467,9 @@ back ([`1db9fde`](https://github.com/comp4020-agentic-coding-studio/comp4020-fin
   from unfixed `main` and passes against the fix, with all of `spec/`. In
   a real browser, by mouse at 1920×1080 and by touch at 390×844, the
   largest move between two frames across the turn was 0.049 of a tile,
-  one frame's ordinary walking. The live café waits on `main`'s deploy.
+  one frame's ordinary walking.
+- **Live:** CI passed and deployed it
+  ([`06a5618`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/06a5618)).
+  On the live café one short `agent_` visit by mouse turned mid-step: the
+  new walk finished the step first, with the same 0.049 of a tile as the
+  largest move between frames.
