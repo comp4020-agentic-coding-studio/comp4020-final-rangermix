@@ -499,7 +499,11 @@ renamed.
     the evening, and night from 21:00, the sets blended slot by slot. The
     page follows the device's setting: Catppuccin Latte in a light one
     (mauve for links and buttons, subtext1 for muted text) and Mocha in a
-    dark one (peach), every text and control at 4.5:1 or better.
+    dark one (peach), every text and control at 4.5:1 or better. The
+    keyboard's focus ring is two tones, an outline and a halo just outside
+    it, crust on white in the light theme and Mocha's blue on black in
+    the dark, so over the room and the street one of them holds 3:1
+    against anything (slice 16's review, finding 4).
   - **Cats about 24 px and people about 32 to 36 px tall**, drawn by Claude
     as PNGs in `content/sprites/` and turned into palette slots by the
     client, with a pose for each thing a cat does (slice 11). 32-px tiles
@@ -529,8 +533,10 @@ renamed.
     its colours in the palette's "street" slots by day and by night; it
     takes no click. Since slice 16 it runs to the window's edges, and the
     café's terrace stands in the room's two bottom corners: by the floor's
-    left edge a bench between two planters, out front a table under an
-    umbrella with two chairs and a street lamp, lit at night. Each thing is
+    left edge a bench between two planters, out front a table with a
+    folded parasol, two chairs and a low lantern, lit at night. It's kept
+    low and off the floor: anything tall out front would stand over the
+    floor's front tiles on screen (slice 16's review, finding 2). Each thing is
     a `[[terrace]]` line in `street.toml` (its kind, the floor's edge it
     stands by, how far along and how far out); each kind is drawn as its
     own few blocks in the furniture's colours. It's scenery: off the
