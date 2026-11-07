@@ -2525,3 +2525,14 @@ below.
 - **Checked:** `cargo test -p cafe` (358 unit tests and every binary
   test), the client's 371 tests, the typecheck, and the whole `spec/`
   (109) against a local café built from the branch.
+- **Deployed, at the second try.** The merge's first CI run failed and
+  deployed nothing: \`cargo fmt\` hadn't been run on the new Rust, and the
+  one-pixel backdrop test took 5.2 s on CI against a 5 s limit. Both were
+  fixed after running every step CI runs locally
+  ([`12fc1d7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/12fc1d7)), and that run deployed.
+- **Checked live** ([`b778bd6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b778bd6),
+  [notes/slice-18-balcony.md](notes/slice-18-balcony.md)): one visit as
+  `agent_s180xuw` at 1920×1080, in the evening. The visitors' arrangement
+  was kept; the deck, glass and building ran to both edges of the window,
+  each pixel sampled there being the backdrop's own; four clicks on the
+  balcony did nothing. Live once the user has judged it.
