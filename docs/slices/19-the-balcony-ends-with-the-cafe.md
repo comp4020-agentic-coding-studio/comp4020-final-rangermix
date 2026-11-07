@@ -1,8 +1,11 @@
 # 19. The balcony ends with the café
 
-- **Status:** Proposed 2026-11-08 from the user's judgement of slice 18,
-  with a study ([notes](../notes/slice-19-study.md), [screens](../notes/screens/slice-19-study/))
-- **Plan:** written when the slice starts, as `docs/notes/plan-slice-19-balcony-ends.md`
+- **Status:** Approved 2026-11-08: "1A 2A 3A", the balcony ending at the
+  café's walls, the street beside it as now, the glass turning both ends;
+  planned ([plan](../notes/plan-slice-19-balcony-ends.md)); proposed
+  2026-11-08 from the user's judgement of slice 18, with a study
+  ([notes](../notes/slice-19-study.md), [screens](../notes/screens/slice-19-study/))
+- **Plan:** [`docs/notes/plan-slice-19-balcony-ends.md`](../notes/plan-slice-19-balcony-ends.md)
 - **Design:** The client ("The room is a diorama on its street", "The café
   is upstairs, on a balcony", "Crisp, with outlines and shadows");
   [ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)
@@ -34,8 +37,7 @@ walls, a fixed size, treats the building as the walls are treated
 
 ## In this slice
 
-The answers proposed below, the study's leans. Any the user changes
-change this list.
+The answers the user chose, 2026-11-08: "1A 2A 3A".
 
 - **The balcony's ends at the café's walls** (question 1, A): the deck,
   the glass and the building under it end at the street wall's line
@@ -99,6 +101,8 @@ change this list.
 
 ## Open questions
 
+All three answered 2026-11-08: "1A 2A 3A".
+
 The study's screens, by day:
 [compare-day.png](../notes/screens/slice-19-study/compare-day.png); by
 night: [compare-night.png](../notes/screens/slice-19-study/compare-night.png);
@@ -107,7 +111,7 @@ both ends close, by day and by night:
 phone: [compare-phone.png](../notes/screens/slice-19-study/compare-phone.png);
 a tall window: [compare-tall.png](../notes/screens/slice-19-study/compare-tall.png).
 
-1. **Where the balcony ends.** Proposed: A.
+1. **Where the balcony ends.** Answered: A.
    - (A) **At the café's walls, a fixed size**: the deck, glass and
      building end at the walls' two lines; the street beside them. The
      café is its building's corner, cut out as the room is, and it looks
@@ -117,7 +121,7 @@ a tall window: [compare-tall.png](../notes/screens/slice-19-study/compare-tall.p
      says the building goes on.
    - (C) **As live**: run on to the window's edges. The gallery the user
      objects to.
-2. **What shows beside the building, past each end.** Proposed: A.
+2. **What shows beside the building, past each end.** Answered: A.
    - (A) **The street, as now**: the skyline's foot and the pavement
      band, with the building standing in front. The least change, and
      never sky beside the building.
@@ -127,7 +131,7 @@ a tall window: [compare-tall.png](../notes/screens/slice-19-study/compare-tall.p
      down under the balcony; here it shows only beside the building.
    - (C) **The city fading to sky** below the skyline's foot: sky beside
      the building, which floats.
-3. **The glass at the ends.** Proposed: A.
+3. **The glass at the ends.** Answered: A.
    - (A) **Turns both ends back to the walls**: a balcony closed on every
      side.
    - (B) **Stops open** at the deck's outer corner: reads as cut off.
