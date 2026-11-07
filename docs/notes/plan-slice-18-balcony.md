@@ -117,3 +117,10 @@ Where the build departed from this plan, task by task.
   terrace and the balcony instead, and was seen failing with a planter
   moved onto the floor. The backdrop keeps the last four spans it drew,
   so a resize doesn't keep every size it has seen.
+- **Task 3.** As planned. The browser check reads the room's canvas and
+  the street's under it at the same screen pixels; its first run found two
+  pixels apart on the deck's top row, which was the check's own reader
+  flooring 703.999… to the row above (`(704 / 1104) * 1104`), not the
+  drawing: it now multiplies before it divides. With the deck taken out it
+  fails (no deck beside the room's canvas). The whole `spec/` passes
+  against a local café built from the branch.

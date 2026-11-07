@@ -7,11 +7,12 @@
 // does. Scenery: nothing here is picked or walked on.
 
 import type { Light } from "./canberra";
-import { FLOOR } from "./iso";
-import { Raster } from "./layer";
-import { block } from "./shapes";
+import { FLOOR, fromCanvas } from "./iso";
+import { Raster, SHADOW, darken } from "./layer";
+import { spans } from "./crisp";
+import { OUTLINE, block, outline, poly, shade, up } from "./shapes";
 import { paletteAt } from "./sprites";
-import { type TerraceThing, street, streetRuns, terraceAt } from "./street";
+import { type Deck, type TerraceThing, street, streetRuns, terraceAt } from "./street";
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -43,6 +44,7 @@ export function backdrop(span: Span, light: Light): Raster {
   const ctx = raster.context();
   const palette = paletteAt(light);
   drawStreet(ctx, span, palette.street, light);
+  if (street.deck) drawDeck(ctx, street.deck, palette.balcony);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
   cache.set(where, { made, raster });
   // A resize asks for a new span: keep the few in use, not every size seen.
@@ -57,6 +59,60 @@ function drawStreet(ctx: Ctx, span: Span, colours: string[], light: Light): void
     ctx.fillRect(r.x, r.y, r.w, 1);
   }
 }
+
+/**
+ * The deck the terrace stands on (slice 18): stone tiles in the room's angle,
+ * an L round the floor's left and front edges at the foot of its slab,
+ * `out` tiles wide; its own slab under its two outer edges, lit on the left
+ * and darker at the front as the room's is; and a shadow on the stone under
+ * each terrace thing, as the room's own shadows darken its floor.
+ */
+function drawDeck(ctx: Ctx, deck: Deck, colours: string[]): void {
+  const [stoneA, stoneB, edge] = colours;
+  const W = FLOOR.width;
+  const H = FLOOR.height;
+  const z = -SLAB;
+  const xo = -deck.out;
+  const yo = H + deck.out;
+  // A tile at (x, y), cut at the deck's outer edges.
+  const tile = (x: number, y: number) => {
+    const [a, b] = [Math.max(x, xo), Math.min(y + 1, yo)];
+    poly(ctx, [up(a, y, z), up(x + 1, y, z), up(x + 1, b, z), up(a, b, z)], (((x + y) % 2) + 2) % 2 ? stoneB : stoneA);
+  };
+  // The left arm, from the street wall's foot down to the front, then the
+  // front arm, the corner where they meet once.
+  for (let y = 1; y < yo; y++) for (let x = Math.floor(xo); x < 0; x++) tile(x, y);
+  for (let y = H; y < yo; y++) for (let x = 0; x < W; x++) tile(x, y);
+  // The terrace's shadows on the stone, before the things stand on them.
+  for (const t of street.terrace) {
+    if (t.kind === "umbrella") continue;
+    const at = terraceAt(t, FLOOR);
+    const [rx, ry] = SHADOW_UNDER[t.kind](t.side);
+    for (const s of spans([up(at.x - rx, at.y - ry, z), up(at.x + rx, at.y - ry, z), up(at.x + rx, at.y + ry, z), up(at.x - rx, at.y + ry, z)])) {
+      for (let x = s.x0; x < s.x1; x++) {
+        const { gx, gy } = fromCanvas(x + 0.5, s.y + 0.5 + SLAB);
+        ctx.fillStyle = darken((((Math.floor(gx) + Math.floor(gy)) % 2) + 2) % 2 ? stoneB : stoneA, SHADOW);
+        ctx.fillRect(x, s.y, 1, 1);
+      }
+    }
+  }
+  // Its slab, under the two outer edges, and the edge's line.
+  if (deck.slab > 0) {
+    poly(ctx, [up(xo, 1, z), up(xo, yo, z), up(xo, yo, z - deck.slab), up(xo, 1, z - deck.slab)], shade(edge, 0.12));
+    poly(ctx, [up(xo, yo, z), up(W, yo, z), up(W, yo, z - deck.slab), up(xo, yo, z - deck.slab)], shade(edge, 0.28));
+  }
+  outline(ctx, [up(xo, 1, z), up(xo, yo, z), up(W, yo, z)], shade(edge, OUTLINE), 1, false);
+}
+
+/** How far a terrace thing's shadow reaches round its spot on the deck, in tiles, across and along. */
+const SHADOW_UNDER: Record<TerraceThing["kind"], (side: TerraceThing["side"]) => [number, number]> = {
+  bench: (side) => (side === "left" ? [0.42, 1.3] : [1.3, 0.42]),
+  planter: () => [0.55, 0.55],
+  table: () => [0.6, 0.6],
+  umbrella: () => [0, 0],
+  chair: () => [0.36, 0.36],
+  lamp: () => [0.3, 0.3],
+};
 
 /**
  * A thing on the terrace (slice 16), on the pavement at the slab's foot: a

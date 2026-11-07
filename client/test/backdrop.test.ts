@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import palettes from "../../content/sprites/palettes.json";
 import { FLOOR, ISO, toCanvas } from "../src/iso";
 import { backdrop } from "../src/backdrop";
+import { SHADOW, darken } from "../src/layer";
 import { street, streetSlot, terraceAt } from "../src/street";
 
 // Slice 18: the street and everything outside the room (the terrace, and
@@ -102,6 +103,101 @@ describe("the backdrop behind and round the room", () => {
       expect(mine, "the planter's pixels past the canvas").toBeGreaterThan(20);
     } finally {
       street.terrace = kept;
+    }
+  });
+});
+
+// Slice 18: the deck the terrace stands on, round the floor's left and
+// front edges at the foot of its slab, in the room's angle.
+describe("the balcony's deck", () => {
+  const SLAB = 6;
+  const wide = { x0: -120, y0: -20, x1: ISO.width + 120, y1: ISO.height + 80 };
+  const balcony = (name: "day" | "night") => (palettes[name] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase());
+  /** The colour on the deck at grid spot (gx, gy): the pixel at its middle, at the slab's foot. */
+  const onDeck = (b: ReturnType<typeof backdrop>, gx: number, gy: number) => {
+    const p = toCanvas(gx, gy);
+    return b.at(Math.round(p.x), Math.round(p.y) + SLAB);
+  };
+  const deck = street.deck!;
+
+  for (const [light, name] of [
+    [0, "day"],
+    [1, "night"],
+  ] as const) {
+    it(`lays stone tiles in two tones in both arms, by the left edge and out front, by ${name}`, () => {
+      const b = backdrop(wide, light);
+      const [stoneA, stoneB] = balcony(name);
+      const seen = new Set<string>();
+      // Spots in the left arm (left of x = 0) and the front arm (past the
+      // floor's last row), clear of the terrace's things.
+      const spots: [number, number][] = [
+        [-0.5, 1.5],
+        [-1.5, 2.5],
+        [-0.5, 10.5],
+        [-1.5, FLOOR.height + 0.5],
+        [0.5, FLOOR.height + 0.5],
+        [3.5, FLOOR.height + 1.5],
+        [11.5, FLOOR.height + 0.5],
+        [12.5, FLOOR.height + 1.5],
+      ];
+      for (const [gx, gy] of spots) {
+        const c = onDeck(b, gx, gy);
+        expect([stoneA, stoneB], `${name}: the deck at (${gx}, ${gy}) is ${c}`).toContain(c);
+        seen.add(c!);
+      }
+      expect(seen.size, "both tones").toBe(2);
+    });
+  }
+
+  it("reaches as far out as street.toml says, and no further: past it is what's below the balcony", () => {
+    const b = backdrop(wide, 0);
+    const stones = balcony("day").slice(0, 2);
+    // Just inside the deck's outer edges, and just past them.
+    expect(stones).toContain(onDeck(b, -(deck.out - 0.15), 6.5));
+    expect(stones).toContain(onDeck(b, 6.5, FLOOR.height + deck.out - 0.15));
+    expect(stones).not.toContain(onDeck(b, -(deck.out + 0.4), 6.5));
+    expect(stones).not.toContain(onDeck(b, 6.5, FLOOR.height + deck.out + 0.4));
+  });
+
+  it("stands every terrace thing on the deck, a shadow under it", () => {
+    const b = backdrop(wide, 0);
+    for (const t of street.terrace) {
+      const at = terraceAt(t, FLOOR);
+      // The deck reaches round the thing's spot on every side.
+      for (const [dx, dy] of [
+        [-0.7, 0],
+        [0.7, 0],
+        [0, -0.7],
+        [0, 0.7],
+      ]) {
+        const [gx, gy] = [at.x + dx, at.y + dy];
+        const onIt = gx < 0 ? gx >= -deck.out && gy >= 1 : gy >= FLOOR.height && gy <= FLOOR.height + deck.out && gx >= -deck.out;
+        expect(onIt, `the ${t.kind}'s side (${gx}, ${gy}) is on the deck`).toBe(true);
+      }
+    }
+    // A shadow under each thing: the deck's own stone darkened as the
+    // room's shadows are (layer.ts), round each thing's foot.
+    const shadows = balcony("day").slice(0, 2).map((c) => darken(c, SHADOW));
+    for (const t of street.terrace) {
+      if (t.kind === "umbrella") continue;
+      const at = terraceAt(t, FLOOR);
+      const p = toCanvas(at.x, at.y);
+      let shaded = 0;
+      for (let dx = -24; dx <= 24; dx++) for (let dy = -6; dy <= 14; dy++) if (shadows.includes(b.at(Math.round(p.x) + dx, Math.round(p.y) + SLAB + dy) ?? "")) shaded++;
+      expect(shaded, `the ${t.kind}'s shadow on the deck`).toBeGreaterThan(3);
+    }
+  });
+
+  it("draws no deck from a street with no [deck]", () => {
+    const kept = street.deck;
+    street.deck = null;
+    try {
+      const b = backdrop(wide, 0);
+      const stones = balcony("day").slice(0, 2);
+      expect(stones).not.toContain(onDeck(b, -0.5, 6.5));
+      expect(stones).not.toContain(onDeck(b, 6.5, FLOOR.height + 0.5));
+    } finally {
+      street.deck = kept;
     }
   });
 });
