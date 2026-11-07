@@ -86,37 +86,118 @@ async function both(page: Page, points: { x: number; y: number }[]): Promise<{ r
 }
 
 describe("the balcony under the terrace (slice 18)", { timeout: 60_000 }, () => {
-  it("runs the deck past the room's canvas to the window's edges, lined up with the room's, by day and by night", async () => {
-    for (const [at, light] of [
-      ["10:00", "day"],
-      ["22:00", "night"],
-    ] as const) {
-      const { page } = await visit({ width: 1920, height: 1080 }, at);
-      const room = (await page.locator("#room").boundingBox())!;
-      // Past the room's canvas on the left and the right, where the deck's
-      // two arms carry on: points in the strips beside the canvas, down its
-      // lower half, every 4 px. The bars and panels float over the canvas,
-      // not these strips' outer parts, which is where they're read.
-      const points: { x: number; y: number }[] = [];
-      for (let y = Math.round(room.y + room.height * 0.55); y < Math.min(1080, room.y + room.height); y += 4) {
-        for (const x of [Math.round(room.x) - 6, Math.round(room.x + room.width) + 5]) if (x >= 0 && x < 1920) points.push({ x, y });
+  // Slice 18's review, finding 4: counted on both sides together, the deck
+  // beside the canvas could be gone from one side and pass; the seam was
+  // compared only on stone; and only 1920×1080 was looked at, where finding
+  // 1's cut didn't show. Each side is held on its own, every point the
+  // street's canvas shows is the backdrop's own pixel there, the seam is
+  // compared wherever the room's canvas isn't the room, and a wide, short
+  // window is looked at too.
+  // The second a wide, short window: where finding 1's cut showed.
+  for (const [width, height] of [
+    [1920, 1080],
+    [2560, 540],
+  ] as const) {
+    it(`runs the balcony past the room's canvas on both sides to the window's edges, lined up with the room's, by day and by night, at ${width}×${height}`, async () => {
+      for (const [at, light] of [
+        ["10:00", "day"],
+        ["22:00", "night"],
+      ] as const) {
+        const { page } = await visit({ width, height }, at);
+        await page.addStyleTag({ content: ".panel, .status, .talk { visibility: hidden !important; }" });
+        // Two frames, so the stage has placed both canvases for the change.
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        const room = (await page.locator("#room").boundingBox())!;
+        const balconyColours = balcony(light);
+        // Beside the room's canvas on each side, from the window's edge to the
+        // canvas, down the window, every 4 px: the street's canvas there is
+        // exactly the backdrop, and some of it is the balcony's.
+        for (const side of ["left", "right"] as const) {
+          const points: { x: number; y: number }[] = [];
+          const [x0, x1] = side === "left" ? [1, Math.floor(room.x) - 1] : [Math.ceil(room.x + room.width) + 1, width - 1];
+          for (let y = 1; y < height - 1; y += 4) for (let x = x0; x < x1; x += 8) points.push({ x, y });
+          if (points.length === 0) continue;
+          const seen = await page.evaluate((points) => {
+            const room = (window as unknown as { cafeRoom: { backdropAt(x: number, y: number): string | null } }).cafeRoom;
+            const canvas = document.getElementById("street") as HTMLCanvasElement;
+            const r = canvas.getBoundingClientRect();
+            const ctx = canvas.getContext("2d")!;
+            const at = (v: number, size: number, css: number) => Math.floor((v * size) / css + 1e-6);
+            return points.map((p) => {
+              const [cr, cg, cb] = ctx.getImageData(at(p.x - r.left, canvas.width, r.width), at(p.y - r.top, canvas.height, r.height), 1, 1).data;
+              return { ...p, shown: `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`, backdrop: room.backdropAt(p.x + 0.5, p.y + 0.5) };
+            });
+          }, points);
+          const off = seen.filter((p) => p.shown !== p.backdrop);
+          expect(off.slice(0, 5), `${light} ${width}×${height}: the street's canvas ${side} of the room isn't the backdrop at ${off.length} of ${seen.length}`).toEqual([]);
+          const mine = seen.filter((p) => balconyColours.includes(p.shown) || p.shown !== null && !(palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase()).includes(p.shown));
+          expect(mine.length, `${light} ${width}×${height}: the balcony or the building ${side} of the room's canvas`).toBeGreaterThan(5);
+        }
+        // At the window's own edges, under the line the deck's outer edge
+        // runs along (found from the floor's corners, not from the backdrop,
+        // so a balcony cut short shows): nothing of the street, only the
+        // balcony and the building, down to the window's foot. A check that
+        // held the screen to the backdrop alone couldn't see an arm cut
+        // short, since both would be cut alike.
+        const edge = await page.evaluate(
+          ([width, height, out, streetColours]) => {
+            const room = (window as unknown as { cafeRoom: { tileAt(x: number, y: number): { x: number; y: number }; grid: { width: number; height: number } } }).cafeRoom;
+            const canvas = document.getElementById("street") as HTMLCanvasElement;
+            const r = canvas.getBoundingClientRect();
+            const ctx = canvas.getContext("2d")!;
+            // A grid spot's screen point: tileAt gives a tile's middle, so a
+            // spot is half a tile back on each axis from the tile it's in.
+            const spot = (gx: number, gy: number) => {
+              const m = room.tileAt(gx - 0.5, gy - 0.5);
+              return m;
+            };
+            const { height: gh } = room.grid;
+            // The deck's outer corner and a point along each arm, at the floor's level.
+            const corner = spot(-out, gh + out);
+            const upLeft = spot(-out, gh + out - 4);
+            const upRight = spot(-out + 4, gh + out);
+            const lineY = (a: { x: number; y: number }, b: { x: number; y: number }, x: number) => a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
+            const at = (v: number, size: number, css: number) => Math.floor((v * size) / css + 1e-6);
+            const bad: string[] = [];
+            let looked = 0;
+            for (const x of [2, width - 3]) {
+              const top = x < corner.x ? lineY(corner, upLeft, x) : lineY(corner, upRight, x);
+              // From well under the deck's edge (its slab, the glass's foot) to the window's foot.
+              for (let y = Math.max(2, Math.ceil(top + 40)); y < height - 2; y += 6) {
+                looked++;
+                const [cr, cg, cb] = ctx.getImageData(at(x - r.left, canvas.width, r.width), at(y - r.top, canvas.height, r.height), 1, 1).data;
+                const hex = `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+                if (streetColours.includes(hex)) bad.push(`(${x},${y}) ${hex}`);
+              }
+            }
+            return { bad, looked };
+          },
+          [
+            width,
+            height,
+            2.6,
+            // The street's own colours, leaving out any the building shares:
+            // its lit windows are the street's lamplight at night.
+            (palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase()).filter((c) => !balcony(light).includes(c)),
+          ] as const,
+        );
+        expect(edge.looked, `${light} ${width}×${height}: points under the balcony at the window's edges`).toBeGreaterThan(4);
+        expect(edge.bad.slice(0, 5), `${light} ${width}×${height}: the street under the balcony at the window's edges`).toEqual([]);
+        // Across the seam: just inside the room's canvas, wherever it shows
+        // the backdrop (not the room's own drawing), the street's canvas under
+        // it shows the very same pixel.
+        const seam: { x: number; y: number }[] = [];
+        for (let y = Math.max(1, Math.round(room.y)); y < Math.min(height - 1, room.y + room.height); y += 3)
+          for (let dx = 1; dx < 40; dx += 5) seam.push({ x: Math.round(room.x) + dx, y }, { x: Math.round(room.x + room.width) - 1 - dx, y });
+        const across = await both(page, seam);
+        const backdropAt = await page.evaluate((pts) => pts.map((p) => (window as unknown as { cafeRoom: { backdropAt(x: number, y: number): string | null } }).cafeRoom.backdropAt(p.x + 0.5, p.y + 0.5)), seam);
+        const outside = across.map((s, i) => ({ ...s, ...seam[i], backdrop: backdropAt[i] })).filter((s) => s.room !== null && s.room === s.backdrop);
+        expect(outside.length, `${light} ${width}×${height}: backdrop pixels just inside the room's canvas`).toBeGreaterThan(40);
+        expect(outside.filter((s) => s.street !== s.room).slice(0, 5), `${light} ${width}×${height}: the two canvases differ across the seam`).toEqual([]);
+        await page.evaluate(() => document.getElementById("leave")?.click());
       }
-      const seen = await both(page, points);
-      const [stoneA, stoneB] = balcony(light);
-      const deck = seen.filter((s) => s.street === stoneA || s.street === stoneB).length;
-      expect(deck, `${light}: deck pixels beside the room's canvas, of ${points.length}`).toBeGreaterThan(20);
-      // The street's canvas lies under the room's too: wherever the room's
-      // canvas shows the deck, near its two side edges, the street's shows
-      // the very same pixel, so the deck carries on across the seam.
-      const seam: { x: number; y: number }[] = [];
-      for (let y = Math.round(room.y + room.height * 0.55); y < Math.min(1076, room.y + room.height); y += 3)
-        for (let dx = 1; dx < 40; dx += 6) seam.push({ x: Math.round(room.x) + dx, y }, { x: Math.round(room.x + room.width) - 1 - dx, y });
-      const onDeck = (await both(page, seam)).filter((s) => s.room === stoneA || s.room === stoneB);
-      expect(onDeck.length, `${light}: deck pixels just inside the room's canvas`).toBeGreaterThan(20);
-      expect(onDeck.filter((s) => s.street !== s.room), `${light}: the street's canvas differs from the room's under the deck`).toEqual([]);
-      await page.locator("#leave").click();
-    }
-  });
+    });
+  }
 
   it("takes no click or tap on the deck, the glass or the building, by mouse or by touch", { timeout: 120_000 }, async () => {
     for (const touch of [false, true]) {

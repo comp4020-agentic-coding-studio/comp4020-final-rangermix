@@ -164,8 +164,13 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     }
   });
 
-  /** The colours of a whole-page screenshot at the window's edges and corners, sampled every 40 px, and where. */
-  async function edges(page: Page): Promise<{ at: string; colour: string }[]> {
+  /**
+   * The colours of a whole-page screenshot at the window's edges and
+   * corners, sampled every 40 px, and where; with what the backdrop draws
+   * at each point (slice 18's review, finding 7), which the page's own
+   * background can't pass for.
+   */
+  async function edges(page: Page): Promise<{ at: string; colour: string; backdrop: string | null }[]> {
     const shot = await page.screenshot();
     return page.evaluate(async (b64) => {
       const img = new Image();
@@ -175,7 +180,8 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       [c.width, c.height] = [img.width, img.height];
       const ctx = c.getContext("2d")!;
       ctx.drawImage(img, 0, 0);
-      const out: { at: string; colour: string }[] = [];
+      const out: { at: string; colour: string; backdrop: string | null }[] = [];
+      const room = (window as unknown as { cafeRoom: { backdropAt(x: number, y: number): string | null } }).cafeRoom;
       const hex = (x: number, y: number) => {
         const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
         return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
@@ -187,8 +193,9 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
         .map((e) => e.getBoundingClientRect())
         .filter((r) => r.width > 0 && r.height > 0);
       const free = (x: number, y: number) => !over.some((r) => x > r.left - 24 && x < r.right + 24 && y > r.top - 24 && y < r.bottom + 24);
-      for (let x = 2; x < c.width - 2; x += 40) for (const y of [2, c.height - 3]) if (free(x, y)) out.push({ at: `(${x}, ${y})`, colour: hex(x, y) });
-      for (let y = 2; y < c.height - 2; y += 40) for (const x of [2, c.width - 3]) if (free(x, y)) out.push({ at: `(${x}, ${y})`, colour: hex(x, y) });
+      const point = (x: number, y: number) => ({ at: `(${x}, ${y})`, colour: hex(x, y), backdrop: room.backdropAt(x + 0.5, y + 0.5) });
+      for (let x = 2; x < c.width - 2; x += 40) for (const y of [2, c.height - 3]) if (free(x, y)) out.push(point(x, y));
+      for (let y = 2; y < c.height - 2; y += 40) for (const x of [2, c.width - 3]) if (free(x, y)) out.push(point(x, y));
       return out;
     }, shot.toString("base64"));
   }
@@ -205,12 +212,25 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       }
       const seen = await edges(page);
       expect(seen.length, "edge points to look at").toBeGreaterThan(60);
-      // What's drawn outside the room: the street, and since slice 18 the
-      // balcony and the café's building under it, at the window's foot.
-      const outside = await page.evaluate(() => (window as unknown as { cafeRoom: { backdropColours(): string[] } }).cafeRoom.backdropColours());
-      expect(outside, `${light}: the street's colours among what's outside the room`).toEqual(expect.arrayContaining(streetColours(light)));
-      for (const p of seen) expect(outside, `${light}: the window's edge at ${p.at} is the street or the balcony, not the page`).toContain(p.colour);
+      // Each point is exactly what the backdrop draws there, the street, or
+      // since slice 18 the balcony and the café's building under it at the
+      // window's foot; not a colour from a list, which the page's own
+      // background could share by night (slice 18's review, finding 7).
+      for (const p of seen) expect(p.colour, `${light}: the window's edge at ${p.at} is the backdrop's, not the page`).toBe(p.backdrop);
+      expect(seen.some((p) => streetColours(light).includes(p.colour)), `${light}: the street among the edges`).toBe(true);
     }
+    // And at night in the dark theme, where the page's own background is the
+    // night sky's colour (slice 18's review, finding 7): held point by point,
+    // it fails if the page shows, as it does with the street's canvas hidden.
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.waitForTimeout(400);
+    const dark = await edges(page);
+    for (const p of dark) expect(p.colour, `night, dark theme: the window's edge at ${p.at} is the backdrop's, not the page`).toBe(p.backdrop);
+    const hidden = await page.addStyleTag({ content: "#street { visibility: hidden !important; }" });
+    await page.waitForTimeout(200);
+    const bare = await edges(page);
+    expect(bare.filter((p) => p.colour !== p.backdrop).length, "with the street's canvas hidden, the page shows and the check sees it").toBeGreaterThan(10);
+    await hidden.evaluate((el) => (el as Element).remove());
   });
 
   it("carries the street past the room's edges in the phone's bigger room as it pans to each side", async () => {

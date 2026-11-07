@@ -34,6 +34,8 @@ export class Stage {
   private readonly street: HTMLCanvasElement | null;
   /** What the street was last drawn for: redrawn only when this changes. */
   private streetKey = "";
+  /** The span of room pixels the street's canvas was last drawn over (slice 18). */
+  streetSpan: { x0: number; y0: number; x1: number; y1: number } | null = null;
 
   constructor(
     private readonly cafe: Cafe,
@@ -217,7 +219,8 @@ export class Stage {
         // The backdrop the room's floor layer is cut from (slice 18): the
         // street and the terrace, and the balcony it stands on, carried on
         // past the room's canvas.
-        for (const r of backdrop({ x0: -mx, y0: -my, x1: ISO.width + mx, y1: ISO.height + my }, light).runs()) {
+        this.streetSpan = { x0: -mx, y0: -my, x1: ISO.width + mx, y1: ISO.height + my };
+        for (const r of backdrop(this.streetSpan, light).runs()) {
           ctx.fillStyle = r.colour;
           ctx.fillRect((r.x + mx) * k, (r.y + my) * k, r.w * k, k);
         }

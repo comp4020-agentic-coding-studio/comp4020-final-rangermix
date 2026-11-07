@@ -1531,11 +1531,12 @@ describe("in a browser", { timeout: 30_000 }, () => {
       ["bottom right", 0.7, 1, 0.6, 1],
     ];
     // Since slice 18 the room's bottom corners are the café's own building
-    // under the balcony, not the street: there, anything drawn outside the
-    // room will do (slice 18's own check clicks the balcony itself).
-    const outside = await v.page.evaluate(() => (window as unknown as { cafeRoom: { backdropColours(): string[] } }).cafeRoom.backdropColours());
+    // under the balcony, not the street: there, the point is exactly what
+    // the backdrop draws, held point by point (slice 18's review, finding 7;
+    // slice 18's own check clicks the balcony itself).
     const points = await v.page.evaluate(
-      ([regions, colours, outside]) => {
+      ([regions, colours]) => {
+        const backdropAt = (window as unknown as { cafeRoom: { backdropAt(x: number, y: number): string | null } }).cafeRoom.backdropAt;
         const canvas = document.getElementById("room") as HTMLCanvasElement;
         const r = canvas.getBoundingClientRect();
         const ctx = canvas.getContext("2d")!;
@@ -1581,7 +1582,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
               if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight || inRoom(x, y) || document.elementFromPoint(x, y)?.id !== "room") continue;
               const [cr, cg, cb] = ctx.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data;
               const hex = `#${[cr, cg, cb].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
-              if ((where.startsWith("bottom") ? outside : colours).includes(hex)) {
+              if (where.startsWith("bottom") ? hex === backdropAt(x, y) : colours.includes(hex)) {
                 out.push({ where, x, y });
                 break search;
               }
@@ -1590,7 +1591,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
         }
         return out;
       },
-      [regions, street("day"), outside] as const,
+      [regions, street("day")] as const,
     );
     expect(points.map((p) => p.where), "a street point to click in each corner and by the front").toEqual(regions.map((r) => r[0]));
     for (const p of points) {

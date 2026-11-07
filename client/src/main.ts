@@ -7,7 +7,7 @@ import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { DemoBar } from "./demoBar";
 import { type Light, cafeHour } from "./canberra";
-import { backdropColours } from "./backdrop";
+import { backdrop as backdropOf } from "./backdrop";
 import { type Target, attachInput } from "./input";
 import { closeMenu, freeArea, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
@@ -163,13 +163,23 @@ function enter(me: ApiMe): void {
       return { x: box.left + at.left, y: box.top + at.top };
     },
     /**
-     * Every colour drawn outside the room in the light the room is drawn in
-     * now (slice 18): the street, the terrace and the balcony, over the
-     * room's canvas and a stage round it.
+     * What's drawn outside the room at a point on the page, in the light the
+     * room is drawn in now (slice 18): the street, the terrace or the
+     * balcony there, as "#rrggbb", from the backdrop both canvases draw. A
+     * browser check holds a pixel on screen to exactly this, so the page's
+     * own background can't pass for it, even where it shares a colour with
+     * the night's sky (slice 18's review, finding 7).
      */
-    backdropColours(): string[] {
+    backdropAt(x: number, y: number): string | null {
       const light = Number(canvas.dataset.light ?? 0) as Light;
-      return backdropColours({ x0: -ISO.width, y0: -ISO.height, x1: 2 * ISO.width, y1: 2 * ISO.height }, light);
+      const r = canvas.getBoundingClientRect();
+      const k = r.width / ISO.width;
+      const [px, py] = [Math.floor((x - r.left) / k + 1e-6), Math.floor((y - r.top) / k + 1e-6)];
+      // From the span the street's canvas shows, which the backdrop keeps;
+      // a point past it, off the stage, from a span of its own.
+      const span = stage.streetSpan;
+      if (span && px >= span.x0 && px < span.x1 && py >= span.y0 && py < span.y1) return backdropOf(span, light).at(px, py);
+      return backdropOf({ x0: px, y0: py, x1: px + 1, y1: py + 1 }, light).at(px, py);
     },
   });
   /** Where a menu goes: beside the tile, or (for a ring) round its middle. */
