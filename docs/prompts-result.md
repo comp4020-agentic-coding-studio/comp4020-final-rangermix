@@ -2473,3 +2473,55 @@ back ([`1db9fde`](https://github.com/comp4020-agentic-coding-studio/comp4020-fin
   On the live café one short `agent_` visit by mouse turned mid-step: the
   new walk finished the step first, with the same 0.049 of a tile as the
   largest move between frames.
+
+### 14. Finishing slices 11 to 14 (continued)
+
+*Session `004fb600`, Claude Code (Opus 5.5), run as a background job, its
+context compacted again.*
+
+*Sent 2026-11-07 12:48:07 AEDT*
+
+> D
+
+Answering slice 18's second question: below the balcony, the café's own
+building (D), with the glass 18 px high already chosen.
+
+**Result.** Slice 18 is built, reviewed and merged; its live check is
+below.
+- **Approved and planned** ([`f2766e4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f2766e4)) on a branch, as
+  another session was committing to `main`.
+- **Built, test first, in six tasks:** the balcony as content, `[deck]` in
+  `street.toml` and a `balcony` palette list ([`8eb0b9c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8eb0b9c));
+  one backdrop for both canvases, the street and terrace drawn once per
+  light over any span, so the room's floor layer and the street's canvas
+  agree to the pixel ([`6a5ef15`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6a5ef15)); the deck
+  ([`b18cbd9`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b18cbd9)); the glass, tinting what's behind it pixel by
+  pixel so the room stays crisp ([`a429ac5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a429ac5)); the café's
+  building under it, storeys of windows lit at night
+  ([`eff7610`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/eff7610)); screens and design.md
+  ([`3a19fb8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3a19fb8)). The first build's shadow under the deck
+  was a black band, a colour as `rgb(…)` darkened as if `#rrggbb`, caught
+  in the screens and held by a test.
+- **One change from what was approved, for the user to judge:** stopped
+  at the floor's corners, the balcony ended in a cut edge with the street
+  dark beside it by night at 1920×1080 (the study's screens had it too).
+  The balcony and building run on past both ends of the room to the
+  window's edges.
+- **Reviewed cold** ([`b5c3a89`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b5c3a89), [`92622a6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/92622a6)):
+  9 findings, 3 major, each fixed test first or with its bug put back to
+  see the test fail: the left arm cut short at wide, short windows
+  ([`a4ddde8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4ddde8)); the parasol's tip and the slab's foot line
+  under the room, and `[deck]` values that drew the glass behind it, now
+  refused by both readers, with no `[deck]` accepted
+  ([`41a0389`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/41a0389)); a resize rebuilding the street every step and
+  the cache dropping the room's span ([`c876ae5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c876ae5)); browser
+  checks that couldn't see one arm missing or the page by night, now held
+  point by point to the backdrop, which found two more ways a small span
+  drew differently from a wide one ([`847de67`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/847de67)); one constant
+  for the slab ([`2e46456`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2e46456)).
+- **Cost, measured with the CPU slowed 4×:** a light turn at 1920×1080 is
+  108 to 114 ms (90 before the slice); a drag-resize has no long task (103
+  ms before).
+- **Checked:** `cargo test -p cafe` (358 unit tests and every binary
+  test), the client's 371 tests, the typecheck, and the whole `spec/`
+  (109) against a local café built from the branch.
