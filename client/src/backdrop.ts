@@ -116,6 +116,15 @@ function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[], room: str
   // meet once.
   for (let y = back; y < yo; y++) for (let x = Math.floor(xo); x < 0; x++) tile(x, y);
   for (let y = H; y < yo; y++) for (let x = 0; x < W; x++) tile(x, y);
+  // Along its two ends, where the stone meets the street past the café's
+  // walls, the deck's edge line, as along its outer edges (slice 19's
+  // review, finding 4): along the street wall's line from the outer edge to
+  // the wall, and along the plain wall's from the wall to the outer edge, a
+  // tile at a time as the outer edges are. Before the slab's foot line, which
+  // has the corner where they meet, as the room draws it there; the glass's
+  // returns, drawn after, tint the rest as they tint what's behind them.
+  for (let g = 0; g > xo; g--) outline(ctx, [up(Math.max(g - 1, xo), back, z), up(g, back, z)], shade(edge, OUTLINE), 1, false);
+  for (let g = H; g < yo; g++) outline(ctx, [up(W, g, z), up(W, Math.min(g + 1, yo), z)], shade(edge, OUTLINE), 1, false);
   // Where the floor's slab meets the deck, its foot's dark line, as the
   // room's floor layer draws it over the deck's inner row (render.ts), so
   // the deck carries it and the room covers nothing of the balcony (slice

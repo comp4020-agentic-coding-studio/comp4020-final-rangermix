@@ -675,6 +675,49 @@ describe("where the balcony ends", () => {
     }
   });
 
+  // Slice 19's review, finding 4: the deck's outer edges carry a line in
+  // its edge colour darkened, where it meets what's behind it (ADR 0019),
+  // but its two new ends had none: along y = 1 from the outer edge to the
+  // wall, and along x = width from the wall to the outer edge.
+  it("draws the deck's edge line along both ends, as along its outer edges, with the rail and without", async () => {
+    const { OUTLINE, shade } = await import("../src/shapes");
+    const hex = (c: string) => {
+      const m = /^rgb\((\d+)[ ,]+(\d+)[ ,]+(\d+)\)$/.exec(c);
+      return m ? `#${m.slice(1).map((v) => Number(v).toString(16).padStart(2, "0")).join("")}` : c.toLowerCase();
+    };
+    for (const rail of [deck.rail, 0]) {
+      const kept = street.deck;
+      street.deck = { ...deck, rail };
+      try {
+        const b = backdrop(wide, 0).copy();
+        const line = hex(shade(balcony(0)[2], OUTLINE));
+        // The glass, where it stands, tints the line behind it.
+        const glassed = mixed(line, balcony(0)[3], deck.glass);
+        const want = rail ? [line, glassed] : [line];
+        for (const [name, pts] of [
+          // Clear of the post at each wall, which stands in front of the
+          // line. With the rail, the front glass stands in front of the
+          // plain wall's end past 1.2 tiles out on screen (its handrail
+          // crosses the line there): those points are looked at without it.
+          ["along the street wall's line", [0.5, 0.9, 1.3, 1.7, 2.2].map((t) => [-t, 1] as const)],
+          ["along the plain wall's line", (rail ? [0.3, 0.6, 0.9, 1.1] : [0.5, 0.9, 1.3, 1.7, 2.2]).map((t) => [W, FLOOR.height + t] as const)],
+          // The outer edge's own line, for comparison: the left glass stands
+          // over it on screen, so it's looked at without the rail.
+          ...(rail ? [] : [["along the outer left edge", [3, 6, 9].map((g) => [xo, g] as const)] as const]),
+        ] as const) {
+          let seen = 0;
+          for (const [gx, gy] of pts) {
+            const p = at(gx, gy, -SLAB);
+            if ([-1, 0, 1].some((dy) => want.includes(b.at(p.x, p.y + dy) ?? ""))) seen++;
+          }
+          expect(seen, `rail ${rail}: the deck's edge line ${name}, ${seen} of ${pts.length}`).toBe(pts.length);
+        }
+      } finally {
+        street.deck = kept;
+      }
+    }
+  });
+
   it("ends in the same places over any span: a narrow one and a wide one agree at both ends", () => {
     const narrow = { x0: -60, y0: 0, x1: ISO.width + 60, y1: ISO.height + 60 };
     for (const light of [0, 1] as const) {
