@@ -644,9 +644,8 @@ and Burakku at 25.
     shopping centre or business building". Slice 18 had run them on to
     the window's edges, which the user found wrong ("it should just show
     the cafe corner, like we don't show other part of the building").
-    Without
-    ground in the room's angle the terrace had floated: the street's
-    pavement is a level band across the screen. It's `[deck]` in
+    Without ground in the room's angle the terrace had floated: the
+    street's pavement is a level band across the screen. It's `[deck]` in
     `street.toml` (how far out, the slab, the rail's height and posts, the
     glass's tint, the storey's height, how many windows lit) and a
     `balcony` list in the palette. The street, the terrace and the balcony

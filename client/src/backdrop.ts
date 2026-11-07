@@ -66,11 +66,11 @@ function build(span: Span, light: Light): Raster {
   const palette = paletteAt(light);
   drawStreet(ctx, span, palette.street, light);
   if (street.deck && street.deck.storey > 0) drawBuilding(ctx, span, street.deck, palette.room, palette.balcony);
-  if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony, palette.room);
+  if (street.deck) drawDeck(ctx, street.deck, palette.balcony, palette.room);
   if (street.deck) drawEnds(ctx, span, street.deck, palette.room);
   if (street.deck && street.deck.rail > 0) drawReturns(raster, ctx, street.deck, palette.balcony);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
-  if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, span, street.deck, palette.balcony);
+  if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, street.deck, palette.balcony);
   return raster;
 }
 
@@ -99,7 +99,7 @@ function drawStreet(ctx: Ctx, span: Span, colours: string[], light: Light): void
  * and darker at the front as the room's is; and a shadow on the stone under
  * each terrace thing, as the room's own shadows darken its floor.
  */
-function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[], room: string[]): void {
+function drawDeck(ctx: Ctx, deck: Deck, colours: string[], room: string[]): void {
   const [stoneA, stoneB, edge] = colours;
   const { back, right: W } = ends();
   const H = FLOOR.height;
@@ -194,9 +194,10 @@ function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours:
       // The band between this storey and the one below.
       face(f, a, b, top - deck.storey + 18, top - deck.storey + 15, shade(band, lightOf[f]));
       // A window a tile wide in each tile along the face, in its frame.
-      // A window in each tile along the face, kept inside the face: the
-      // building's corner, where its two faces meet, and its ends at the
-      // café's walls (slice 19) trim one that would cross them.
+      // A window in each tile along the face, kept inside the face. Only the
+      // building's corner, where its two faces meet at a fraction of a tile,
+      // trims one: its ends at the café's walls (slice 19) are whole tiles,
+      // so no window there ever crosses one (slice 19's review, finding 5).
       const [lo, hi] = along[f];
       for (let g = Math.floor(a); g < b; g++) {
         const [w0, w1] = [Math.max(g + 0.15, lo + 0.1), Math.min(g + 0.85, hi - 0.1)];
@@ -245,7 +246,7 @@ function windowLit(face: number, along: number, storey: number, lit: number): bo
  * pixel stays one solid colour (ADR 0019); then posts every `posts` tiles
  * and a handrail along the top, in the rail's metal, as blocks.
  */
-function drawRail(raster: Raster, ctx: Ctx, span: Span, deck: Deck, colours: string[]): void {
+function drawRail(raster: Raster, ctx: Ctx, deck: Deck, colours: string[]): void {
   const glass = colours[3];
   const metal = colours[4];
   const { back, right: W } = ends();

@@ -285,8 +285,13 @@ describe("the balcony under the terrace (slices 18 and 19)", { timeout: 60_000 }
       }, [...balcony("day"), ...(palettes.day as unknown as { room: string[] }).room.map((c) => c.toLowerCase())]);
       expect(points.length, `${touch ? "touch" : "mouse"}: balcony points to try`).toBeGreaterThan(30);
       // And the glass's returns at the balcony's two ends (slice 19), half
-      // way up the glass, found from the floor's corners: past the room's
-      // canvas, on the street's, whatever a click reaches there.
+      // way up the glass, found from the floor's corners. They lie wholly
+      // outside the room's canvas (room x −40 to 0 and 400 to 440), over
+      // the street's canvas, which takes no pointer events (style.css), so
+      // no click there can reach the café whatever it lands on: at
+      // 1920×1080 the left return's points land on the "Your cats" panel
+      // (slice 19's review, finding 6). What's held is that nothing reaches
+      // the café from them.
       const returns = await page.evaluate(() => {
         const room = (window as unknown as { cafeRoom: { size: { width: number }; tileAt(x: number, y: number): { x: number; y: number }; grid: { width: number; height: number } } }).cafeRoom;
         const scale = (document.getElementById("room") as HTMLCanvasElement).getBoundingClientRect().width / room.size.width;
