@@ -868,31 +868,27 @@ describe("the street behind the café", () => {
 
   // Slice 16's review, finding 2: drawn last, the tall umbrella and lamp
   // covered the front tiles and anyone on them, and a click on them went
-  // to the floor behind. On the café's real floor, room.toml's, nothing the
-  // terrace draws may fall on the floor, the walls, or where a cat or a
-  // person standing on a tile is drawn.
-  it("draws nothing of the terrace over the real floor, its walls or anyone standing on it", async () => {
-    const { pixels } = await import("./pixels");
+  // to the floor behind. Since slice 18 everything outside the room (the
+  // terrace, and the balcony it stands on) is the backdrop the room is
+  // drawn over, so anything of it where the room is would be cut off by
+  // the floor or a figure. On the café's real floor, room.toml's, nothing
+  // the backdrop adds to the street may fall on the floor, the walls, or
+  // where a cat or a person standing on a tile is drawn.
+  it("puts nothing of the terrace or the balcony where the real floor, its walls or anyone standing on it is drawn", async () => {
     const { street: data } = await import("../src/street");
+    const { backdrop } = await import("../src/backdrop");
     const { FLOOR, fromCanvas: fromIso } = await import("../src/iso");
-    const w = welcome();
     const { width, height } = FLOOR;
-    w.snapshot.room = { ...w.snapshot.room, width, height, tiles: ["W".repeat(width), ...Array<string>(height - 1).fill(".".repeat(width))], furniture: [] };
-    w.snapshot.cats = [];
-    w.snapshot.people = [];
-    const paint = () => {
-      const p = pixels(ISO.width, ISO.height);
-      draw(p.ctx, fromWelcome(w, 10_000), new Sprites(), 10_000, { tile: null, visible: false, hover: null, ghost: null }, 0, 1);
-      return p;
-    };
-    const withIt = paint();
-    const kept = data.terrace;
+    const span = { x0: 0, y0: 0, x1: ISO.width, y1: ISO.height };
+    const withIt = backdrop(span, 0).copy();
+    const kept = { terrace: data.terrace, deck: data.deck };
     data.terrace = [];
-    let without: Awaited<ReturnType<typeof paint>>;
+    data.deck = null;
+    let without: ReturnType<typeof backdrop>;
     try {
-      without = paint();
+      without = backdrop(span, 0).copy();
     } finally {
-      data.terrace = kept;
+      Object.assign(data, kept);
     }
     // Where the room is: the floor's diamond, the walls standing up from its
     // two back edges, and over each floor tile the column a figure takes, a
@@ -913,17 +909,34 @@ describe("the street behind the café", () => {
         for (let dy = -36; dy <= 2; dy++) for (let dx = -16; dx < 16; dx++) figure.add(`${Math.round(c.x) + dx},${Math.round(c.y) + dy}`);
       }
     const changed: string[] = [];
+    let drawn = 0;
     for (let y = 0; y < ISO.height; y++)
       for (let x = 0; x < ISO.width; x++) {
         if (withIt.at(x, y) === without!.at(x, y)) continue;
+        drawn++;
         const where = room(x, y) ?? (figure.has(`${x},${y}`) ? "a figure's place" : null);
         if (where) changed.push(`(${x},${y}) on ${where}`);
       }
-    expect(changed.slice(0, 40), `${changed.length} pixels of the room under the terrace`).toEqual([]);
-    // And the terrace is drawn at all: it changes the pavement.
-    let drawn = 0;
-    for (let y = 0; y < ISO.height; y++) for (let x = 0; x < ISO.width; x++) if (withIt.at(x, y) !== without!.at(x, y)) drawn++;
-    expect(drawn, "the terrace's own pixels").toBeGreaterThan(200);
+    expect(changed.slice(0, 40), `${changed.length} pixels of the room under the terrace or the balcony`).toEqual([]);
+    // And they're drawn at all: they change the street.
+    expect(drawn, "the terrace's and the balcony's own pixels").toBeGreaterThan(200);
+  });
+
+  // Slice 18: the terrace is the backdrop the room is drawn over, so the
+  // room's canvas shows it wherever the room doesn't stand.
+  it("shows the backdrop's terrace on the room's canvas, under nothing of the room", async () => {
+    const { backdrop } = await import("../src/backdrop");
+    const p = await drawn(0);
+    const b = backdrop({ x0: 0, y0: 0, x1: ISO.width, y1: ISO.height }, 0);
+    const { street: data, terraceAt } = await import("../src/street");
+    const room = welcome().snapshot.room;
+    for (const t of data.terrace) {
+      const at = toCanvas(terraceAt(t, room).x, terraceAt(t, room).y);
+      for (let dy = -6; dy <= 2; dy++) {
+        const [x, y] = [Math.round(at.x), Math.round(at.y) + 6 + dy];
+        expect(p.at(x, y), `the ${t.kind} at (${x},${y})`).toBe(b.at(x, y));
+      }
+    }
   });
 
   it("keeps the night's sky dark: faint clouds, no warm glow", async () => {

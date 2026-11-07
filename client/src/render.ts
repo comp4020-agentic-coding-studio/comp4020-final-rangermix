@@ -1,10 +1,10 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
-import { fillCrisp, strokeCrisp } from "./crisp";
+import { block, diamond, outline, poly, shade, silhouette, up } from "./shapes";
 import { pieceBox, pieceParts, topAt } from "./pieces";
 import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
-import { type TerraceThing, street, streetSlot, terraceAt } from "./street";
+import { backdrop } from "./backdrop";
 import { ISO, fromCanvas as fromCanvasAt, inDrawOrder, toCanvas } from "./iso";
 import { type Spot, positionAt } from "./motion";
 import type { FurnitureView } from "./protocol/FurnitureView";
@@ -71,22 +71,6 @@ const SLOT: Record<string, number> = {
 };
 const colourOf = (kind: string): string => FURNITURE[SLOT[kind] ?? 3];
 const HEIGHT = heights as Record<string, number>;
-/** The street behind the café into the floor layer (slice 13): each pixel its slot's colour in this light. */
-function drawStreet(ctx: Ctx, colours: string[], light: Light): void {
-  const night = light >= 1;
-  for (let y = 0; y < ISO.height; y++) {
-    let x = 0;
-    while (x < ISO.width) {
-      const slot = streetSlot(x, y, ISO.width, ISO.height, night);
-      let end = x + 1;
-      while (end < ISO.width && streetSlot(end, y, ISO.width, ISO.height, night) === slot) end++;
-      ctx.fillStyle = colours[slot];
-      ctx.fillRect(x, y, end - x, 1);
-      x = end;
-    }
-  }
-}
-
 /** The window's tiles, left to right. */
 export function windowTiles(room: RoomView): { x: number; y: number }[] {
   return [...(room.tiles[0] ?? "")].flatMap((ch, x) => (ch === "G" ? [{ x, y: 0 }] : []));
@@ -102,67 +86,6 @@ export function windowSpot(state: CafeState, id: number): { x: number; y: number
 
 type Ctx = CanvasRenderingContext2D;
 type Pt = { x: number; y: number };
-
-function rgb(hex: string): [number, number, number] {
-  const n = Number.parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-/** `hex` darkened by `k` (0 to 1), or lightened by a negative `k`. */
-function shade(hex: string, k: number): string {
-  const [r, g, b] = rgb(hex).map((v) => Math.round(Math.max(0, Math.min(255, k >= 0 ? v * (1 - k) : v + (255 - v) * -k))));
-  return `rgb(${r} ${g} ${b})`;
-}
-
-/** A polygon filled crisp, by whole room pixels (slice 13): no edge is blended. */
-function poly(ctx: Ctx, pts: Pt[], colour: string): void {
-  fillCrisp(ctx, pts, colour);
-}
-
-/** A floor point raised by `z` pixels. */
-function up(gx: number, gy: number, z = 0): Pt {
-  const p = toCanvas(gx, gy);
-  return { x: p.x, y: p.y - z };
-}
-
-/**
- * A block standing on the floor over (x, y, w, h), `z` pixels tall: the two
- * faces the viewer sees from the front-right corner (the one toward the
- * street wall's near end, at x, and the one toward the front, at y + h),
- * then its top.
- */
-function block(ctx: Ctx, x: number, y: number, w: number, h: number, z: number, colour: string, z0 = 0): void {
-  // Lit from the street wall's windows, a little from +x (shadows.ts): the
-  // left face (toward -x) turns from the light a little, the front face
-  // (toward +y) most, as in the study the look was chosen from (slice 13's
-  // review, finding 7). A part raised off the floor (slice 11) starts at z0.
-  poly(ctx, [up(x, y, z0), up(x, y + h, z0), up(x, y + h, z), up(x, y, z)], shade(colour, 0.12));
-  poly(ctx, [up(x, y + h, z0), up(x + w, y + h, z0), up(x + w, y + h, z), up(x, y + h, z)], shade(colour, 0.28));
-  poly(ctx, [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x, y + h, z)], colour);
-  // The self outline (slice 13, ADR 0019): the block's silhouette, a room
-  // pixel wide, in its own colour darkened, so it stands off what's behind.
-  outline(ctx, silhouette(x, y, w, h, z, z0), shade(colour, OUTLINE));
-}
-
-/** How much a piece's outline darkens its own colour. */
-const OUTLINE = 0.45;
-
-/**
- * A block's outline as seen from the front-right corner: its top's back
- * three corners, then down its two visible faces to the floor.
- */
-function silhouette(x: number, y: number, w: number, h: number, z: number, z0 = 0): Pt[] {
-  return [up(x, y, z), up(x + w, y, z), up(x + w, y + h, z), up(x + w, y + h, z0), up(x, y + h, z0), up(x, y, z0)];
-}
-
-function diamond(x: number, y: number, w = 1, h = 1): Pt[] {
-  return [up(x, y), up(x + w, y), up(x + w, y + h), up(x, y + h)];
-}
-
-/** A polygon's edge traced crisp, `width` room pixels wide (slice 13). */
-function outline(ctx: Ctx, pts: Pt[], colour: string, width = 1, closed = true): void {
-  strokeCrisp(ctx, pts, colour, width, closed);
-}
 
 /**
  * `v`, in room pixels, rounded to the nearest whole pixel of the canvas: the
@@ -463,8 +386,6 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
   drawFigureShadows(ctx, state, localNow, layer);
 
   for (const item of drawOrder(state, localNow)) if (!item.inLayer) item.paint(ctx, sprites);
-  // The terrace in the bottom corners, nearest the viewer of all (slice 16).
-  for (const t of street.terrace) drawTerrace(ctx, t, room, light);
 
   if (pointer.ghost) {
     const { piece, at, ok } = pointer.ghost;
@@ -493,7 +414,7 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
 const SEAM = 0.06;
 
 /** How deep the floor's slab shows under its front edges, in room pixels (slice 13): the room as a diorama. */
-const SLAB = 6;
+export const SLAB = 6;
 
 function drawFloor(ctx: Ctx, room: RoomView): void {
   // The slab the floor stands on, seen under its two front edges: lit on
@@ -514,7 +435,7 @@ function drawFloor(ctx: Ctx, room: RoomView): void {
   }
 }
 
-let layerCache: { key: string; layer: Raster; image?: CanvasImageSource | null } | null = null;
+let layerCache: { key: string; base: Raster; layer: Raster; image?: CanvasImageSource | null } | null = null;
 
 /**
  * The floor layer in a light (slice 13's review, findings 2, 3 and 6): the
@@ -525,19 +446,21 @@ let layerCache: { key: string; layer: Raster; image?: CanvasImageSource | null }
  */
 export function floorLayer(room: RoomView, light: Light, shaded = true): Raster {
   const key = `${light}:${shaded}:${room.width}x${room.height}:${room.tiles[0]}:${room.furniture.map((f) => `${f.kind}@${f.x},${f.y},${f.w},${f.h}${f.toppled ? "t" : ""}${f.under ? "u" : ""}`).join(";")}`;
-  if (layerCache?.key === key) return layerCache.layer;
+  // What's outside the room, the street and the terrace (slice 18): the
+  // backdrop the street's canvas also draws, so the two agree to the pixel.
+  const base = backdrop({ x0: 0, y0: 0, x1: ISO.width, y1: ISO.height }, light);
+  if (layerCache?.key === key && layerCache.base === base) return layerCache.layer;
   const palette = paletteAt(light);
   const [room0, furn0] = [ROOM, FURNITURE];
   ROOM = palette.room;
   FURNITURE = palette.furniture;
-  const layer = new Raster(ISO.width, ISO.height);
+  const layer = base.copy();
   const ctx = layer.context();
-  drawStreet(ctx, palette.street, light);
   drawFloor(ctx, room);
   for (const f of inDrawOrder(room.furniture.filter((f) => f.under))) drawPiece(ctx, f);
   if (shaded) shadeLayer(layer, shadowMask(room, room.furniture, HEIGHT));
   [ROOM, FURNITURE] = [room0, furn0];
-  layerCache = { key, layer };
+  layerCache = { key, base, layer };
   return layer;
 }
 
@@ -649,64 +572,6 @@ function drawWalls(ctx: Ctx, state: CafeState, sprites: Sprites): void {
       }
     }
   });
-}
-
-/**
- * A thing on the terrace (slice 16), on the pavement at the slab's foot: a
- * few blocks for its kind, in the furniture's colours and the hour's light,
- * with the room's outlines. Scenery: nothing picks it.
- */
-function drawTerrace(ctx: Ctx, t: TerraceThing, room: RoomView, light: Light): void {
-  const at = terraceAt(t, room);
-  /** A block `w` by `h` tiles centred on the thing's spot, from `z0` to `z` px over the pavement. */
-  const box = (dx: number, dy: number, w: number, h: number, z: number, colour: string, z0 = 0) =>
-    block(ctx, at.x + dx - w / 2, at.y + dy - h / 2, w, h, z - SLAB, colour, z0 - SLAB);
-  // Along the left edge, a long thing lies along y; out front, along x.
-  const long = (len: number, deep: number) => (t.side === "left" ? [deep, len] : [len, deep]);
-  const wood = FURNITURE[14];
-  const dark = FURNITURE[12];
-  switch (t.kind) {
-    case "bench": {
-      const [w, h] = long(2.4, 0.6);
-      const [lw, lh] = long(0.12, 0.12);
-      for (const k of [-1, 1]) {
-        const [dx, dy] = t.side === "left" ? [0, k * 1.05] : [k * 1.05, 0];
-        box(dx, dy, lw, lh, 7, dark);
-      }
-      box(0, 0, w, h, 9, wood, 7);
-      // Its back, on the side away from the café.
-      const [bw, bh] = long(2.4, 0.14);
-      const [bx, by] = t.side === "left" ? [-0.23, 0] : [0, 0.23];
-      box(bx, by, bw, bh, 18, wood, 9);
-      break;
-    }
-    case "planter":
-      box(0, 0, 0.9, 0.9, 10, FURNITURE[8]);
-      box(0, 0, 0.74, 0.74, 18, FURNITURE[6], 10);
-      box(0, 0, 0.5, 0.5, 23, FURNITURE[7], 18);
-      break;
-    case "table":
-      box(0, 0, 0.14, 0.14, 13, dark);
-      box(0, 0, 1.1, 1.1, 15, FURNITURE[5], 13);
-      break;
-    case "umbrella":
-      // Folded, a closed parasol over the table: tall things out front
-      // would stand over the floor's front tiles on screen (slice 16's
-      // review, finding 2), so the terrace stays low.
-      box(0, 0, 0.08, 0.08, 26, dark, 15);
-      box(0, 0, 0.26, 0.26, 24, FURNITURE[1], 17);
-      break;
-    case "chair":
-      box(0, 0, 0.55, 0.55, 9, FURNITURE[11]);
-      box(0, 0.2, 0.55, 0.15, 17, FURNITURE[11], 9);
-      break;
-    case "lamp":
-      // A low lantern on a short post, not a street lamp (finding 2).
-      box(0, 0, 0.16, 0.16, 12, dark);
-      // Lit at night in the window's glass, warm yellow then.
-      box(0, 0, 0.42, 0.42, 18, light >= 1 ? ROOM[8] : FURNITURE[5], 12);
-      break;
-  }
 }
 
 /** A piece where it stands, as a shaded block; knocked over, lying on its side. */

@@ -3,10 +3,11 @@ import { cafeHour, lightAt } from "./canberra";
 import { type Layout, PHONE, panOffset } from "./layout";
 import { positionAt } from "./motion";
 import { ISO, pickTile, toCanvas } from "./iso";
+import { backdrop } from "./backdrop";
 import { type Pointer, draw, hitAt } from "./render";
 import { fitScale } from "./scale";
-import { Sprites, paletteAt } from "./sprites";
-import { streetMargin, streetRuns } from "./street";
+import { Sprites } from "./sprites";
+import { streetMargin } from "./street";
 import { serverNow } from "./state";
 
 /** How tall someone stands, in canvas pixels at 1x: 32 since slice 11 (render.ts's PERSON). */
@@ -210,9 +211,11 @@ export class Stage {
       street.style.height = `${street.height}px`;
       const ctx = street.getContext("2d");
       if (ctx) {
-        const colours = paletteAt(light).street;
-        for (const r of streetRuns({ x0: -mx, y0: -my, x1: ISO.width + mx, y1: ISO.height + my }, light >= 1)) {
-          ctx.fillStyle = colours[r.slot];
+        // The backdrop the room's floor layer is cut from (slice 18): the
+        // street and the terrace, and the balcony it stands on, carried on
+        // past the room's canvas.
+        for (const r of backdrop({ x0: -mx, y0: -my, x1: ISO.width + mx, y1: ISO.height + my }, light).runs()) {
+          ctx.fillStyle = r.colour;
           ctx.fillRect((r.x + mx) * k, (r.y + my) * k, r.w * k, k);
         }
       }

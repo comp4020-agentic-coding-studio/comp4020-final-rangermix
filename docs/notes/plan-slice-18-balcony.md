@@ -102,3 +102,18 @@ Written 2026-11-07 from `main` at `25f0c64`, on the branch
 ## Execution log
 
 Where the build departed from this plan, task by task.
+
+- **Task 1.** As planned. The balcony's colours are a `balcony` list in
+  `scripts/palettes.ts`, regenerated into palettes.json; by day its lit
+  window is its dark one, so the building's windows light only toward
+  night through the palette's blend, as the room's do.
+- **Task 2.** As planned, with two things it brought. The room's shape
+  helpers (`up`, `poly`, `block`, `outline`, `shade`) moved from
+  `render.ts` into `shapes.ts`, unchanged, so the backdrop draws with the
+  same ones. And slice 16's test that nothing of the terrace falls on the
+  floor, the walls or a figure's place compared the room drawn with and
+  without the terrace; with the terrace under the room that comparison
+  could no longer fail, so it compares the backdrop with and without the
+  terrace and the balcony instead, and was seen failing with a planter
+  moved onto the floor. The backdrop keeps the last four spans it drew,
+  so a resize doesn't keep every size it has seen.

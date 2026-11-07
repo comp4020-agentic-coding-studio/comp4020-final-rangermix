@@ -8,18 +8,33 @@
 import { ISO } from "./iso";
 import { SHADE, type ShadowMask } from "./shadows";
 
-/** A raster of "#rrggbb" colours, or null where nothing was drawn. */
+/**
+ * A raster of "#rrggbb" colours, or null where nothing was drawn, over room
+ * pixels from (`x0`, `y0`): the room's canvas starts at (0, 0), and the
+ * backdrop round it (slice 18) can start left of and above it.
+ */
 export class Raster {
   readonly px: (string | null)[];
   constructor(
     readonly width: number,
     readonly height: number,
+    readonly x0 = 0,
+    readonly y0 = 0,
   ) {
     this.px = new Array(width * height).fill(null);
   }
 
+  /** The colour at room pixel (x, y), or null outside the raster or where nothing was drawn. */
   at(x: number, y: number): string | null {
-    return x < 0 || y < 0 || x >= this.width || y >= this.height ? null : this.px[y * this.width + x];
+    const [i, j] = [x - this.x0, y - this.y0];
+    return i < 0 || j < 0 || i >= this.width || j >= this.height ? null : this.px[j * this.width + i];
+  }
+
+  /** The same pixels in a raster of its own, to draw over. */
+  copy(): Raster {
+    const r = new Raster(this.width, this.height, this.x0, this.y0);
+    for (let i = 0; i < this.px.length; i++) r.px[i] = this.px[i];
+    return r;
   }
 
   /**
@@ -44,14 +59,15 @@ export class Raster {
         fill = norm(v);
       },
       fillRect(x: number, y: number, w: number, h: number) {
-        for (let py = Math.max(0, Math.round(y)); py < Math.min(self.height, Math.round(y + h)); py++) {
-          for (let px = Math.max(0, Math.round(x)); px < Math.min(self.width, Math.round(x + w)); px++) self.px[py * self.width + px] = fill;
+        const [ox, oy] = [self.x0, self.y0];
+        for (let py = Math.max(0, Math.round(y) - oy); py < Math.min(self.height, Math.round(y + h) - oy); py++) {
+          for (let px = Math.max(0, Math.round(x) - ox); px < Math.min(self.width, Math.round(x + w) - ox); px++) self.px[py * self.width + px] = fill;
         }
       },
     } as unknown as CanvasRenderingContext2D;
   }
 
-  /** Each run of one colour along each row, for drawing it with fillRect. */
+  /** Each run of one colour along each row, in room pixels, for drawing it with fillRect. */
   runs(): { y: number; x: number; w: number; colour: string }[] {
     const out: { y: number; x: number; w: number; colour: string }[] = [];
     for (let y = 0; y < this.height; y++) {
@@ -60,7 +76,7 @@ export class Raster {
         const c = this.px[y * this.width + x];
         let end = x + 1;
         while (end < this.width && this.px[y * this.width + end] === c) end++;
-        if (c) out.push({ y, x, w: end - x, colour: c });
+        if (c) out.push({ y: y + this.y0, x: x + this.x0, w: end - x, colour: c });
         x = end;
       }
     }
