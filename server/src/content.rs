@@ -289,19 +289,28 @@ mod tests {
         let slab = num("slab");
         assert!((0.0..=12.0).contains(&slab) && slab.fract() == 0.0, "deck.slab {slab} px");
         let rail = num("rail");
-        assert!((0.0..=32.0).contains(&rail) && rail.fract() == 0.0, "deck.rail {rail} px, under a person's height");
+        assert!(
+            (0.0..=32.0).contains(&rail) && rail.fract() == 0.0,
+            "deck.rail {rail} px, under a person's height"
+        );
         let posts = num("posts");
         assert!((0.5..=6.0).contains(&posts), "deck.posts every {posts} tiles");
         let glass = num("glass");
         assert!((0.0..=1.0).contains(&glass), "deck.glass {glass}");
         let storey = num("storey");
-        assert!(storey == 0.0 || (32.0..=96.0).contains(&storey) && storey.fract() == 0.0, "deck.storey {storey} px");
+        assert!(
+            storey == 0.0 || (32.0..=96.0).contains(&storey) && storey.fract() == 0.0,
+            "deck.storey {storey} px"
+        );
         let lit = num("lit");
         assert!((0.0..=10.0).contains(&lit) && lit.fract() == 0.0, "deck.lit {lit} in ten");
         // The rail's top clears the floor's slab on screen: a tile out is 8
         // px lower, the rail stands 0.08 in from the edge, and the slab and
         // its foot line take 3 px (measured: the client's render test).
-        assert!(rail <= (out - 0.2) * 16.0 - 3.0, "deck.rail {rail} px rises behind the floor's slab at deck.out {out}");
+        assert!(
+            rail <= (out - 0.2) * 16.0 - 3.0,
+            "deck.rail {rail} px rises behind the floor's slab at deck.out {out}"
+        );
         // Every terrace thing stands on the deck, its blocks and shadow too:
         // the widest reaches 0.6 tiles across from its spot.
         for t in street["terrace"].as_array().expect("[[terrace]]") {

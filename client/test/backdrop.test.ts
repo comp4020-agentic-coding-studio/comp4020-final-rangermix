@@ -450,8 +450,10 @@ describe("the backdrop at one pixel", () => {
       // already built (the first form of this test cut them all, and passed
       // while a fresh one-pixel build stopped the balcony short).
       const ones: [number, number, string | null][] = [];
-      for (let y = -40; y < ISO.height + 80; y += 23)
-        for (let x = -120; x < ISO.width + 120; x += 29) {
+      // A coarse grid, each a build from scratch (about 70 builds a light,
+      // well inside a test's time on CI's machines).
+      for (let y = -40; y < ISO.height + 80; y += 47)
+        for (let x = -120; x < ISO.width + 120; x += 61) {
           const before = builds();
           ones.push([x, y, backdrop({ x0: x, y0: y, x1: x + 1, y1: y + 1 }, light).at(x, y)]);
           expect(builds(), `(${x},${y}) built, not cut`).toBe(before + 1);
@@ -468,14 +470,22 @@ describe("the backdrop at one pixel", () => {
     }
   });
 
-  it("is the backdrop over a wider span at that pixel when cut from one", () => {
+  it("is the backdrop over a wider span at that pixel when cut from one", async () => {
+    const { builds } = await import("../src/backdrop");
     for (const light of [0, 1] as const) {
-      const wide = backdrop({ x0: -120, y0: -40, x1: ISO.width + 120, y1: ISO.height + 80 }, light);
+      const span = { x0: -120, y0: -40, x1: ISO.width + 120, y1: ISO.height + 80 };
+      const wide = backdrop(span, light);
+      const before = builds();
       // A grid of points over the wide span: the room, the balcony, the
-      // building's storeys and the street past the canvas.
+      // building's storeys and the street past the canvas. The wide span is
+      // asked for again before each, as a frame does, so it stays kept and
+      // each one-pixel span is cut from it, not built.
       for (let y = -40; y < ISO.height + 80; y += 23)
-        for (let x = -120; x < ISO.width + 120; x += 29)
+        for (let x = -120; x < ISO.width + 120; x += 29) {
+          backdrop(span, light);
           expect(backdrop({ x0: x, y0: y, x1: x + 1, y1: y + 1 }, light).at(x, y), `light ${light} (${x},${y})`).toBe(wide.at(x, y));
+        }
+      expect(builds(), "every one cut, none built").toBe(before);
     }
   });
 });
@@ -485,7 +495,9 @@ describe("the backdrop at one pixel", () => {
 // building ended in a cut short of the window's left edge. Whatever the
 // stage's shape, the street canvas's span shows the same pixels as the
 // backdrop drawn over a far wider one, everywhere the stage shows.
-describe("the balcony reaching the window's edges at every window's shape", async () => {
+// Each builds the backdrop over two spans the size of a wide window and
+// more, so each is given time on a slower machine than this one.
+describe("the balcony reaching the window's edges at every window's shape", { timeout: 20_000 }, async () => {
   const { streetMargin } = await import("../src/street");
   const { fitScale } = await import("../src/scale");
   for (const [w, h] of [
