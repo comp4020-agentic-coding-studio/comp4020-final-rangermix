@@ -1,6 +1,6 @@
 import heights from "../../content/sprites/heights.json";
 import type { Light } from "./canberra";
-import { block, diamond, outline, poly, shade, silhouette, up } from "./shapes";
+import { SLAB, block, diamond, outline, poly, shade, silhouette, up } from "./shapes";
 import { pieceBox, pieceParts, topAt } from "./pieces";
 import { Raster, SHADOW, darken, drawLayer, shadeLayer, toCanvas as layerCanvas } from "./layer";
 import { shadowMask } from "./shadows";
@@ -413,8 +413,6 @@ export function draw(ctx: Ctx, state: CafeState, sprites: Sprites, localNow: num
 /** How deep the seam along each tile's far edge is, in tiles. */
 const SEAM = 0.06;
 
-/** How deep the floor's slab shows under its front edges, in room pixels (slice 13): the room as a diorama. */
-export const SLAB = 6;
 
 function drawFloor(ctx: Ctx, room: RoomView): void {
   // The slab the floor stands on, seen under its two front edges: lit on

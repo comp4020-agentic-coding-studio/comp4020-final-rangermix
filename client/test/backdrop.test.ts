@@ -3,6 +3,7 @@ import palettes from "../../content/sprites/palettes.json";
 import { FLOOR, ISO, toCanvas } from "../src/iso";
 import { backdrop } from "../src/backdrop";
 import { SHADOW, darken } from "../src/layer";
+import { SLAB } from "../src/shapes";
 import { street, streetSlot, terraceAt } from "../src/street";
 
 // Slice 18: the street and everything outside the room (the terrace, and
@@ -110,7 +111,6 @@ describe("the backdrop behind and round the room", () => {
 // Slice 18: the deck the terrace stands on, round the floor's left and
 // front edges at the foot of its slab, in the room's angle.
 describe("the balcony's deck", () => {
-  const SLAB = 6;
   const wide = { x0: -120, y0: -20, x1: ISO.width + 120, y1: ISO.height + 80 };
   const balcony = (name: "day" | "night") => (palettes[name] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase());
   /** The colour on the deck at grid spot (gx, gy): the pixel at its middle, at the slab's foot. */
@@ -220,7 +220,6 @@ describe("the balcony's deck", () => {
 // panes that tint what's behind them, every pixel one solid colour (ADR
 // 0019), posts every two tiles and a handrail along the top.
 describe("the balcony's glass rail", () => {
-  const SLAB = 6;
   const wide = { x0: -120, y0: -20, x1: ISO.width + 120, y1: ISO.height + 80 };
   const deck = street.deck!;
   const colours = (name: "day" | "night") => (palettes[name] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase());
@@ -318,7 +317,6 @@ describe("the balcony's glass rail", () => {
 // two faces under the deck's outer edges, storeys of windows a tile apart,
 // lit here and there at night (the user, 2026-11-07: "D").
 describe("the café's building under the balcony", () => {
-  const SLAB = 6;
   const wide = { x0: -160, y0: -20, x1: ISO.width + 160, y1: ISO.height + 160 };
   const deck = street.deck!;
   const colours = (name: "day" | "night") => (palettes[name] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase());

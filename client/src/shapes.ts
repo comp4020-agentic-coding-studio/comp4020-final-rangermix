@@ -9,6 +9,13 @@ import { toCanvas } from "./iso";
 type Ctx = CanvasRenderingContext2D;
 type Pt = { x: number; y: number };
 
+/**
+ * How deep the floor's slab shows under its front edges, in room pixels
+ * (slice 13): the room as a diorama. The terrace and the balcony stand at
+ * its foot (slice 18), so it's one number for both.
+ */
+export const SLAB = 6;
+
 export function rgb(hex: string): [number, number, number] {
   const n = Number.parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];

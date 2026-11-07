@@ -92,10 +92,12 @@ is. Ground on the room's own grid grounds them
 - The deck: 2.6 tiles out from the floor's left and front edges, at the
   floor slab's foot (6 px under the floor), its own slab 4 px deep.
 - The glass balustrade: 18 px over the deck (people are 32 px tall), posts
-  every 2 tiles. Its handrail is about 27 room px below the floor's front
-  and left edges on screen (the rail 2.52 tiles out is 40 px lower, less
-  its 12 px over the floor's level and the handrail's second line), so
-  it's clear of the floor and of anyone on it.
+  every 2 tiles. At these values its handrail is about 27 room px below
+  the floor's front and left edges on screen, clear of the floor and of
+  anyone on it. Other values must keep it so: both readers refuse a rail
+  higher than (out − 0.2) × 16 − 3 px, which a render test measures
+  against what the room covers (slice 18's review, finding 3), and a
+  terrace thing nearer the deck's edge than 0.6 tiles.
 - The café's building: storeys 56 px apart (the
   room's wall is 56 px), a window a tile wide and 26 px tall in each,
   four in ten lit at night by a fixed pattern; drawn down past the

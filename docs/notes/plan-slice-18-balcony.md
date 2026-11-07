@@ -165,3 +165,37 @@ Where the build departed from this plan, task by task.
 - **Checked** before the review: `cargo test -p cafe` (356 unit tests and
   every binary test), the client's 362 tests, the typecheck, and the whole
   `spec/` (108) against a local café built from the branch and seeded.
+- **The review** ([findings](reviews/slice-18-findings.md)): 9 findings,
+  3 major, 4 minor, 2 nits, each answered there; the fixes, each seen
+  failing first (or, where the test was new, its bug put back to see it
+  fail):
+  - **Finding 1:** `reach` measured the left arm the wrong way. A unit
+    test now holds the street canvas's span to a far wider one at five
+    window shapes, and a browser check holds the window's edges under the
+    deck to its own geometry at 2560×540.
+  - **Findings 2 and 3:** the render test asks the floor layer itself
+    whether it covers anything the balcony adds. That found the floor
+    slab's foot line drawn over the deck's inner row, now drawn by the
+    backdrop too, and the parasol's tip, now lower. Both readers refuse
+    a rail too tall for the deck's reach and a terrace thing that
+    overhangs, by a rule the render test measures, and the server takes
+    a street with no `[deck]`.
+  - **Finding 4 and 7:** the browser checks hold each point to the
+    backdrop's own pixel there (`window.cafeRoom.backdropAt`), each side
+    separately, at night in the dark theme too. Building a one-pixel
+    backdrop for those checks found two ways a small span differed from
+    a wide one: `reach`'s two tiles to spare didn't cover the deck's
+    width, and a storey reaching past a span's foot was left out. Both
+    were fixed, under a test that builds each one-pixel span from
+    scratch. Its first form cut them all from a wider span already
+    built, and passed while the bug was there.
+  - **Findings 5 and 6:** the street's margins grow in steps of 16 room
+    px; the street canvas is built again only when its light, scale or
+    span changes; the room's span is cut from the street's; and the
+    cache keeps the span used last. Measured in Chromium with the CPU
+    slowed 4×, a light turn at 1920×1080 is 108 to 114 ms (90 before the
+    slice, 142 as reviewed) and a ten-step drag-resize has no long task
+    (103 ms before, about 870 as reviewed). A light turn stays about 20
+    ms over the street's alone: the balcony is drawn once per light.
+  - **Finding 8:** the slab's depth is one constant, in `shapes.ts`.
+  - **Finding 9:** the prompt-log entry comes with the merge.

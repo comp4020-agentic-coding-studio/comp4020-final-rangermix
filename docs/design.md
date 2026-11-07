@@ -646,7 +646,9 @@ and Burakku at 25.
     whatever span a canvas needs: the room's floor layer takes the room's
     own, the street's canvas a wider one, so they agree to the pixel. The
     glass tints what's behind it pixel by pixel, every pixel one solid
-    colour (ADR 0019).
+    colour (ADR 0019). Both readers refuse a `[deck]` whose rail would rise
+    behind the floor's slab, or whose terrace would overhang it, and a
+    street with no `[deck]` has no balcony (slice 18's review, finding 3).
   - **Crisp, with outlines and shadows** (slice 13, built;
     [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
     every pixel of the room one colour, with no anti-aliasing: shapes are

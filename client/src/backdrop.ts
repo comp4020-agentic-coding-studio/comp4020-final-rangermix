@@ -10,7 +10,7 @@ import type { Light } from "./canberra";
 import { FLOOR, fromCanvas } from "./iso";
 import { Raster, SHADOW, darken } from "./layer";
 import { spans } from "./crisp";
-import { OUTLINE, block, outline, poly, rgb, shade, up } from "./shapes";
+import { OUTLINE, SLAB, block, outline, poly, rgb, shade, up } from "./shapes";
 import { paletteAt } from "./sprites";
 import { type Deck, type TerraceThing, street, streetRuns, terraceAt } from "./street";
 
@@ -24,8 +24,6 @@ export interface Span {
   y1: number;
 }
 
-/** How deep the floor's slab shows under its front edges (render.ts): the terrace stands at its foot. */
-const SLAB = 6;
 
 /** The last backdrop made for each span, and what it was made from: a canvas asks for the same one every frame. */
 const cache = new Map<string, { made: string; raster: Raster }>();

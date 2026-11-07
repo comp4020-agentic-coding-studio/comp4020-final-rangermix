@@ -534,4 +534,85 @@ from the transcript, and the commit links from `git log`.
 
 ## Answers
 
-*For the builder.*
+*For the builder.* Every finding is fixed, each with a test seen failing
+first, or with its bug put back to see the test fail.
+
+1. **Fixed** ([`a4ddde8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/a4ddde8)).
+   - `alongLeft` is `gx + gy − xo`.
+   - A unit test holds the street canvas's span to a far wider one,
+     everywhere the stage shows, at 1920×1080, 1920×400, 2560×540, 1400×250
+     and 3440×720. It failed at the four wide ones.
+   - The browser check gained a 2560×540 pass, with the window's edges
+     held to the deck's own geometry (finding 4). With the old sign put
+     back, it fails.
+2. **Fixed** ([`41a0389`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/41a0389)).
+   - A new render test asks the floor layer itself whether it covers any
+     pixel the terrace or the balcony adds. It failed on 304 pixels:
+     - the floor slab's 1-px foot line, drawn over the deck's inner row
+       (now drawn by the backdrop too, in the same colour);
+     - the parasol's four (now 3 px lower).
+3. **Fixed** ([`41a0389`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/41a0389)).
+   - Both readers refuse a rail higher than (out − 0.2) × 16 − 3 px. That
+     rule is your table's boundary with a margin, measured again here: the
+     last covered reach is 1.3 at 18 px, 1.7 at 24 and 2.2 at 32. The
+     render test checks the rule against what the room covers on both
+     sides of it.
+   - Both readers refuse a terrace thing nearer the deck's edge than 0.6
+     tiles.
+   - The server's test takes a street with no `[deck]` (`check_balcony`).
+   - New Rust tests fail with the old rules put back.
+4. **Fixed** ([`847de67`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/847de67)).
+   - Each side is held separately: every point beside the room's canvas is
+     the backdrop's own pixel there, and there are balcony pixels on each
+     side.
+   - The seam is compared wherever the room's canvas shows the backdrop,
+     not only on stone.
+   - Holding the screen to the backdrop alone couldn't see an arm cut
+     short, since both canvases would be cut alike. So the check also
+     holds the window's own edges, under the line the deck's outer edge
+     runs along, to have no street colour. That line is found from the
+     floor's corners, not the backdrop.
+   - It runs at 1920×1080 and 2560×540, and fails with finding 1's sign
+     put back.
+5. **Fixed** ([`c876ae5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c876ae5)).
+   - The street's margins grow in steps of 16 room px.
+   - The street canvas is rebuilt only when its light, scale or span
+     changes.
+   - The room's span is cut from the street's when that's built.
+   - Unit tests hold the steps (a 200-px drag gives at most 5 spans) and
+     the cut (no build).
+   - Measured as you did, in Chromium with the CPU slowed 4× (ms):
+
+     | Window | Light turn | Ten-step resize |
+     | --- | --- | --- |
+     | 1920×1080 | 108–114 | no long task |
+     | 2560×1440 | 135 | one task of 60 |
+     | 390×844 (6×) | 146 | — |
+
+   - The light turn stays 20 to 45 ms over the street's alone, since the
+     balcony is drawn once per light. That's three times a day, as one
+     task, so it's kept as the cost of the balcony.
+6. **Fixed** ([`c876ae5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c876ae5)).
+   - A hit moves its span to the back.
+   - A unit test asks for the room's span between eight street spans and
+     gets the same raster each time. It failed after the third.
+7. **Fixed** ([`847de67`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/847de67)).
+   - The checks hold each point to `window.cafeRoom.backdropAt(x, y)`, the
+     backdrop's own pixel there, which replaces the colour set.
+   - The edge check runs at night in the dark theme too. With the street's
+     canvas hidden it sees the page.
+   - Building the one-pixel backdrops this needs found two more ways a
+     small span differed from a wide one:
+     - `reach`'s two tiles to spare didn't cover the deck's width;
+     - a storey reaching past a span's foot was left out.
+
+     Both are fixed under a unit test that builds each one-pixel span from
+     scratch, sweeping the stage. Its first form cut them all from a wider
+     span already built, and passed with both bugs.
+8. **Fixed.**
+   - The slab's depth is one `SLAB`, in `shapes.ts`, imported by
+     `render.ts`, `backdrop.ts` and the tests.
+   - The spec's Numbers say the handrail's clearance holds at these values
+     and give the rule that keeps it for others.
+9. **Answered.** The prompt-log entry for "D" and the build comes with the
+   merge, with its timestamp from the transcript and links from `git log`.
