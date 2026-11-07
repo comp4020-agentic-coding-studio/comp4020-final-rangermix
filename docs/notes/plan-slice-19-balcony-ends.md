@@ -171,11 +171,12 @@ Where the build departed from this plan, task by task.
   line just past an end stand behind the glass's return on screen, so
   they show the street tinted: correct drawing, wrong sample. They're now
   taken 1.5 tiles past and further, clear of the returns, which the unit
-  tests hold. At 1920×1080 each end stands about 6 px past the window's
-  edge, so that size can't tell the run-on from the ends. It's still
-  checked (no street inside the ends, the seam), and the two wide windows
-  are what fail against `main`: the check was seen failing against a café
-  built from `main` at `a6eea05` at 2560×1080 and 2560×540. The whole
+  tests hold. At 1920×1080 each end's line down the building stands
+  about 6 px past the window's edge. The first form of the check took
+  that to mean the size couldn't tell the run-on from the ends, and it
+  failed against `main` only at the two wide windows. The review showed
+  the deck's level past each end does show there (its finding 3). The
+  check now looks there and fails against `main` at all three sizes. The whole
   `spec/` passes against a café built from the branch: 106 passed, 5
   skipped (the restart and the Fly checks need CI's environment).
 - **Task 5.** Measured with slice 18's script, the CPU slowed 4×, against
@@ -194,4 +195,18 @@ Where the build departed from this plan, task by task.
 - **Task 6.** As planned. The phone's bigger room pans only to the room
   canvas's edges, so its panned screens show the phone as it was, with
   the keyboard pointer's marker in them; the study said as much.
+- **The review** ([findings](reviews/slice-19-findings.md)): 7 findings,
+  1 major, 3 minor, 3 nits, each fixed test first or answered.
+  - **Finding 1, major:** both readers accepted terrace things past the
+    new ends. Each kind's reach is now one table, `TERRACE_REACH`, held
+    by both readers.
+  - **Findings 2 and 3:** the browser check now holds the ends' lines to
+    0.08 tiles, and holds the street past each end at 1920×1080.
+  - **Finding 4:** the deck's edge line now runs along both ends.
+  - **Process:** design.md's entry came in the last task, not with the
+    change, which the CLAUDE.md rule asks.
+  - **A follow-up, not this slice's:** in layout B, a ring opened by the
+    room's left edge slides the room right and shows a strip of bare page
+    beside it until the ring closes (`stage.shiftBy`, older than this
+    slice).
 

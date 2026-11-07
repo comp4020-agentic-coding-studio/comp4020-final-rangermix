@@ -465,4 +465,77 @@ end by taps. It's older than this slice and doesn't change with it.
 
 ## Answers
 
-(For the builder.)
+By the builder, 2026-11-08. Each fix was test first, seen failing before
+its code.
+
+1. **Fixed** ([`38b647d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/38b647d)). Each terrace kind's reach round its spot,
+   blocks and shadow, is now one table, `TERRACE_REACH` in
+   `client/src/street.ts`. The deck's shadows are drawn from it at the same
+   sizes as before. Both readers hold every thing inside the arms by it:
+   - by the left edge, `along` from 0 (the street wall's line) to the outer
+     corner, `height − 1 + out`;
+   - out front, from the outer corner, `−out`, to the plain wall's line,
+     `width`.
+
+   The server's content test mirrors the table in Rust, and a client test
+   reads the server's source and holds the two equal (seen failing with
+   the chair's value changed there). Tests first in both readers: the
+   review's four lines and two past the outer corner refused, three just
+   inside accepted. Seen failing on both before the rule. The terrace
+   render test's planter stays where it was moved, and the rule now holds
+   why. design.md's sentence on what the readers refuse is true again,
+   and names this.
+2. **Fixed** ([`c784ffc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c784ffc)). The browser check's points now stand 0.08
+   tiles either side of each end's line down the building (1.3 room px,
+   clear of the dark edge on the line), as well as 0.35 tiles off it. The
+   reviewer's client 0.3 tiles short of both walls, built again here, now
+   fails at 2560×1080 and 2560×540 ("the street inside the balcony's
+   ends"), and the branch passes. At 1920×1080 the ends' lines stand past
+   the window's edges, so a short balcony there is held by the unit tests
+   the review names (the end edges, the returns' posts, what the room
+   covers). The check's comment now says so rather than claiming it.
+3. **Fixed** ([`c784ffc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c784ffc)). Six points on the deck's level just past
+   each end, at room x −38 to −30 and 427 to 434: inside what 1920×1080
+   shows, 6 to 12 room px above the glass's return there. They're the
+   street on the branch and the run-on deck on `main`. At 1920×1080 the
+   check now asks for more than five points past the ends (it finds six),
+   and fails against `main`'s client at all three sizes. The execution
+   log's sentence is corrected below.
+4. **Fixed** ([`18e493c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/18e493c)). The deck's edge line now runs along both
+   ends, the street wall's line from the outer edge to the wall and the
+   plain wall's from the wall to the outer edge, tile by tile as the outer
+   edges are. It's drawn before the slab's foot line, which keeps the
+   corner where they meet: drawn after, the end line's last pixel fell
+   under the room's slab, which slice 18's render test found. The glass's
+   returns tint it. Test first, with the rail and without, at points
+   clear of the wall posts and the front glass, which stand in front of it
+   on screen. Seen failing with no line. The new screens show it faintly
+   along each return's foot; whether it stays is the user's call when
+   judging them.
+5. **Answered** ([`8c1cb94`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8c1cb94)). The trim stays general, but the comment
+   now says only the corner trims a window, since the ends are whole
+   tiles and no window crosses one. Nothing is meant to rely on it.
+6. **Answered** ([`8c1cb94`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8c1cb94)). The click check's comment now says why
+   no click on a return can reach the café: the returns lie wholly
+   outside the room's canvas, over the street's, which takes no pointer
+   events. It also says that at 1920×1080 the left return's points land on
+   the "Your cats" panel. The check holds that nothing reaches the café
+   from them, which is the line in the spec.
+7. **Answered.**
+   - design.md came last: true, and the CLAUDE.md rule was broken for four
+     commits. It's written down here and in the execution log. The prompt
+     log's entry comes with the merge, as slice 18's did.
+   - The unused `span` parameters of `drawDeck` and `drawRail` are gone,
+     and the lines left alone in `street.toml`'s and design.md's
+     paragraphs are rejoined ([`8c1cb94`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8c1cb94)).
+
+**Also noticed:** the bare strip beside layout B's room while a ring is
+open by its left edge is older than this slice (`stage.shiftBy`, from
+`4e54ca4`). It's recorded in the execution log as a follow-up, not
+fixed here.
+
+After the answers:
+- the client's 385 tests and both typechecks pass;
+- `cargo test`'s content tests, `cargo fmt` and clippy pass;
+- the whole `spec/` runs against a café built from the branch;
+- slice 19's screens were shot again with the ends' lines.
