@@ -13,7 +13,7 @@ import { Raster, SHADOW, darken } from "./layer";
 import { spans } from "./crisp";
 import { OUTLINE, SLAB, block, outline, poly, rgb, shade, up } from "./shapes";
 import { paletteAt } from "./sprites";
-import { type Deck, type TerraceThing, street, streetRuns, terraceAt } from "./street";
+import { type Deck, TERRACE_REACH, type TerraceThing, street, streetRuns, terraceAt } from "./street";
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -364,15 +364,10 @@ function ends(): { back: number; right: number } {
   return { back: 1, right: FLOOR.width };
 }
 
-/** How far a terrace thing's shadow reaches round its spot on the deck, in tiles, across and along. */
-const SHADOW_UNDER: Record<TerraceThing["kind"], (side: TerraceThing["side"]) => [number, number]> = {
-  bench: (side) => (side === "left" ? [0.42, 1.3] : [1.3, 0.42]),
-  planter: () => [0.55, 0.55],
-  table: () => [0.6, 0.6],
-  umbrella: () => [0, 0],
-  chair: () => [0.36, 0.36],
-  lamp: () => [0.3, 0.3],
-};
+/** How far a terrace thing's shadow reaches round its spot on the deck, in tiles, across x and along y: its reach (street.ts), turned to its edge. */
+const SHADOW_UNDER: Record<TerraceThing["kind"], (side: TerraceThing["side"]) => [number, number]> = Object.fromEntries(
+  Object.entries(TERRACE_REACH).map(([kind, r]) => [kind, kind === "umbrella" ? () => [0, 0] : (side: TerraceThing["side"]) => (side === "left" ? [r.across, r.along] : [r.along, r.across])]),
+) as Record<TerraceThing["kind"], (side: TerraceThing["side"]) => [number, number]>;
 
 /**
  * A thing on the terrace (slice 16), on the pavement at the slab's foot: a

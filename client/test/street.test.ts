@@ -128,6 +128,45 @@ describe("the balcony under the terrace (slice 18)", () => {
     expect(deck(1, 0)).toMatchObject({ out: 1, rail: 0 });
   });
 
+  // Slice 19's review, finding 1: the balcony ends at the café's walls,
+  // the left arm from the street wall's line (y = 1, so `along` 0) to the
+  // deck's outer corner, the front arm from that corner to the plain wall's
+  // line (x = width). A thing whose blocks or shadow would reach past an
+  // end, or past the outer corner, stood on the street. It's refused.
+  it("refuses a terrace thing whose blocks or shadow would reach past either end of the balcony, along its edge", () => {
+    const deckLines = "\n[deck]\nout = 2.6\nslab = 4\nrail = 18\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4\n";
+    const thing = (kind: string, side: string, along: number, out = 1.5) => () =>
+      parseStreet(`${base}${deckLines}\n[[terrace]]\nkind = "${kind}"\nside = "${side}"\nalong = ${along}\nout = ${out}\n`);
+    const { FLOOR } = { FLOOR: { width: 13, height: 13 } };
+    // The review's lines: wholly past the front end, wholly past the left
+    // end, and two inside by their spot but reaching past by their length.
+    expect(thing("planter", "front", 14.5), "a planter past the front end").toThrow(/planter.*along/);
+    expect(thing("table", "left", -1), "a table past the left end").toThrow(/table.*along/);
+    expect(thing("bench", "left", 0.5, 1.3), "a bench reaching past the left end").toThrow(/bench.*along/);
+    expect(thing("planter", "front", 12.8), "a planter reaching past the front end").toThrow(/planter.*along/);
+    // And past the outer corner, where the arms' far ends meet.
+    expect(thing("bench", "left", FLOOR.height - 1 + 2.6 - 0.5, 1.3), "a bench reaching past the left arm's far end").toThrow(/bench.*along/);
+    expect(thing("planter", "front", -2.6 + 0.2), "a planter reaching past the front arm's far end").toThrow(/planter.*along/);
+    // Just inside each end, accepted: the planter's reach is 0.55 tiles.
+    expect(thing("planter", "front", FLOOR.width - 0.6)().terrace).toHaveLength(1);
+    expect(thing("planter", "left", 0.6)().terrace).toHaveLength(1);
+    expect(thing("bench", "left", 1.35, 1.3)().terrace).toHaveLength(1);
+    // Today's terrace, every thing well inside.
+    expect(street.terrace.length).toBeGreaterThan(5);
+  });
+
+  // The server's content test holds street.toml to the same reach, written
+  // in Rust: the two are one table, read from the server's source here.
+  it("gives each kind the same reach as the server's content test does", async () => {
+    const { TERRACE_REACH } = await import("../src/street");
+    const rust = (await import("../../server/src/content.rs?raw")).default as string;
+    for (const [kind, r] of Object.entries(TERRACE_REACH)) {
+      const m = new RegExp(`"${kind}" => ([\\d.]+),`).exec(rust);
+      expect(m, `the server's reach for the ${kind}`).not.toBeNull();
+      expect(Number(m![1]), `the ${kind}'s reach along its edge`).toBe(r.along);
+    }
+  });
+
   it("refuses a terrace thing whose blocks or shadow would reach past the deck's edge", () => {
     const deckLines = "\n[deck]\nout = 2\nslab = 4\nrail = 12\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4\n";
     const thing = (out: number) => parseStreet(`${base}${deckLines}\n[[terrace]]\nkind = "planter"\nside = "left"\nalong = 4\nout = ${out}\n`);

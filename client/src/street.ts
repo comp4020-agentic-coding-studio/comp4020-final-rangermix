@@ -1,5 +1,5 @@
 import streetFile from "../../content/street.toml?raw";
-import { ISO } from "./iso";
+import { FLOOR, ISO } from "./iso";
 
 // The street behind the café (slice 13, ADR 0018): sky, the towers across
 // the road, the kerb and the pavement, round the room's diamond. Its shape
@@ -9,6 +9,23 @@ import { ISO } from "./iso";
 /** The kinds of thing the terrace can have: each drawn as its own few blocks (render.ts). */
 export const TERRACE_KINDS = ["bench", "planter", "table", "umbrella", "chair", "lamp"] as const;
 export type TerraceKind = (typeof TERRACE_KINDS)[number];
+
+/**
+ * How far each kind of terrace thing reaches round its spot, its blocks and
+ * its shadow together, in tiles: along the edge it stands by, and across it
+ * (out from the café). A bench lies along its edge; the rest are square.
+ * The readers hold every thing's reach on the deck (slice 18's review,
+ * finding 3; slice 19's, finding 1), and the deck's shadows are drawn this
+ * size (backdrop.ts).
+ */
+export const TERRACE_REACH: Record<TerraceKind, { along: number; across: number }> = {
+  bench: { along: 1.3, across: 0.42 },
+  planter: { along: 0.55, across: 0.55 },
+  table: { along: 0.6, across: 0.6 },
+  umbrella: { along: 0.13, across: 0.13 },
+  chair: { along: 0.36, across: 0.36 },
+  lamp: { along: 0.3, across: 0.3 },
+};
 
 /**
  * A thing on the terrace in the room's bottom corners (slice 16): its kind,
@@ -145,6 +162,17 @@ function readDeck(t: Record<string, number | string>, terrace: TerraceThing[]): 
   // widest reaches 0.6 tiles across from its spot.
   for (const thing of terrace) {
     if (thing.out + 0.6 > deck.out) throw new Error(`street.toml: the terrace's ${thing.kind} at ${thing.out} tiles out reaches past the deck's edge at ${deck.out}`);
+  }
+  // And along its edge, between the balcony's ends (slice 19): the left arm
+  // runs from the street wall's line, `along` 0, to the deck's outer corner,
+  // and the front arm from that corner, `along` −out, to the plain wall's
+  // line, `along` width (slice 19's review, finding 1).
+  for (const thing of terrace) {
+    const reach = TERRACE_REACH[thing.kind].along;
+    const [lo, hi] = thing.side === "left" ? [0, FLOOR.height - 1 + deck.out] : [-deck.out, FLOOR.width];
+    if (thing.along - reach < lo || thing.along + reach > hi) {
+      throw new Error(`street.toml: the terrace's ${thing.kind} by the ${thing.side} at along = ${thing.along} reaches past the balcony's end (it reaches ${reach} tiles each way, between ${lo} and ${hi})`);
+    }
   }
   return deck;
 }

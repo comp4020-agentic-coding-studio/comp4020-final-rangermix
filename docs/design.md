@@ -655,8 +655,11 @@ and Burakku at 25.
     own, the street's canvas a wider one, so they agree to the pixel. The
     glass tints what's behind it pixel by pixel, every pixel one solid
     colour (ADR 0019). Both readers refuse a `[deck]` whose rail would rise
-    behind the floor's slab, or whose terrace would overhang it, and a
-    street with no `[deck]` has no balcony (slice 18's review, finding 3).
+    behind the floor's slab, or whose terrace would overhang its outer
+    edge (slice 18's review, finding 3) or reach past either end along it
+    (slice 19's review, finding 1: each kind's reach is one table,
+    `TERRACE_REACH`, which the server's test mirrors and a client test
+    holds equal), and a street with no `[deck]` has no balcony.
   - **Crisp, with outlines and shadows** (slice 13, built;
     [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
     every pixel of the room one colour, with no anti-aliasing: shapes are

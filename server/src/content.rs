@@ -317,6 +317,38 @@ mod tests {
             let o = t["out"].as_float().expect("a terrace thing's out");
             assert!(o + 0.6 <= out, "{t} reaches past the deck's edge ({out} tiles out)");
         }
+        // And along its edge, between the balcony's ends at the café's walls
+        // (slice 19): the left arm from the street wall's line, along 0, to
+        // the deck's outer corner, the front arm from that corner, along
+        // -out, to the plain wall's line, along width. Each kind's reach
+        // along its edge, blocks and shadow, is the client's TERRACE_REACH
+        // (slice 19's review, finding 1).
+        let room = repo_content().room;
+        let (w, h) = (room.width as f64, room.height as f64);
+        for t in street["terrace"].as_array().expect("[[terrace]]") {
+            let along = t["along"]
+                .as_float()
+                .or_else(|| t["along"].as_integer().map(|i| i as f64))
+                .expect("a terrace thing's along");
+            let reach = match t["kind"].as_str().expect("a terrace thing's kind") {
+                "bench" => 1.3,
+                "planter" => 0.55,
+                "table" => 0.6,
+                "umbrella" => 0.13,
+                "chair" => 0.36,
+                "lamp" => 0.3,
+                kind => panic!("no terrace kind {kind}"),
+            };
+            let (lo, hi) = match t["side"].as_str().expect("a terrace thing's side") {
+                "left" => (0.0, h - 1.0 + out),
+                "front" => (-out, w),
+                side => panic!("no terrace side {side}"),
+            };
+            assert!(
+                along - reach >= lo && along + reach <= hi,
+                "{t} reaches past the balcony's end along its edge ({lo} to {hi})"
+            );
+        }
     }
 
     /// A [deck] that would draw the glass behind the floor's slab, or a
@@ -336,6 +368,44 @@ mod tests {
         assert!(!check(street(1.0, 18, 0.3)), "an 18-px rail one tile out rises behind the slab");
         assert!(!check(street(2.0, 32, 1.3)), "a 32-px rail two tiles out rises behind the slab");
         assert!(!check(street(2.0, 12, 1.8)), "a planter whose shadow overhangs the deck");
+    }
+
+    /// The balcony ends at the café's walls (slice 19): a terrace thing
+    /// whose blocks or shadow would reach past either end along its edge,
+    /// or past the deck's outer corner, would stand on the street. It's
+    /// refused; one just inside is accepted (slice 19's review, finding 1).
+    #[test]
+    fn a_terrace_thing_reaching_past_the_balconys_ends_is_refused() {
+        let street = |kind: &str, side: &str, along: f64, out: f64| -> toml::Value {
+            toml::from_str(&format!(
+                "[deck]\nout = 2.6\nslab = 4\nrail = 18\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4\n\n[[terrace]]\nkind = \"{kind}\"\nside = \"{side}\"\nalong = {along}\nout = {out}\n"
+            ))
+            .unwrap()
+        };
+        let check = |s: toml::Value| std::panic::catch_unwind(|| check_deck(s["deck"].as_table().unwrap(), &s)).is_ok();
+        let room = repo_content().room;
+        let (w, h) = (room.width as f64, room.height as f64);
+        assert!(!check(street("planter", "front", 14.5, 1.5)), "a planter past the front end");
+        assert!(!check(street("table", "left", -1.0, 1.5)), "a table past the left end");
+        assert!(!check(street("bench", "left", 0.5, 1.3)), "a bench reaching past the left end");
+        assert!(
+            !check(street("planter", "front", w - 0.2, 1.5)),
+            "a planter reaching past the front end"
+        );
+        assert!(
+            !check(street("bench", "left", h - 1.0 + 2.6 - 0.5, 1.3)),
+            "a bench past the left arm's far end"
+        );
+        assert!(
+            !check(street("planter", "front", -2.4, 1.5)),
+            "a planter past the front arm's far end"
+        );
+        assert!(
+            check(street("planter", "front", w - 0.6, 1.5)),
+            "a planter just inside the front end"
+        );
+        assert!(check(street("planter", "left", 0.6, 1.5)), "a planter just inside the left end");
+        assert!(check(street("bench", "left", 1.35, 1.3)), "a bench just inside the left end");
     }
 
     /// Without a [deck], no balcony: the server's content test accepts it
