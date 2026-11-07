@@ -124,3 +124,11 @@ Where the build departed from this plan, task by task.
   drawing: it now multiplies before it divides. With the deck taken out it
   fails (no deck beside the room's canvas). The whole `spec/` passes
   against a local café built from the branch.
+- **Task 4.** As planned. The glass stands in front of the deck's outer
+  tiles on screen and tints them, as in the study, so the deck's tests
+  look at the deck with the rail off and leave the glass to the rail's
+  own. The rail stands 0.08 tiles in from the deck's edge, so the slab's
+  edge shows below it; posts are counted back from the floor's right end
+  and down from the street wall's, with one at the corner. The contrast
+  test's backgrounds now include every colour the glass makes of the
+  palette's, which the panels' words keep 4.5:1 over.

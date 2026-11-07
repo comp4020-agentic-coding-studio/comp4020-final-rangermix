@@ -10,7 +10,7 @@ import type { Light } from "./canberra";
 import { FLOOR, fromCanvas } from "./iso";
 import { Raster, SHADOW, darken } from "./layer";
 import { spans } from "./crisp";
-import { OUTLINE, block, outline, poly, shade, up } from "./shapes";
+import { OUTLINE, block, outline, poly, rgb, shade, up } from "./shapes";
 import { paletteAt } from "./sprites";
 import { type Deck, type TerraceThing, street, streetRuns, terraceAt } from "./street";
 
@@ -46,6 +46,7 @@ export function backdrop(span: Span, light: Light): Raster {
   drawStreet(ctx, span, palette.street, light);
   if (street.deck) drawDeck(ctx, street.deck, palette.balcony);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
+  if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, street.deck, palette.balcony);
   cache.set(where, { made, raster });
   // A resize asks for a new span: keep the few in use, not every size seen.
   while (cache.size > 4) cache.delete(cache.keys().next().value!);
@@ -102,6 +103,52 @@ function drawDeck(ctx: Ctx, deck: Deck, colours: string[]): void {
     poly(ctx, [up(xo, yo, z), up(W, yo, z), up(W, yo, z - deck.slab), up(xo, yo, z - deck.slab)], shade(edge, 0.28));
   }
   outline(ctx, [up(xo, 1, z), up(xo, yo, z), up(W, yo, z)], shade(edge, OUTLINE), 1, false);
+}
+
+/**
+ * The glass balustrade along the deck's outer edges (slice 18), `rail` px
+ * high, nearest the viewer of all: each pane tints what's already drawn
+ * behind it toward the glass's colour by `glass`, pixel by pixel, so every
+ * pixel stays one solid colour (ADR 0019); then posts every `posts` tiles
+ * and a handrail along the top, in the rail's metal, as blocks.
+ */
+function drawRail(raster: Raster, ctx: Ctx, deck: Deck, colours: string[]): void {
+  const glass = colours[3];
+  const metal = colours[4];
+  const W = FLOOR.width;
+  const z = -SLAB;
+  // Set in from the deck's edge a little, so the slab's edge shows below it.
+  const xo = -deck.out + 0.08;
+  const yo = FLOOR.height + deck.out - 0.08;
+  const top = z + deck.rail;
+  const panes = [
+    [up(xo, 1, z), up(xo, yo, z), up(xo, yo, top), up(xo, 1, top)],
+    [up(xo, yo, z), up(W, yo, z), up(W, yo, top), up(xo, yo, top)],
+  ];
+  for (const pane of panes) {
+    for (const s of spans(pane)) {
+      for (let x = s.x0; x < s.x1; x++) {
+        const behind = raster.at(x, s.y);
+        if (!behind) continue;
+        ctx.fillStyle = mix(behind, glass, deck.glass);
+        ctx.fillRect(x, s.y, 1, 1);
+      }
+    }
+  }
+  // Posts, from the street wall's end down the left and along the front, and
+  // one at the corner; then the handrail, a bar along the top.
+  const post = (gx: number, gy: number) => block(ctx, gx - 0.05, gy - 0.05, 0.1, 0.1, top, metal, z);
+  for (let gy = 1; gy < yo; gy += deck.posts) post(xo, gy);
+  post(xo, yo);
+  for (let gx = W; gx > xo + 0.3; gx -= deck.posts) post(gx, yo);
+  outline(ctx, [up(xo, 1, top), up(xo, yo, top), up(W, yo, top)], metal, 1, false);
+  outline(ctx, [up(xo, 1, top + 1), up(xo, yo, top + 1), up(W, yo, top + 1)], shade(metal, -0.25), 1, false);
+}
+
+/** `a` mixed toward `b` by `t`, as "#rrggbb". */
+function mix(a: string, b: string, t: number): string {
+  const [x, y] = [rgb(a), rgb(b)];
+  return `#${x.map((v, i) => Math.round(v * (1 - t) + y[i] * t).toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** How far a terrace thing's shadow reaches round its spot on the deck, in tiles, across and along. */

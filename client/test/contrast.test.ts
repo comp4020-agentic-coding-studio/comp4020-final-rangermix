@@ -80,6 +80,7 @@ describe("the page's colours", () => {
 // colour on it over black, white and every colour the room and street use.
 
 import palettes from "../../content/sprites/palettes.json";
+import { street } from "../src/street";
 
 /** The tokens for one theme, glass and filter included, as strings. */
 function raw(theme: "light" | "dark"): Record<string, string> {
@@ -107,7 +108,11 @@ function through(behind: string, glass: string, alpha: number, f: { c: number; b
   return toHex(channels(glass).map((g, i) => alpha * g + (1 - alpha) * filtered[i]));
 }
 
-/** Every colour the room and street are drawn in, by day and by night, and black and white. */
+/**
+ * Every colour the room and street are drawn in, by day and by night, and
+ * black and white; and every colour the balcony's glass makes of them
+ * (slice 18), since a pane tints what's behind it into colours of its own.
+ */
 const behindColours = (): string[] => {
   const out = new Set(["#000000", "#ffffff"]);
   const walk = (v: unknown) => {
@@ -116,6 +121,11 @@ const behindColours = (): string[] => {
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
   walk(palettes);
+  const t = street.deck?.glass ?? 0;
+  for (const light of ["day", "night"] as const) {
+    const glass = (palettes[light] as unknown as { balcony: string[] }).balcony[3];
+    for (const c of [...out]) out.add(toHex(channels(c).map((v, i) => v * (1 - t) + channels(glass)[i] * t)));
+  }
   return [...out];
 };
 

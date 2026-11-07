@@ -119,13 +119,27 @@ describe("the balcony's deck", () => {
     return b.at(Math.round(p.x), Math.round(p.y) + SLAB);
   };
   const deck = street.deck!;
+  /**
+   * The backdrop with no glass rail: the glass stands in front of the
+   * deck's outer tiles on screen and tints them (the rail's own tests), so
+   * the deck is looked at without it.
+   */
+  const bare = (light: 0 | 1) => {
+    const kept = street.deck;
+    street.deck = { ...deck, rail: 0 };
+    try {
+      return backdrop(wide, light).copy();
+    } finally {
+      street.deck = kept;
+    }
+  };
 
   for (const [light, name] of [
     [0, "day"],
     [1, "night"],
   ] as const) {
     it(`lays stone tiles in two tones in both arms, by the left edge and out front, by ${name}`, () => {
-      const b = backdrop(wide, light);
+      const b = bare(light);
       const [stoneA, stoneB] = balcony(name);
       const seen = new Set<string>();
       // Spots in the left arm (left of x = 0) and the front arm (past the
@@ -150,7 +164,7 @@ describe("the balcony's deck", () => {
   }
 
   it("reaches as far out as street.toml says, and no further: past it is what's below the balcony", () => {
-    const b = backdrop(wide, 0);
+    const b = bare(0);
     const stones = balcony("day").slice(0, 2);
     // Just inside the deck's outer edges, and just past them.
     expect(stones).toContain(onDeck(b, -(deck.out - 0.15), 6.5));
@@ -160,7 +174,7 @@ describe("the balcony's deck", () => {
   });
 
   it("stands every terrace thing on the deck, a shadow under it", () => {
-    const b = backdrop(wide, 0);
+    const b = bare(0);
     for (const t of street.terrace) {
       const at = terraceAt(t, FLOOR);
       // The deck reaches round the thing's spot on every side.
@@ -199,5 +213,103 @@ describe("the balcony's deck", () => {
     } finally {
       street.deck = kept;
     }
+  });
+});
+
+// Slice 18: the glass balustrade at the deck's outer edges, 18 px high:
+// panes that tint what's behind them, every pixel one solid colour (ADR
+// 0019), posts every two tiles and a handrail along the top.
+describe("the balcony's glass rail", () => {
+  const SLAB = 6;
+  const wide = { x0: -120, y0: -20, x1: ISO.width + 120, y1: ISO.height + 80 };
+  const deck = street.deck!;
+  const colours = (name: "day" | "night") => (palettes[name] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase());
+  const mixed = (a: string, b: string, t: number) =>
+    `#${[1, 3, 5].map((i) => Math.round(Number.parseInt(a.slice(i, i + 2), 16) * (1 - t) + Number.parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("")}`;
+  /** The backdrop with the rail and without it, to compare pixel for pixel. */
+  const withAndWithout = (light: 0 | 1) => {
+    const withIt = backdrop(wide, light).copy();
+    const kept = street.deck;
+    street.deck = { ...deck, rail: 0 };
+    try {
+      return { withIt, without: backdrop(wide, light).copy() };
+    } finally {
+      street.deck = kept;
+    }
+  };
+  /** Where the glass stands on screen: up from the deck's outer edges by the rail's height, in room pixels. */
+  const railAt = (gx: number, gy: number, up: number) => {
+    const p = toCanvas(gx, gy);
+    return { x: Math.round(p.x), y: Math.round(p.y) + SLAB - up };
+  };
+
+  for (const [light, name] of [
+    [0, "day"],
+    [1, "night"],
+  ] as const) {
+    it(`tints what's behind each pane toward the glass, every pixel solid, by ${name}`, () => {
+      const { withIt, without } = withAndWithout(light);
+      const glass = colours(name)[3];
+      // Half way up the rail, between posts, along both edges.
+      // Half way between posts, which stand at odd tiles along each edge.
+      const spots = [
+        railAt(-deck.out + 0.08, 4, deck.rail / 2),
+        railAt(-deck.out + 0.08, 8, deck.rail / 2),
+        railAt(4, FLOOR.height + deck.out - 0.08, deck.rail / 2),
+        railAt(10, FLOOR.height + deck.out - 0.08, deck.rail / 2),
+      ];
+      for (const s of spots) {
+        let tinted = 0;
+        for (let dx = -3; dx <= 3; dx++) {
+          const [x, y] = [s.x + dx, s.y];
+          const behind = without.at(x, y)!;
+          if (withIt.at(x, y) === mixed(behind, glass, deck.glass)) tinted++;
+        }
+        expect(tinted, `${name}: the glass at (${s.x}, ${s.y}) is what's behind it tinted`).toBeGreaterThanOrEqual(5);
+      }
+    });
+  }
+
+  it("stands posts every two tiles and a handrail along the top, in the rail's metal", () => {
+    const { withIt } = withAndWithout(0);
+    const metal = colours("day")[4];
+    const metals = new Set([metal, darken(metal, 0.12), darken(metal, 0.28), darken(metal, 0.45)].map((c) => c.toLowerCase()));
+    // The rail stands a little in from the deck's outer edge (0.08 tiles),
+    // so the slab's edge shows below it.
+    const front = FLOOR.height + deck.out - 0.08;
+    // The handrail: the rail's top along the front edge.
+    let rail = 0;
+    for (let gx = 0.5; gx < FLOOR.width; gx += 0.5) {
+      const top = railAt(gx, front, deck.rail);
+      for (let dy = -1; dy <= 1; dy++) if (metals.has(withIt.at(top.x, top.y + dy) ?? "")) rail++;
+    }
+    expect(rail, "the handrail along the front").toBeGreaterThan(FLOOR.width);
+    // A post every two tiles back from the floor's right end, standing the rail's height.
+    for (const gx of [FLOOR.width, FLOOR.width - 2, FLOOR.width - 4, FLOOR.width - 6, FLOOR.width - 8]) {
+      const foot = railAt(gx, front, 3);
+      let post = 0;
+      for (let dx = -2; dx <= 2; dx++) if (metals.has(withIt.at(foot.x + dx, foot.y) ?? "")) post++;
+      expect(post, `a post at ${gx} along the front`).toBeGreaterThan(0);
+    }
+  });
+
+  it("is drawn crisp: no shape the canvas would anti-alias, and nothing see-through", async () => {
+    const { pixels } = await import("./pixels");
+    // The backdrop's runs, drawn as the street's canvas draws them.
+    const p = pixels(wide.x1 - wide.x0, wide.y1 - wide.y0);
+    for (const r of backdrop(wide, 1).runs()) {
+      p.ctx.fillStyle = r.colour;
+      p.ctx.fillRect(r.x - wide.x0, r.y - wide.y0, r.w, 1);
+    }
+    expect(p.blended).toEqual([]);
+    // Every pixel a plain colour.
+    for (const r of backdrop(wide, 1).runs()) expect(r.colour).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("stands no rail where street.toml asks for none", () => {
+    const { withIt, without } = withAndWithout(0);
+    let differ = 0;
+    for (let y = wide.y0; y < wide.y1; y++) for (let x = wide.x0; x < wide.x1; x++) if (withIt.at(x, y) !== without.at(x, y)) differ++;
+    expect(differ, "the rail's own pixels").toBeGreaterThan(300);
   });
 });
