@@ -67,6 +67,7 @@ function build(span: Span, light: Light): Raster {
   drawStreet(ctx, span, palette.street, light);
   if (street.deck && street.deck.storey > 0) drawBuilding(ctx, span, street.deck, palette.room, palette.balcony);
   if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony, palette.room);
+  if (street.deck) drawEnds(ctx, span, street.deck, palette.room);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
   if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, span, street.deck, palette.balcony);
   return raster;
@@ -161,8 +162,7 @@ function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours:
   const yo = FLOOR.height + deck.out;
   // The faces start under the deck's slab: z is up from the floor's level.
   const zt = -SLAB - deck.slab;
-  // Deep enough to reach past the span's foot from the deck's highest point.
-  const bottom = zt - (span.y1 - Math.min(up(xo, back).y, up(W, yo).y)) - 8;
+  const bottom = foot(span, deck);
   type Face = "left" | "front";
   const face = (f: Face, a: number, b: number, z0: number, z1: number, colour: string) =>
     poly(ctx, f === "left" ? [up(xo, a, z0), up(xo, b, z0), up(xo, b, z1), up(xo, a, z1)] : [up(a, yo, z0), up(b, yo, z0), up(b, yo, z1), up(a, yo, z1)], colour);
@@ -197,8 +197,30 @@ function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours:
       }
     }
   }
-  // The building's corner where its two faces meet, and its far ends.
+  // The building's corner where its two faces meet (its ends: drawEnds).
   outline(ctx, [up(xo, yo, zt), up(xo, yo, bottom)], shade(wall, OUTLINE), 1, false);
+}
+
+/** How far down the building's faces go, in px up from the floor's level: past the span's foot from the deck's highest point. */
+function foot(span: Span, deck: Deck): number {
+  const { back, right } = ends();
+  const zt = -SLAB - deck.slab;
+  return zt - (span.y1 - Math.min(up(-deck.out, back).y, up(right, FLOOR.height + deck.out).y)) - 8;
+}
+
+/**
+ * Where the balcony ends at the café's walls (slice 19): a dark edge down
+ * each end, from the deck's top, down its slab and the building's wall
+ * under it, in the wall's outline colour, as the building's corner has, so
+ * each end reads as the building's edge with the street past it.
+ */
+function drawEnds(ctx: Ctx, span: Span, deck: Deck, room: string[]): void {
+  const { back, right } = ends();
+  const z = -SLAB;
+  const lowest = deck.storey > 0 ? foot(span, deck) : z - deck.slab;
+  const edge = shade(room[3], OUTLINE);
+  outline(ctx, [up(-deck.out, back, z), up(-deck.out, back, lowest)], edge, 1, false);
+  outline(ctx, [up(right, FLOOR.height + deck.out, z), up(right, FLOOR.height + deck.out, lowest)], edge, 1, false);
 }
 
 /** A fixed pattern of the building's lit windows: about `lit` in 10, the same every night. */

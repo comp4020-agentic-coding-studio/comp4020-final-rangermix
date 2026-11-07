@@ -530,6 +530,34 @@ describe("where the balcony ends", () => {
     });
   }
 
+  for (const light of [0, 1] as const) {
+    it(`draws a dark edge down each end, the deck's slab and the building's wall, in the wall's outline colour, by ${named(light)}`, async () => {
+      const { OUTLINE, shade } = await import("../src/shapes");
+      const wall = (palettes[named(light)] as unknown as { room: string[] }).room[3];
+      const hex = (c: string) => {
+        const m = /^rgb\((\d+)[ ,]+(\d+)[ ,]+(\d+)\)$/.exec(c);
+        return m ? `#${m.slice(1).map((v) => Number(v).toString(16).padStart(2, "0")).join("")}` : c.toLowerCase();
+      };
+      const edge = hex(shade(wall, OUTLINE));
+      const b = backdrop(wide, light);
+      for (const [name, gx, gy] of [
+        ["the left end, at the street wall's line", xo, 1],
+        ["the front end, at the plain wall's line", W, yo],
+      ] as const) {
+        let looked = 0;
+        let dark = 0;
+        // From just under the deck's top down 150 px of the building.
+        for (let z = -SLAB - 1; z > -SLAB - 150; z -= 3) {
+          const p = toCanvas(gx, gy);
+          const y = Math.round(p.y - z);
+          looked++;
+          if ([-1, 0, 1].some((dx) => b.at(Math.floor(p.x) + dx, y) === edge)) dark++;
+        }
+        expect(dark, `${named(light)}: ${name}, ${dark} of ${looked} rows`).toBe(looked);
+      }
+    });
+  }
+
   it("ends in the same places over any span: a narrow one and a wide one agree at both ends", () => {
     const narrow = { x0: -60, y0: 0, x1: ISO.width + 60, y1: ISO.height + 60 };
     for (const light of [0, 1] as const) {
