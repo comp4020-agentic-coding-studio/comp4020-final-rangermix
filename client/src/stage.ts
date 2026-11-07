@@ -202,7 +202,10 @@ export class Stage {
     // As far past the room on each side as the stage can show (slice 16's
     // review, finding 8): a street the stage's size, not nine times it.
     const { x: mx, y: my } = streetMargin({ w, h }, { w: ISO.width, h: ISO.height }, k);
-    const key = `${light}:${k}:${w}x${h}`;
+    // Built again only when what it holds changes: the light, the scale or
+    // the span (slice 18's review, finding 5); a resize within a margin's
+    // step only moves it.
+    const key = `${light}:${k}:${mx}x${my}`;
     if (key !== this.streetKey) {
       this.streetKey = key;
       street.width = (ISO.width + 2 * mx) * k;

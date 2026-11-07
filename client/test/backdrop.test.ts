@@ -547,3 +547,39 @@ describe("the balcony reaching the window's edges at every window's shape", asyn
     });
   }
 });
+
+// Slice 18's review, finding 6: the backdrop's cache let the oldest span
+// go first, though the room's own span is asked for every frame, so a
+// drag-resize's street spans pushed it out and the floor layer was built
+// again. The span asked for last is kept longest.
+describe("the backdrop's cache", () => {
+  it("keeps the room's span, asked for every frame, through a drag-resize's other spans", () => {
+    const room = { x0: 0, y0: 0, x1: ISO.width, y1: ISO.height };
+    const first = backdrop(room, 0);
+    for (let i = 0; i < 8; i++) {
+      backdrop({ x0: -40 - i, y0: -6, x1: ISO.width + 40 + i, y1: ISO.height + 6 }, 0);
+      // A frame: the room's span asked for again.
+      expect(backdrop(room, 0), `after street span ${i}`).toBe(first);
+    }
+  });
+});
+
+// Slice 18's review, finding 5: a light turn built the backdrop twice, the
+// street canvas's span and the room's inside it. The room's is cut from the
+// street's when that's built already, pixel for pixel the same, and much
+// quicker than building it.
+describe("the backdrop over a span inside one already built", () => {
+  it("is cut from that one, the same pixels, without building it again", async () => {
+    const { builds } = await import("../src/backdrop");
+    const light = 0.5 as const;
+    const wide = { x0: -96, y0: -32, x1: ISO.width + 96, y1: ISO.height + 32 };
+    const inner = { x0: 0, y0: 0, x1: ISO.width, y1: ISO.height };
+    const fresh = backdrop(inner, light).copy();
+    backdrop({ x0: -1, y0: -1, x1: 1, y1: 1 }, 1);
+    backdrop(wide, light);
+    const before = builds();
+    const cut = backdrop(inner, light);
+    expect(builds(), "a span inside one built is cut, not built").toBe(before);
+    for (let y = 0; y < ISO.height; y += 3) for (let x = 0; x < ISO.width; x += 3) expect(cut.at(x, y), `(${x},${y})`).toBe(fresh.at(x, y));
+  });
+});

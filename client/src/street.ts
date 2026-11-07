@@ -284,7 +284,14 @@ export function terraceAt(t: TerraceThing, room: { width: number; height: number
  * past the room, `stage` and the room's 1× size at scale `k`. The whole gap
  * either side, since the phone's bigger room can be panned against one
  * edge; on a desktop, where the room is centred, half of it shows.
+ * Rounded up to a whole step.
  */
 export function streetMargin(stage: { w: number; h: number }, room: { w: number; h: number }, k: number): { x: number; y: number } {
-  return { x: Math.ceil(Math.max(0, stage.w - room.w * k) / k), y: Math.ceil(Math.max(0, stage.h - room.h * k) / k) };
+  // In whole steps of MARGIN_STEP room pixels, so a drag-resize keeps the
+  // span it has for most of its steps (slice 18's review, finding 5).
+  const step = (gap: number) => Math.ceil(Math.max(0, gap) / k / MARGIN_STEP) * MARGIN_STEP;
+  return { x: step(stage.w - room.w * k), y: step(stage.h - room.h * k) };
 }
+
+/** The street's margins grow in steps this many room pixels long. */
+const MARGIN_STEP = 16;

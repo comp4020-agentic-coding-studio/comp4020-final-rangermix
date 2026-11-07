@@ -39,7 +39,29 @@ export function backdrop(span: Span, light: Light): Raster {
   const where = `${span.x0},${span.y0},${span.x1},${span.y1}`;
   const made = `${light}:${JSON.stringify(street.terrace)}:${JSON.stringify(street.deck)}`;
   const kept = cache.get(where);
-  if (kept?.made === made) return kept.raster;
+  if (kept?.made === made) {
+    // Asked for again: kept longest (slice 18's review, finding 6).
+    cache.delete(where);
+    cache.set(where, kept);
+    return kept.raster;
+  }
+  // Inside a span already built in this light: cut from it, the same
+  // pixels, since the backdrop is drawn the same over any span (slice 18's
+  // review, finding 5: a light turn built it twice).
+  const around = [...cache.values()].find((c) => c.made === made && c.raster.x0 <= span.x0 && c.raster.y0 <= span.y0 && c.raster.x0 + c.raster.width >= span.x1 && c.raster.y0 + c.raster.height >= span.y1);
+  const raster = around ? cut(around.raster, span) : build(span, light);
+  cache.set(where, { made, raster });
+  // A resize asks for a new span: keep the few in use, not every size seen.
+  while (cache.size > 4) cache.delete(cache.keys().next().value!);
+  return raster;
+}
+
+/** How many backdrops have been drawn from scratch, for the tests. */
+let built = 0;
+export const builds = (): number => built;
+
+function build(span: Span, light: Light): Raster {
+  built++;
   const raster = new Raster(span.x1 - span.x0, span.y1 - span.y0, span.x0, span.y0);
   const ctx = raster.context();
   const palette = paletteAt(light);
@@ -48,10 +70,17 @@ export function backdrop(span: Span, light: Light): Raster {
   if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony, palette.room);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
   if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, span, street.deck, palette.balcony);
-  cache.set(where, { made, raster });
-  // A resize asks for a new span: keep the few in use, not every size seen.
-  while (cache.size > 4) cache.delete(cache.keys().next().value!);
   return raster;
+}
+
+/** The part of `from` over `span`, in a raster of its own. */
+function cut(from: Raster, span: Span): Raster {
+  const r = new Raster(span.x1 - span.x0, span.y1 - span.y0, span.x0, span.y0);
+  for (let y = 0; y < r.height; y++) {
+    const src = (y + span.y0 - from.y0) * from.width + (span.x0 - from.x0);
+    for (let x = 0; x < r.width; x++) r.px[y * r.width + x] = from.px[src + x];
+  }
+  return r;
 }
 
 /**
