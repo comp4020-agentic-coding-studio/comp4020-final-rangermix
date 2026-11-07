@@ -1,6 +1,6 @@
 # 19. The balcony ends with the café
 
-- **Status:** Built 2026-11-08 ([plan](../notes/plan-slice-19-balcony-ends.md), [screens](../notes/screens/slice-19/)); approved 2026-11-08: "1A 2A 3A", the balcony ending at the
+- **Status:** Reviewed and deployed 2026-11-08, checked live ([findings](../notes/reviews/slice-19-findings.md), [notes](../notes/slice-19-balcony-ends.md)); built 2026-11-08 ([plan](../notes/plan-slice-19-balcony-ends.md), [screens](../notes/screens/slice-19/)); approved 2026-11-08: "1A 2A 3A", the balcony ending at the
   café's walls, the street beside it as now, the glass turning both ends;
   planned ([plan](../notes/plan-slice-19-balcony-ends.md)); proposed
   2026-11-08 from the user's judgement of slice 18, with a study
