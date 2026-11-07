@@ -23,9 +23,21 @@
 #   edge from its back end, in tiles, and how far `out` from it. Scenery:
 #   off the café's grid, it takes no click and blocks no one.
 #
+# deck (slice 18): the balcony the terrace stands on, round the floor's left
+#   and front edges at the foot of its slab. `out`: how far it reaches from
+#   those edges, in tiles (every terrace thing stands short of it). `slab`:
+#   how deep its own slab shows under its outer edges, in room pixels.
+#   `rail`: the glass balustrade's height over the deck, in room pixels (0
+#   for none), with a post every `posts` tiles. `glass`: how far the glass
+#   tints what's behind it toward its own colour, 0 to 1. `storey`: under
+#   the deck, the café's own building carries on down, a storey this many
+#   room pixels tall (0 for none), its windows `lit` in 10 at night. Its
+#   colours are the palette's "balcony" list and the room's wall. Without
+#   this table there's no balcony, as before slice 18.
+#
 # The client reads this file with a small reader of its own (street.ts):
-# plain `key = number` and `key = "word"` lines, the one `[windows]` table
-# and `[[towers]]`, `[[clouds]]` and `[[terrace]]` tables, with comments.
+# plain `key = number` and `key = "word"` lines, the `[windows]` and `[deck]`
+# tables and `[[towers]]`, `[[clouds]]` and `[[terrace]]` tables, with comments.
 # Write it in that much TOML only; anything else (inline tables, dotted
 # keys, underscores in numbers) stops the client loading, though it's valid
 # TOML that `cargo test` reads.
@@ -99,6 +111,18 @@ width = 30
 x = 300
 y = 30
 width = 20
+
+# The balcony (slice 18): a deck 2.6 tiles out, glass 18 px high (half a
+# person's height), and the café's building under it, storeys as tall as
+# the room's walls (the user, 2026-11-07: "1A", then "D").
+[deck]
+out = 2.6
+slab = 4
+rail = 18
+posts = 2
+glass = 0.3
+storey = 56
+lit = 4
 
 # The terrace (slice 16), placed where 1920×1080 shows it, clear of the
 # panels and the talk bar where they start. By the left edge: a bench along

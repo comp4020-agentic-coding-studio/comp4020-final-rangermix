@@ -87,6 +87,36 @@ describe("the terrace in the room's bottom corners (slice 16)", () => {
   });
 });
 
+describe("the balcony under the terrace (slice 18)", () => {
+  // street.toml without its [deck] table and its terrace.
+  const base = streetFile.replace(/\n\[deck\]\n(?:[^[\n][^\n]*\n|\n)*/, "\n").replace(/\[\[terrace\]\][\s\S]*$/, "");
+
+  it("is data in street.toml: the deck's reach and slab, the glass rail, its tint, the building's storey and its lit windows", () => {
+    expect(street.deck).toEqual({ out: 2.6, slab: 4, rail: 18, posts: 2, glass: expect.any(Number), storey: 56, lit: 4 });
+    expect(street.deck!.glass).toBeGreaterThan(0);
+    expect(street.deck!.glass).toBeLessThan(1);
+    // Every terrace thing stands on the deck, short of its outer edge.
+    for (const t of street.terrace) expect(t.out, `the ${t.kind}`).toBeLessThan(street.deck!.out);
+  });
+
+  it("draws no balcony from a street with no [deck], as before slice 18", () => {
+    expect(base, "the file without its [deck] table").not.toMatch(/^\[deck\]$/m);
+    expect(parseStreet(base).deck).toBeNull();
+  });
+
+  it("reads a [deck] from a few lines, and refuses one with a value missing or out of its range", () => {
+    const deck = (lines: string) => parseStreet(`${base}\n[deck]\n${lines}\n`).deck;
+    const all = "out = 2\nslab = 4\nrail = 18\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4";
+    expect(deck(all)).toEqual({ out: 2, slab: 4, rail: 18, posts: 2, glass: 0.3, storey: 56, lit: 4 });
+    // No rail and no building are allowed: a bare deck.
+    expect(deck(all.replace("rail = 18", "rail = 0").replace("storey = 56", "storey = 0"))).toMatchObject({ rail: 0, storey: 0 });
+    expect(() => deck(all.replace("out = 2\n", ""))).toThrow(/deck\.out/);
+    expect(() => deck(all.replace("glass = 0.3", "glass = 1.5"))).toThrow(/deck\.glass/);
+    expect(() => deck(all.replace("rail = 18", "rail = 40"))).toThrow(/deck\.rail/);
+    expect(() => deck(all.replace("storey = 56", "storey = 12"))).toThrow(/deck\.storey/);
+  });
+});
+
 // Slice 16's review, finding 8: the street was drawn a whole stage past the
 // room on every side, about nine times the window, and each redraw was a
 // long task. It's drawn only as far past the room as the stage can show.

@@ -242,6 +242,52 @@ mod tests {
         }
     }
 
+    /// The balcony under the terrace (slice 18) is data too: a `[deck]`
+    /// table in street.toml, how far out the deck reaches, its slab, the
+    /// glass rail's height and its posts, how much the glass tints, the
+    /// building's storey under it and how many of its windows are lit; and
+    /// its colours in palettes.json, a "balcony" list by day and by night.
+    #[test]
+    fn the_balcony_is_data_with_colours_by_day_and_night() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content");
+        let street: toml::Value = read_toml(&dir.join("street.toml")).expect("content/street.toml");
+        let deck = street["deck"].as_table().expect("[deck], the balcony under the terrace");
+        let num = |key: &str| {
+            deck.get(key)
+                .and_then(|v| v.as_float().or_else(|| v.as_integer().map(|i| i as f64)))
+                .unwrap_or_else(|| panic!("deck.{key}"))
+        };
+        let out = num("out");
+        assert!((1.0..=4.0).contains(&out), "deck.out {out} tiles");
+        let slab = num("slab");
+        assert!((0.0..=12.0).contains(&slab) && slab.fract() == 0.0, "deck.slab {slab} px");
+        let rail = num("rail");
+        assert!((0.0..=32.0).contains(&rail) && rail.fract() == 0.0, "deck.rail {rail} px, under a person's height");
+        let posts = num("posts");
+        assert!((0.5..=6.0).contains(&posts), "deck.posts every {posts} tiles");
+        let glass = num("glass");
+        assert!((0.0..=1.0).contains(&glass), "deck.glass {glass}");
+        let storey = num("storey");
+        assert!(storey == 0.0 || (32.0..=96.0).contains(&storey) && storey.fract() == 0.0, "deck.storey {storey} px");
+        let lit = num("lit");
+        assert!((0.0..=10.0).contains(&lit) && lit.fract() == 0.0, "deck.lit {lit} in ten");
+        // Every terrace thing stands on the deck: no further out than it reaches.
+        for t in street["terrace"].as_array().expect("[[terrace]]") {
+            let o = t["out"].as_float().expect("a terrace thing's out");
+            assert!(o < out, "{t} stands past the deck's edge ({out} tiles out)");
+        }
+        let palettes: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("sprites/palettes.json")).unwrap()).unwrap();
+        for light in ["day", "night"] {
+            let colours = palettes[light]["balcony"]
+                .as_array()
+                .unwrap_or_else(|| panic!("no {light} balcony colours"));
+            // Two stones, the slab's edge, the glass, the rail's metal, a
+            // window dark and a window lit.
+            assert_eq!(colours.len(), 7, "{light}");
+        }
+    }
+
     #[test]
     fn every_cat_coat_has_a_palette() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content/sprites/palettes.json");

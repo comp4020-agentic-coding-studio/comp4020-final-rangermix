@@ -23,6 +23,24 @@ export interface TerraceThing {
   out: number;
 }
 
+/**
+ * The balcony the terrace stands on (slice 18): a deck `out` tiles round
+ * the floor's left and front edges, its own slab `slab` px deep, a glass
+ * rail `rail` px high (0 for none) with a post every `posts` tiles, the
+ * glass tinting what's behind it by `glass`, and under it the café's own
+ * building in storeys `storey` px tall (0 for none), `lit` windows in 10
+ * lit at night.
+ */
+export interface Deck {
+  out: number;
+  slab: number;
+  rail: number;
+  posts: number;
+  glass: number;
+  storey: number;
+  lit: number;
+}
+
 export interface Street {
   horizon: number;
   /** How far up the sky the warm band by the skyline reaches, as a share of it. */
@@ -31,14 +49,16 @@ export interface Street {
   towers: { width: number; height: number }[];
   clouds: { x: number; y: number; width: number }[];
   terrace: TerraceThing[];
+  /** The balcony under the terrace, or null for none. */
+  deck: Deck | null;
 }
 
 /** The street's slots in the palette's "street" list. */
 export const STREET = { skyTop: 0, sky: 1, tower: 2, towerSide: 3, lit: 4, dark: 5, star: 6, kerb: 7, pavement: 8, cloud: 9, cloudShade: 10, glow: 11 } as const;
 
 /**
- * Reads street.toml: top-level `key = number` lines, one `[windows]`
- * table, and `[[towers]]` and `[[clouds]]` tables of numbers. Enough TOML
+ * Reads street.toml: top-level `key = number` lines, the `[windows]` and
+ * `[deck]` tables, and `[[towers]]`, `[[clouds]]` and `[[terrace]]` tables. Enough TOML
  * for this one file, which the server's tests also read with a real parser.
  */
 export function parseStreet(text: string): Street {
@@ -48,6 +68,7 @@ export function parseStreet(text: string): Street {
   const towers: Table[] = [];
   const clouds: Table[] = [];
   const terrace: Table[] = [];
+  let deck: Table | null = null;
   let into: Table = top;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.replace(/#.*/, "").trim();
@@ -60,6 +81,8 @@ export function parseStreet(text: string): Street {
     } else if (line === "[[clouds]]") {
       into = {};
       clouds.push(into);
+    } else if (line === "[deck]") {
+      into = deck = {};
     } else if (line === "[[terrace]]") {
       into = {};
       terrace.push(into);
@@ -84,7 +107,33 @@ export function parseStreet(text: string): Street {
     towers: towers.map((t) => ({ width: n(t, "width"), height: n(t, "height") })),
     clouds: clouds.map((c) => ({ x: n(c, "x"), y: n(c, "y"), width: n(c, "width") })),
     terrace: things,
+    deck: deck ? readDeck(deck) : null,
   };
+}
+
+/** Each of the deck's values and the range it must be in (the server's content test holds the file to the same). */
+const DECK_RANGES: Record<keyof Deck, [number, number, boolean]> = {
+  out: [1, 4, false],
+  slab: [0, 12, true],
+  rail: [0, 32, true],
+  posts: [0.5, 6, false],
+  glass: [0, 1, false],
+  storey: [0, 96, true],
+  lit: [0, 10, true],
+};
+
+function readDeck(t: Record<string, number | string>): Deck {
+  const deck = {} as Deck;
+  for (const [key, [lo, hi, whole]] of Object.entries(DECK_RANGES) as [keyof Deck, [number, number, boolean]][]) {
+    const v = t[key];
+    if (typeof v !== "number" || v < lo || v > hi || (whole && !Number.isInteger(v))) {
+      throw new Error(`street.toml: deck.${key} must be a ${whole ? "whole " : ""}number from ${lo} to ${hi}, not ${JSON.stringify(v)}`);
+    }
+    deck[key] = v;
+  }
+  // A building's storey is tall enough for a window and a band between floors.
+  if (deck.storey !== 0 && deck.storey < 32) throw new Error(`street.toml: deck.storey is 0 for no building, or 32 to 96, not ${deck.storey}`);
+  return deck;
 }
 
 export const street = parseStreet(streetFile);

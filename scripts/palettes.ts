@@ -130,6 +130,19 @@ export const day = {
     mix(m.pink, m.lavender, 0.45),
     mix(m.peach, m.rosewater, 0.35),
   ],
+  // The balcony under the terrace (slice 18): the deck's two stones, its
+  // slab's edge, the glass's tint, the rail's metal, then the building's
+  // window dark and lit, which by day is the dark one, so they light only
+  // toward night. The building's wall is the room's.
+  balcony: [
+    mix(m.rosewater, m.subtext0, 0.35),
+    mix(m.rosewater, m.subtext0, 0.5),
+    mix(m.subtext0, m.overlay1, 0.5),
+    mix(m.sky, m.text, 0.35),
+    m.overlay0,
+    mix(m.sky, m.overlay1, 0.45),
+    mix(m.sky, m.overlay1, 0.45),
+  ],
 };
 
 /** Night's pull on a colour: toward Mocha's base, with a touch of lavender. */
@@ -150,6 +163,17 @@ export const night = {
   // the base, and their windows lit with the street's lamplight.
   // Clouds faint against the dark; the warm band is the sky's own colour.
   street: [m.crust, m.base, mix(m.base, m.surface0, 0.5), m.surface0, m.yellow, m.surface1, m.text, m.surface0, m.mantle, mix(m.base, m.surface1, 0.55), mix(m.base, m.surface0, 0.6), m.base],
+  // The balcony sinks with the room; the glass catches the dark, the rail
+  // the room's lamplight, and the building's windows are lit as the room's.
+  balcony: [
+    toNight(day.balcony[0], 0.62),
+    toNight(day.balcony[1], 0.62),
+    toNight(day.balcony[2], 0.62),
+    mix(m.surface1, m.lavender, 0.25),
+    m.overlay1,
+    m.surface0,
+    m.yellow,
+  ],
 };
 
 if (process.argv[1]?.endsWith("palettes.ts")) {
