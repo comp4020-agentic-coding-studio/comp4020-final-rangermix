@@ -2536,3 +2536,36 @@ below.
   was kept; the deck, glass and building ran to both edges of the window,
   each pixel sampled there being the backdrop's own; four clicks on the
   balcony did nothing. Live once the user has judged it.
+
+*Sent 2026-11-08 00:36:49 AEDT*
+
+> [Image #6] still some issue: it looks like the balcony is extending to the whole building, but it should just show the cafe corner, like we don't show other part of the building. how do we make the infinite balcony and building more make sense? maybe give the building a fixed size? or let it fade? or something else? help me on this
+
+The screenshot: slice 18's balcony by night on a wide window, its deck
+and glass running back past the street wall's end along the skyline.
+
+**Result.** A study and a proposed slice 19, with three questions; nothing
+built.
+- **Why it looks wrong:** the room is a diorama, its walls cut away and
+  its floor ending at its corners, and the balcony running on past them
+  was the one thing showing the building beyond the café. It was the
+  agent's own call in slice 18, made to hide a cut edge, not something
+  the user approved.
+- **Studied** ([`c3bc882`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c3bc882),
+  [notes/slice-19-study.md](notes/slice-19-study.md)) from a throwaway
+  build, at 2560×1080, 1920×1080 and on a phone, by day and by night:
+  - the café's corner, the balcony and building ending at its walls (the
+    user's "fixed size");
+  - a fade over 4 tiles past the walls (the user's "let it fade");
+  - the city carried on down beside the corner, and fading to sky;
+  - the glass turning the ends back to the walls, or stopping open.
+  A neighbouring building past each end was dropped before shooting: it
+  would carry the café's line on, which is what the user asked to remove.
+  The fade read as speckle, not distance.
+- **Proposed** ([`4e80796`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/4e80796),
+  [slices/19](slices/19-the-balcony-ends-with-the-cafe.md)): the balcony,
+  its glass and the building end at the café's walls, a fixed size at any
+  window, the glass turning each end back to its wall, and the street
+  beside them as now. The three questions (where it ends, what shows
+  beside it, the glass at the ends) wait for the user. Slice 18's status
+  records the judgement.
