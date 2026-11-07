@@ -10,8 +10,9 @@ import { street, streetSlot, terraceAt } from "../src/street";
 // the balcony it stands on) are one backdrop, drawn once per light into a
 // raster over whatever span of room pixels a canvas needs. The room's
 // canvas takes the room's own span, the street's canvas a wider one round
-// it, and the two are the same pixels where they meet, so the balcony runs
-// on past the room's canvas as the street does (slice 16).
+// it, and the two are the same pixels where they meet, so the balcony
+// carries on past the room's canvas, as the street does (slice 16), to the
+// café's walls' lines, where it ends (slice 19).
 
 const roomSpan = { x0: 0, y0: 0, x1: ISO.width, y1: ISO.height };
 
@@ -91,12 +92,13 @@ describe("the backdrop behind and round the room", () => {
       for (let dy = -10; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) if (!day.has(b.at(Math.round(foot.x) + dx, Math.round(foot.y) + 6 + dy) ?? "")) mine++;
       expect(mine, `the ${t.kind} at (${at.x}, ${at.y})`).toBeGreaterThan(4);
     }
-    // A planter placed far along the front, past the room's canvas on the
-    // right, is drawn there in the wider span, cut by nothing.
+    // A planter placed at the far end of the front, past the room's canvas
+    // on the right (the balcony runs on past it to the plain wall's line
+    // since slice 19), is drawn there in the wider span, cut by nothing.
     const kept = street.terrace;
-    street.terrace = [{ kind: "planter", side: "front", along: FLOOR.width + 2, out: 1.5 }];
+    street.terrace = [{ kind: "planter", side: "front", along: FLOOR.width - 0.6, out: 1.8 }];
     try {
-      const at = toCanvas(FLOOR.width + 2, FLOOR.height + 1.5);
+      const at = toCanvas(FLOOR.width - 0.6, FLOOR.height + 1.8);
       expect(at.x, "the planter stands past the room's canvas").toBeGreaterThan(ISO.width);
       const past = backdrop({ x0: -80, y0: 0, x1: ISO.width + 80, y1: ISO.height + 60 }, 0);
       let mine = 0;
@@ -336,18 +338,20 @@ describe("the café's building under the balcony", () => {
     // A point on a face at height z under the deck's edge: the edge's line
     // dropped by z. Find the grid spot on the deck's outer edge above it.
     const top = (gx: number, gy: number) => toCanvas(gx, gy).y + SLAB + deck.slab;
-    // The building runs on past both ends of the room, off the window's
-    // edges, so its faces reach far each way.
-    const W = FLOOR.width + 40;
+    // The building ends where the café's walls end (slice 19): the left
+    // face at the street wall's line, y = 1, the front at the plain wall's,
+    // x = width.
+    const W = FLOOR.width;
+    const back = 1;
     const xo = -deck.out;
     const yo = FLOOR.height + deck.out;
-    // The left face runs from (xo, -40) to (xo, yo); the front from (xo, yo) to (W, yo).
+    // The left face runs from (xo, back) to (xo, yo); the front from (xo, yo) to (W, yo).
     const left = (() => {
-      const a = toCanvas(xo, -40);
+      const a = toCanvas(xo, back);
       const b = toCanvas(xo, yo);
       if (x < Math.min(a.x, b.x) - 0.5 || x > Math.max(a.x, b.x) + 0.5) return false;
       const t = (x + 0.5 - a.x) / (b.x - a.x);
-      return y + 0.5 >= top(xo, -40 + t * (yo + 40)) - 1;
+      return y + 0.5 >= top(xo, back + t * (yo - back)) - 1;
     })();
     const front = (() => {
       const a = toCanvas(xo, yo);
@@ -439,6 +443,103 @@ describe("the café's building under the balcony", () => {
   });
 });
 
+// Slice 19 (the user, 2026-11-08: "1A 2A 3A"): the balcony and the café's
+// building under it end where the café's walls end, the street wall's line
+// (y = 1) on the left and the plain wall's (x = width) at the front,
+// whatever the span; past each end the street shows, as it does past the
+// walls above.
+describe("where the balcony ends", () => {
+  const wide = { x0: -480, y0: -80, x1: ISO.width + 240, y1: ISO.height + 200 };
+  const deck = street.deck!;
+  const xo = -deck.out;
+  const yo = FLOOR.height + deck.out;
+  const W = FLOOR.width;
+  const named = (light: 0 | 1) => (light ? "night" : "day") as "day" | "night";
+  const streetAt = (light: 0 | 1, x: number, y: number) =>
+    (palettes[named(light)] as unknown as { street: string[] }).street.map((c) => c.toLowerCase())[streetSlot(x, y, ISO.width, ISO.height, light >= 1)];
+  const stones = (light: 0 | 1) => (palettes[named(light)] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase()).slice(0, 2);
+  /** The backdrop with no glass, which stands over the deck's ends on screen. */
+  const bare = (light: 0 | 1) => {
+    const kept = street.deck;
+    street.deck = { ...deck, rail: 0 };
+    try {
+      return backdrop(wide, light).copy();
+    } finally {
+      street.deck = kept;
+    }
+  };
+  /** The room pixel at grid spot (gx, gy), `z` px over the floor's level. */
+  const at = (gx: number, gy: number, z: number) => {
+    const p = toCanvas(gx, gy);
+    return { x: Math.round(p.x), y: Math.round(p.y - z) };
+  };
+
+  for (const light of [0, 1] as const) {
+    it(`ends the deck at the street wall's line and the plain wall's, the street just past each, by ${named(light)}`, () => {
+      const b = bare(light);
+      // On the deck's stone, at the slab's foot, just inside each end.
+      for (const [gx, gy] of [
+        [-1.3, 1.2],
+        [-0.4, 1.3],
+        [W - 0.2, FLOOR.height + 1.3],
+        [W - 0.3, FLOOR.height + 2.2],
+      ]) {
+        const p = at(gx, gy, -SLAB);
+        expect(stones(light), `${named(light)}: the deck at (${gx}, ${gy})`).toContain(b.at(p.x, p.y));
+      }
+      // Just past each end, and far past: the street's own pixel.
+      for (const [gx, gy] of [
+        [-1.3, 0.6],
+        [-1.3, -3],
+        [-0.4, 0.5],
+        [W + 0.4, FLOOR.height + 1.3],
+        [W + 4, FLOOR.height + 1.3],
+        [W + 0.4, FLOOR.height + 2.2],
+      ]) {
+        const p = at(gx, gy, -SLAB);
+        expect(b.at(p.x, p.y), `${named(light)}: past the deck's end at (${gx}, ${gy})`).toBe(streetAt(light, p.x, p.y));
+      }
+    });
+
+    it(`ends the building's two faces at the same lines, the street just past each, by ${named(light)}`, () => {
+      const b = backdrop(wide, light);
+      const wall = (palettes[named(light)] as unknown as { room: string[] }).room[3];
+      // 8 px under the deck's slab: past the balcony's shadow, above the
+      // first storey's windows, the plain wall.
+      const z = -SLAB - deck.slab - 8;
+      for (const [gx, gy, lit] of [
+        [xo, 1.2, 0.12],
+        [xo, 1.6, 0.12],
+        [W - 0.2, yo, 0.28],
+        [W - 0.5, yo, 0.28],
+      ] as const) {
+        const p = at(gx, gy, z);
+        expect(b.at(p.x, p.y), `${named(light)}: the wall at (${gx}, ${gy})`).toBe(darken(wall, lit));
+      }
+      for (const [gx, gy, zz] of [
+        [xo, 0.8, z],
+        [xo, 0.2, z - 40],
+        [xo, -6, z - 100],
+        [W + 0.2, yo, z],
+        [W + 0.8, yo, z - 40],
+        [W + 8, yo, z - 100],
+      ] as const) {
+        const p = at(gx, gy, zz);
+        expect(b.at(p.x, p.y), `${named(light)}: past the building's end at (${gx}, ${gy}, ${zz})`).toBe(streetAt(light, p.x, p.y));
+      }
+    });
+  }
+
+  it("ends in the same places over any span: a narrow one and a wide one agree at both ends", () => {
+    const narrow = { x0: -60, y0: 0, x1: ISO.width + 60, y1: ISO.height + 60 };
+    for (const light of [0, 1] as const) {
+      const n = backdrop(narrow, light);
+      const w = backdrop(wide, light);
+      for (let y = narrow.y0; y < narrow.y1; y += 2) for (let x = narrow.x0; x < narrow.x1; x += 2) expect(n.at(x, y), `light ${light} (${x},${y})`).toBe(w.at(x, y));
+    }
+  });
+});
+
 // For the browser checks (slice 18's review, finding 7): the backdrop at
 // one room pixel, as `window.cafeRoom.backdropAt` asks for it, is the same
 // as the backdrop over a whole span there.
@@ -458,13 +559,18 @@ describe("the backdrop at one pixel", () => {
           ones.push([x, y, backdrop({ x0: x, y0: y, x1: x + 1, y1: y + 1 }, light).at(x, y)]);
           expect(builds(), `(${x},${y}) built, not cut`).toBe(before + 1);
         }
-      // Far up the street wall's line too, where the deck's left arm runs on.
+      // Far up the street wall's line too, where the deck's left arm ran on
+      // before slice 19: past the balcony's end now, the street's own pixel.
       for (const [x, y] of [
         [-391, -26],
         [-263, 38],
         [-135, 102],
-      ])
-        ones.push([x, y, backdrop({ x0: x, y0: y, x1: x + 1, y1: y + 1 }, light).at(x, y)]);
+      ]) {
+        const one = backdrop({ x0: x, y0: y, x1: x + 1, y1: y + 1 }, light).at(x, y);
+        ones.push([x, y, one]);
+        const colours = (palettes[light ? "night" : "day"] as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
+        expect(one, `light ${light} (${x},${y}), past the balcony's left end`).toBe(colours[streetSlot(x, y, ISO.width, ISO.height, light >= 1)]);
+      }
       const wide = backdrop({ x0: -480, y0: -60, x1: ISO.width + 120, y1: ISO.height + 80 }, light);
       for (const [x, y, one] of ones) expect(one, `light ${light} (${x},${y})`).toBe(wide.at(x, y));
     }
@@ -490,14 +596,15 @@ describe("the backdrop at one pixel", () => {
   });
 });
 
-// Slice 18's review, finding 1: `reach` measured the left arm the wrong
-// way along its edge, so on a wide, short window the balcony and the
-// building ended in a cut short of the window's left edge. Whatever the
-// stage's shape, the street canvas's span shows the same pixels as the
-// backdrop drawn over a far wider one, everywhere the stage shows.
+// Slice 18's review, finding 1: how far the balcony ran was worked out
+// from the span, and on a wide, short window it ended in a cut short of the
+// window's left edge. Since slice 19 it ends at the café's walls, whatever
+// the span; still, whatever the stage's shape, the street canvas's span
+// shows the same pixels as the backdrop drawn over a far wider one,
+// everywhere the stage shows.
 // Each builds the backdrop over two spans the size of a wide window and
 // more, so each is given time on a slower machine than this one.
-describe("the balcony reaching the window's edges at every window's shape", { timeout: 20_000 }, async () => {
+describe("the backdrop over the street canvas's span at every window's shape", { timeout: 20_000 }, async () => {
   const { streetMargin } = await import("../src/street");
   const { fitScale } = await import("../src/scale");
   for (const [w, h] of [

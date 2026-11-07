@@ -3,8 +3,9 @@
 // per light into a raster over whatever span of room pixels a canvas needs.
 // The room's floor layer takes the room's own span, the street's canvas a
 // wider one round it (slice 16), so the two are the same pixels where they
-// meet, and the terrace carries on past the room's canvas as the street
-// does. Scenery: nothing here is picked or walked on.
+// meet, and the terrace and its balcony carry on past the room's canvas as
+// the street does, to the café's walls' lines, where the balcony ends
+// (slice 19). Scenery: nothing here is picked or walked on.
 
 import type { Light } from "./canberra";
 import { FLOOR, fromCanvas } from "./iso";
@@ -98,7 +99,7 @@ function drawStreet(ctx: Ctx, span: Span, colours: string[], light: Light): void
  */
 function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[], room: string[]): void {
   const [stoneA, stoneB, edge] = colours;
-  const { back, right: W } = reach(span, deck);
+  const { back, right: W } = ends();
   const H = FLOOR.height;
   const z = -SLAB;
   const xo = -deck.out;
@@ -146,14 +147,16 @@ function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[], room: str
  * shaded, the front more); the balcony's shadow just under its slab; then
  * storeys `storey` px tall, each a band between floors and a row of
  * windows a tile apart in the room's frame colour, `lit` in 10 lit at night
- * by a fixed pattern. Down past the span's foot, so it never ends on screen.
+ * by a fixed pattern. Along each face from the café's wall's line to the
+ * corner (slice 19), and down past the span's foot, so it never ends on
+ * screen below.
  */
 function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours: string[]): void {
   const [, , , , , windowDark, windowOn] = colours;
   const wall = room[3];
   const band = room[4];
   const frame = room[5];
-  const { back, right: W } = reach(span, deck);
+  const { back, right: W } = ends();
   const xo = -deck.out;
   const yo = FLOOR.height + deck.out;
   // The faces start under the deck's slab: z is up from the floor's level.
@@ -165,9 +168,9 @@ function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours:
     poly(ctx, f === "left" ? [up(xo, a, z0), up(xo, b, z0), up(xo, b, z1), up(xo, a, z1)] : [up(a, yo, z0), up(b, yo, z0), up(b, yo, z1), up(a, yo, z1)], colour);
   // How each face is lit, as the room's blocks are (shapes.ts).
   const lightOf: Record<Face, number> = { left: 0.12, front: 0.28 };
-  const ends: Record<Face, [number, number]> = { left: [back, yo], front: [xo, W] };
+  const along: Record<Face, [number, number]> = { left: [back, yo], front: [xo, W] };
   for (const f of ["left", "front"] as Face[]) {
-    const [a, b] = ends[f];
+    const [a, b] = along[f];
     // As "#rrggbb", which `darken` reads (`shade` gives "rgb(…)").
     const faceColour = darken(wall, lightOf[f]);
     face(f, a, b, bottom, zt, faceColour);
@@ -181,11 +184,10 @@ function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours:
       // The band between this storey and the one below.
       face(f, a, b, top - deck.storey + 18, top - deck.storey + 15, shade(band, lightOf[f]));
       // A window a tile wide in each tile along the face, in its frame.
-      // A window in each tile along the face. Only the building's corner,
-      // where its two faces meet, clips one: how far the face is drawn past
-      // the room is the span's business, and a window clipped there would
-      // change with the span.
-      const [lo, hi] = f === "left" ? [-Infinity, yo] : [xo, Infinity];
+      // A window in each tile along the face, kept inside the face: the
+      // building's corner, where its two faces meet, and its ends at the
+      // café's walls (slice 19) trim one that would cross them.
+      const [lo, hi] = along[f];
       for (let g = Math.floor(a); g < b; g++) {
         const [w0, w1] = [Math.max(g + 0.15, lo + 0.1), Math.min(g + 0.85, hi - 0.1)];
         if (w1 - w0 < 0.3) continue;
@@ -214,7 +216,7 @@ function windowLit(face: number, along: number, storey: number, lit: number): bo
 function drawRail(raster: Raster, ctx: Ctx, span: Span, deck: Deck, colours: string[]): void {
   const glass = colours[3];
   const metal = colours[4];
-  const { back, right: W } = reach(span, deck);
+  const { back, right: W } = ends();
   const z = -SLAB;
   // Set in from the deck's edge a little, so the slab's edge shows below it.
   const xo = -deck.out + 0.08;
@@ -237,11 +239,12 @@ function drawRail(raster: Raster, ctx: Ctx, span: Span, deck: Deck, colours: str
   // Posts, from the street wall's end down the left and along the front, and
   // one at the corner; then the handrail, a bar along the top.
   const post = (gx: number, gy: number) => block(ctx, gx - 0.05, gy - 0.05, 0.1, 0.1, top, metal, z);
-  // Posts counted from the floor's corners (the street wall's line, the
-  // floor's right end), so they stand in the same places whatever the span.
-  for (let gy = 1 - deck.posts * Math.ceil((1 - back) / deck.posts); gy < yo; gy += deck.posts) post(xo, gy);
+  // Posts counted from the balcony's ends at the café's walls (the street
+  // wall's line, the plain wall's), down the left arm and back along the
+  // front, and one at the corner.
+  for (let gy = back; gy < yo; gy += deck.posts) post(xo, gy);
   post(xo, yo);
-  for (let gx = FLOOR.width + deck.posts * Math.floor((W - FLOOR.width) / deck.posts); gx > xo + 0.3; gx -= deck.posts) post(gx, yo);
+  for (let gx = W; gx > xo + 0.3; gx -= deck.posts) post(gx, yo);
   edgeLine(ctx, xo, yo, back, W, top, metal);
   edgeLine(ctx, xo, yo, back, W, top + 1, shade(metal, -0.25));
 }
@@ -272,49 +275,17 @@ function edgeLine(ctx: Ctx, xo: number, yo: number, back: number, right: number,
   for (let i = 0; i + 1 < along.length; i++) outline(ctx, [up(along[i], yo, z), up(along[i + 1], yo, z)], colour, 1, false);
 }
 
-/** The balcony's ends past the room move in steps of this many tiles. */
-const REACH_STEP = 8;
-
 /**
- * How far the balcony runs along the building's face (slice 18): the left
- * arm from `back`, back past the street wall's line, and the front arm to
- * `right`, on past the floor's right end, each far enough to leave the span
- * on screen, so the café is one unit on a longer upper-floor balcony and
- * no end of it shows. In tiles along each edge.
+ * Where the balcony ends (slice 19; the user, 2026-11-08: "1A 2A 3A"): the
+ * left arm at the street wall's line (y = 1) and the front arm at the
+ * plain wall's (x = width), where the café's walls end, so the café is its
+ * building's corner, cut out as the room is, and past each end the street
+ * shows. The same over every span, at any window's size. In tiles along
+ * each edge: the left arm from `back` to the deck's outer corner, the
+ * front from the corner to `right`.
  */
-function reach(span: Span, deck: Deck): { back: number; right: number } {
-  // A point's grid spot along the left edge (x = -out) or the front (y = H + out).
-  const xo = -deck.out;
-  const yo = FLOOR.height + deck.out;
-  // A screen point stands straight below the face's point with the same
-  // gx + gy, since across the screen is (gx + gy) · 16: on the left face
-  // (gx = xo) that's t = gx + gy − xo along it, and on the front (gy = yo)
-  // gx + gy − yo (slice 18's review, finding 1).
-  const alongLeft = (px: number, py: number) => {
-    const { gx, gy } = fromCanvas(px, py);
-    return gx + gy - xo;
-  };
-  const alongFront = (px: number, py: number) => {
-    const { gx, gy } = fromCanvas(px, py);
-    return gx + (gy - yo);
-  };
-  // Every corner of the span, and to spare the deck's whole width (a point
-  // on its inner edge is `out` tiles along from the face's point below it)
-  // and two tiles more; the balcony past the room's corners in any case.
-  const corners = [
-    [span.x0, span.y0],
-    [span.x1, span.y0],
-    [span.x0, span.y1],
-    [span.x1, span.y1],
-  ];
-  const spare = Math.ceil(deck.out) + 2;
-  const back = Math.min(0, Math.floor(Math.min(...corners.map(([x, y]) => alongLeft(x, y)))) - spare);
-  const right = Math.max(FLOOR.width + 1, Math.ceil(Math.max(...corners.map(([x, y]) => alongFront(x, y)))) + spare);
-  // In whole steps of REACH_STEP tiles from the floor's corners, so where the
-  // balcony starts and ends, and so where its windows and posts are counted
-  // from, is the same for every span that reaches a point (a one-pixel span
-  // asked for by a browser check included).
-  return { back: 1 - REACH_STEP * Math.ceil((1 - back) / REACH_STEP), right: FLOOR.width + REACH_STEP * Math.ceil((right - FLOOR.width) / REACH_STEP) };
+function ends(): { back: number; right: number } {
+  return { back: 1, right: FLOOR.width };
 }
 
 /** How far a terrace thing's shadow reaches round its spot on the deck, in tiles, across and along. */
