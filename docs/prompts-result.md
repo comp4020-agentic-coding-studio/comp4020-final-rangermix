@@ -2631,3 +2631,33 @@ live.
   - Four clicks on the ends and returns did nothing.
 
   Live once the user has judged it.
+
+### 19. What the branches and worktrees still hold
+
+*Session `d97a931a`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-08 09:43:21 AEDT*
+
+> check all branch / worktrees, see if there's any changes not merged but desired.
+
+**Result.** Nothing unmerged is wanted; nothing was merged.
+- **Branches:** every local and remote branch is in `main` (or its
+  commits are, patch for patch), except `spike-16-fill`. Its two
+  commits are slice 16's throwaway study. Its code is `main`'s
+  `screens/slice-16-floor/spike.patch` line for line, its screens are
+  in `main` byte for byte, and `main`'s `shoot.mjs` is the later
+  version. No stashes.
+- **Worktrees:** uncommitted work in three.
+  - `spike-terrace`: the terrace study. Its code equals `main`'s
+    `screens/slice-18-study/spike.patch`, and its 51 screens are all in
+    `screens/slice-18-study/`, byte for byte.
+  - `spike-ends`: the balcony's ends study. Its code equals `main`'s
+    `screens/slice-19-study/spike.patch`. The 20 screens left out of
+    `main` are the 1440×900 shots and the `haze` and `open` corners at
+    the smaller sizes; the study dropped 1440×900 from its script and
+    shows 2560×1080 instead.
+  - The main checkout, on `slice-14-panels`: untracked copies of slices
+    12 to 14's findings, from before their answers. `main` has the
+    answered versions.
+- **Left in place:** the study worktrees and branches, for the user to
+  remove if they wish.
