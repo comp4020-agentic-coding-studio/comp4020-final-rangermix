@@ -508,3 +508,42 @@ describe("the balcony past the room's two ends", () => {
     }
   });
 });
+
+// Slice 18's review, finding 1: `reach` measured the left arm the wrong
+// way along its edge, so on a wide, short window the balcony and the
+// building ended in a cut short of the window's left edge. Whatever the
+// stage's shape, the street canvas's span shows the same pixels as the
+// backdrop drawn over a far wider one, everywhere the stage shows.
+describe("the balcony reaching the window's edges at every window's shape", async () => {
+  const { streetMargin } = await import("../src/street");
+  const { fitScale } = await import("../src/scale");
+  for (const [w, h] of [
+    [1920, 1080],
+    [1920, 400],
+    [2560, 540],
+    [1400, 250],
+    [3440, 720],
+  ]) {
+    it(`at ${w}×${h}`, () => {
+      const k = fitScale(w - 16, h - 16);
+      const m = streetMargin({ w, h }, { w: ISO.width, h: ISO.height }, k);
+      const span = { x0: -m.x, y0: -m.y, x1: ISO.width + m.x, y1: ISO.height + m.y };
+      const ref = { x0: span.x0 - 400, y0: span.y0 - 200, x1: span.x1 + 400, y1: span.y1 + 200 };
+      const b = backdrop(span, 1);
+      const r = backdrop(ref, 1);
+      // What the stage shows of the street canvas: the room's canvas
+      // centred in it, so (stage − room·k) / 2k room px past it each side.
+      const sx = Math.ceil(Math.max(0, w - ISO.width * k) / (2 * k));
+      const sy = Math.ceil(Math.max(0, h - ISO.height * k) / (2 * k));
+      let differ = 0;
+      const first: string[] = [];
+      for (let y = -sy; y < ISO.height + sy; y++)
+        for (let x = -sx; x < ISO.width + sx; x++) {
+          if (b.at(x, y) === r.at(x, y)) continue;
+          differ++;
+          if (first.length < 4) first.push(`(${x},${y})`);
+        }
+      expect(first, `${differ} pixels differ at ${w}×${h} (${k}×)`).toEqual([]);
+    });
+  }
+});

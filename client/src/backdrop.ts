@@ -253,11 +253,13 @@ function reach(span: Span, deck: Deck): { back: number; right: number } {
   // A point's grid spot along the left edge (x = -out) or the front (y = H + out).
   const xo = -deck.out;
   const yo = FLOOR.height + deck.out;
-  // Up the screen along the left edge, y falls; right along the front, x rises.
-  // The span's top-left and right edges in grid terms, with a tile to spare.
+  // A screen point stands straight below the face's point with the same
+  // gx + gy, since across the screen is (gx + gy) · 16: on the left face
+  // (gx = xo) that's t = gx + gy − xo along it, and on the front (gy = yo)
+  // gx + gy − yo (slice 18's review, finding 1).
   const alongLeft = (px: number, py: number) => {
     const { gx, gy } = fromCanvas(px, py);
-    return gy - (gx - xo);
+    return gx + gy - xo;
   };
   const alongFront = (px: number, py: number) => {
     const { gx, gy } = fromCanvas(px, py);
