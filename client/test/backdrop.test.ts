@@ -558,6 +558,123 @@ describe("where the balcony ends", () => {
     });
   }
 
+  // The glass turns each end back to the café's wall (slice 19, 3A): a
+  // return along the street wall's line from the deck's outer edge to the
+  // wall, and one along the plain wall's line from the wall to the front's
+  // outer edge, the same glass as the front, tinting what's behind it.
+  const railed = (light: 0 | 1) => {
+    const withIt = backdrop(wide, light).copy();
+    const kept = street.deck;
+    street.deck = { ...deck, rail: 0 };
+    try {
+      return { withIt, without: backdrop(wide, light).copy() };
+    } finally {
+      street.deck = kept;
+    }
+  };
+  const mixed = (a: string, b: string, t: number) =>
+    `#${[1, 3, 5].map((i) => Math.round(Number.parseInt(a.slice(i, i + 2), 16) * (1 - t) + Number.parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("")}`;
+  const balcony = (light: 0 | 1) => (palettes[named(light)] as unknown as { balcony: string[] }).balcony.map((c) => c.toLowerCase());
+
+  for (const light of [0, 1] as const) {
+    it(`turns the glass back to each wall, tinting what's behind it, every pixel solid, by ${named(light)}`, () => {
+      const { withIt, without } = railed(light);
+      const glass = balcony(light)[3];
+      const half = -SLAB + deck.rail / 2;
+      for (const [name, gx, gy] of [
+        ["the left return", -1.4, 1],
+        ["the left return", -0.9, 1],
+        ["the left return", -0.4, 1],
+        ["the front return", W, FLOOR.height + 0.5],
+        ["the front return", W, FLOOR.height + 1],
+        ["the front return", W, FLOOR.height + 1.5],
+      ] as const) {
+        const p = at(gx, gy, half);
+        let tinted = 0;
+        for (let dx = -3; dx <= 3; dx++) if (withIt.at(p.x + dx, p.y) === mixed(without.at(p.x + dx, p.y)!, glass, deck.glass)) tinted++;
+        expect(tinted, `${named(light)}: ${name} at (${gx}, ${gy}) is what's behind it tinted`).toBeGreaterThanOrEqual(5);
+      }
+    });
+  }
+
+  it("stands a post at each wall and a handrail along each return's top, in the rail's metal", () => {
+    const { withIt } = railed(0);
+    const metal = balcony(0)[4];
+    const metals = new Set([metal, darken(metal, 0.12), darken(metal, 0.28), darken(metal, 0.45)].map((c) => c.toLowerCase()));
+    const top = -SLAB + deck.rail;
+    for (const [name, a, b] of [
+      ["the left return", [-2.2, 1], [-0.3, 1]],
+      ["the front return", [W, FLOOR.height + 0.3], [W, yo - 0.3]],
+    ] as const) {
+      let rail = 0;
+      let looked = 0;
+      for (let t = 0; t <= 1; t += 0.1) {
+        const p = at(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, top);
+        looked++;
+        if ([-1, 0, 1].some((dy) => metals.has(withIt.at(p.x, p.y + dy) ?? ""))) rail++;
+      }
+      expect(rail, `${name}'s handrail, ${rail} of ${looked}`).toBe(looked);
+    }
+    // A post at each wall: the rail's metal near its foot, by the wall's end.
+    for (const [name, gx, gy] of [
+      ["at the street wall", -0.1, 1],
+      ["at the plain wall", W, FLOOR.height + 0.1],
+    ] as const) {
+      const foot = at(gx, gy, -SLAB + 3);
+      let post = 0;
+      for (let dx = -2; dx <= 2; dx++) if (metals.has(withIt.at(foot.x + dx, foot.y) ?? "")) post++;
+      expect(post, `a post ${name}`).toBeGreaterThan(0);
+    }
+  });
+
+  // The returns stand behind everything on the deck: the left one along
+  // y = 1, the deck's things nearer the viewer at y > 1; the front one along
+  // x = width, the deck's things nearer at x < width. So a thing in front of
+  // one on screen is drawn over it, untinted; the front glass along the
+  // left arm, nearer than the thing, still tints its foot.
+  it("stands a terrace thing in front of a return, untinted by it", () => {
+    const kept = { terrace: street.terrace, deck: street.deck };
+    // A planter at the left arm's back end, its top in front of the left
+    // return on screen.
+    street.terrace = [{ kind: "planter", side: "left", along: 0.6, out: 1.3 }];
+    try {
+      const onRail = backdrop(wide, 0).copy();
+      street.deck = { ...deck, rail: 0 };
+      const offRail = backdrop(wide, 0).copy();
+      street.deck = kept.deck;
+      street.terrace = [];
+      const none = backdrop(wide, 0).copy();
+      // The front glass along the left arm, on screen: the one pane nearer
+      // than the planter.
+      const z = -SLAB;
+      const pane = [at(xo + 0.08, 1, z), at(xo + 0.08, yo, z), at(xo + 0.08, yo, z + deck.rail), at(xo + 0.08, 1, z + deck.rail)];
+      const inPane = (x: number, y: number) => {
+        let inside = false;
+        for (let i = 0, j = pane.length - 1; i < pane.length; j = i++) {
+          const [a, b] = [pane[i], pane[j]];
+          if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+        }
+        return inside;
+      };
+      const ret = [at(xo + 0.08, 1, z), at(0, 1, z), at(0, 1, z + deck.rail), at(xo + 0.08, 1, z + deck.rail)];
+      let mine = 0;
+      let overReturn = 0;
+      const tinted: string[] = [];
+      for (let y = wide.y0; y < wide.y1; y++)
+        for (let x = wide.x0; x < wide.x1; x++) {
+          if (onRail.at(x, y) === none.at(x, y)) continue;
+          mine++;
+          if (x + 0.5 >= ret[0].x && x + 0.5 <= ret[1].x && y + 0.5 >= ret[2].y - 1 && y + 0.5 <= ret[0].y + 1) overReturn++;
+          if (onRail.at(x, y) !== offRail.at(x, y) && !inPane(x + 0.5, y + 0.5) && tinted.length < 8) tinted.push(`(${x},${y})`);
+        }
+      expect(mine, "the planter's pixels").toBeGreaterThan(40);
+      expect(overReturn, "planter pixels where the left return stands on screen").toBeGreaterThan(10);
+      expect(tinted, "planter pixels the glass changed, off the front glass").toEqual([]);
+    } finally {
+      Object.assign(street, kept);
+    }
+  });
+
   it("ends in the same places over any span: a narrow one and a wide one agree at both ends", () => {
     const narrow = { x0: -60, y0: 0, x1: ISO.width + 60, y1: ISO.height + 60 };
     for (const light of [0, 1] as const) {

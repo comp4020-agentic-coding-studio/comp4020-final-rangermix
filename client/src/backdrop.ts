@@ -68,6 +68,7 @@ function build(span: Span, light: Light): Raster {
   if (street.deck && street.deck.storey > 0) drawBuilding(ctx, span, street.deck, palette.room, palette.balcony);
   if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony, palette.room);
   if (street.deck) drawEnds(ctx, span, street.deck, palette.room);
+  if (street.deck && street.deck.rail > 0) drawReturns(raster, ctx, street.deck, palette.balcony);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
   if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, span, street.deck, palette.balcony);
   return raster;
@@ -269,6 +270,59 @@ function drawRail(raster: Raster, ctx: Ctx, span: Span, deck: Deck, colours: str
   for (let gx = W; gx > xo + 0.3; gx -= deck.posts) post(gx, yo);
   edgeLine(ctx, xo, yo, back, W, top, metal);
   edgeLine(ctx, xo, yo, back, W, top + 1, shade(metal, -0.25));
+}
+
+/**
+ * The glass turning each end of the balcony back to the café's wall (slice
+ * 19; the user, 2026-11-08: "3A"), so the balcony is closed on every side:
+ * along the street wall's line from the deck's outer edge to the wall, and
+ * along the plain wall's line from the wall to the front's outer edge. The
+ * same glass as the front, set the same way in from the deck's edge,
+ * tinting what's behind it pixel by pixel (ADR 0019), with its handrail and
+ * a post at the wall. Drawn behind the terrace's things, which stand nearer
+ * the viewer than either return.
+ */
+function drawReturns(raster: Raster, ctx: Ctx, deck: Deck, colours: string[]): void {
+  const glass = colours[3];
+  const metal = colours[4];
+  const { back, right } = ends();
+  const z = -SLAB;
+  const top = z + deck.rail;
+  const xo = -deck.out + 0.08;
+  const yo = FLOOR.height + deck.out - 0.08;
+  const H = FLOOR.height;
+  const panes = [
+    [up(xo, back, z), up(0, back, z), up(0, back, top), up(xo, back, top)],
+    [up(right, H, z), up(right, yo, z), up(right, yo, top), up(right, H, top)],
+  ];
+  for (const pane of panes) {
+    for (const s of spans(pane)) {
+      for (let x = s.x0; x < s.x1; x++) {
+        const behind = raster.at(x, s.y);
+        if (!behind) continue;
+        ctx.fillStyle = mix(behind, glass, deck.glass);
+        ctx.fillRect(x, s.y, 1, 1);
+      }
+    }
+  }
+  // A post at each wall, on the glass's line just short of the wall's end:
+  // the room is drawn over the backdrop, so anything on the wall's own line
+  // would be cut by the wall (the render test of what the room covers). On
+  // screen across is (gx + gy) · 16, so the left post keeps gx + gy under
+  // the street wall's corner and the front one over the plain wall's. The
+  // deck's corner posts are the front glass's.
+  const GAP = 0.07;
+  block(ctx, -GAP - 0.1, back - 0.05, 0.1, 0.1, top, metal, z);
+  block(ctx, right - 0.05, H + GAP, 0.1, 0.1, top, metal, z);
+  // The handrail along each return's top, as the front's: the metal, and a
+  // darker line over it, stopping as short of the wall.
+  for (const [a, b] of [
+    [up(xo, back, top), up(-GAP, back, top)],
+    [up(right, H + GAP, top), up(right, yo, top)],
+  ]) {
+    outline(ctx, [a, b], metal, 1, false);
+    outline(ctx, [{ x: a.x, y: a.y - 1 }, { x: b.x, y: b.y - 1 }], shade(metal, -0.25), 1, false);
+  }
 }
 
 /** `a` mixed toward `b` by `t`, as "#rrggbb". */
