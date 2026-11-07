@@ -31,7 +31,10 @@
 #   for none), with a post every `posts` tiles. `glass`: how far the glass
 #   tints what's behind it toward its own colour, 0 to 1. `storey`: under
 #   the deck, the café's own building carries on down, a storey this many
-#   room pixels tall (0 for none), its windows `lit` in 10 at night. Its
+#   room pixels tall (0 for none), its windows `lit` in 10 at night. The
+#   balcony and the building end where the café's walls end, the glass
+#   turning back to each (slice 19): where is the room's shape, not a
+#   number here. Its
 #   colours are the palette's "balcony" list and the room's wall. Without
 #   this table there's no balcony, as before slice 18.
 #

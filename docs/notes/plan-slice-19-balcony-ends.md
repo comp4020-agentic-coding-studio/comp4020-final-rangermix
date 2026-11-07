@@ -146,3 +146,52 @@ The checks that hold the run-on:
 ## Execution log
 
 Where the build departed from this plan, task by task.
+
+- **Task 1.** As planned. `reach(span, deck)` became `ends()`, the walls'
+  two lines, and its span-corner sums and `REACH_STEP` went. The
+  building's windows were already counted by their tile; one whose tile
+  crosses an end is trimmed inside the face, as one at the corner was.
+  Posts are counted from the ends, not from far back. A terrace test's
+  planter, "placed past the room's canvas", had stood two tiles past the
+  floor's end; it now stands at the front arm's far end, still past the
+  canvas. The far points of the one-pixel test, up the street wall's
+  line, now hold the street's own pixel there. Seen failing: 7 tests
+  against the run-on reach.
+- **Task 2.** As planned: one `drawEnds` draws an edge down each end from
+  the deck's top through the slab and the building's wall, and the depth
+  the building's faces reach is one helper (`foot`) both use.
+- **Task 3.** As planned, with one change the tests found. Posts and
+  handrails on the walls' own lines fell where the room's walls are drawn
+  over the backdrop, so the wall cut them: 62 pixels, found by slice 18's
+  render test of what the room covers. Each wall's post and its handrail
+  stop 0.07 tiles short of the wall's line, on the street's side on
+  screen. The order test (a planter in front of a return, untinted) was
+  seen failing with the returns drawn over the terrace.
+- **Task 4.** As planned, with two things it found. Points on the deck's
+  line just past an end stand behind the glass's return on screen, so
+  they show the street tinted: correct drawing, wrong sample. They're now
+  taken 1.5 tiles past and further, clear of the returns, which the unit
+  tests hold. At 1920×1080 each end stands about 6 px past the window's
+  edge, so that size can't tell the run-on from the ends. It's still
+  checked (no street inside the ends, the seam), and the two wide windows
+  are what fail against `main`: the check was seen failing against a café
+  built from `main` at `a6eea05` at 2560×1080 and 2560×540. The whole
+  `spec/` passes against a café built from the branch: 106 passed, 5
+  skipped (the restart and the Fly checks need CI's environment).
+- **Task 5.** Measured with slice 18's script, the CPU slowed 4×, against
+  a café built from the branch and one from `main`, three runs each, on a
+  quiet machine:
+
+  | Window | What | Branch | `main` |
+  | --- | --- | --- | --- |
+  | 1920×1080 | light turn | 103–107 ms | 106–112 ms |
+  | 1920×1080 | ten-step resize | no long task | no long task |
+  | 2560×1080 | light turn | 146–150 ms | 161–168 ms |
+  | 2560×1080 | ten-step resize | 72–80 ms | 76–77 ms |
+
+  Within the spec's bound (no slower than slice 18), and quicker on the
+  wide window, where the run-on drew the most.
+- **Task 6.** As planned. The phone's bigger room pans only to the room
+  canvas's edges, so its panned screens show the phone as it was, with
+  the keyboard pointer's marker in them; the study said as much.
+

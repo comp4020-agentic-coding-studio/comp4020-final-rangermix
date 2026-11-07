@@ -626,7 +626,7 @@ and Burakku at 25.
     stands by, how far along and how far out); each kind is drawn as its
     own few blocks in the furniture's colours. It's scenery: off the
     café's grid, taking no click.
-  - **The café is upstairs, on a balcony** (slice 18, built; the user,
+  - **The café is upstairs, on a balcony** (slices 18 and 19, built; the user,
     2026-11-07, from a study,
     [notes/slice-18-study.md](notes/slice-18-study.md)): the terrace stands
     on a deck of light stone tiles in the room's angle, an L round the
@@ -634,9 +634,17 @@ and Burakku at 25.
     balustrade 18 px high (half a person's height) at its outer edges, and
     under it the café's own building carries on down, its wall in the
     room's colour and light, storeys of windows lit here and there at
-    night. The balcony and the building run on past both ends of the room
-    to the window's edges, so the café reads as one unit up a tower, as
-    the user saw it, "a shopping centre or business building". Without
+    night. The balcony, its glass and the building end where the café's
+    walls end, the street wall's line and the plain wall's, whatever the
+    window's size, with a dark edge down each end and the glass turning
+    back to the wall, and the street beside them (slice 19; the user,
+    2026-11-08, "1A 2A 3A", from a study,
+    [notes/slice-19-study.md](notes/slice-19-study.md)): the café is its
+    building's corner, cut out as the room is, as the user saw it, "a
+    shopping centre or business building". Slice 18 had run them on to
+    the window's edges, which the user found wrong ("it should just show
+    the cafe corner, like we don't show other part of the building").
+    Without
     ground in the room's angle the terrace had floated: the street's
     pavement is a level band across the screen. It's `[deck]` in
     `street.toml` (how far out, the slab, the rail's height and posts, the
