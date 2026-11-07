@@ -2526,7 +2526,7 @@ below.
   test), the client's 371 tests, the typecheck, and the whole `spec/`
   (109) against a local café built from the branch.
 - **Deployed, at the second try.** The merge's first CI run failed and
-  deployed nothing: \`cargo fmt\` hadn't been run on the new Rust, and the
+  deployed nothing: `cargo fmt` hadn't been run on the new Rust, and the
   one-pixel backdrop test took 5.2 s on CI against a 5 s limit. Both were
   fixed after running every step CI runs locally
   ([`12fc1d7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/12fc1d7)), and that run deployed.
