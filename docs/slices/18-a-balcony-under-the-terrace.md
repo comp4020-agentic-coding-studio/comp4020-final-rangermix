@@ -1,7 +1,7 @@
 # 18. A balcony under the terrace
 
-- **Status:** Proposed 2026-11-07, from the user's question of 2026-11-06, with a study ([notes](../notes/slice-18-study.md), [screens](../notes/screens/slice-18-study/)); question 1 answered A (glass, 18 px) on 2026-11-07, the deep building edge kept in consideration; question 2 re-asked from the study's second round
-- **Plan:** written when the slice starts, as `docs/notes/plan-slice-18-balcony.md`
+- **Status:** Approved 2026-11-07: the glass 18 px high (question 1, A), and below the balcony the café's own building (question 2, D); proposed 2026-11-07 from the user's question of 2026-11-06, with a study ([notes](../notes/slice-18-study.md), [screens](../notes/screens/slice-18-study/))
+- **Plan:** [`docs/notes/plan-slice-18-balcony.md`](../notes/plan-slice-18-balcony.md)
 - **Design:** The client ("The room is a diorama on its street", "Crisp,
   with outlines and shadows");
   [ADR 0019](../adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)
@@ -16,8 +16,8 @@ edges there's a deck of light stone tiles, in the room's own angle, with
 a glass balustrade at its edge, so the bench, the planters, the table and
 its chairs and the lantern stand on something. The café reads as part of
 the building it's in, as the user saw it, "a shopping centre or business
-building": under the balcony, by question 2, the café's own building
-carries on down, storeys of windows, standing on the street.
+building": under the balcony the café's own building carries on down,
+storeys of windows, standing on the street.
 
 The user's question, 2026-11-06: "it looks like the stuff on terrace is
 floating. how can we improve that? maybe some ground, or fencing? The
@@ -40,8 +40,8 @@ is. Ground on the room's own grid grounds them
   runs to the window's edges as the street does.
 - **The glass balustrade** at the deck's outer edges (question 1, A):
   glass panes 18 px high between posts every two tiles, with a handrail.
-- **What shows below the balcony**, by question 2: proposed, the café's
-  own building, its wall carried on down under the deck's outer edges in
+- **The café's building below the balcony** (question 2, D): its wall
+  carried on down under the deck's outer edges in
   the room's colours and light, the balcony's shadow under its slab, and
   storeys of windows a tile apart, lit here and there at night; the
   street and the towers behind it as now.
@@ -70,9 +70,9 @@ is. Ground on the room's own grid grounds them
 | The deck stands round the floor's two front edges in the room's angle, from `street.toml`, in the hour's light, and each terrace thing stands on it | client unit tests (the reader; the deck's pixels in both corners, by day and by night; each thing's spot inside the deck) |
 | It runs to the window's edges: at 1920×1080 the window's two bottom corners show the deck or what's below the balcony, never the deck cut off at the room's canvas | a browser check (pixels sampled along the window's foot past the room's canvas) |
 | The glass balustrade stands at the deck's outer edges, 18 px over the deck | client unit tests (its pixels at its height over the deck's edge) |
-| Below the balcony shows what question 2 settles, by day and by night: if the building, its two faces under the deck's outer edges, never over the deck, the rail or the room | client unit tests (the building's pixels under the deck's edges; none above them) |
+| Below the balcony the café's building shows, by day and by night: its two faces under the deck's outer edges, never over the deck, the rail or the room; its windows lit here and there only at night | client unit tests (the building's pixels under the deck's edges; none above them) |
 | Nothing of the deck, the balustrade or the terrace falls on the floor, its walls, or where anyone standing on a tile is drawn | client unit tests (slice 16's test of the terrace over the real floor, with the deck and the balustrade in it) |
-| It's drawn crisp: no shape the canvas would anti-alias; the glass, if glass, filled by whole pixels and see-through only inside its edges | client unit tests (the crisp test, with the deck drawn, the glass's fill recorded as see-through on purpose) |
+| It's drawn crisp: no shape the canvas would anti-alias, and the glass's every pixel one solid colour, what's behind it tinted | client unit tests (the crisp test with the balcony drawn; the glass's pixels the tint of what's behind them) |
 | A click or tap on the deck or the balustrade does nothing | a browser check (neither walks nor opens a menu) |
 | The panels' and bars' words keep 4.5:1 over anything the balcony shows behind them | client unit tests (`contrast`, the deck's and the glass's colours among what's behind) |
 | The phone's layouts work as they did: A shows the whole room, B pans to every edge | the existing browser checks |
@@ -96,7 +96,7 @@ is. Ground on the room's own grid grounds them
   and left edges on screen (the rail 2.52 tiles out is 40 px lower, less
   its 12 px over the floor's level and the handrail's second line), so
   it's clear of the floor and of anyone on it.
-- The café's building, if question 2 is D: storeys 56 px apart (the
+- The café's building: storeys 56 px apart (the
   room's wall is 56 px), a window a tile wide and 26 px tall in each,
   four in ten lit at night by a fixed pattern; drawn down past the
   window's foot.
@@ -114,16 +114,19 @@ Its second round, what shows below the balcony, by day:
 [below-day.png](../notes/screens/slice-18-study/below-day.png); by night:
 [below-night.png](../notes/screens/slice-18-study/below-night.png).
 
+Both answered.
+
 1. **The balcony's edge.** Answered 2026-11-07: A, glass 18 px high,
    "but keep the deeper building edge under the deck in consideration for
    now". (B was glass at 12 px, C a 7-px parapet.)
-2. **What's below the balcony.** The user, 2026-11-07, on the first
+2. **What's below the balcony.** Answered 2026-11-07: D, the café's
+   building. The user, 2026-11-07, on the first
    round's city: "the city background make it a bit wierd or too
    'floaty'. can we try something between A and B? for example the
    building start to fade at the current street height, or something
    extending the cafe's wall, or something else." The second round shot
    three more ([notes](../notes/slice-18-study.md), section 5):
-   - (D, proposed) **the café's building**: its wall carried on down under
+   - (D, chosen) **the café's building**: its wall carried on down under
      the balcony, storeys of windows lit here and there at night, the
      street behind as now. It extends the café's wall and is the deep
      edge kept: the balcony stands out from a building and the building
