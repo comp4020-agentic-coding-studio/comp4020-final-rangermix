@@ -1,0 +1,201 @@
+diff --git a/client/src/backdrop.ts b/client/src/backdrop.ts
+index cc592b4..6aba13a 100644
+--- a/client/src/backdrop.ts
++++ b/client/src/backdrop.ts
+@@ -60,17 +60,115 @@ export const builds = (): number => built;
+ 
+ function build(span: Span, light: Light): Raster {
+   built++;
++  if (ENDS === "fade" && street.deck) return fadeEnds(span, light, street.deck);
++  return buildAs(span, light, ENDS === "fade" ? "run" : ENDS);
++}
++
++/** SPIKE: which way the balcony ends while a backdrop is being drawn. */
++let drawing = "run";
++
++/** The backdrop drawn with the balcony ending one way (SPIKE). */
++function buildAs(span: Span, light: Light, mode: string, rail = true): Raster {
++  drawing = mode;
+   const raster = new Raster(span.x1 - span.x0, span.y1 - span.y0, span.x0, span.y0);
+   const ctx = raster.context();
+   const palette = paletteAt(light);
+   drawStreet(ctx, span, palette.street, light);
+   if (street.deck && street.deck.storey > 0) drawBuilding(ctx, span, street.deck, palette.room, palette.balcony);
+   if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony, palette.room);
++  // SPIKE: the glass turning the balcony's two ends back to the café's walls,
++  // behind everything on the deck.
++  if (street.deck && street.deck.rail > 0 && rail && mode === "corner" && RETURNS) drawReturns(raster, ctx, street.deck, palette.balcony);
+   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
+-  if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, span, street.deck, palette.balcony);
++  if (street.deck && street.deck.rail > 0 && rail) drawRail(raster, ctx, span, street.deck, palette.balcony);
++  drawing = "run";
+   return raster;
+ }
+ 
++/**
++ * SPIKE: the balcony and the building run on past the café's walls and fade
++ * into the street over FADE tiles, dithered: how far past is measured along
++ * each thing's own face (the deck's stones by where they lie, the glass
++ * along its line, the building's wall along its face).
++ */
++function fadeEnds(span: Span, light: Light, deck: Deck): Raster {
++  const run = buildAs(span, light, "run");
++  const bare = buildAs(span, light, "run", false);
++  const palette = paletteAt(light);
++  const out = new Raster(span.x1 - span.x0, span.y1 - span.y0, span.x0, span.y0);
++  const ctx = out.context();
++  drawStreet(ctx, span, palette.street, light);
++  const xo = -deck.out;
++  const yo = FLOOR.height + deck.out;
++  const W = FLOOR.width;
++  const leftX = up(0, 1).x;
++  const rightX = up(W, FLOOR.height).x;
++  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
++  for (let y = span.y0; y < span.y1; y++) {
++    for (let x = span.x0; x < span.x1; x++) {
++      const r = run.at(x, y);
++      if (!r) continue;
++      let along = 0;
++      const glassHere = r !== bare.at(x, y);
++      const cx = x + 0.5;
++      if (cx < leftX) {
++        const { gx, gy } = fromCanvas(cx, y + 0.5 - SLAB);
++        if (glassHere) along = 1 - ((cx - up(0, 0).x) / 16 - (xo + 0.08));
++        else if (gx >= xo) along = 1 - gy;
++        else along = 1 - (gx + gy - xo);
++      } else if (cx > rightX) {
++        const { gx, gy } = fromCanvas(cx, y + 0.5 - SLAB);
++        if (glassHere) along = (cx - up(0, 0).x) / 16 - (yo - 0.08) - W;
++        else if (gy <= yo) along = gx - W;
++        else along = gx + gy - yo - W;
++      }
++      const t = along / FADE;
++      if (t <= 0 || t * 16 < BAYER[(((y % 4) + 4) % 4) * 4 + (((x % 4) + 4) % 4)] + 0.5) {
++        ctx.fillStyle = r;
++        ctx.fillRect(x, y, 1, 1);
++      }
++    }
++  }
++  return out;
++}
++
++/** SPIKE: glass from the deck's outer edge back to each of the café's walls, where the balcony ends. */
++function drawReturns(raster: Raster, ctx: Ctx, deck: Deck, colours: string[]): void {
++  const glass = colours[3];
++  const metal = colours[4];
++  const z = -SLAB;
++  const top = z + deck.rail;
++  const xo = -deck.out + 0.08;
++  const yo = FLOOR.height + deck.out - 0.08;
++  const W = FLOOR.width;
++  const H = FLOOR.height;
++  const back = 1;
++  const panes = [
++    [up(xo, back, z), up(0, back, z), up(0, back, top), up(xo, back, top)],
++    [up(W, H, z), up(W, yo, z), up(W, yo, top), up(W, H, top)],
++  ];
++  for (const pane of panes) {
++    for (const s of spans(pane)) {
++      for (let x = s.x0; x < s.x1; x++) {
++        const behind = raster.at(x, s.y);
++        if (!behind) continue;
++        ctx.fillStyle = mix(behind, glass, deck.glass);
++        ctx.fillRect(x, s.y, 1, 1);
++      }
++    }
++  }
++  const post = (gx: number, gy: number) => block(ctx, gx - 0.05, gy - 0.05, 0.1, 0.1, top, metal, z);
++  post(-0.05, back);
++  post(W, H + 0.05);
++  for (const [a, b] of [
++    [up(xo, back, top), up(0, back, top)],
++    [up(W, H, top), up(W, yo, top)],
++  ]) {
++    outline(ctx, [a, b], metal, 1, false);
++    outline(ctx, [{ x: a.x, y: a.y - 1 }, { x: b.x, y: b.y - 1 }], shade(metal, -0.25), 1, false);
++  }
++}
++
+ /** The part of `from` over `span`, in a raster of its own. */
+ function cut(from: Raster, span: Span): Raster {
+   const r = new Raster(span.x1 - span.x0, span.y1 - span.y0, span.x0, span.y0);
+@@ -197,6 +295,11 @@ function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours:
+   }
+   // The building's corner where its two faces meet, and its far ends.
+   outline(ctx, [up(xo, yo, zt), up(xo, yo, bottom)], shade(wall, OUTLINE), 1, false);
++  // SPIKE: where the building ends with the café, its two far edges.
++  if (drawing === "corner") {
++    outline(ctx, [up(xo, back, -SLAB), up(xo, back, bottom)], shade(wall, OUTLINE), 1, false);
++    outline(ctx, [up(W, yo, -SLAB), up(W, yo, bottom)], shade(wall, OUTLINE), 1, false);
++  }
+ }
+ 
+ /** A fixed pattern of the building's lit windows: about `lit` in 10, the same every night. */
+@@ -272,6 +375,15 @@ function edgeLine(ctx: Ctx, xo: number, yo: number, back: number, right: number,
+   for (let i = 0; i + 1 < along.length; i++) outline(ctx, [up(along[i], yo, z), up(along[i + 1], yo, z)], colour, 1, false);
+ }
+ 
++/** SPIKE (ends study): ?ends=run | corner | fade; ?pad=N tiles past the floor's corners (corner); ?returns=0 for no glass turning the ends; ?fade=N tiles. */
++const SPIKE = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
++export const ENDS = SPIKE.get("ends") ?? "run";
++const PAD = Number(SPIKE.get("pad") ?? 0);
++/** SPIKE: whether the glass turns the balcony's ends back to the walls. */
++const RETURNS = SPIKE.get("returns") !== "0";
++/** SPIKE: how far the fade runs past the ends, in tiles. */
++const FADE = Number(SPIKE.get("fade") ?? 4);
++
+ /** The balcony's ends past the room move in steps of this many tiles. */
+ const REACH_STEP = 8;
+ 
+@@ -314,6 +426,7 @@ function reach(span: Span, deck: Deck): { back: number; right: number } {
+   // balcony starts and ends, and so where its windows and posts are counted
+   // from, is the same for every span that reaches a point (a one-pixel span
+   // asked for by a browser check included).
++  if (drawing === "corner") return { back: 1 - PAD, right: FLOOR.width + PAD };
+   return { back: 1 - REACH_STEP * Math.ceil((1 - back) / REACH_STEP), right: FLOOR.width + REACH_STEP * Math.ceil((right - FLOOR.width) / REACH_STEP) };
+ }
+ 
+diff --git a/client/src/street.ts b/client/src/street.ts
+index 6f139ed..5dbf21a 100644
+--- a/client/src/street.ts
++++ b/client/src/street.ts
+@@ -152,6 +152,8 @@ function readDeck(t: Record<string, number | string>, terrace: TerraceThing[]):
+ export const street = parseStreet(streetFile);
+ 
+ /** A 4×4 ordered dither, so bands of sky step in a pattern, not a soft blend. */
++/** SPIKE (ends study): what shows below the skyline's foot. */
++const BELOW = typeof location !== "undefined" ? new URLSearchParams(location.search).get("below") : null;
+ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+ 
+ /** A fixed pattern of lit windows: the same windows lit every frame, about `lit` in 10. */
+@@ -171,6 +173,30 @@ function isStar(x: number, y: number): boolean {
+  */
+ export function streetSlot(x: number, y: number, w: number, h: number, night: boolean): number {
+   const horizon = Math.round(h * street.horizon);
++  // SPIKE (ends study): ?below=towers carries the towers on down past the
++  // skyline's foot, as seen from a floor high up across the road; ?below=haze
++  // fades them into the sky's colour over 40 px.
++  if ((BELOW === "towers" || BELOW === "haze") && y >= horizon) {
++    if (BELOW === "haze") {
++      const f = (y - horizon) / 40;
++      if (f >= 1 || f * 16 > BAYER[(((y % 4) + 4) % 4) * 4 + (((x % 4) + 4) % 4)]) return STREET.sky;
++    }
++    const total = street.towers.reduce((n, t) => n + t.width, 0);
++    let at = ((x % total) + total) % total;
++    let i = 0;
++    while (at >= street.towers[i].width) {
++      at -= street.towers[i].width;
++      i++;
++    }
++    const tower = street.towers[i];
++    const { every, size, lit } = street.windows;
++    const col = Math.floor(at / every);
++    const row = Math.floor((y - horizon) / every) + 1000;
++    if (at < 1 || at >= tower.width - 1) return STREET.kerb;
++    const inWindow = at % every < size && (y - horizon) % every < size && at >= 2 && at < tower.width - 2;
++    if (inWindow) return isLit(i, col, row, lit) ? STREET.lit : STREET.dark;
++    return at >= tower.width - 3 ? STREET.towerSide : STREET.tower;
++  }
+   if (y >= horizon) {
+     // The kerb, then the pavement, darkening down into the street's shade
+     // below the room, in dithered steps, so the room stands on it.
