@@ -115,6 +115,25 @@ describe("the balcony under the terrace (slice 18)", () => {
     expect(() => deck(all.replace("rail = 18", "rail = 40"))).toThrow(/deck\.rail/);
     expect(() => deck(all.replace("storey = 56", "storey = 12"))).toThrow(/deck\.storey/);
   });
+
+  // Slice 18's review, finding 3: values each in range could still draw the
+  // glass rising behind the floor's slab, where the room covers it, or a
+  // terrace thing whose shadow ran off the deck's edge. Both are refused.
+  it("refuses a rail too tall for the deck's reach, which would rise behind the floor's slab", () => {
+    const deck = (out: number, rail: number) => parseStreet(`${base}\n[deck]\nout = ${out}\nslab = 4\nrail = ${rail}\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4\n`).deck;
+    expect(() => deck(1, 18)).toThrow(/deck\.rail/);
+    expect(() => deck(2, 32)).toThrow(/deck\.rail/);
+    expect(deck(2.6, 18)).toMatchObject({ out: 2.6, rail: 18 });
+    expect(deck(2.4, 32)).toMatchObject({ out: 2.4, rail: 32 });
+    expect(deck(1, 0)).toMatchObject({ out: 1, rail: 0 });
+  });
+
+  it("refuses a terrace thing whose blocks or shadow would reach past the deck's edge", () => {
+    const deckLines = "\n[deck]\nout = 2\nslab = 4\nrail = 12\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4\n";
+    const thing = (out: number) => parseStreet(`${base}${deckLines}\n[[terrace]]\nkind = "planter"\nside = "left"\nalong = 4\nout = ${out}\n`);
+    expect(() => thing(1.8)).toThrow(/planter/);
+    expect(thing(1.3).terrace).toHaveLength(1);
+  });
 });
 
 // Slice 16's review, finding 8: the street was drawn a whole stage past the

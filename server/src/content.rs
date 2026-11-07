@@ -251,7 +251,34 @@ mod tests {
     fn the_balcony_is_data_with_colours_by_day_and_night() {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content");
         let street: toml::Value = read_toml(&dir.join("street.toml")).expect("content/street.toml");
-        let deck = street["deck"].as_table().expect("[deck], the balcony under the terrace");
+        check_balcony(&street);
+        let palettes: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("sprites/palettes.json")).unwrap()).unwrap();
+        for light in ["day", "night"] {
+            let colours = palettes[light]["balcony"]
+                .as_array()
+                .unwrap_or_else(|| panic!("no {light} balcony colours"));
+            // Two stones, the slab's edge, the glass, the rail's metal, a
+            // window dark and a window lit.
+            assert_eq!(colours.len(), 7, "{light}");
+        }
+    }
+
+    /// The street's balcony, if it has one. Without a [deck] there's no
+    /// balcony, as before slice 18: the client reads that, so the file may
+    /// leave it out (slice 18's review, finding 3).
+    fn check_balcony(street: &toml::Value) {
+        if let Some(deck) = street.get("deck") {
+            check_deck(deck.as_table().expect("[deck] is a table"), street);
+        }
+    }
+
+    /// The balcony's values (slice 18), each in its range, and two rules
+    /// between them (slice 18's review, finding 3): the glass rail low
+    /// enough for the deck's reach that it never rises behind the floor's
+    /// slab, where the room is drawn over it; and each terrace thing far
+    /// enough in that its blocks and shadow stay on the deck's stone.
+    fn check_deck(deck: &toml::map::Map<String, toml::Value>, street: &toml::Value) {
         let num = |key: &str| {
             deck.get(key)
                 .and_then(|v| v.as_float().or_else(|| v.as_integer().map(|i| i as f64)))
@@ -271,21 +298,48 @@ mod tests {
         assert!(storey == 0.0 || (32.0..=96.0).contains(&storey) && storey.fract() == 0.0, "deck.storey {storey} px");
         let lit = num("lit");
         assert!((0.0..=10.0).contains(&lit) && lit.fract() == 0.0, "deck.lit {lit} in ten");
-        // Every terrace thing stands on the deck: no further out than it reaches.
+        // The rail's top clears the floor's slab on screen: a tile out is 8
+        // px lower, the rail stands 0.08 in from the edge, and the slab and
+        // its foot line take 3 px (measured: the client's render test).
+        assert!(rail <= (out - 0.2) * 16.0 - 3.0, "deck.rail {rail} px rises behind the floor's slab at deck.out {out}");
+        // Every terrace thing stands on the deck, its blocks and shadow too:
+        // the widest reaches 0.6 tiles across from its spot.
         for t in street["terrace"].as_array().expect("[[terrace]]") {
             let o = t["out"].as_float().expect("a terrace thing's out");
-            assert!(o < out, "{t} stands past the deck's edge ({out} tiles out)");
+            assert!(o + 0.6 <= out, "{t} reaches past the deck's edge ({out} tiles out)");
         }
-        let palettes: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(dir.join("sprites/palettes.json")).unwrap()).unwrap();
-        for light in ["day", "night"] {
-            let colours = palettes[light]["balcony"]
-                .as_array()
-                .unwrap_or_else(|| panic!("no {light} balcony colours"));
-            // Two stones, the slab's edge, the glass, the rail's metal, a
-            // window dark and a window lit.
-            assert_eq!(colours.len(), 7, "{light}");
-        }
+    }
+
+    /// A [deck] that would draw the glass behind the floor's slab, or a
+    /// terrace thing reaching past the deck's edge, is refused; one that
+    /// fits isn't (slice 18's review, finding 3).
+    #[test]
+    fn a_deck_whose_rail_rises_behind_the_slab_or_whose_terrace_overhangs_is_refused() {
+        let street = |out: f64, rail: i64, thing_out: f64| -> toml::Value {
+            toml::from_str(&format!(
+                "[deck]\nout = {out}\nslab = 4\nrail = {rail}\nposts = 2\nglass = 0.3\nstorey = 56\nlit = 4\n\n[[terrace]]\nkind = \"planter\"\nside = \"left\"\nalong = 4.0\nout = {thing_out}\n"
+            ))
+            .unwrap()
+        };
+        let check = |s: toml::Value| std::panic::catch_unwind(|| check_deck(s["deck"].as_table().unwrap(), &s)).is_ok();
+        assert!(check(street(2.6, 18, 1.8)), "today's deck");
+        assert!(check(street(2.4, 32, 1.5)), "a tall rail far enough out");
+        assert!(!check(street(1.0, 18, 0.3)), "an 18-px rail one tile out rises behind the slab");
+        assert!(!check(street(2.0, 32, 1.3)), "a 32-px rail two tiles out rises behind the slab");
+        assert!(!check(street(2.0, 12, 1.8)), "a planter whose shadow overhangs the deck");
+    }
+
+    /// Without a [deck], no balcony: the server's content test accepts it
+    /// as the client does (slice 18's review, finding 3).
+    #[test]
+    fn a_street_without_a_deck_is_still_a_street() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content");
+        let text = std::fs::read_to_string(dir.join("street.toml")).unwrap();
+        let start = text.find("\n[deck]\n").expect("today's [deck]");
+        let end = text[start + 1..].find("\n\n").map(|i| start + 1 + i).unwrap();
+        let without: toml::Value = toml::from_str(&format!("{}{}", &text[..start], &text[end..])).unwrap();
+        assert!(without.get("deck").is_none());
+        check_balcony(&without);
     }
 
     #[test]

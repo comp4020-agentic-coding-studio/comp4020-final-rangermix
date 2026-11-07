@@ -45,7 +45,7 @@ export function backdrop(span: Span, light: Light): Raster {
   const palette = paletteAt(light);
   drawStreet(ctx, span, palette.street, light);
   if (street.deck && street.deck.storey > 0) drawBuilding(ctx, span, street.deck, palette.room, palette.balcony);
-  if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony);
+  if (street.deck) drawDeck(ctx, span, street.deck, palette.balcony, palette.room);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
   if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, span, street.deck, palette.balcony);
   cache.set(where, { made, raster });
@@ -78,7 +78,7 @@ function drawStreet(ctx: Ctx, span: Span, colours: string[], light: Light): void
  * and darker at the front as the room's is; and a shadow on the stone under
  * each terrace thing, as the room's own shadows darken its floor.
  */
-function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[]): void {
+function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[], room: string[]): void {
   const [stoneA, stoneB, edge] = colours;
   const { back, right: W } = reach(span, deck);
   const H = FLOOR.height;
@@ -95,6 +95,11 @@ function drawDeck(ctx: Ctx, span: Span, deck: Deck, colours: string[]): void {
   // meet once.
   for (let y = back; y < yo; y++) for (let x = Math.floor(xo); x < 0; x++) tile(x, y);
   for (let y = H; y < yo; y++) for (let x = 0; x < W; x++) tile(x, y);
+  // Where the floor's slab meets the deck, its foot's dark line, as the
+  // room's floor layer draws it over the deck's inner row (render.ts), so
+  // the deck carries it and the room covers nothing of the balcony (slice
+  // 18's review, findings 2 and 3).
+  outline(ctx, [up(0, 1, z), up(0, H, z), up(FLOOR.width, H, z)], shade(room[2], 0.65), 1, false);
   // The terrace's shadows on the stone, before the things stand on them.
   for (const t of street.terrace) {
     if (t.kind === "umbrella") continue;
@@ -323,9 +328,11 @@ function drawTerrace(ctx: Ctx, t: TerraceThing, palette: ReturnType<typeof palet
     case "umbrella":
       // Folded, a closed parasol over the table: tall things out front
       // would stand over the floor's front tiles on screen (slice 16's
-      // review, finding 2), so the terrace stays low.
-      box(0, 0, 0.08, 0.08, 26, dark, 15);
-      box(0, 0, 0.26, 0.26, 24, FURNITURE[1], 17);
+      // review, finding 2), so the terrace stays low; and since the room is
+      // drawn over the terrace, low enough that the floor's slab hides none
+      // of its tip (slice 18's review, finding 2).
+      box(0, 0, 0.08, 0.08, 23, dark, 15);
+      box(0, 0, 0.26, 0.26, 22, FURNITURE[1], 16);
       break;
     case "chair":
       box(0, 0, 0.55, 0.55, 9, FURNITURE[11]);

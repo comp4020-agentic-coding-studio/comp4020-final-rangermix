@@ -107,7 +107,7 @@ export function parseStreet(text: string): Street {
     towers: towers.map((t) => ({ width: n(t, "width"), height: n(t, "height") })),
     clouds: clouds.map((c) => ({ x: n(c, "x"), y: n(c, "y"), width: n(c, "width") })),
     terrace: things,
-    deck: deck ? readDeck(deck) : null,
+    deck: deck ? readDeck(deck, things) : null,
   };
 }
 
@@ -122,7 +122,7 @@ const DECK_RANGES: Record<keyof Deck, [number, number, boolean]> = {
   lit: [0, 10, true],
 };
 
-function readDeck(t: Record<string, number | string>): Deck {
+function readDeck(t: Record<string, number | string>, terrace: TerraceThing[]): Deck {
   const deck = {} as Deck;
   for (const [key, [lo, hi, whole]] of Object.entries(DECK_RANGES) as [keyof Deck, [number, number, boolean]][]) {
     const v = t[key];
@@ -133,6 +133,19 @@ function readDeck(t: Record<string, number | string>): Deck {
   }
   // A building's storey is tall enough for a window and a band between floors.
   if (deck.storey !== 0 && deck.storey < 32) throw new Error(`street.toml: deck.storey is 0 for no building, or 32 to 96, not ${deck.storey}`);
+  // The rail's top clears the floor's slab on screen, or the room, drawn
+  // over the balcony, would cut it off: a tile out is 8 px lower, the rail
+  // stands a little in from the edge, and the slab and its foot line take
+  // 3 px (slice 18's review, finding 3; the server's content test holds the
+  // file to the same, and a render test measures it).
+  if (deck.rail > (deck.out - 0.2) * 16 - 3) {
+    throw new Error(`street.toml: deck.rail ${deck.rail} px rises behind the floor's slab at deck.out ${deck.out}: lower it, or reach further out`);
+  }
+  // Every terrace thing stands on the deck, its blocks and shadow too: the
+  // widest reaches 0.6 tiles across from its spot.
+  for (const thing of terrace) {
+    if (thing.out + 0.6 > deck.out) throw new Error(`street.toml: the terrace's ${thing.kind} at ${thing.out} tiles out reaches past the deck's edge at ${deck.out}`);
+  }
   return deck;
 }
 

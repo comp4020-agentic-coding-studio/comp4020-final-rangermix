@@ -930,6 +930,63 @@ describe("the street behind the café", () => {
     expect(drawn, "the terrace's and the balcony's own pixels").toBeGreaterThan(200);
   });
 
+  // Slice 18's review, findings 2 and 3: the room's shape above left out
+  // the floor's own slab, the 6 px under its front edges, and the folded
+  // parasol's tip rose behind it, hidden by the room drawn over it. So this
+  // asks the room itself: of everything the terrace and the balcony add to
+  // the backdrop, the floor layer drawn over it (the slab, the boards, the
+  // rug) covers nothing.
+  it("leaves every pixel the terrace and the balcony add uncovered by the floor's layer, its slab included", async () => {
+    const { street: data } = await import("../src/street");
+    const { backdrop } = await import("../src/backdrop");
+    const { floorLayer } = await import("../src/render");
+    const room = welcome().snapshot.room;
+    const span = { x0: 0, y0: 0, x1: ISO.width, y1: ISO.height };
+    const covered = (light: Light) => {
+      const withIt = backdrop(span, light).copy();
+      const layer = floorLayer(room, light, false);
+      const kept = { terrace: data.terrace, deck: data.deck };
+      data.terrace = [];
+      data.deck = null;
+      let without: ReturnType<typeof backdrop>;
+      try {
+        without = backdrop(span, light).copy();
+      } finally {
+        Object.assign(data, kept);
+      }
+      const out: string[] = [];
+      for (let y = 0; y < ISO.height; y++)
+        for (let x = 0; x < ISO.width; x++) {
+          // The balcony's own pixel, which the floor layer then changed: covered.
+          if (withIt.at(x, y) !== without!.at(x, y) && layer.at(x, y) !== withIt.at(x, y)) out.push(`(${x},${y})`);
+        }
+      return out;
+    };
+    for (const light of [0, 1] as Light[]) {
+      const c = covered(light);
+      expect(c.slice(0, 20), `light ${light}: ${c.length} pixels of the terrace or the balcony under the room`).toEqual([]);
+    }
+    // The reader's rule for a rail's height against the deck's reach
+    // (street.ts) is what this measures: a rail it allows is never covered,
+    // and one just past it is (finding 3).
+    const kept = data.deck;
+    try {
+      for (const [out, rail] of [
+        [1.6, 18],
+        [2.0, 24],
+        [2.4, 32],
+      ] as const) {
+        data.deck = { ...kept!, out, rail };
+        expect(rail, "allowed by the reader's rule").toBeLessThanOrEqual((out - 0.2) * 16 - 3);
+        expect(covered(0), `out ${out}, rail ${rail}`).toEqual([]);
+      }
+      data.deck = { ...kept!, out: 2.0, rail: 32 };
+      expect(covered(0).length, "a 32-px rail at 2 tiles out, which the reader refuses").toBeGreaterThan(0);
+    } finally {
+      data.deck = kept;
+    }
+  });
+
   // Slice 18: the terrace is the backdrop the room is drawn over, so the
   // room's canvas shows it wherever the room doesn't stand.
   it("shows the backdrop's terrace on the room's canvas, under nothing of the room", async () => {
