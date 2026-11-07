@@ -95,13 +95,18 @@ describe("the balcony under the terrace (slices 18 and 19)", { timeout: 60_000 }
   // wrong ("it should just show the cafe corner").
   //
   // Each end is held from both sides, found from the floor's corners
-  // through tileAt, not from the backdrop, so neither a balcony running on
-  // nor one cut short of the wall can pass: past the end the street's own
-  // colours, inside it the balcony's. Every point the street's canvas shows
-  // is the backdrop's own pixel, and the two canvases agree across the
-  // seam. A wide window shows the ends most (the user's own screenshot was
-  // one), a wide short one most of the left arm, and 1920×1080 is the
-  // desktop every slice is held at.
+  // through tileAt, not from the backdrop: past the end the street's own
+  // colours, inside it the balcony's. A balcony running on fails at every
+  // size (at 1920×1080 by the deck's level past each end, which that
+  // window shows); one stopping short of a wall fails at the two wide
+  // windows, where the building's end lines show, from 0.08 tiles in
+  // (slice 19's review, findings 2 and 3). At 1920×1080 those lines stand
+  // just past the window's edges, and a short balcony is the unit tests'
+  // (the end edges, the returns' posts, what the room covers). Every point
+  // the street's canvas shows is the backdrop's own pixel, and the two
+  // canvases agree across the seam. A wide window shows the ends most (the
+  // user's own screenshot was one), a wide short one most of the left arm,
+  // and 1920×1080 is the desktop every slice is held at.
   for (const [width, height] of [
     [2560, 1080],
     [2560, 540],
@@ -149,17 +154,40 @@ describe("the balcony under the terrace (slices 18 and 19)", { timeout: 60_000 }
             };
             const past: Point[] = [];
             const inside: Point[] = [];
-            // Down the building's height under the deck, and the deck's own
-            // top, a little either side of each end's line, every 2 px.
+            // Down the building's height under the deck, either side of each
+            // end's line, every 2 px: 0.08 tiles off it (1.3 room px, clear
+            // of the dark edge drawn on it), so a balcony stopping even 0.1
+            // tiles short of a wall shows the street inside (slice 19's
+            // review, finding 2); and 0.35 tiles in, which 1920×1080 shows
+            // (it shows nothing of the building past the ends' lines).
             for (let z = -slab - 1; z > -slab - storey * 3; z -= 2) {
-              // The left end, at the street wall's line (y = 1): along the
-              // left face, y < 1 is past it.
-              past.push(...look(`past the left end, ${z} px`, spot(-out, 1 - 0.35, z)));
-              inside.push(...look(`inside the left end, ${z} px`, spot(-out, 1 + 0.35, z)));
-              // The front end, at the plain wall's line (x = width).
-              past.push(...look(`past the front end, ${z} px`, spot(gw + 0.35, gh + out, z)));
-              inside.push(...look(`inside the front end, ${z} px`, spot(gw - 0.35, gh + out, z)));
+              for (const d of [0.08, 0.35]) {
+                // The left end, at the street wall's line (y = 1): along the
+                // left face, y < 1 is past it.
+                past.push(...look(`past the left end by ${d}, ${z} px`, spot(-out, 1 - d, z)));
+                inside.push(...look(`inside the left end by ${d}, ${z} px`, spot(-out, 1 + d, z)));
+                // The front end, at the plain wall's line (x = width).
+                past.push(...look(`past the front end by ${d}, ${z} px`, spot(gw + d, gh + out, z)));
+                inside.push(...look(`inside the front end by ${d}, ${z} px`, spot(gw - d, gh + out, z)));
+              }
             }
+            // On the deck's level just past each end, beside the room's
+            // canvas where 1920×1080 shows it (room x −40 to 440), and over
+            // the glass's return there on screen, by 4 px or more: the street
+            // since slice 19, the run-on deck before it (slice 19's review,
+            // finding 3).
+            for (const [gx, gy] of [
+              [-0.3, -0.6],
+              [-0.6, -0.8],
+              [-0.2, -0.9],
+            ])
+              past.push(...look(`past the left end on the deck's level at (${gx}, ${gy})`, spot(gx, gy, -slab)));
+            for (const [gx, gy] of [
+              [14.6, 13.1],
+              [14.8, 13.3],
+              [14.5, 13.2],
+            ])
+              past.push(...look(`past the front end on the deck's level at (${gx}, ${gy})`, spot(gx - 13 + gw, gy - 13 + gh, -slab)));
             // On the deck's line, at the slab's foot, half way across it: far
             // enough past each end to be clear of the glass's return there,
             // which runs back from the deck's outer corner to the wall and,
@@ -175,11 +203,11 @@ describe("the balcony under the terrace (slices 18 and 19)", { timeout: 60_000 }
           },
           [width, height, 2.6, 6, 56] as const,
         );
-        // At 1920×1080 the room at 4× leaves 160 px either side, and each end
-        // stands about 6 px past the window's edge (41.6 room px past the
-        // room's canvas), so only the glass's returns show there; wider
-        // windows show the street past both ends.
-        expect(seen.past.length, `${light} ${width}×${height}: points past the ends`).toBeGreaterThan(width > 1920 ? 20 : -1);
+        // At 1920×1080 the room at 4× leaves 160 px either side, and each
+        // end's line down the building stands about 6 px past the window's
+        // edge (41.6 room px past the room's canvas), but the deck's level
+        // past each end shows: the six points there (finding 3).
+        expect(seen.past.length, `${light} ${width}×${height}: points past the ends`).toBeGreaterThan(width > 1920 ? 20 : 5);
         expect(seen.inside.length, `${light} ${width}×${height}: points inside the ends`).toBeGreaterThan(20);
         // Every point is the backdrop's own pixel, as the room's canvas is.
         const off = [...seen.past, ...seen.inside].filter((p) => p.shown !== p.backdrop);
@@ -189,7 +217,7 @@ describe("the balcony under the terrace (slices 18 and 19)", { timeout: 60_000 }
         expect(notStreet.slice(0, 5).map((p) => `${p.where} (${p.x},${p.y}) ${p.shown}`), `${light} ${width}×${height}: the balcony past its ends`).toEqual([]);
         // Inside each end, the balcony and the building: none of the street's own.
         const street = seen.inside.filter((p) => streetOnly.includes(p.shown));
-        expect(street.slice(0, 5), `${light} ${width}×${height}: the street inside the balcony's ends`).toEqual([]);
+        expect(street.slice(0, 5).map((p) => `${p.where} (${p.x},${p.y}) ${p.shown}`), `${light} ${width}×${height}: the street inside the balcony's ends`).toEqual([]);
         // Across the seam: just inside the room's canvas, wherever it shows
         // the backdrop (not the room's own drawing), the street's canvas under
         // it shows the very same pixel.
