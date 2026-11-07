@@ -146,3 +146,22 @@ Where the build departed from this plan, task by task.
   page's own background. By day only, as before: the night street's sky
   is Mocha's base, the dark page's own background, so at night neither
   check could tell them apart, before this slice or after it.
+- **Task 6.** One change to what was approved, the agent's call, for the
+  user to judge in the screens. The first screens showed the deck's two
+  arms ending at the floor's corners: the front arm stopped at the floor's
+  right end, where the window at 1920×1080 carries on, so a wedge of the
+  street's pavement showed beside a cut end of the balcony, dark by night
+  (the study's screens had it too). The balcony, its glass and the
+  building now run on past both ends of the room, along the building's
+  face, off the window's edges, so the café reads as one unit on a
+  longer upper-floor balcony and no end of it shows. Tests first: the deck
+  past both ends by day and by night, the building under it there. The
+  balcony's edge lines are traced a tile at a time between whole grid
+  points, so a longer span traces the same pixels as a shorter one, and
+  the room's canvas and the street's still agree. The screens are in
+  `docs/notes/screens/slice-18/`; the phone's bigger room is shot with the
+  keyboard's pointer at the front row, which the camera follows, its ring
+  showing.
+- **Checked** before the review: `cargo test -p cafe` (356 unit tests and
+  every binary test), the client's 362 tests, the typecheck, and the whole
+  `spec/` (108) against a local café built from the branch and seeded.

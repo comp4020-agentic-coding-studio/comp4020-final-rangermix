@@ -338,16 +338,18 @@ describe("the café's building under the balcony", () => {
     // A point on a face at height z under the deck's edge: the edge's line
     // dropped by z. Find the grid spot on the deck's outer edge above it.
     const top = (gx: number, gy: number) => toCanvas(gx, gy).y + SLAB + deck.slab;
-    const W = FLOOR.width;
+    // The building runs on past both ends of the room, off the window's
+    // edges, so its faces reach far each way.
+    const W = FLOOR.width + 40;
     const xo = -deck.out;
     const yo = FLOOR.height + deck.out;
-    // The left face runs from (xo, 1) to (xo, yo); the front from (xo, yo) to (W, yo).
+    // The left face runs from (xo, -40) to (xo, yo); the front from (xo, yo) to (W, yo).
     const left = (() => {
-      const a = toCanvas(xo, 1);
+      const a = toCanvas(xo, -40);
       const b = toCanvas(xo, yo);
       if (x < Math.min(a.x, b.x) - 0.5 || x > Math.max(a.x, b.x) + 0.5) return false;
       const t = (x + 0.5 - a.x) / (b.x - a.x);
-      return y + 0.5 >= top(xo, 1 + t * (yo - 1)) - 1;
+      return y + 0.5 >= top(xo, -40 + t * (yo + 40)) - 1;
     })();
     const front = (() => {
       const a = toCanvas(xo, yo);
@@ -452,5 +454,57 @@ describe("the backdrop's colours", () => {
     // The street's, the balcony's and the room's wall among them.
     const night = palettes.night as unknown as { street: string[]; balcony: string[] };
     expect(backdropColours(span, 1)).toEqual(expect.arrayContaining([night.street[0], night.balcony[0], night.balcony[6]].map((c) => c.toLowerCase())));
+  });
+});
+
+// Slice 18: the balcony and the building under it run on past both ends of
+// the room, along the building's face, off the window's edges: stopped at
+// the floor's corners, the deck ended in a cut edge with the street's
+// pavement beside it, dark by night, at the window's right edge at
+// 1920×1080 (the first build's screens).
+describe("the balcony past the room's two ends", () => {
+  const SLAB = 6;
+  const deck = street.deck!;
+  const far = { x0: -240, y0: -40, x1: ISO.width + 240, y1: ISO.height + 120 };
+  const colours = (name: "day" | "night") => (palettes[name] as unknown as { balcony: string[]; street: string[] });
+  const bare = (light: 0 | 1) => {
+    const kept = street.deck;
+    street.deck = { ...deck, rail: 0 };
+    try {
+      return backdrop(far, light).copy();
+    } finally {
+      street.deck = kept;
+    }
+  };
+
+  for (const [light, name] of [
+    [0, "day"],
+    [1, "night"],
+  ] as const) {
+    it(`carries the deck on past the floor's right end and back past the street wall's line, by ${name}`, () => {
+      const b = bare(light);
+      const stones = colours(name).balcony.slice(0, 2).map((c) => c.toLowerCase());
+      for (const [gx, gy] of [
+        [FLOOR.width + 0.5, FLOOR.height + 1.3],
+        [FLOOR.width + 6.5, FLOOR.height + 0.5],
+        [-1.3, 0.5],
+        [-0.5, -5.5],
+      ]) {
+        const p = toCanvas(gx, gy);
+        expect(stones, `${name}: the deck at (${gx}, ${gy})`).toContain(b.at(Math.round(p.x), Math.round(p.y) + SLAB));
+      }
+    });
+  }
+
+  it("carries the building on under it, past both ends: no street under the deck's edge there", () => {
+    const b = backdrop(far, 1);
+    const street_ = new Set(colours("night").street.map((c) => c.toLowerCase()));
+    for (const [gx, gy] of [
+      [FLOOR.width + 4, FLOOR.height + deck.out],
+      [-deck.out, -4],
+    ]) {
+      const p = toCanvas(gx, gy);
+      for (let dy = 14; dy < 60; dy += 6) expect(street_.has(b.at(Math.round(p.x), Math.round(p.y) + SLAB + deck.slab + dy) ?? ""), `under the deck's edge at (${gx}, ${gy}) + ${dy}`).toBe(false);
+    }
   });
 });

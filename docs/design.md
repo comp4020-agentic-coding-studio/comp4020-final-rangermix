@@ -625,7 +625,28 @@ and Burakku at 25.
     a `[[terrace]]` line in `street.toml` (its kind, the floor's edge it
     stands by, how far along and how far out); each kind is drawn as its
     own few blocks in the furniture's colours. It's scenery: off the
-    café's grid, nearest the viewer of all, taking no click.
+    café's grid, taking no click.
+  - **The café is upstairs, on a balcony** (slice 18, built; the user,
+    2026-11-07, from a study,
+    [notes/slice-18-study.md](notes/slice-18-study.md)): the terrace stands
+    on a deck of light stone tiles in the room's angle, an L round the
+    floor's left and front edges at the foot of its slab, with a glass
+    balustrade 18 px high (half a person's height) at its outer edges, and
+    under it the café's own building carries on down, its wall in the
+    room's colour and light, storeys of windows lit here and there at
+    night. The balcony and the building run on past both ends of the room
+    to the window's edges, so the café reads as one unit up a tower, as
+    the user saw it, "a shopping centre or business building". Without
+    ground in the room's angle the terrace had floated: the street's
+    pavement is a level band across the screen. It's `[deck]` in
+    `street.toml` (how far out, the slab, the rail's height and posts, the
+    glass's tint, the storey's height, how many windows lit) and a
+    `balcony` list in the palette. The street, the terrace and the balcony
+    are one backdrop (`client/src/backdrop.ts`), drawn once per light over
+    whatever span a canvas needs: the room's floor layer takes the room's
+    own, the street's canvas a wider one, so they agree to the pixel. The
+    glass tints what's behind it pixel by pixel, every pixel one solid
+    colour (ADR 0019).
   - **Crisp, with outlines and shadows** (slice 13, built;
     [ADR 0019](adr/0019-draw-the-room-crisp-with-outlines-and-shadows.md)):
     every pixel of the room one colour, with no anti-aliasing: shapes are

@@ -1,6 +1,6 @@
 # 18. A balcony under the terrace
 
-- **Status:** Approved 2026-11-07: the glass 18 px high (question 1, A), and below the balcony the café's own building (question 2, D); proposed 2026-11-07 from the user's question of 2026-11-06, with a study ([notes](../notes/slice-18-study.md), [screens](../notes/screens/slice-18-study/))
+- **Status:** Built 2026-11-07 ([plan](../notes/plan-slice-18-balcony.md), [screens](../notes/screens/slice-18/)); approved 2026-11-07: the glass 18 px high (question 1, A), and below the balcony the café's own building (question 2, D); proposed 2026-11-07 from the user's question of 2026-11-06, with a study ([notes](../notes/slice-18-study.md), [screens](../notes/screens/slice-18-study/))
 - **Plan:** [`docs/notes/plan-slice-18-balcony.md`](../notes/plan-slice-18-balcony.md)
 - **Design:** The client ("The room is a diorama on its street", "Crisp,
   with outlines and shadows");
