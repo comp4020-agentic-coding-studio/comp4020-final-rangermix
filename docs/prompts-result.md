@@ -2569,3 +2569,65 @@ built.
   beside them as now. The three questions (where it ends, what shows
   beside it, the glass at the ends) wait for the user. Slice 18's status
   records the judgement.
+
+*Sent 2026-11-08 04:01:31 AEDT*
+
+> 1A 2A 3A
+
+Answering slice 19's three questions with its study's leans:
+- **1A:** the balcony ends at the café's walls, a fixed size.
+- **2A:** the street shows beside the building, as now.
+- **3A:** the glass turns both ends back to the walls.
+
+The prompts that only checked whether the reviewer had written its
+findings (05:23, 05:54, 06:25 and 06:56) are filed here.
+
+**Result.** Slice 19 is built, reviewed, merged, deployed and checked
+live.
+- **Approved and planned** ([`73d2d29`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/73d2d29)) on a branch, from `main` as it
+  stood.
+- **Built, test first, in six tasks:**
+  - The balcony's reach, worked out from each canvas's span, became the
+    walls' two fixed lines, so the deck, glass and building end there at
+    any window ([`297a253`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/297a253)).
+  - A dark edge runs down each end ([`baa87eb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/baa87eb)).
+  - The glass turns back to each wall, tinting what's behind it, with a
+    post at the wall ([`b0bd456`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b0bd456)). Its posts first stood on the walls'
+    own lines, where the room is drawn over them. Slice 18's test of what
+    the room covers found it, and they now stand just short.
+  - The browser check that held the balcony running to the window's
+    edges now holds each end from both sides ([`5799862`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5799862)).
+  - The cost was measured. A light turn takes no longer: 103 to 107 ms at
+    1920×1080, against `main`'s 106 to 112, with the CPU slowed 4×.
+  - Screens and design.md ([`da7edd6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/da7edd6)).
+- **Reviewed cold** ([`f490f46`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f490f46), [`8679352`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8679352)): 7 findings, 1 major,
+  each fixed test first or answered.
+  - **Finding 1, major:** both readers of `street.toml` accepted terrace
+    things placed past the new ends, which then stood on the street. Each
+    kind's reach is now one table, held by both readers, with a test
+    keeping the server's copy equal ([`38b647d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/38b647d)).
+  - **Findings 2 and 3:** the browser check passed a balcony stopping
+    short of a wall, and checked nothing past the ends at 1920×1080. It
+    now fails against `main` at all three sizes and against a short
+    balcony at both wide windows ([`c784ffc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/c784ffc)).
+  - **Finding 4:** the deck had no edge line along its new ends. It does
+    now ([`18e493c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/18e493c)).
+  - **Findings 5 to 7:** a comment, the click points' comment, unused
+    parameters and stray line breaks ([`8c1cb94`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8c1cb94)). The answers record
+    that design.md came last rather than with the change
+    ([`b0b48d4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b0b48d4)).
+- **Checked:**
+  - `cargo fmt`, clippy and `cargo test`;
+  - the protocol diff and the evidence check;
+  - the client's 385 tests and both typechecks;
+  - the whole `spec/` against a local café built from the branch: 110
+    passed, 1 skipped.
+- **Merged and deployed** at the first try: build `mw6w6ahc`.
+- **Checked live** ([`69f0313`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/69f0313),
+  [notes/slice-19-balcony-ends.md](notes/slice-19-balcony-ends.md)): one
+  visit as `agent_s19841d` at 2560×1080, by day.
+  - Past each end the street's own pixel; inside each end the building's.
+  - Every point the backdrop's own.
+  - Four clicks on the ends and returns did nothing.
+
+  Live once the user has judged it.
