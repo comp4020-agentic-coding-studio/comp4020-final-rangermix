@@ -794,14 +794,22 @@ describe("the street behind the café", () => {
     it(`fills the corners round the room with the street's ${name} colours, several of them, not one flat fill`, async () => {
       const p = await drawn(light);
       const colours = street(name);
-      // The top-left and top-right corners are sky and towers; the bottom corners the street's foot.
+      // The top-left and top-right corners are sky and towers.
       for (const [x, y] of [
         [4, 4],
         [ISO.width - 6, 4],
+      ]) {
+        expect(colours.has(p.at(x, y) ?? ""), `(${x},${y}) is ${p.at(x, y)} at ${name}`).toBe(true);
+      }
+      // The bottom corners are what's under the balcony since slice 18 (the
+      // café's own building): the backdrop's, whatever it holds there.
+      const { backdrop } = await import("../src/backdrop");
+      const b = backdrop({ x0: 0, y0: 0, x1: ISO.width, y1: ISO.height }, light);
+      for (const [x, y] of [
         [4, ISO.height - 4],
         [ISO.width - 6, ISO.height - 4],
       ]) {
-        expect(colours.has(p.at(x, y) ?? ""), `(${x},${y}) is ${p.at(x, y)} at ${name}`).toBe(true);
+        expect(p.at(x, y), `(${x},${y}) at ${name}`).toBe(b.at(x, y));
       }
       // Not one flat fill, as the backdrop was: the corners hold several of the street's colours.
       const corners = new Set<string>();

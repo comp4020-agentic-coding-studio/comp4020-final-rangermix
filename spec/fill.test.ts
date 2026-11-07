@@ -205,8 +205,11 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       }
       const seen = await edges(page);
       expect(seen.length, "edge points to look at").toBeGreaterThan(60);
-      const street = streetColours(light);
-      for (const p of seen) expect(street, `${light}: the window's edge at ${p.at} is the street, not the page`).toContain(p.colour);
+      // What's drawn outside the room: the street, and since slice 18 the
+      // balcony and the café's building under it, at the window's foot.
+      const outside = await page.evaluate(() => (window as unknown as { cafeRoom: { backdropColours(): string[] } }).cafeRoom.backdropColours());
+      expect(outside, `${light}: the street's colours among what's outside the room`).toEqual(expect.arrayContaining(streetColours(light)));
+      for (const p of seen) expect(outside, `${light}: the window's edge at ${p.at} is the street or the balcony, not the page`).toContain(p.colour);
     }
   });
 

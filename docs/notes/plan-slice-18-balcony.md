@@ -132,3 +132,17 @@ Where the build departed from this plan, task by task.
   and down from the street wall's, with one at the corner. The contrast
   test's backgrounds now include every colour the glass makes of the
   palette's, which the panels' words keep 4.5:1 over.
+- **Task 5.** As planned, with three things it found. The first build
+  drew a black band under the deck's slab: the balcony's shadow on the
+  wall darkened a colour given as `rgb(…)` with `darken`, which reads only
+  `#rrggbb`; a test now pins that shadow to the wall's colour darkened,
+  and no black anywhere, and saw it fail first. Slice 13's render test
+  that the room canvas's bottom corners are the street now reads them as
+  the backdrop, since the café's building stands there. And two browser
+  checks held the window's foot (slice 16) and the room's bottom corners
+  (slice 13) to the street's colours: they read what's outside the room
+  from `window.cafeRoom.backdropColours()`, every colour the backdrop
+  draws in the light the room is drawn in, so they still fail on the
+  page's own background. By day only, as before: the night street's sky
+  is Mocha's base, the dark page's own background, so at night neither
+  check could tell them apart, before this slice or after it.

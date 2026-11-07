@@ -117,4 +117,67 @@ describe("the balcony under the terrace (slice 18)", { timeout: 60_000 }, () => 
       await page.locator("#leave").click();
     }
   });
+
+  it("takes no click or tap on the deck, the glass or the building, by mouse or by touch", { timeout: 120_000 }, async () => {
+    for (const touch of [false, true]) {
+      const { page, sent } = await visit({ width: 1920, height: 1080 }, "10:00", touch);
+      // Points on the room's canvas that are the balcony's own (the deck's
+      // stones, the glass and rail, the building), off the floor and its
+      // walls, where a click reaches the canvas: read from the canvas, every
+      // 10 px, so each one clicked is the balcony's.
+      const points = await page.evaluate((own) => {
+        const canvas = document.getElementById("room") as HTMLCanvasElement;
+        const r = canvas.getBoundingClientRect();
+        const ctx = canvas.getContext("2d")!;
+        const room = (window as unknown as { cafeRoom: { size: { width: number }; grid: { width: number; height: number }; tileAt(x: number, y: number): { x: number; y: number } } }).cafeRoom;
+        const scale = r.width / room.size.width;
+        const corner = (gx: number, gy: number) => {
+          const m = room.tileAt(gx, gy);
+          const right = room.tileAt(gx + 1, gy);
+          const down = room.tileAt(gx, gy + 1);
+          return { x: m.x - (right.x - m.x) / 2 - (down.x - m.x) / 2, y: m.y - (right.y - m.y) / 2 - (down.y - m.y) / 2 };
+        };
+        const { width: gw, height: gh } = room.grid;
+        const [left, back, rightTip, front] = [corner(0, 1), corner(gw, 1), corner(gw, gh), corner(0, gh)];
+        // The room as one shape: up the walls from the back edges, down its slab under the front ones.
+        const shape = [
+          { x: left.x, y: left.y - 56 * scale },
+          { x: back.x, y: back.y - 56 * scale },
+          { x: rightTip.x, y: rightTip.y - 56 * scale },
+          { x: rightTip.x, y: rightTip.y + 8 * scale },
+          { x: front.x, y: front.y + 8 * scale },
+          { x: left.x, y: left.y + 8 * scale },
+        ];
+        const inRoom = (x: number, y: number) => {
+          let inside = false;
+          for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+            const [a, b] = [shape[i], shape[j]];
+            if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+          }
+          return inside;
+        };
+        const at = (v: number, size: number, css: number) => Math.floor((v * size) / css + 1e-6);
+        const out: { x: number; y: number }[] = [];
+        for (let y = Math.max(0, r.top + r.height * 0.5); y < Math.min(innerHeight, r.bottom); y += 10)
+          for (let x = Math.max(0, r.left); x < Math.min(innerWidth, r.right); x += 10) {
+            if (inRoom(x, y) || document.elementFromPoint(x, y)?.id !== "room") continue;
+            const [cr, cg, cb] = ctx.getImageData(at(x - r.left, canvas.width, r.width), at(y - r.top, canvas.height, r.height), 1, 1).data;
+            const c = `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+            if (own.includes(c)) out.push({ x, y });
+          }
+        return out;
+      }, [...balcony("day"), ...(palettes.day as unknown as { room: string[] }).room.map((c) => c.toLowerCase())]);
+      expect(points.length, `${touch ? "touch" : "mouse"}: balcony points to try`).toBeGreaterThan(30);
+      const before = sent.length;
+      // Every fourth one, so the check stays short.
+      for (const p of points.filter((_, i) => i % 4 === 0)) {
+        if (touch) await page.touchscreen.tap(p.x, p.y);
+        else await page.mouse.click(p.x, p.y);
+        if ((await page.locator(".menu").count()) > 0) throw new Error(`a ${touch ? "tap" : "click"} on the balcony at (${p.x}, ${p.y}) opened a menu`);
+      }
+      await page.waitForTimeout(300);
+      expect(sent.slice(before).filter((f) => f.type !== "here").map((f) => f.type), `what ${touch ? "taps" : "clicks"} on the balcony sent`).toEqual([]);
+      await page.evaluate(() => document.getElementById("leave")!.click());
+    }
+  });
 });

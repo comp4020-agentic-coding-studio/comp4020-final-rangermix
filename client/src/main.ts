@@ -6,7 +6,8 @@ import { showAuth } from "./auth";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { DemoBar } from "./demoBar";
-import { cafeHour } from "./canberra";
+import { type Light, cafeHour } from "./canberra";
+import { backdropColours } from "./backdrop";
 import { type Target, attachInput } from "./input";
 import { closeMenu, freeArea, isMenuOpen, moveRing, openMenu, ringSlide } from "./menu";
 import { catInArms, menuFor } from "./menus";
@@ -160,6 +161,15 @@ function enter(me: ApiMe): void {
       const box = $("stage").getBoundingClientRect();
       const at = middle({ x, y });
       return { x: box.left + at.left, y: box.top + at.top };
+    },
+    /**
+     * Every colour drawn outside the room in the light the room is drawn in
+     * now (slice 18): the street, the terrace and the balcony, over the
+     * room's canvas and a stage round it.
+     */
+    backdropColours(): string[] {
+      const light = Number(canvas.dataset.light ?? 0) as Light;
+      return backdropColours({ x0: -ISO.width, y0: -ISO.height, x1: 2 * ISO.width, y1: 2 * ISO.height }, light);
     },
   });
   /** Where a menu goes: beside the tile, or (for a ring) round its middle. */

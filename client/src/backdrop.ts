@@ -44,6 +44,7 @@ export function backdrop(span: Span, light: Light): Raster {
   const ctx = raster.context();
   const palette = paletteAt(light);
   drawStreet(ctx, span, palette.street, light);
+  if (street.deck && street.deck.storey > 0) drawBuilding(ctx, span, street.deck, palette.room, palette.balcony);
   if (street.deck) drawDeck(ctx, street.deck, palette.balcony);
   for (const t of street.terrace) drawTerrace(ctx, t, palette, light);
   if (street.deck && street.deck.rail > 0) drawRail(raster, ctx, street.deck, palette.balcony);
@@ -51,6 +52,15 @@ export function backdrop(span: Span, light: Light): Raster {
   // A resize asks for a new span: keep the few in use, not every size seen.
   while (cache.size > 4) cache.delete(cache.keys().next().value!);
   return raster;
+}
+
+/**
+ * Every colour the backdrop draws over `span` in a light, for the browser
+ * checks (slice 18): what's outside the room, told from the page's own
+ * background, now that the café's building stands where the pavement was.
+ */
+export function backdropColours(span: Span, light: Light): string[] {
+  return [...new Set(backdrop(span, light).runs().map((r) => r.colour))];
 }
 
 /** The street over the span (slice 13): each run its slot's colour in this light. */
@@ -103,6 +113,64 @@ function drawDeck(ctx: Ctx, deck: Deck, colours: string[]): void {
     poly(ctx, [up(xo, yo, z), up(W, yo, z), up(W, yo, z - deck.slab), up(xo, yo, z - deck.slab)], shade(edge, 0.28));
   }
   outline(ctx, [up(xo, 1, z), up(xo, yo, z), up(W, yo, z)], shade(edge, OUTLINE), 1, false);
+}
+
+/**
+ * The café's own building under the balcony (slice 18; the user,
+ * 2026-11-07: "D"): its two faces below the deck's outer edges, in the
+ * room's wall colour lit as the room's blocks are (the left face a little
+ * shaded, the front more); the balcony's shadow just under its slab; then
+ * storeys `storey` px tall, each a band between floors and a row of
+ * windows a tile apart in the room's frame colour, `lit` in 10 lit at night
+ * by a fixed pattern. Down past the span's foot, so it never ends on screen.
+ */
+function drawBuilding(ctx: Ctx, span: Span, deck: Deck, room: string[], colours: string[]): void {
+  const [, , , , , windowDark, windowOn] = colours;
+  const wall = room[3];
+  const band = room[4];
+  const frame = room[5];
+  const W = FLOOR.width;
+  const xo = -deck.out;
+  const yo = FLOOR.height + deck.out;
+  // The faces start under the deck's slab: z is up from the floor's level.
+  const zt = -SLAB - deck.slab;
+  // Deep enough to reach past the span's foot from the deck's highest point.
+  const bottom = zt - (span.y1 - Math.min(up(xo, 1).y, up(W, yo).y)) - 8;
+  type Face = "left" | "front";
+  const face = (f: Face, a: number, b: number, z0: number, z1: number, colour: string) =>
+    poly(ctx, f === "left" ? [up(xo, a, z0), up(xo, b, z0), up(xo, b, z1), up(xo, a, z1)] : [up(a, yo, z0), up(b, yo, z0), up(b, yo, z1), up(a, yo, z1)], colour);
+  // How each face is lit, as the room's blocks are (shapes.ts).
+  const lightOf: Record<Face, number> = { left: 0.12, front: 0.28 };
+  const ends: Record<Face, [number, number]> = { left: [1, yo], front: [xo, W] };
+  for (const f of ["left", "front"] as Face[]) {
+    const [a, b] = ends[f];
+    // As "#rrggbb", which `darken` reads (`shade` gives "rgb(…)").
+    const faceColour = darken(wall, lightOf[f]);
+    face(f, a, b, bottom, zt, faceColour);
+    // The balcony's shadow on the wall, just under the slab.
+    face(f, a, b, zt - 5, zt, darken(faceColour, SHADOW));
+    for (let k = 0; ; k++) {
+      const top = zt - 12 - k * deck.storey;
+      if (top - deck.storey < bottom) break;
+      // The band between this storey and the one below.
+      face(f, a, b, top - deck.storey + 18, top - deck.storey + 15, shade(band, lightOf[f]));
+      // A window a tile wide in each tile along the face, in its frame.
+      for (let g = Math.floor(a); g < b; g++) {
+        const [w0, w1] = [Math.max(g + 0.15, a + 0.1), Math.min(g + 0.85, b - 0.1)];
+        if (w1 - w0 < 0.3) continue;
+        face(f, w0, w1, top - 26, top, shade(frame, lightOf[f]));
+        const on = windowLit(f === "left" ? 0 : 1, g, k, deck.lit);
+        face(f, w0 + 0.07, w1 - 0.07, top - 24, top - 2, on ? windowOn : windowDark);
+      }
+    }
+  }
+  // The building's corner where its two faces meet, and its far ends.
+  outline(ctx, [up(xo, yo, zt), up(xo, yo, bottom)], shade(wall, OUTLINE), 1, false);
+}
+
+/** A fixed pattern of the building's lit windows: about `lit` in 10, the same every night. */
+function windowLit(face: number, along: number, storey: number, lit: number): boolean {
+  return (((face * 7 + along * 13 + storey * 29 + 101) * 2654435761) >>> 0) % 10 < lit;
 }
 
 /**
