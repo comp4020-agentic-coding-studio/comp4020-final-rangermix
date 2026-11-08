@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { baseUrl, logInThroughPage, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { baseUrl, logInThroughPage, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 15's browser checks: the café's music, each visitor's own. What a
 // check reads is the page's one <audio> element (`paused`, `currentSrc`,
@@ -91,9 +91,10 @@ async function visit(viewport: { width: number; height: number }, touch = false,
 }
 
 /**
- * In at the door by a script's click (slice 20): not a press, so a browser
- * that won't play before one still won't, as a reload straight into the
- * café used to be.
+ * In at the door by a script's click (slice 20). Chromium counts that as a
+ * press, so it stands for an entry without one only under autoplayRule,
+ * which refuses play() until a real key or tap (slice 20's review, finding
+ * 16), as a reload straight into the café used to be.
  */
 const walkInUnpressed = async (page: Page) => {
   await page.locator("#door-in").waitFor();
@@ -616,4 +617,65 @@ describe("the café's music", { timeout: 60_000 }, () => {
     expect((await audio(page)).volume).toBeCloseTo(0.35, 2);
     expect(Number(await page.locator("#music-volume").inputValue())).toBe(35);
   });
+
+  // Slice 20's review, finding 16: the café's own reload for a new build is
+  // the one way in with no press since the door, and the browser's
+  // activation starts afresh on a reload: nothing plays or loads until one.
+  it("after the café's own reload for a new build, waits for the first press, fetching nothing before it", async () => {
+    const account = await signUp(uniqueName("m"));
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    contexts.push(context);
+    const [cookieName, value] = account.cookie.split("=");
+    await context.addCookies([{ name: cookieName, value, url: baseUrl }]);
+    // Remembered on, at the default volume.
+    await context.addInitScript(() => localStorage.setItem("cafe.music", JSON.stringify({ on: true, volume: 50 })));
+    const page = await context.newPage();
+    // A browser that won't play before a press in the page, as a real one
+    // won't after a reload; Playwright's Chromium otherwise would.
+    await autoplayRule(page);
+    await page.clock.install({ time: new Date("2026-11-05T10:00:00+11:00") });
+    await page.clock.resume();
+    let builds = 0;
+    await page.routeWebSocket(/\/ws$/, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((m) => {
+        const f = JSON.parse(String(m));
+        if (f.type === "welcome") {
+          f.now = new Date("2026-11-05T10:00:00+11:00").getTime();
+          // The first welcome says the café runs a newer build.
+          if (builds++ === 0) f.build = "a-newer-build";
+        }
+        ws.send(JSON.stringify(f));
+      });
+      ws.onMessage((m) => server.send(m));
+    });
+    const fetched: string[] = [];
+    page.on("request", (r) => {
+      const t = trackIn(r.url());
+      if (t) fetched.push(t);
+    });
+    // What's fetched counts from the reload's own load on.
+    let loads = 0;
+    let fromReload = Infinity;
+    page.on("load", () => {
+      loads++;
+      if (loads === 2) fromReload = fetched.length;
+    });
+    await page.goto(baseUrl);
+    // In with a real press: the music, remembered on, may start; then the
+    // café reloads the tab for its build, and the press is forgotten.
+    await page.locator("#door-in").click();
+    await expect.poll(() => loads, { timeout: 10_000 }).toBe(2);
+    await inside(page);
+    await page.waitForTimeout(1000);
+    expect((await audio(page)).paused, "nothing plays before a press").toBe(true);
+    expect(await shown(page)).toMatchObject({ button: "Play" });
+    expect(await page.evaluate(() => document.getElementById("music-audio")!.hasAttribute("src")), "no source held while the browser won't play").toBe(false);
+    expect(fetched.slice(fromReload), "nothing fetched since the reload, before a press").toEqual([]);
+    // The first press in the café starts it.
+    await page.locator("#room").focus();
+    await page.keyboard.press("ArrowRight");
+    await playing(page, "bubbles");
+  });
 });
+

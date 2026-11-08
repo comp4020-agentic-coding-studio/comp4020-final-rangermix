@@ -56,9 +56,15 @@ export async function signUpThroughPage(page: Page, name: string, opts: { keyboa
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
-    // The look step opens on the avatars; Tab past the colours to Walk in.
+    // The look step opens on the avatars. An arrow key in each group, then
+    // Tab past the colours to Walk in (slice 20's review, finding 13).
     await page.locator("#look-step:not([hidden])").waitFor();
-    await page.locator("#sign-up").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Tab");
+    const at = await page.evaluate(() => document.activeElement?.id);
+    if (at !== "sign-up") throw new Error(`Tab from the colours reached ${at}, not Walk in`);
     await page.keyboard.press("Enter");
     await page.locator("#code-done:focus").waitFor();
     await page.keyboard.press("Enter");

@@ -124,6 +124,8 @@ describe("the door", () => {
     expect($("door-error").textContent).toBe("The café couldn't do that just now.");
     expect(($("not-me") as HTMLButtonElement).disabled).toBe(false);
     expect(($("door-in") as HTMLButtonElement).disabled).toBe(false);
+    // The focus back where it was, not fallen to the page (slice 20's review, finding 9).
+    expect(document.activeElement).toBe($("not-me"));
   });
 
   it("says why when the café can't be reached, and stays", async () => {

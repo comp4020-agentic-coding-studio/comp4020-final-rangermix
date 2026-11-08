@@ -30,8 +30,11 @@ async function start(): Promise<void> {
   const me = await api.me();
   // Signed in, the door greets you, and nothing joins the café until Walk
   // in (slice 20).
-  // The café's own reload for a new build goes straight back in.
-  if (me.ok && backInside()) enter(me.value);
+  // The café's own reload for a new build goes straight back in. The note
+  // is taken whatever /api/me said, so it can't outlive this opening
+  // (slice 20's review, finding 6).
+  const back = backInside();
+  if (me.ok && back) enter(me.value);
   else if (me.ok) showDoor(me.value, { kind: "arrive" }, doorWays(me.value));
   else showAuth(enter);
 }
@@ -507,6 +510,10 @@ function enter(me: ApiMe): void {
     floating.dispose();
     detach();
     talk.dispose();
+    bubbles.dispose();
+    // The panels' lists are this visit's: none of them for whoever's next
+    // (slice 20's review, finding 2).
+    for (const id of ["said", "here", "your-cats"]) $(id).replaceChildren();
     unsubscribe();
     stage.stop();
     closeMenu();

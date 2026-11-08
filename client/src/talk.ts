@@ -32,11 +32,12 @@ export class Talk {
     chip.addEventListener("click", this.onChip);
   }
 
-  /** Lets go of the form, which outlives a visit. */
+  /** Lets go of the form, which outlives a visit, and of an unsent draft, which doesn't (slice 20's review, finding 2). */
   dispose(): void {
     this.form.removeEventListener("submit", this.onSubmit);
     this.chip.removeEventListener("click", this.onChip);
     this.address(null);
+    this.input.value = "";
   }
 
   address(person: { id: number; name: string } | null): void {

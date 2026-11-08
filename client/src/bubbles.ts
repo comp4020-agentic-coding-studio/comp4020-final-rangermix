@@ -94,4 +94,10 @@ export class Bubbles {
       }
     }
   }
+
+  /** The visit is over: what it showed goes, so nobody after sees it (slice 20's review, finding 2). */
+  dispose(): void {
+    for (const el of this.shown.values()) el.remove();
+    this.shown.clear();
+  }
 }

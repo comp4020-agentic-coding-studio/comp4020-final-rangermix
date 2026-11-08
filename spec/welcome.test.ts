@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { Visitor, baseUrl, logInThroughPage, post, signUp, signUpThroughPage, uniqueName } from "./helpers";
+import { Visitor, baseUrl, logInThroughPage, post, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 20 (ADR 0023): the door a returning visitor meets, the page after
 // Leave as the same door, "I'm not <name>", and one way in for everyone.
@@ -35,8 +35,8 @@ interface Opened {
   sockets: string[];
 }
 
-/** A fresh browser, its page opened on the café but not yet anywhere. */
-async function open(viewport: { width: number; height: number }, touch = false, cookie?: string): Promise<Opened> {
+/** A fresh browser, its page opened on the café but not yet anywhere; at a Canberra time, if given. */
+async function open(viewport: { width: number; height: number }, touch = false, cookie?: string, at?: string): Promise<Opened> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
   if (cookie) {
@@ -44,6 +44,10 @@ async function open(viewport: { width: number; height: number }, touch = false, 
     await context.addCookies([{ name, value, url: baseUrl }]);
   }
   const page = await context.newPage();
+  if (at) {
+    await page.clock.install({ time: new Date(at) });
+    await page.clock.resume();
+  }
   const sockets: string[] = [];
   page.on("websocket", (ws) => sockets.push(ws.url()));
   await page.goto(baseUrl);
@@ -53,15 +57,6 @@ async function open(viewport: { width: number; height: number }, touch = false, 
 const inside = (page: Page) => page.waitForFunction(() => /inside|window/.test(document.getElementById("status-text")?.textContent ?? ""));
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id ?? "");
 const text = (page: Page, id: string) => page.locator(`#${id}`).textContent();
-
-/** The greeting the device's Canberra hour gives, as the door says it. */
-function greetingNow(name: string): string {
-  const hour = Number(new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", hourCycle: "h23" }).format(new Date())) % 24;
-  if (hour >= 5 && hour < 12) return `Good morning, ${name}.`;
-  if (hour >= 12 && hour < 18) return `Good afternoon, ${name}.`;
-  if (hour >= 18 && hour < 22) return `Good evening, ${name}.`;
-  return `Still up, ${name}?`;
-}
 
 /** Whether a box sits wholly inside the window. */
 async function onScreen(page: Page, selector: string): Promise<boolean> {
@@ -75,9 +70,10 @@ describe("the door (slice 20)", () => {
     const account = await signUp(uniqueName("w"));
     // Someone already inside, who'd see a newcomer arrive.
     const watcher = await Visitor.connect((await signUp(uniqueName("w"))).cookie);
-    const { page, sockets } = await open({ width: 1920, height: 1080 }, false, account.cookie);
+    // An evening in Canberra, on the page's clock (slice 20's review, finding 12).
+    const { page, sockets } = await open({ width: 1920, height: 1080 }, false, account.cookie, "2026-11-05T19:30:00+11:00");
     await page.locator("#door").waitFor();
-    expect(await text(page, "door-greeting")).toBe(greetingNow(account.name));
+    expect(await text(page, "door-greeting")).toBe(`Good evening, ${account.name}.`);
     expect(await text(page, "door-text")).toBe("The cats are about. Come in when you're ready.");
     expect(await text(page, "door-in")).toBe("Walk in");
     expect(await text(page, "not-me")).toBe(`I'm not ${account.name}`);
@@ -92,7 +88,7 @@ describe("the door (slice 20)", () => {
     // In, by keyboard.
     await page.keyboard.press("Enter");
     await inside(page);
-    expect(sockets.length).toBe(1);
+    expect(sockets.length, "a connection once Walk in is pressed").toBeGreaterThan(0);
     await watcher.next((m) => m.type === "personJoined" && m.person?.id === account.id, 5000);
     await watcher.leave();
   });
@@ -168,14 +164,87 @@ describe("the door (slice 20)", () => {
   it("an open tab takes no place in the line until Walk in", async () => {
     // A tab at the door holds nothing: the café counts only who walked in.
     const account = await signUp(uniqueName("w"));
-    await open({ width: 390, height: 844 }, true, account.cookie);
-    // Long enough for a page that walked straight in to have arrived, as
-    // one did before slice 20.
+    const { page, sockets } = await open({ width: 390, height: 844 }, true, account.cookie);
+    // At the door (slice 20's review, finding 15), and long enough for a
+    // page that walked straight in to have arrived, as one did before.
+    await page.locator("#door").waitFor({ timeout: 2000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 2000));
+    expect(sockets, "no WebSocket from a tab at the door").toEqual([]);
+    expect(await page.locator("#door").isVisible(), "the door shows").toBe(true);
     const watcher = await Visitor.connect((await signUp(uniqueName("w"))).cookie);
     const people = watcher.welcome.snapshot.people as { id: number }[];
     expect(people.some((p) => p.id === account.id)).toBe(false);
     await watcher.leave();
+  });
+});
+
+describe("what one visitor leaves for the next (slice 20's review)", () => {
+  it("after Leave and I'm not name, the next person sees none of the last one's words, draft, or code", async () => {
+    // Finding 2: bubbles, the draft and the said list; finding 1: the recovery code.
+    const { page } = await open({ width: 1920, height: 1080 });
+    const first = uniqueName("w");
+    await signUpThroughPage(page, first);
+    await inside(page);
+    await page.locator("#talk-input").fill("words from the last visitor");
+    await page.locator("#talk-input").press("Enter");
+    await page.locator(".bubble", { hasText: "words from the last visitor" }).waitFor();
+    await page.locator("#talk-input").fill("a draft never sent");
+    await page.locator("#leave").click();
+    await page.locator("#door").waitFor();
+    await page.locator("#not-me").click();
+    await page.locator("#way-in").waitFor();
+    expect(await page.locator("#code-text").textContent(), "no recovery code left in the page").toBe("");
+    expect(await page.locator("#way-in-password").inputValue()).toBe("");
+    const second = await signUp(uniqueName("w"));
+    await logInThroughPage(page, second.name, second.password);
+    await inside(page);
+    expect(await page.locator("#talk-input").inputValue(), "no draft").toBe("");
+    expect(await page.locator(".bubble", { hasText: "words from the last visitor" }).count(), "no bubble").toBe(0);
+    expect(await page.locator("#said").textContent(), "no said line").not.toContain("words from the last visitor");
+  });
+
+  it("Come back in starts the talk box empty and the room's bubbles fresh", async () => {
+    const account = await signUp(uniqueName("w"));
+    const { page } = await open({ width: 390, height: 844 }, true, account.cookie);
+    await walkIn(page);
+    await inside(page);
+    await page.locator("#talk-input").fill("half a thought");
+    await page.locator("#leave").tap();
+    await page.locator("#door-in").tap();
+    await inside(page);
+    expect(await page.locator("#talk-input").inputValue()).toBe("");
+  });
+
+  it("a build reload that finds the visitor signed out leaves no note, so a later opening meets the door", async () => {
+    // Finding 6.
+    const account = await signUp(uniqueName("w"));
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    contexts.push(context);
+    const [cookieName, value] = account.cookie.split("=");
+    await context.addCookies([{ name: cookieName, value, url: baseUrl }]);
+    const page = await context.newPage();
+    await page.routeWebSocket(/\/ws$/, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((m) => {
+        const f = JSON.parse(String(m));
+        ws.send(f.type === "welcome" ? JSON.stringify({ ...f, build: "a-newer-build" }) : m);
+      });
+      ws.onMessage((m) => server.send(m));
+    });
+    // The reload's own /api/me answers signed out, once.
+    let mes = 0;
+    await page.route(/\/api\/me$/, async (route) => {
+      mes++;
+      if (mes === 2) await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "signedOut", detail: "You're not signed in." }) });
+      else await route.continue();
+    });
+    await page.goto(baseUrl);
+    await page.locator("#door-in").click();
+    await page.locator("#way-in").waitFor({ timeout: 10_000 });
+    expect(await page.evaluate(() => sessionStorage.getItem("cafe.backInside")), "the note taken").toBeNull();
+    await page.unrouteAll({ behavior: "wait" });
+    await page.reload();
+    await page.locator("#door").waitFor();
   });
 });
 

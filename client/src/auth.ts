@@ -31,17 +31,34 @@ export function showAuth(enter: (me: ApiMe) => void): void {
     focus?.focus();
   };
   const busy = (form: HTMLElement, on: boolean) => form.querySelectorAll("button").forEach((b) => (b.disabled = on));
+  /** Nothing of this visitor's way in stays in the page for the next (slice 20's review, findings 1 and 5). */
+  const forget = () => {
+    wayIn.reset();
+    recover.reset();
+    password.setAttribute("autocomplete", "current-password");
+    $("code-text").textContent = "";
+    $("copy-code").textContent = "Copy";
+    freeName = null;
+  };
   const done = (me: ApiMe) => {
     if (me.recoveryCode) showCode(me.recoveryCode, () => finish(me));
     else finish(me);
   };
   const finish = (me: ApiMe) => {
+    forget();
     $("auth").hidden = true;
     enter(me);
   };
+  /** A name a check found free in this showing: asked again, it's free still (slice 20's review, finding 8). */
+  let freeName: string | null = null;
+  const showLook = () => {
+    // A password manager offers a new password for a sign-up (finding 11).
+    password.setAttribute("autocomplete", "new-password");
+    $("look-heading").textContent = `Choose your look, ${name.value}`;
+    show("look-step", look.querySelector<HTMLInputElement>("input[name=avatar]:checked"));
+  };
 
-  wayIn.reset();
-  recover.reset();
+  forget();
   buildLookPicker();
   $("door").hidden = true;
   $("auth").hidden = false;
@@ -51,9 +68,15 @@ export function showAuth(enter: (me: ApiMe) => void): void {
     event.preventDefault();
     const submitter = (event as SubmitEvent).submitter ?? document.activeElement;
     const isNew = submitter === $("im-new");
-    if (isNew && (password.value.length < 8 || password.value.length > 128)) {
+    // Characters, as the server counts them, not UTF-16 units (finding 10).
+    const length = [...password.value].length;
+    if (isNew && (length < 8 || length > 128)) {
       error.textContent = "A password is 8 to 128 characters.";
       password.focus();
+      return;
+    }
+    if (isNew && freeName === name.value) {
+      showLook();
       return;
     }
     busy(wayIn, true);
@@ -66,14 +89,17 @@ export function showAuth(enter: (me: ApiMe) => void): void {
         name.focus();
         return;
       }
-      $("look-heading").textContent = `Choose your look, ${name.value}`;
-      show("look-step", look.querySelector<HTMLInputElement>("input[name=avatar]:checked"));
+      freeName = name.value;
+      showLook();
       return;
     }
     const answer = await api.logIn({ name: name.value, password: password.value });
     busy(wayIn, false);
     if (!answer.ok) {
-      error.textContent = answer.error.error === "badLogin" ? `${answer.error.detail} New here? Press I'm new.` : answer.error.detail;
+      const wrong = answer.error.error === "badLogin";
+      error.textContent = wrong ? `${answer.error.detail} New here? Press I'm new.` : answer.error.detail;
+      // The focus where they'd go next, never fallen to the page (finding 9).
+      (wrong ? password : $("log-in")).focus();
       return;
     }
     done(answer.value);
@@ -87,17 +113,24 @@ export function showAuth(enter: (me: ApiMe) => void): void {
     const answer = await api.signUp({ name: name.value, password: password.value, look: { avatar: chosen("avatar"), colour: chosen("colour") } });
     busy(look, false);
     if (!answer.ok) {
-      // A name taken while they chose a look, or one refused after all:
-      // back to the name, to say why. Anything else is said here.
-      if (answer.error.error === "nameTaken" || answer.error.error === "badInput") {
-        show("way-in", name);
-      }
+      // A name taken while they chose a look, or the name or password
+      // refused after all: back to the field to put right, to say why.
+      // Anything else is said here, the focus back on Walk in (finding 9).
+      const about = answer.error.error === "nameTaken" ? name : answer.error.error === "badInput" ? (/password/i.test(answer.error.detail) ? password : name) : null;
+      if (about) {
+        freeName = null;
+        password.setAttribute("autocomplete", "current-password");
+        show("way-in", about);
+      } else $("sign-up").focus();
       error.textContent = answer.error.detail;
       return;
     }
     done(answer.value);
   };
-  $("look-back").onclick = () => show("way-in", $("im-new"));
+  $("look-back").onclick = () => {
+    password.setAttribute("autocomplete", "current-password");
+    show("way-in", $("im-new"));
+  };
 
   $("show-recover").onclick = () => {
     recover.querySelector<HTMLInputElement>("input[name=name]")!.value = name.value;
@@ -113,6 +146,7 @@ export function showAuth(enter: (me: ApiMe) => void): void {
     busy(recover, false);
     if (!answer.ok) {
       error.textContent = answer.error.detail;
+      recover.querySelector<HTMLInputElement>(answer.error.error === "badRecovery" ? "input[name=code]" : "button[type=submit]")?.focus();
       return;
     }
     done(answer.value);

@@ -63,8 +63,10 @@ export function showDoor(me: ApiMe, mood: DoorMood, ways: DoorWays, hour = canbe
     const answer = await api.logOut();
     inButton.disabled = notMe.disabled = false;
     if (!answer.ok) {
-      // Still signed in: say so, rather than seem to have signed out.
+      // Still signed in: say so, rather than seem to have signed out, the
+      // focus back on the button (slice 20's review, finding 9).
       error.textContent = answer.error.detail;
+      notMe.focus();
       return;
     }
     door.hidden = true;

@@ -32,6 +32,13 @@ describe("the talk box", () => {
     expect(second.sent).toEqual([{ type: "say", text: "hello again", to: null }]);
   });
 
+  it("lets go of an unsent draft when the visit ends (slice 20's review, finding 2)", () => {
+    const talk = new Talk(fakeCafe(), form, input, chip, vi.fn());
+    input.value = "half a thought";
+    talk.dispose();
+    expect(input.value).toBe("");
+  });
+
   it("counts emoji as one character each, up to 100", () => {
     const cafe = fakeCafe();
     const refuse = vi.fn();
