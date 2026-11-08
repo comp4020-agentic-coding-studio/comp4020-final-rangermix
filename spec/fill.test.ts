@@ -194,6 +194,47 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     }, shot.toString("base64"));
   }
 
+  /**
+   * The edge points looked at, 2 px in, and those where neither the room's
+   * canvas nor the street's draws anything: there the page shows through.
+   * Read from the canvases' own alpha, not a colour, so nothing drawn can
+   * pass for the page by sharing its colour. The colour list this replaced
+   * held the dark page's #1e1e2e, which Burakku's coat uses by day and the
+   * street by night (palettes.json): Burakku at the phone screen's edge
+   * failed it twice in CI while slice 17 part 2 merged, in a light page
+   * whose own background is #eff1f5. Points under something floating are
+   * skipped, as in `edges`.
+   */
+  async function bareEdges(page: Page): Promise<{ looked: number; bare: string[] }> {
+    return page.evaluate(() => {
+      const canvases = ["room", "street"].map((id) => document.getElementById(id) as HTMLCanvasElement);
+      const drawn = (x: number, y: number) =>
+        canvases.some((c) => {
+          if (getComputedStyle(c).visibility === "hidden") return false;
+          const r = c.getBoundingClientRect();
+          if (x < r.left || x >= r.right || y < r.top || y >= r.bottom) return false;
+          const [cx, cy] = [Math.floor(((x - r.left) * c.width) / r.width), Math.floor(((y - r.top) * c.height) / r.height)];
+          return c.getContext("2d")!.getImageData(cx, cy, 1, 1).data[3] > 0;
+        });
+      const over = [...document.querySelectorAll(".status > *, .talk, .panel, .menu, .bubble")]
+        .filter((e) => getComputedStyle(e).visibility !== "hidden")
+        .map((e) => e.getBoundingClientRect())
+        .filter((r) => r.width > 0 && r.height > 0);
+      const free = (x: number, y: number) => !over.some((r) => x > r.left - 24 && x < r.right + 24 && y > r.top - 24 && y < r.bottom + 24);
+      const [w, h] = [innerWidth, innerHeight];
+      const bare: string[] = [];
+      let looked = 0;
+      const look = (x: number, y: number) => {
+        if (!free(x, y)) return;
+        looked++;
+        if (!drawn(x + 0.5, y + 0.5)) bare.push(`(${x}, ${y})`);
+      };
+      for (let x = 2; x < w - 2; x += 40) for (const y of [2, h - 3]) look(x, y);
+      for (let y = 2; y < h - 2; y += 40) for (const x of [2, w - 3]) look(x, y);
+      return { looked, bare };
+    });
+  }
+
   const streetColours = (light: "day" | "night") => (palettes[light] as unknown as { street: string[] }).street.map((c) => c.toLowerCase());
 
   it("carries the street to every edge of the window behind the room, by day and by night, with none of the page showing", async () => {
@@ -236,7 +277,6 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     // aside for the sample, so the sample is the screen's own edges (slice
     // 16's review, finding 6). Nothing of the page may show there.
     const unfloat = await page.addStyleTag({ content: ".status, .talk { visibility: hidden !important; }" });
-    const page_ = ["#eff1f5", "#1e1e2e"];
     const street = streetColours("day");
     let seen = 0;
     for (const keys of [["ArrowLeft", 13], ["ArrowRight", 13], ["ArrowUp", 13], ["ArrowDown", 13]] as const) {
@@ -246,12 +286,16 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       // The keyboard's focus ring runs round the room, along the screen's
       // edges here: it's put away for the sample, the view where it was.
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-      for (const p of await edges(page)) {
-        seen++;
-        expect(page_, `panned ${keys[0]}: the edge at ${p.at} is the room or the street, not the page`).not.toContain(p.colour);
-      }
+      const { looked, bare } = await bareEdges(page);
+      seen += looked;
+      expect(bare, `panned ${keys[0]}: edge points where the page shows, not the room or the street`).toEqual([]);
     }
     expect(seen, "edge points looked at").toBeGreaterThan(80);
+    // The check sees the page when it does show: with the street's canvas
+    // hidden, the page shows past the room's corners, and the check says so.
+    const noStreet = await page.addStyleTag({ content: "#street { visibility: hidden !important; }" });
+    expect((await bareEdges(page)).bare.length, "with the street's canvas hidden, the page shows and the check sees it").toBeGreaterThan(10);
+    await noStreet.evaluate((el) => (el as Element).remove());
     // Above and below the room the screen is the street's.
     const shot = await edges(page);
     expect(shot.some((p) => street.includes(p.colour)), "the street shows past the room").toBe(true);

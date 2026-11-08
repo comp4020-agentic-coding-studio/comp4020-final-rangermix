@@ -99,8 +99,9 @@ binary tests on mocked time, and markers will walk it themselves.
 
 ## Still to do
 
-- ~~The merge (the user's), the deploy, then the seed and a restart on
-  Fly.~~ Done 2026-11-08: "Checked on the live café", above.
+- The user's judgement of the README's "For markers" against what's
+  built, the slice's one line still open. Part 2 added Lap time to step 3
+  and Play room to step 8.
 - ~~Part 2, the furniture sets, after slice 16.~~ Built 2026-11-09: below.
 
 ## Part 2: the furniture sets (2026-11-09, session `cb735744`)
@@ -170,3 +171,17 @@ by `screens/slice-17-sets/live.mjs`: `demo1` at 1920×1080 by mouse,
   leaves where it is ([screen](screens/slice-17-sets/live-desktop-lap-time.png)).
 - `demo2` laid out Opening day by touch, and `demo1`'s page said so; the
   room was left as it opens. Both accounts left.
+
+### After the live check (2026-11-09, session `09a2c48d`)
+
+The record's push (`8a59266`, docs only) failed CI on slice 16's edge
+check again, so `main` was red and Fly kept `0085c3c`'s build. It wasn't
+timing: the check failed on `#1e1e2e`, the dark page's colour, which is
+Burakku's coat at the phone screen's edge in a light page. Fixed in the
+check, in `dd76464` ([edge-check-flake.md](edge-check-flake.md)).
+
+Slice 14's panel check, which failed once on the merge, is outside this
+slice and is left as it is. Its cause was found without changing it: the
+chalkboard, put at the stage's foot, keeps its foot, so it rises 22 px when
+the board gets its first line between the check's two reads, and the
+check compares top-left corners.

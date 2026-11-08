@@ -3027,3 +3027,49 @@ part 2's merge, is [`16bdb1e`](https://github.com/comp4020-agentic-coding-studio
   on an unmerged branch; three worktrees remain.
 
 The check on the workflow's progress (06:55) is filed here.
+
+### 27. The furniture sets, finished
+
+*Session `09a2c48d`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-09 06:53:57 AEDT*
+
+> continue the work in the furniture set session
+
+**Result.** The furniture sets' session (`cb735744`) had run out of budget
+mid-fix, after its live record's push turned `main` red. That fix was
+finished, tested and pushed.
+- **The edge check** ([`dd76464`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dd76464)):
+  slice 16's phone-pan check failed on `#1e1e2e`, the dark page's colour,
+  in a light page whose own colour is `#eff1f5`. By day the café draws
+  `#1e1e2e` only as Burakku's coat, and the phone's room is wider than the
+  screen, so Burakku at its edge failed the check. It wasn't timing, as
+  the session had first read it. A probe on a local café caught the old
+  rule flagging a point on the right edge where the canvases drew. The
+  check now reads the canvases' alpha, and fails with the street's canvas
+  hidden. The whole spec passed on a fresh café, 124 tests
+  ([notes](notes/edge-check-flake.md)).
+- **Then drifted** onto slice 14's panel check, which had failed once on
+  the merge. Its cause was found: the chalkboard keeps its foot, so it
+  rises 22 px when the board gets its first line between the check's two
+  reads. The change wasn't committed.
+
+*Sent 2026-11-09 07:39:34 AEDT*
+
+> stop and rethink what you're doing. the goal is to finish the furniture set slice. it looks like you have drifted from the goal.
+
+**Result.** The panel check was set aside, and the slice's own spec and
+plan were read for what was left.
+- **Part 1's live record was stranded** on `worktree-slice-17-live`: the
+  demo accounts seeded on Fly and checked live on 8 November. It was
+  brought onto `main`
+  ([`7f5decc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7f5decc),
+  [`ac89527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ac89527)).
+  With it, the spec's status and the root plan's row say both parts are
+  live. Part 1 is dated 8 November, not 6 November as the plan had it.
+- **Part 2's plan:** its execution log has the deploy's two red runs on
+  older checks, and the edge check fixed in the check
+  ([`0efcb5f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0efcb5f)).
+- **Left for the user:** the slice's one open line, the README's "For
+  markers" against what's built. Part 2 put Lap time in step 3 and Play
+  room in step 8.

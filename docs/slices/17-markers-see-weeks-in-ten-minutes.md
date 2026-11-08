@@ -4,8 +4,12 @@
   major and 9 minor findings, each fixed or answered:
   [findings](../notes/reviews/slice-17-findings.md)), merged and deployed,
   the demo accounts seeded on Fly and checked live
-  ([notes](../notes/slice-17-demo.md)). Part 2, the furniture sets, built
-  2026-11-09 ([plan](../notes/plan-slice-17-sets.md)). Approved 2026-11-06 by the user's answers to its questions
+  ([notes](../notes/slice-17-demo.md)). Part 2, the furniture sets, live
+  2026-11-09: built and reviewed (2 major, 5 minor and 3 nits, all fixed:
+  [findings](../notes/reviews/slice-17-sets-findings.md)), merged,
+  deployed and checked live with the demo accounts. Its one line still
+  open is the user's: the README's "For markers" against what's built.
+  Approved 2026-11-06 by the user's answers to its questions
   (below). Built in two parts: **part 1**, everything but the furniture
   sets, alongside slice 16; **part 2**, the three furniture sets, after
   slice 16, since it changes the floor they're laid out on. What's still
