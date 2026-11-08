@@ -2,7 +2,7 @@
 //! furniture (and, from Task 7, the cats). A file that doesn't parse or
 //! doesn't make sense stops the server at startup.
 use crate::cats::CatDef;
-use crate::room::{FurnitureFile, Room, RoomFile};
+use crate::room::{FurnitureFile, Layout, LayoutFile, Room, RoomFile, Saved};
 use crate::tuning::Tuning;
 use anyhow::Context;
 use serde::de::DeserializeOwned;
@@ -13,6 +13,9 @@ pub struct Content {
     pub tuning: Tuning,
     pub room: Room,
     pub cats: Vec<CatDef>,
+    /// The furniture sets a demo account lays out, in the bar's order
+    /// (slice 17, part 2).
+    pub layouts: Vec<Layout>,
 }
 
 pub fn load(dir: &Path) -> anyhow::Result<Content> {
@@ -21,7 +24,65 @@ pub fn load(dir: &Path) -> anyhow::Result<Content> {
     let room_file: RoomFile = read_toml(&dir.join("room.toml"))?;
     let room = Room::build(&room_file, &kinds.kinds)?;
     let cats = load_cats(&dir.join("cats"))?;
-    Ok(Content { tuning, room, cats })
+    let layouts = load_layouts(&dir.join("layouts"), &room, tuning.furniture_max)?;
+    Ok(Content {
+        tuning,
+        room,
+        cats,
+        layouts,
+    })
+}
+
+/// Every set in `content/layouts/`, each checked against every placement
+/// rule on `room`, in their `order`; none if there's no such folder. A set
+/// that breaks a rule stops the café, naming its file.
+fn load_layouts(dir: &Path, room: &Room, cap: usize) -> anyhow::Result<Vec<Layout>> {
+    if !dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut files: Vec<_> = std::fs::read_dir(dir)
+        .with_context(|| format!("reading {}", dir.display()))?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .collect();
+    files.sort();
+    let mut layouts: Vec<Layout> = Vec::new();
+    for file in files {
+        let set: LayoutFile = read_toml(&file)?;
+        let pieces: Vec<Saved> = set
+            .furniture
+            .iter()
+            .map(|p| Saved {
+                kind: p.kind.clone(),
+                x: p.x,
+                y: p.y,
+                toppled: false,
+            })
+            .collect();
+        room.check_layout(&pieces, cap)
+            .map_err(|why| anyhow::anyhow!("{}: {why}", file.display()))?;
+        let id = file.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
+        anyhow::ensure!(
+            !layouts.iter().any(|l| l.order == set.order),
+            "{}: another set has order {} on the demo bar",
+            file.display(),
+            set.order
+        );
+        anyhow::ensure!(
+            !layouts.iter().any(|l| l.name == set.name),
+            "{}: another set is called {:?}",
+            file.display(),
+            set.name
+        );
+        layouts.push(Layout {
+            id,
+            name: set.name,
+            order: set.order,
+            pieces,
+        });
+    }
+    layouts.sort_by_key(|l| l.order);
+    Ok(layouts)
 }
 
 /// Every cat file, in file-name order, each validated; ids must be unique.
@@ -468,6 +529,156 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The three furniture sets a demo account lays out (slice 17, part 2),
+    /// in the bar's order, each named for the bar.
+    #[test]
+    fn the_three_sets_load_in_order() {
+        let c = repo_content();
+        let sets: Vec<(&str, &str)> = c.layouts.iter().map(|l| (l.id.as_str(), l.name.as_str())).collect();
+        assert_eq!(
+            sets,
+            [("opening_day", "Opening day"), ("lap_time", "Lap time"), ("play_room", "Play room")]
+        );
+    }
+
+    /// Opening day is the starting room: laying it out puts the café back
+    /// as room.toml opens it, so the two can't drift apart.
+    #[test]
+    fn opening_day_is_room_toml_as_it_lays_out() {
+        let c = repo_content();
+        let opening = c.layouts.iter().find(|l| l.id == "opening_day").expect("opening day");
+        let mut set = opening.pieces.clone();
+        let mut room = c.room.arrangement();
+        set.sort();
+        room.sort();
+        assert_eq!(set, room);
+    }
+
+    /// Every set passes every placement rule on the room as it is (the
+    /// spec's "Each passes every placement rule").
+    #[test]
+    fn every_set_passes_every_placement_rule() {
+        let c = repo_content();
+        assert_eq!(c.layouts.len(), 3);
+        for l in &c.layouts {
+            c.room
+                .check_layout(&l.pieces, c.tuning.furniture_max)
+                .unwrap_or_else(|why| panic!("{}: {why}", l.id));
+            let mut room = c.room.clone();
+            room.restore(&l.pieces);
+            assert_eq!(room.arrangement().len(), l.pieces.len(), "{}: every piece fits", l.id);
+        }
+    }
+
+    /// Lap time gathers the seats round the rug by the cat bed, and Play
+    /// room has what the spec puts out in the open.
+    #[test]
+    fn each_set_holds_what_it_says() {
+        let c = repo_content();
+        let set = |id: &str| c.layouts.iter().find(|l| l.id == id).unwrap().pieces.clone();
+        let lap = set("lap_time");
+        let rug = lap.iter().find(|p| p.kind == "rug").expect("a rug");
+        let near_rug = |p: &crate::room::Saved| {
+            let k = &c.room.kinds[&p.kind];
+            // Within a tile of the rug's edge.
+            p.x + k.w + 1 > rug.x && p.x < rug.x + 4 + 1 && p.y + k.h + 1 > rug.y && p.y < rug.y + 3 + 1
+        };
+        for kind in ["sofa", "chair", "cushion", "cat_bed"] {
+            assert!(
+                lap.iter().filter(|p| p.kind == kind).all(near_rug),
+                "lap time: every {kind} by the rug"
+            );
+        }
+        let play = set("play_room");
+        for kind in ["cat_tower", "scratching_post", "box", "toys", "lamp", "plant"] {
+            assert!(play.iter().any(|p| p.kind == kind), "play room: a {kind}");
+        }
+    }
+
+    fn write_set(dir: &Path, name: &str, body: &str) {
+        let layouts = dir.join("layouts");
+        std::fs::create_dir_all(&layouts).unwrap();
+        std::fs::write(layouts.join(name), body).unwrap();
+    }
+
+    /// A copy of the repo's content in a temporary folder, to break.
+    fn content_copy() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let from = Path::new(env!("CARGO_MANIFEST_DIR")).join("../content");
+        for f in ["tuning.toml", "furniture.toml", "room.toml"] {
+            std::fs::copy(from.join(f), dir.path().join(f)).unwrap();
+        }
+        let cats = dir.path().join("cats");
+        std::fs::create_dir_all(&cats).unwrap();
+        for e in std::fs::read_dir(from.join("cats")).unwrap() {
+            let e = e.unwrap();
+            std::fs::copy(e.path(), cats.join(e.file_name())).unwrap();
+        }
+        for build in ["round", "slim", "striped"] {
+            let _ = std::fs::create_dir_all(dir.path().join("sprites/png/cat").join(build));
+        }
+        dir
+    }
+
+    /// A set that breaks a rule stops the café at start, naming its file,
+    /// as a bad cat file does.
+    #[test]
+    fn a_set_breaking_a_rule_stops_the_cafe_naming_its_file() {
+        let piece = |kind: &str, x: u8, y: u8| format!("[[furniture]]\nkind = \"{kind}\"\nx = {x}\ny = {y}\n\n");
+        let cases: Vec<(&str, String, &str)> = vec![
+            ("walkway", piece("chair", 7, 2), "door"),
+            ("overlap", piece("chair", 3, 3) + &piece("box", 3, 3), "already"),
+            // A wall of tables across the floor at row 6 cuts the rows below off.
+            (
+                "cut_off",
+                (0..6).map(|i| piece("table", i * 2, 6)).collect::<String>() + &piece("chair", 12, 6),
+                "cut",
+            ),
+            // A cat bed boxed in by chairs in the corner: nobody could pet a cat on it.
+            (
+                "boxed_in",
+                piece("cat_bed", 0, 12) + &piece("chair", 1, 12) + &piece("chair", 0, 11) + &piece("chair", 1, 11),
+                "reached",
+            ),
+            ("unknown", piece("piano", 3, 3), "piano"),
+            ("bowls", piece("bowls", 3, 3), "bowls"),
+            ("off_floor", piece("sofa", 11, 3), "floor"),
+            (
+                "too_many",
+                (0..31)
+                    .map(|i| piece("cushion", (i % 13) as u8, 4 + (i / 13) as u8))
+                    .collect::<String>(),
+                "30",
+            ),
+        ];
+        for (name, pieces, says) in cases {
+            let dir = content_copy();
+            write_set(
+                dir.path(),
+                &format!("{name}.toml"),
+                &format!("name = \"{name}\"\norder = 1\n\n{pieces}"),
+            );
+            let err = match load(dir.path()) {
+                Ok(_) => panic!("{name}: loaded"),
+                Err(e) => format!("{e:#}"),
+            };
+            assert!(err.contains(&format!("{name}.toml")), "{name}: {err}");
+            assert!(err.contains(says), "{name}: {err}");
+        }
+    }
+
+    /// Two sets may not share an order or a name, and a café needs no sets
+    /// to run: a content folder without layouts/ has none.
+    #[test]
+    fn sets_are_optional_but_never_ambiguous() {
+        let dir = content_copy();
+        assert!(load(dir.path()).expect("no layouts/ loads").layouts.is_empty());
+        write_set(dir.path(), "a.toml", "name = \"A\"\norder = 1\n");
+        write_set(dir.path(), "b.toml", "name = \"B\"\norder = 1\n");
+        let err = format!("{:#}", load(dir.path()).err().expect("two sets in one place"));
+        assert!(err.contains("order"), "{err}");
     }
 
     /// The room at an angle draws each piece as a block this tall until its

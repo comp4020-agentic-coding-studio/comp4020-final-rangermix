@@ -186,6 +186,8 @@ pub struct World {
     /// Trust a cat changed while a replay held the store back: written with
     /// the replay's end save (slice 17's review, finding 3).
     unsaved_trust: Vec<(String, u32)>,
+    /// The furniture sets a demo account lays out (slice 17, part 2).
+    layouts: Vec<crate::room::Layout>,
 }
 
 impl World {
@@ -200,7 +202,13 @@ impl World {
         build: String,
         now: u64,
     ) -> World {
-        let Content { tuning, room, cats } = content;
+        let Content {
+            tuning,
+            room,
+            cats,
+            layouts,
+            ..
+        } = content;
         let mut world = World {
             room,
             tuning,
@@ -232,6 +240,7 @@ impl World {
             jump: None,
             last_jump: None,
             unsaved_trust: Vec::new(),
+            layouts,
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {

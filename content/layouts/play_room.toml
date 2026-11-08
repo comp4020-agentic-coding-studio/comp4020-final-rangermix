@@ -1,0 +1,80 @@
+# Play room (slice 17, part 2): the cat tower, the scratching post, the box
+# and the toys out in the open, and the lamp and the plants where a cat can
+# knock them over. The seats go to the edges, out of the way.
+name = "Play room"
+order = 3
+
+[[furniture]]
+kind = "window_seat"
+x = 2
+y = 1
+
+[[furniture]]
+kind = "cat_tower"
+x = 4
+y = 5
+
+[[furniture]]
+kind = "scratching_post"
+x = 8
+y = 5
+
+[[furniture]]
+kind = "box"
+x = 2
+y = 8
+
+[[furniture]]
+kind = "rug"
+x = 5
+y = 8
+
+[[furniture]]
+kind = "toys"
+x = 6
+y = 9
+
+[[furniture]]
+kind = "lamp"
+x = 9
+y = 7
+
+[[furniture]]
+kind = "plant"
+x = 3
+y = 4
+
+[[furniture]]
+kind = "plant"
+x = 9
+y = 3
+
+[[furniture]]
+kind = "plant"
+x = 2
+y = 11
+
+[[furniture]]
+kind = "cushion"
+x = 7
+y = 10
+
+[[furniture]]
+kind = "cat_bed"
+x = 0
+y = 6
+
+[[furniture]]
+kind = "sofa"
+x = 0
+y = 12
+
+[[furniture]]
+kind = "chair"
+x = 12
+y = 4
+
+[[furniture]]
+kind = "chair"
+x = 12
+y = 11
