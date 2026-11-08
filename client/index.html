@@ -189,10 +189,18 @@
       <button type="button" id="im-here" class="primary">I'm here</button>
     </div>
 
-    <section id="left-cafe" class="left-cafe" hidden>
-      <p id="left-text">You've left the café. The cats will remember you.</p>
-      <button type="button" id="come-back" class="primary">Come back in</button>
-    </section>
+    <!-- The door (slice 20): a returning visitor, greeted by name, joins
+         the café only at Walk in; after Leave, the same door says hi. -->
+    <main id="door" class="door" hidden>
+      <div class="card door-card">
+        <canvas id="door-avatar" class="door-avatar" width="32" height="32" aria-hidden="true"></canvas>
+        <h1 id="door-greeting"></h1>
+        <p id="door-text" class="lede"></p>
+        <button type="button" id="door-in" class="primary">Walk in</button>
+        <button type="button" id="not-me" class="link"></button>
+        <p id="door-error" class="error" role="alert"></p>
+      </div>
+    </main>
 
     <div id="announcer" class="sr-only" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>

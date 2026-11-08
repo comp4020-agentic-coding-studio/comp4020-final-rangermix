@@ -3,6 +3,7 @@ import { announce } from "./announce";
 import * as api from "./api";
 import { type ArmsBar, showArms } from "./arms";
 import { showAuth } from "./auth";
+import { showDoor } from "./door";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { DemoBar } from "./demoBar";
@@ -27,9 +28,14 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getEl
 
 async function start(): Promise<void> {
   const me = await api.me();
-  if (me.ok) enter(me.value);
+  // Signed in, the door greets you, and nothing joins the café until Walk
+  // in (slice 20).
+  if (me.ok) showDoor(me.value, { kind: "arrive" }, doorWays(me.value));
   else showAuth(enter);
 }
+
+/** The door's two ways: in, or signed out to the way in for someone else (slice 20). */
+const doorWays = (me: ApiMe) => ({ enter: () => enter(me), signedOut: () => showAuth(enter) });
 
 /**
  * A short note over the room, for refusals ("Mochi moved away"), at the
@@ -46,7 +52,7 @@ function toast(overlay: HTMLElement, text: string): void {
 }
 
 function enter(me: ApiMe): void {
-  $("left-cafe").hidden = true;
+  $("door").hidden = true;
   $("cafe").hidden = false;
   const canvas = $<HTMLCanvasElement>("room");
   const overlay = $("overlay");
@@ -511,12 +517,9 @@ function enter(me: ApiMe): void {
     document.removeEventListener("keydown", drawerEscape);
     document.removeEventListener("visibilitychange", visibility);
   }
+  /** Back at the door, saying hi above why (slice 20). */
   function showLeft(text: string): void {
-    $("cafe").hidden = true;
-    $("left-text").textContent = text;
-    $("left-cafe").hidden = false;
-    $<HTMLButtonElement>("come-back").focus();
-    $("come-back").onclick = () => enter(me);
+    showDoor(me, { kind: "left", text }, doorWays(me));
   }
   $("leave").onclick = () => {
     cafe.leave();
