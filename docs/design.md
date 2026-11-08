@@ -762,6 +762,20 @@ and Burakku at 25.
   repo. *Why each their own:* pause and skip are personal, and a shared
   radio would need the server to keep its clock for no gain in a room of
   six.
+- **The guide** (decided 2026-11-09,
+  [slice 21](slices/21-told-how-the-cafe-works.md)): a round ⓘ in the
+  status bar, just left of Add furniture, named "How the café works",
+  opens a short modal guide over the café: getting about (mouse and
+  keyboard at 960 px and wider, touch and the two layouts below), talking,
+  the cats, the café's clock, the panels, furniture, and for a demo
+  account the demo bar. It names no cat and quotes no number from
+  `content/`, so tuning or a new cat leaves it true. It opens as the café
+  is entered (not on the café's own reload for a new build) until "Got
+  it, no pop-up next time" is ticked, remembered per device under
+  `cafe.guide` and never reaching the server. Closing shrinks it into the
+  ⓘ (a fade alone with reduced motion), so a newcomer sees where it went.
+  *Why per device, not per account:* the demo accounts are shared, and
+  one marker's tick would hide it from the next.
 
 ## Logging
 
