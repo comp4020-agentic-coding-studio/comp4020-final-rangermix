@@ -2666,7 +2666,7 @@ live.
 
 > yes, remove them all, then checkout main
 
-**Result.** Twelve of the thirteen extra worktrees and every local branch
+**Result.** Thirteen of the fourteen extra worktrees and every local branch
 but `main` are gone, and the main checkout is on `main`.
 - **Removed:** the worktrees in `/tmp` and in `.claude/worktrees/`, the
   two studies' uncommitted copies with them, and 29 local branches. All
