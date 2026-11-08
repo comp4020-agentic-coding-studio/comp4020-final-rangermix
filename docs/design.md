@@ -845,13 +845,14 @@ and Burakku at 25.
   a new chalkboard line on another visitor's board within a second;
   a stop and a start of the container, which replays the gap (by the
   restart's own wake-up line) and keeps the furniture, trust and chalkboard
-  as they were (CI keeps `/data` on a Docker volume and gives the spec the
-  commands as `APP_RESTART` and `APP_LOGS`; elsewhere it's skipped); and,
-  on a café seeded with `cafe demo seed` (CI seeds the volume before the
+  as they were (`pnpm check` keeps the data on a Docker volume, or in a
+  fresh directory where there's no Docker, and gives the spec the commands
+  as `APP_RESTART` and `APP_LOGS`; elsewhere it's skipped); and,
+  on a café seeded with `cafe demo seed` (`pnpm check` seeds it before the
   app starts and gives the spec `APP_DEMO_PASSWORD`; elsewhere it's
   skipped), only a demo account moves the clock, two pages get the new
   hour within a second of each other, and bots fill the café so the next
-  visitor waits at the window (`spec/demo.test.ts`, slice 17). After the spec, CI checks the app's own log lines: every
+  visitor waits at the window (`spec/demo.test.ts`, slice 17). After the spec, `pnpm check` checks the app's own log lines: every
   line has a time and a target, every start logs its wake-up, and none holds
   anything said, or the demo accounts' password.
 - **Browser checks** (Playwright, in `spec/browser.test.ts`): a keyboard-only
@@ -862,10 +863,16 @@ and Burakku at 25.
   at 1920×1080 and moves the café on by a typed time while the room's light
   follows the server's clock with the device's twelve hours out, and demo2
   adds and removes a bot by touch at 390×844, Escape closing its group,
-  through a resize (slice 17). CI installs Chromium for them, and spec files run one at a
+  through a resize (slice 17). `pnpm check` installs Chromium for them, and spec files run one at a
   time, since they share one café that seats six.
 - **CI:** a Rust job (format, lint, `cargo test`, type drift) beside the
   existing check job, and the deploy waits for both.
+  `pnpm check` is one script, `scripts/check.sh`, and CI runs its two halves
+  (`pnpm check web`, `scripts/check.sh rust`), so what passes locally is what
+  CI checks: it builds and starts its own fresh copy of the app (the image
+  under Docker, as CI does, or the release binary where there's no Docker),
+  never one already running, and `pnpm test` is the spec alone against
+  `APP_URL` (`spec/check-alignment.test.ts`).
 - **Enforced and judged.** Enforced by `spec/`: six inside and the line,
   real-time, vanishing bubbles, text limits, accounts and recovery, the keyboard
   path at both sizes. Enforced by `cargo test`: the cats' characters, trust

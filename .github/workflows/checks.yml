@@ -15,8 +15,8 @@ concurrency:
 
 jobs:
   check:
-    # Runs once the repo is public; until then `pnpm check` is the same
-    # sensors, locally.
+    # Runs once the repo is public; `pnpm check` runs the same checks
+    # locally, from the same script.
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -30,44 +30,15 @@ jobs:
         with:
           cache: true
       - run: pnpm install --frozen-lockfile
-      - name: Install Chromium for the spec's browser checks
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Build and start the app
-        # the same image Fly deploys, with a fresh Docker volume at /data in
-        # place of Fly's; a volume, not a tmpfs, so the spec's stop and start
-        # of the container keeps the database, as Fly's volume does
-        run: |
-          docker build -t app .
-          # the demo accounts markers use (slice 17), seeded by the operator's
-          # own command on the volume before the café starts
-          docker run --rm -e CAFE_DEMO_PASSWORD=catppuccino -v app-data:/data app /app/cafe demo seed
-          docker run -d --init --name app -p 8080:8080 -e PORT=8080 -v app-data:/data app
-      - name: Run the spec
-        run: pnpm check
+      - name: Check it as `pnpm check` does
+        # scripts/check.sh's web half: the TypeScript, the client, the spec
+        # against a fresh copy of the app built from the Dockerfile Fly
+        # deploys, the app's own log lines and the process evidence. The
+        # same script runs locally, so the two can't drift
+        # (spec/check-alignment.test.ts).
+        run: pnpm check web
         env:
-          APP_URL: http://localhost:8080
-          # spec/demo.test.ts logs in as demo1 (slice 17)
-          APP_DEMO_PASSWORD: catppuccino
-          # spec/restart.test.ts stops the app, lets it sleep, starts it again,
-          # and reads the restart's own wake-up line (slice 01)
-          APP_RESTART: docker stop app && sleep 30 && docker start app
-          APP_LOGS: docker logs app 2>&1
-      - name: Check the app's own log lines
-        # after the spec's visitors have been and gone, across both of the
-        # app's starts: every line says when, what and who, every start logs
-        # its wake-up on the wall clock as Fly runs it (slice 08), and none
-        # holds what the spec said in a bubble or its password (AGENTS.md:
-        # never log what anyone says)
-        run: docker logs app 2>&1 | node scripts/check-logs.ts --wall "hello by keyboard" "hello there" "remember me?" "can I come in?" "correct horse" "catppuccino"
-      - name: Show the app's output
-        # what the container printed, so a crash or slow boot is visible
-        if: ${{ failure() }}
-        run: docker logs app
-      - name: Check the process evidence
-        # skipped in the template repo itself, where PROCESS.md is still the
-        # boilerplate every student replaces
-        if: ${{ !github.event.repository.is_template }}
-        run: pnpm check:evidence
+          CHECK_RUNNER: docker
       - name: Scan for committed secrets
         # Pinned in both halves (action SHA and scanner image) because this
         # runs in every repo in the course. Bump between semesters.
@@ -98,11 +69,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Set up Rust
         run: rustup toolchain install stable --profile minimal --component rustfmt,clippy && rustup default stable
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
-      - name: The generated TypeScript matches the Rust types
-        run: git diff --exit-code -- client/src/protocol
+      - name: Check it as `pnpm check` does
+        # scripts/check.sh's rust half
+        run: bash scripts/check.sh rust
 
   deploy:
     needs: [check, rust]

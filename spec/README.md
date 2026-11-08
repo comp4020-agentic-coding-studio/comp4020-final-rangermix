@@ -16,15 +16,20 @@ contract.
   it however you like, as long as it's there in full; the marker reads it there.
 
 Both run against the **running** app over HTTP, so they hold whatever it's built
-with. In CI that app is the image your `Dockerfile` builds, started with a
-throwaway `/data`, and a red run blocks the deploy. Locally, start the app
-however you run it and `pnpm check` finds it at `APP_URL` (default
-`http://localhost:8080`). Keep them; don't delete them.
+with. `pnpm check` (`scripts/check.sh`) builds and starts its own fresh copy of
+the app and runs them against it, the same way in CI and locally: the image
+your `Dockerfile` builds, with a throwaway `/data` on a Docker volume, or,
+where no Docker daemon answers, the release binary with a throwaway data
+directory (`scripts/check-app.sh`). In CI a red run blocks the deploy. CI's two
+jobs run the script's two halves, `pnpm check web` and `scripts/check.sh rust`,
+and `spec/check-alignment.test.ts` holds them to it. To run the spec alone
+against an app that's already running, use `pnpm test`, which finds it at
+`APP_URL` (default `http://localhost:8080`). Keep them; don't delete them.
 
 ## Your checks
 
 Everything else in `spec/` is yours to write. Any `spec/*.test.ts` runs with
-`pnpm check`, against the same running app. Some lines of a spec only a person
+`pnpm check`, against the same copy of the app. Some lines of a spec only a person
 can judge; those are left to the crit and the marker.
 
 At a crit, a green `check` job is half the shipped mark, but it's never the
@@ -34,13 +39,7 @@ spec.
 ## Stopping and starting the app
 
 `restart.test.ts` stops the app, lets it sleep, starts it again, and reads the
-restart's own wake-up line (slice 01), so it needs to be told how: CI sets
-`APP_RESTART` to `docker stop app && sleep 30 && docker start app` and
-`APP_LOGS` to `docker logs app 2>&1`, with `/data` on a Docker volume so the
-database survives. Without both it's skipped. To run it locally, start the
-image the same way and give it the commands:
-
-```bash
-docker run -d --init --name app -p 8080:8080 -e PORT=8080 -v app-data:/data app
-APP_RESTART="docker stop app && sleep 30 && docker start app" APP_LOGS="docker logs app 2>&1" pnpm check
-```
+restart's own wake-up line (slice 01), so it needs to be told how: `pnpm check`
+sets `APP_RESTART` to `bash scripts/check-app.sh restart` (a stop, 30 seconds,
+a start, keeping the data) and `APP_LOGS` to `bash scripts/check-app.sh logs`.
+Without both it's skipped, as it is under `pnpm test`.
