@@ -110,3 +110,20 @@ Where the build departed from this plan, as it happened.
   "inside", since the line shrinks to its longest word before a button
   wraps. On a phone it now keeps 6rem, so a button goes to the next row;
   held by a line in the phone check (the status on one line).
+- **The status line's check couldn't fail** (the review's finding 2; seen
+  here too, before the review came back). `#status-text` is a flex item,
+  so it's one box however its text wraps: the check counts its text's
+  line boxes through a `Range`, seen failing with the `min-width` taken
+  out ([`ff5a63c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ff5a63c)).
+- **The two blocked-storage checks meet the guide again on Come back
+  in**, as designed, and their clean-up couldn't press Leave behind it:
+  both close it, through `closeGuide` (the review's finding 1).
+- **The review** (14 findings: 1 major, 7 minor, 6 nits) was answered in
+  [`b9fb6d0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b9fb6d0),
+  each fixed test first but finding 10, answered
+  ([findings](reviews/slice-21-findings.md)). One fix departed from the
+  review's suggestion: holding the page still by hiding the root's
+  overflow laid layout A out afresh in a phone's browser (the status bar
+  24 px wide, 440 px above the screen, seen in a probe), so the guide
+  instead cancels a wheel or a swipe outside its words and puts back any
+  scroll that happens anyway.

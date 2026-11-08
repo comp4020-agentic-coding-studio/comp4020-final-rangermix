@@ -428,3 +428,75 @@ bar wraps.
   next time".
 - **Rules.** Only `cafe.guide` is stored, in this browser. There's no
   server or protocol change, and `client/src/protocol/` is untouched.
+
+## Answers
+
+By the builder, 2026-11-09. Each finding was fixed test first (the test
+seen failing, then the code) or is answered here. The fixes are in
+[`ff5a63c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ff5a63c)
+(findings 1 and 2, made before the review came back) and
+[`b9fb6d0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b9fb6d0)
+(the rest).
+
+1. **Fixed.** The music's blocked-storage check closes the guide again
+   after Come back in, and both blocked-storage checks now share
+   `closeGuide(page)` from `spec/helpers.ts`. The whole of `pnpm check`
+   was run again after the fixes (the slice's notes record it).
+2. **Fixed.** The status line's lines are counted from a `Range` over its
+   text. Seen failing with the `min-width` removed ("expected 2 to be
+   1"), then passing with it.
+3. **Fixed.** While it's open the guide notes so for the tab
+   (`cafe.guideOpen` in `sessionStorage`); on the café's own reload,
+   `enter()` takes the note and opens it again if it was open. The note
+   is taken on every entry, so it can't outlive it, and closing clears
+   it. Held by a unit test and a browser check: a newcomer whose first
+   welcome names a newer build is reloaded once, and the guide is there.
+4. **Fixed, differently from the suggestion.** Hiding the page's overflow
+   was tried first and broke layout A: in a phone's browser it laid the
+   café's grid out afresh, the status bar 24 px wide and 440 px above the
+   screen. Instead, a wheel or a swipe anywhere in the guide's layer but
+   its words is cancelled, the words don't pass their scroll on
+   (`overscroll-behavior: contain`), and any scroll that happens anyway
+   is put back to where the page was as it opened. Closing measures the
+   ⓘ before the focus moves, and the room takes the focus with
+   `preventScroll`. Held by unit tests and a browser check: layout A,
+   wheels through the words and beside the card, the page still at 0,
+   and the last frame on the ⓘ on screen.
+5. **Fixed.** A `closing` class on the guide and its backdrop takes every
+   press away from them, the card's included. Held by a unit test, and by
+   every measured landing in `spec/guide.test.ts`, which now checks that
+   `elementFromPoint` at the box's place finds nothing of the guide as
+   the shrink starts.
+6. **Fixed.** Where storage throws, the box is kept for the page's life,
+   as the layout's `thisVisit` is. The spec now says so: such a browser
+   shows the guide on each new page, and a tick holds until a reload.
+   Unticked, Come back in still brings it, which is what the two
+   blocked-storage checks see.
+7. **Fixed.** A press is noted as a key's or a pointer's from the start,
+   so the press on Walk in or the ⓘ counts; opened by a key, the words
+   are ringed. Held by a unit test and the browser check (Enter on the ⓘ
+   rings them, a click doesn't).
+8. **Fixed.** The phone check asserts the inert café and the focus on the
+   words.
+9. **Fixed, three of four.** The keyboard line says an arrow brings up the
+   pointer first; the panels line says only an unpinned panel fades;
+   "Type in the talk box" in place of "the box at the bottom"; and "the
+   chalkboard on the wall". The rug's walk-on-then-menu is left out: the
+   line stays short, as the user asked, and it's still true that a click
+   on a piece shows what you can do with it. The words are the user's to
+   judge.
+10. **Answered, not changed.** The second-tab page leaves the guide up as
+    it leaves the chalkboard's dialog up; the status line behind says
+    what happened, and the guide closes as usual. Closing it would need a
+    new hook on `Cafe` for one rare case.
+11. **Fixed.** The guide takes an `opening` hook, and `main.ts` closes
+    any menu with it, as the board does.
+12. **Fixed.** A resize mid-shrink lands it at once.
+13. **Fixed.** Closing reads the card's transform and opacity as they are
+    before stopping the grow, and shrinks from there. Held by a unit test
+    and a browser check (the shrink's first frame is a matrix, not
+    `none`, when closed 100 ms into the grow).
+14. **Fixed.** The ⓘ and Add furniture are one pair in the status bar, so
+    they wrap together. Held by the phone check at 320×568 in both
+    layouts. The extra row the ⓘ costs at 390 px in layout A stays: it's
+    the room the button the user asked for takes.

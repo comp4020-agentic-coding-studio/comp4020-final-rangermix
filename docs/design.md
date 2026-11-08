@@ -770,9 +770,11 @@ and Burakku at 25.
   the cats, the café's clock, the panels, furniture, and for a demo
   account the demo bar. It names no cat and quotes no number from
   `content/`, so tuning or a new cat leaves it true. It opens as the café
-  is entered (not on the café's own reload for a new build) until "Got
-  it, no pop-up next time" is ticked, remembered per device under
-  `cafe.guide` and never reaching the server. Closing shrinks it into the
+  is entered until "Got it, no pop-up next time" is ticked, remembered
+  per device under `cafe.guide` and never reaching the server (for the
+  page's life where the browser stores nothing); the café's own reload
+  for a new build brings it back only if it was open then. While it's
+  open the café is inert and the page doesn't scroll under it. Closing shrinks it into the
   ⓘ (a fade alone with reduced motion), so a newcomer sees where it went.
   *Why per device, not per account:* the demo accounts are shared, and
   one marker's tick would hide it from the next.
