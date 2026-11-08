@@ -3073,3 +3073,55 @@ plan were read for what was left.
 - **Left for the user:** the slice's one open line, the README's "For
   markers" against what's built. Part 2 put Lap time in step 3 and Play
   room in step 8.
+
+### 26. The final `PROCESS.md` (continued)
+
+*Session `76539ce3`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 07:45:35 AEDT*
+
+> 1. A, with C's evidence in the stack section, but highlight my overall design choice
+> 2. M1, M3, M4, M6, M10, M15
+> 3. B
+> 4. C, will fix in other session
+> 5. A
+>
+> Note that the final PROCESS.md should cover the whole project, not just from crit 10.
+
+Answering the five questions of
+[notes/process-final-options.md](notes/process-final-options.md): the
+skeleton, the moments, crit 10's two sections, the red `main`, and slice
+17 part 1's live record.
+
+**Result.** `PROCESS.md` rewritten for the final submission, not appended:
+1,077 words, 21 cited commits, all resolving by `pnpm check:evidence`.
+- **The whole project**, in order: where it stands (with the three specs
+  never built, so the café was never measured under a crowd); the
+  harness; the design, as the user's own calls from the first prompt on
+  (a world that doesn't stop, company around the cats, six and the
+  window, the cats' boundaries), then the look (M1); the stack, with the
+  replay timed at Fly's baseline, the generated types catching a clash
+  two branches each passed, and the look rebuilt without touching the
+  protocol; the workflow, phases then slices, with the review counts
+  recounted from the findings files (17 slice reviews, 186 findings, 50
+  major, none critical); one clock, from mocked time to the demo jump and
+  what its review found (M3, M4); and what caught what (M6, M10, M15).
+- **Cut or folded:** the logs and live testing are a sentence each in the
+  workflow; mocked time leads into the demo clock. The quiet seat, the
+  crit 8 cut and the logs' two stories stay in the record, not here.
+- **Gone as stale:** "week 11, the final project's third crit", "New
+  since crit 9", "Crit 10 is a demo by the logs alone", and "Rust's
+  compiler catches a class of agent mistakes", which nothing since crit
+  10 shows; the clash was caught by the typecheck on generated types.
+- **Slice 17 part 1's live record (5A):** merged locally, then the push
+  was refused: the furniture sets' session had brought the same record
+  onto `main` itself
+  ([`7f5decc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7f5decc),
+  [`ac89527`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ac89527)),
+  and fixed the edge check that had left `main` red
+  ([`dd76464`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/dd76464)).
+  A hard reset to drop the duplicate was refused by the permission check,
+  so `origin/main` was merged in with its wording kept, the tree equal to
+  it
+  ([`f8269dc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f8269dc)).
+- **The red `main` (4C):** left to the other session, which fixed it.

@@ -14,6 +14,15 @@ SHA resolves with the subject claimed, and the CI counts were recounted with
 `PROCESS.md` runs 900 to 1,100 words. The parts kept from crit 10's version,
 condensed, take about 450 to 550, so about four to six moments fit.
 
+## Chosen (2026-11-09, 07:45)
+
+Skeleton A, with C's evidence in the stack section and the user's overall
+design choices highlighted; moments M1, M3, M4, M6, M10 and M15; crit 10's
+logs and mocked time a sentence each; the red `main` left to another session
+(it fixed it, `dd76464`); slice 17 part 1's live record merged (the other
+session had already brought it on). The final `PROCESS.md` covers the whole
+project, not only what came after crit 10.
+
 ## Moments since crit 10
 
 Words are each moment's own cost. **S** is strength, 1 to 5.

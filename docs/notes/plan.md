@@ -86,6 +86,10 @@ instruments and mocked time
 Both landed before the cutoff. Whether the demo by the logs alone was
 rehearsed isn't recorded. There's still no `crit-9` or `crit-10` tag.
 
+The final submission's `PROCESS.md` was rewritten on 2026-11-09 for the
+whole project, from options the user chose
+([process-final-options.md](process-final-options.md)).
+
 ## Where it stands (2026-10-22)
 
 Updated by session `a4e69a46` (2026-11-05).
