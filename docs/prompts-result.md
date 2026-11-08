@@ -3125,3 +3125,76 @@ skeleton, the moments, crit 10's two sections, the red `main`, and slice
   it
   ([`f8269dc`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/f8269dc)).
 - **The red `main` (4C):** left to the other session, which fixed it.
+
+### 28. The guide: an ⓘ by Add furniture, and how the café works
+
+*Session `37fce904`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-09 08:06:55 AEDT*
+
+> add an information button top right, left to "Add furniture". The button should show an overlay when clicked, explain the basics of the game, like how control work with mouse or keyboard, cat and time machenism, floating panel, etc. keep it simple. the overlay shows on entering the cafe by default. a "got it, no pop-up next time" checkbox at the end of the information overlay stops it being pop-up automatically again. on closing the overlay, animate it to shrink to the top right info button.
+>
+> anyother things you think needed to discuss on this? if not, design and build it.
+
+**Result.** Five questions, each with a lean: where the tick is
+remembered (this browser, or the account, which a shared `demo1` would
+make one marker's tick hide it from the next); when it pops up (every
+entry but the café's own reload, or once a page); words for the screen
+in use or for all; a line for demo accounts; and a modal like the
+chalkboard's, or not. The guide was to name no cat and quote no number
+from `content/`, so a new cat leaves it true.
+
+*Sent 2026-11-09 08:11:51 AEDT*
+
+> leans
+
+**Result.** Built as slice 21, with all five leans, and live.
+- **Spec and plan**
+  ([`ae6d057`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ae6d057),
+  [`2794956`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2794956)):
+  [slice 21](slices/21-told-how-the-cafe-works.md), and "The guide" in
+  `docs/design.md`. The client only: no Rust, no protocol.
+- **Built test first**: the choice, the shrink's numbers and the dialog
+  in `client/test/guide.test.ts`
+  ([`66c8fc6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/66c8fc6));
+  eight browser checks in `spec/guide.test.ts`, seen failing, with every
+  other check's browser starting with the guide ticked off
+  ([`75e1ebb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/75e1ebb));
+  then the page
+  ([`d2d40f2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d2d40f2)).
+  Its first run timed out everywhere: the local server reads the
+  client's build id as it starts, and a rebuilt client made every page
+  reload itself, which by design brings no guide.
+- **Found on the screens:** the words ringed for a mouse
+  ([`ba3cc86`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ba3cc86)),
+  and the ⓘ squeezing "2/6 inside" onto two lines in layout A
+  ([`d580206`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d580206)),
+  whose first check couldn't fail: the status line is a flex item, one
+  box however it wraps. Counted by its text's line boxes, it failed
+  without the fix
+  ([`ff5a63c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ff5a63c)).
+- **Reviewed cold** (14 findings: 1 major, 7 minor, 6 nits;
+  [findings](notes/reviews/slice-21-findings.md)), 13 fixed test first
+  and 1 answered
+  ([`b9fb6d0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b9fb6d0),
+  [`9ed9657`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9ed9657)).
+  The major: the music's blocked-storage check left the guide open, so
+  its clean-up couldn't press Leave. Among the minor: a newcomer's first
+  welcome after a deploy reloads the page and lost the guide (now brought
+  back if it was open); in layout A a scroll sent the shrink off screen;
+  the shrinking card still took presses; and a keyboard opening showed
+  no focus. Hiding the page's overflow, the review's suggestion for the
+  scroll, broke layout A in a phone's browser, so the guide cancels
+  scrolls outside its words and puts back any that happen.
+- **Checked:** the whole `pnpm check` locally, 472 client tests and 135
+  spec checks (1 skipped, which needs Docker).
+- **Live:** `main` fast-forwarded to
+  [`167de32`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/167de32),
+  CI green and deployed. On the live café one `agent_` visitor, at
+  1920×1080 by mouse and 390×844 by touch, met the guide over an inert
+  café, closed it into the ⓘ beside Add furniture, opened it from the ⓘ,
+  and, ticked on the phone, came back in to no guide
+  ([notes](notes/slice-21-guide.md)).
+- **Left for the user:** whether the words are right and short enough,
+  and whether the shrink reads as going into the button; and whether the
+  README's "For markers" should mention the ⓘ.

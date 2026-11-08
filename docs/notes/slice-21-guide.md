@@ -34,4 +34,29 @@ status bar on a desktop and in both phone layouts.
 
 ## Live
 
-Not yet deployed.
+Merged onto `main` as a fast-forward to
+[`167de32`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/167de32)
+and deployed by CI run 42529585253 (check, rust and deploy all green; the
+check job ran `spec/restart.test.ts` too, which the local runs skip).
+
+Checked on the live café on 2026-11-09 at 09:30 AEDT with
+`docs/notes/screens/slice-21/live.mjs`: one visitor, `agent_g8enw9m`,
+with a fresh random password never written down, signed up through the
+API and walked in through the door. `demo1` was inside at the time.
+- **1920×1080, by mouse:** walked in, the guide up, the café inert;
+  closed into the ⓘ at (1649, 8), just left of Add furniture at (1701,
+  8); the ⓘ opened it again; not ticked, so Come back in brought it back.
+- **390×844, by touch:** the same, the ⓘ at (193, 15) and Add furniture
+  at (245, 15) in layout B; ticked "Got it, no pop-up next time" from the
+  ⓘ; Come back in brought no guide.
+- Left after each size; the visit lasted under a minute. The screens are
+  `live-desktop-guide.png`, `live-desktop-closed.png`,
+  `live-phone-guide.png` and `live-phone-closed.png`.
+
+## Left for the user
+
+- The spec's judged line: whether the words are right and short enough,
+  and whether the shrink reads as going into the button, from the
+  screens and the live café.
+- The README's "For markers" doesn't mention the ⓘ; whether it should is
+  the user's call.

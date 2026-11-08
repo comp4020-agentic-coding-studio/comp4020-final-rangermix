@@ -1,6 +1,7 @@
 # 21. Told how the café works, on the way in
 
-- **Status:** Reviewed 2026-11-09, 14 findings (1 major, 7 minor, 6
+- **Status:** Deployed and checked live 2026-11-09 ([notes](../notes/slice-21-guide.md));
+  live once the user has judged the words and the shrink; reviewed 2026-11-09, 14 findings (1 major, 7 minor, 6
   nits), 13 fixed and 1 answered ([findings](../notes/reviews/slice-21-findings.md));
   built 2026-11-09 ([notes](../notes/slice-21-guide.md), [screens](../notes/screens/slice-21/));
   approved 2026-11-09, with the user's answers below ("leans");
