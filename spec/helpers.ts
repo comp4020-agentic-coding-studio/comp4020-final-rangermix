@@ -1,3 +1,4 @@
+import type { Page } from "playwright";
 import { inject } from "vitest";
 import WebSocket from "ws";
 
@@ -37,6 +38,55 @@ export async function signUp(name = uniqueName(), password = "correct horse"): P
   if (res.status !== 200) throw new Error(`sign-up failed: ${res.status} ${await res.text()}`);
   const me = (await res.json()) as { id: number; recoveryCode: string };
   return { name, password, cookie: sessionCookie(res), id: me.id, recoveryCode: me.recoveryCode };
+}
+
+/**
+ * Signs up through the page's one way in (slice 20): a name and a password,
+ * I'm new, the first look, Walk in, then past the recovery code. By keyboard
+ * if asked, else by clicks; the page is left in the café.
+ */
+export async function signUpThroughPage(page: Page, name: string, opts: { keyboard?: boolean; password?: string } = {}): Promise<void> {
+  const password = opts.password ?? "correct horse";
+  if (opts.keyboard) {
+    await page.locator("#way-in-name").focus();
+    await page.keyboard.type(name);
+    await page.keyboard.press("Tab");
+    await page.keyboard.type(password);
+    // Past Walk in to I'm new.
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    // The look step opens on the avatars. An arrow key in each group, then
+    // Tab past the colours to Walk in (slice 20's review, finding 13).
+    await page.locator("#look-step:not([hidden])").waitFor();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Tab");
+    const at = await page.evaluate(() => document.activeElement?.id);
+    if (at !== "sign-up") throw new Error(`Tab from the colours reached ${at}, not Walk in`);
+    await page.keyboard.press("Enter");
+    await page.locator("#code-done:focus").waitFor();
+    await page.keyboard.press("Enter");
+    return;
+  }
+  await page.locator("#way-in-name").fill(name);
+  await page.locator("#way-in-password").fill(password);
+  await page.locator("#im-new").click();
+  await page.locator("#sign-up").click();
+  await page.locator("#code-done").click();
+}
+
+/** Logs in through the page's one way in (slice 20), by clicks. */
+export async function logInThroughPage(page: Page, name: string, password: string): Promise<void> {
+  await page.locator("#way-in-name").fill(name);
+  await page.locator("#way-in-password").fill(password);
+  await page.locator("#log-in").click();
+}
+
+/** Past the door (slice 20): waits for it, and presses Walk in or Come back in. */
+export async function walkIn(page: Page): Promise<void> {
+  await page.locator("#door-in").click();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

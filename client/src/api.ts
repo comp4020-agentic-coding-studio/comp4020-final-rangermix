@@ -1,5 +1,6 @@
 import type { ApiError } from "./protocol/ApiError";
 import type { ApiMe } from "./protocol/ApiMe";
+import type { CheckNameRequest } from "./protocol/CheckNameRequest";
 import type { LogInRequest } from "./protocol/LogInRequest";
 import type { RecoverRequest } from "./protocol/RecoverRequest";
 import type { SignUpRequest } from "./protocol/SignUpRequest";
@@ -28,6 +29,8 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
 
 export const me = () => call<ApiMe>("GET", "/api/me");
 export const signUp = (req: SignUpRequest) => call<ApiMe>("POST", "/api/signup", req);
+/** Whether sign-up would take this name: answers nothing if so (slice 20). */
+export const checkName = (req: CheckNameRequest) => call<void>("POST", "/api/check-name", req);
 export const logIn = (req: LogInRequest) => call<ApiMe>("POST", "/api/login", req);
 export const recover = (req: RecoverRequest) => call<ApiMe>("POST", "/api/recover", req);
 export const logOut = () => call<void>("POST", "/api/logout");

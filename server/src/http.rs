@@ -17,6 +17,10 @@ use tower_http::services::ServeDir;
 pub struct AuthLimits {
     pub by_name: Keyed,
     pub by_ip: Keyed,
+    /// Names a check just found free, by name and address, with when: the
+    /// sign-up that follows has paid already (slice 20's review, finding 4).
+    /// In memory only, like the buckets, and never logged.
+    pub checked: std::collections::HashMap<String, u64>,
 }
 
 #[derive(Clone)]
@@ -51,6 +55,7 @@ impl AppState {
         let auth_limits = AuthLimits {
             by_name: per_min(tuning.auth_per_name_per_min),
             by_ip: per_min(tuning.auth_per_ip_per_min),
+            checked: Default::default(),
         };
         AppState {
             config: Arc::new(config),
@@ -76,6 +81,7 @@ pub fn router(state: AppState) -> Router {
         .route("/readme/docs/{*path}", get(readme_asset))
         .route("/api/signup", post(crate::api::signup))
         .route("/api/login", post(crate::api::login))
+        .route("/api/check-name", post(crate::api::check_name))
         .route("/api/logout", post(crate::api::logout))
         .route("/api/me", get(crate::api::me))
         .route("/api/recover", post(crate::api::recover))
@@ -156,13 +162,19 @@ pub(crate) mod tests {
     use tower::ServiceExt;
 
     pub(crate) fn app(dir: &std::path::Path) -> Router {
+        app_with(dir, |_| {})
+    }
+
+    /// The test app with its tuning changed first, such as a lower limit.
+    pub(crate) fn app_with(dir: &std::path::Path, tune: impl FnOnce(&mut crate::tuning::Tuning)) -> Router {
         let config = Config::from_lookup(|k| match k {
             "CLIENT_DIR" => Some(dir.join("no-client-yet").display().to_string()),
             "DOCS_DIR" => Some(dir.display().to_string()),
             _ => None,
         });
         let store = crate::store::Store::open(&dir.join("cafe.db")).unwrap();
-        let tuning = crate::content::repo_content().tuning;
+        let mut tuning = crate::content::repo_content().tuning;
+        tune(&mut tuning);
         let (world, _) = tokio::sync::mpsc::channel(1);
         router(AppState::new(
             config,

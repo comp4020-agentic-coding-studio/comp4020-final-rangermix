@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, type WebSocketRoute, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { baseUrl, meetACat, signUp, uniqueName, Visitor } from "./helpers";
+import { baseUrl, logInThroughPage, meetACat, signUp, signUpThroughPage, uniqueName, Visitor, walkIn } from "./helpers";
 import heights from "../content/sprites/heights.json" with { type: "json" };
 import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
@@ -70,13 +70,7 @@ async function visit(viewport: { width: number; height: number }, touch = false,
     ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload))));
   });
   await page.goto(baseUrl);
-  await page.locator("#signup input[name=name]").focus();
-  await page.keyboard.type(uniqueName("b"));
-  await page.keyboard.press("Tab");
-  await page.keyboard.type("correct horse");
-  await page.keyboard.press("Enter");
-  await page.locator("#code-done:focus").waitFor();
-  await page.keyboard.press("Enter");
+  await signUpThroughPage(page, uniqueName("b"), { keyboard: true });
   if (opts.waitInside ?? true) await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   return { page, frames, sent };
 }
@@ -289,13 +283,21 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.locator("#talk-input").focus();
     for (let i = 0; i < 8 && (await focused(page)) !== "put-treat"; i++) await page.keyboard.press("Tab");
     expect(await focused(page)).toBe("put-treat");
-    // Back to the room, then past the panels' own buttons to Leave.
+    // Back to the room, then past the panels' own buttons to Leave. A panel
+    // whose lines overflow is a stop of its own, so the keyboard can scroll
+    // it: the chalkboard does once a long run's visitors have met the cats.
     await page.locator("#room").focus();
-    for (let i = 0; i < 8 && (await focused(page)) !== "leave"; i++) await page.keyboard.press("Shift+Tab");
+    for (let i = 0; i < 16 && (await focused(page)) !== "leave"; i++) await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("leave");
     await page.keyboard.press("Enter");
-    await page.locator("#left-cafe").waitFor();
-    expect(await focused(page)).toBe("come-back");
+    // The door, saying hi (slice 20), and back in by keyboard.
+    await page.locator("#door").waitFor();
+    expect(await focused(page)).toBe("door-in");
+    expect(await page.locator("#door-greeting").textContent()).toMatch(/^Hi, b\w+\.$/);
+    expect(await page.locator("#door-text").textContent()).toBe("You've left the café. The cats will remember you.");
+    expect(await page.locator("#not-me").textContent()).toMatch(/^I'm not b\w+$/);
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   });
 
   it("floats the chalkboard, your cats and who's here in the room's corners at 1920×1080, the room at 4× and every tile clear (slice 14)", async () => {
@@ -415,6 +417,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // Remembered through a reload.
     const before = await Promise.all(["#chalkboard", "#cats-panel", "#here-panel"].map(box));
     await page.reload();
+    await walkIn(page);
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     // A panel is placed again once its lines come in and it grows, in the
     // frame after (a resize observer, before that frame paints), so this
@@ -451,7 +454,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     // kept (slice 14's review, finding 5): still moved, still pinned, and
     // its Unpin named exactly so (finding 3).
     await v.page.locator("#leave").click();
-    await v.page.locator("#come-back").click();
+    await walkIn(v.page);
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     await expect.poll(async () => Math.round(start.x - (await box()).x)).toBe(256);
     expect(await v.page.getByRole("button", { name: "Unpin who's here", exact: true }).count()).toBe(1);
@@ -567,6 +570,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     expect(reached).not.toContain("Move your cats");
     // Remembered through a reload.
     await page.reload();
+    await walkIn(page);
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     await expect.poll(async () => (await page.getByRole("button", { name: "Unpin your cats" }).count())).toBe(1);
     await expect.poll(async () => { const b = await box(); return [Math.round(b.x), Math.round(b.y)]; }).toEqual([Math.round(pinnedAt.x), Math.round(pinnedAt.y)]);
@@ -952,6 +956,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.locator("#layout-switch").tap();
     expect(await roomWidth(page)).toBe(await widthAt(page, 1));
     await page.reload();
+    await walkIn(page);
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(false);
     expect(await roomWidth(page)).toBe(await widthAt(page, 1));
@@ -1793,10 +1798,10 @@ async function visitAs(name: string, viewport: { width: number; height: number }
     ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload))));
   });
   await page.goto(baseUrl);
-  await page.locator("#tab-login").click();
-  await page.locator("#login input[name=name]").fill(name);
-  await page.locator("#login input[name=password]").fill(demoPassword!);
-  await page.locator("#login input[name=password]").press("Enter");
+  await page.locator("#way-in-name").fill(name);
+  await page.locator("#way-in-password").fill(demoPassword!);
+  // Enter logs in: Walk in is the form's first button (slice 20).
+  await page.locator("#way-in-password").press("Enter");
   await page.waitForFunction(() => /inside|window/.test(document.getElementById("status-text")?.textContent ?? ""));
   return { page, frames, sent };
 }

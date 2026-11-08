@@ -1,5 +1,6 @@
 import { announce } from "./announce";
 import * as api from "./api";
+import { noteBackInside } from "./door";
 import { Connection } from "./net";
 import type { ApiMe } from "./protocol/ApiMe";
 import type { ClientMsg } from "./protocol/ClientMsg";
@@ -155,6 +156,8 @@ export class Cafe {
     } else if (msg.type === "welcome") {
       const next = afterWelcome(msg.build, __BUILD_ID__, reloadedFor(), canNote());
       if (next === "reload" && rememberReload(msg.build)) {
+        // Back in once it's reloaded, not out at the door (slice 20).
+        noteBackInside();
         location.reload();
         return;
       }

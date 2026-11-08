@@ -13,28 +13,30 @@
         <h1>The cat café</h1>
         <p class="lede">Three cats, six seats, and whoever else is here right now.</p>
         <p><a href="/readme/">What is this place?</a></p>
-        <div class="tabs" role="tablist" aria-label="Get in">
-          <button type="button" role="tab" id="tab-signup" aria-selected="true" aria-controls="signup">New here</button>
-          <button type="button" role="tab" id="tab-login" aria-selected="false" aria-controls="login">I've been before</button>
-        </div>
-        <form id="signup" role="tabpanel" aria-labelledby="tab-signup">
+        <!-- One way in (slice 20, ADR 0023): a name and a password for
+             everyone. Walk in comes first, so Enter logs in; I'm new asks
+             whether the name is free, then for a look. -->
+        <form id="way-in" class="way-in" aria-label="Get in">
           <label>Name <span class="hint">(everyone in the café sees it)</span>
-            <input name="name" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_\-]{3,20}" />
+            <input id="way-in-name" name="name" autocomplete="username" required maxlength="20" />
           </label>
-          <label>Password <span class="hint">(8 or more characters)</span>
-            <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128" />
+          <label>Password
+            <input id="way-in-password" name="password" type="password" autocomplete="current-password" required maxlength="128" />
           </label>
+          <div class="way-in-buttons">
+            <button type="submit" id="log-in" value="login">Walk in</button>
+            <button type="submit" id="im-new" class="secondary" value="new">I'm new</button>
+          </div>
+          <button type="button" class="link" id="show-recover">I've forgotten my password</button>
+        </form>
+        <form id="look-step" aria-labelledby="look-heading" hidden>
+          <h2 id="look-heading">Choose your look</h2>
           <fieldset class="looks">
             <legend>Your look</legend>
             <div id="look-picker" class="look-picker"></div>
           </fieldset>
-          <button type="submit">Walk in</button>
-        </form>
-        <form id="login" role="tabpanel" aria-labelledby="tab-login" hidden>
-          <label>Name <input name="name" autocomplete="username" required /></label>
-          <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
-          <button type="submit">Walk in</button>
-          <button type="button" class="link" id="show-recover">I've forgotten my password</button>
+          <button type="submit" id="sign-up">Walk in</button>
+          <button type="button" class="link" id="look-back">Back</button>
         </form>
         <form id="recover" hidden>
           <p>Use the recovery code you saved when you signed up.</p>
@@ -189,10 +191,18 @@
       <button type="button" id="im-here" class="primary">I'm here</button>
     </div>
 
-    <section id="left-cafe" class="left-cafe" hidden>
-      <p id="left-text">You've left the café. The cats will remember you.</p>
-      <button type="button" id="come-back" class="primary">Come back in</button>
-    </section>
+    <!-- The door (slice 20): a returning visitor, greeted by name, joins
+         the café only at Walk in; after Leave, the same door says hi. -->
+    <main id="door" class="door" hidden>
+      <div class="card door-card">
+        <canvas id="door-avatar" class="door-avatar" width="32" height="32" aria-hidden="true"></canvas>
+        <h1 id="door-greeting"></h1>
+        <p id="door-text" class="lede"></p>
+        <button type="button" id="door-in" class="primary">Walk in</button>
+        <button type="button" id="not-me" class="link"></button>
+        <p id="door-error" class="error" role="alert"></p>
+      </div>
+    </main>
 
     <div id="announcer" class="sr-only" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>

@@ -1,7 +1,7 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import palettes from "../content/sprites/palettes.json";
-import { baseUrl, uniqueName } from "./helpers";
+import { baseUrl, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 18's browser checks: the terrace stands on a balcony, a deck of
 // stone round the room's two front edges with a glass rail at its edge and
@@ -55,10 +55,7 @@ async function visit(viewport: { width: number; height: number }, at = "10:00", 
   const sent: Frame[] = [];
   page.on("websocket", (ws) => ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload)))));
   await page.goto(baseUrl);
-  await page.locator("#signup input[name=name]").fill(uniqueName("b"));
-  await page.locator("#signup input[name=password]").fill("correct horse");
-  await page.locator("#signup button[type=submit]").click();
-  await page.locator("#code-done").click();
+  await signUpThroughPage(page, uniqueName("b"));
   await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   await page.waitForTimeout(600);
   return { page, sent };

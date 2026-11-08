@@ -73,6 +73,7 @@ describe("narrating the logs", () => {
     { target: "action", uid: 3, who: "sam", what: "sit", outcome: "walking", piece: "window_seat" },
     { target: "action", what: "login", outcome: "refused", code: "badLogin" },
     { target: "action", what: "recover", outcome: "refused" },
+    { target: "action", what: "check_name", outcome: "refused", code: "rateLimited" },
     { target: "action", uid: 3, who: "sam", what: "logout" },
     { target: "cat", cat: "Mochi", what: "eat", on: "bowls" },
     { target: "cat", cat: "Mochi", what: "eat", on: "treat" },
@@ -115,6 +116,8 @@ describe("narrating the logs", () => {
     expect(narrate(line({ target: "action", uid: 3, who: "sam", what: "banned", cat: "Burakku", action: "pet", hours: 48 }))).toBe("19:42:07  Burakku won't be petted by sam for 2 days");
     expect(narrate(line({ target: "action", uid: 3, who: "sam", what: "pet", outcome: "refused", code: "movedAway", cat: "Tora" }))).toBe("19:42:07  sam tried to pet Tora, refused: movedAway");
     expect(narrate(line({ target: "action", what: "recover", outcome: "refused" }))).toBe("19:42:07  someone tried to recover an account, refused");
+    // Slice 20: "I'm new" asking whether a name is free.
+    expect(narrate(line({ target: "action", what: "check_name", outcome: "refused", code: "nameTaken" }))).toBe("19:42:07  someone tried to choose a name, refused: nameTaken");
     expect(narrate(line({ target: "cat", cat: "Mochi", what: "jump_down", why: "door" }))).toBe("19:42:07  Mochi jumped down at the door");
     expect(narrate(line({ target: "cat", cat: "Burakku", what: "lap", on: "sofa", with: "sam" }))).toBe("19:42:07  Burakku curled up on sam's lap");
   });

@@ -2,7 +2,7 @@
 //! Answers are JSON (`ApiMe` or `ApiError`); a session is an HttpOnly cookie.
 use crate::auth;
 use crate::http::{AppState, client_ip, origin_ok};
-use crate::protocol::{ApiError, ApiErrorCode, ApiMe, LogInRequest, Look, RecoverRequest, SignUpRequest};
+use crate::protocol::{ApiError, ApiErrorCode, ApiMe, CheckNameRequest, LogInRequest, Look, RecoverRequest, SignUpRequest};
 use crate::store::{self, UserRow};
 // Accounts keep Canberra's own clock, not the café's, which a demo account
 // moves on: a jump must spend nobody's session (slice 17's review, finding 4).
@@ -83,8 +83,25 @@ fn name_key(name: &str, ip: &str) -> Option<String> {
     (1..=20).contains(&chars).then(|| format!("{}|{ip}", name.to_lowercase()))
 }
 
+/// How long a name a check found free stays paid for, for its sign-up.
+const CHECKED_FOR_MS: u64 = 10 * 60_000;
+
+/// What a guarded call is: a sign-up may have been paid for by its check.
+#[derive(PartialEq)]
+enum Guarded {
+    Other,
+    /// A sign-up: free once if a check just found its name free here.
+    SignUp,
+}
+
 /// Origin check, then the per-address and per-name buckets.
 fn guard(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str) -> Result<(), Failure> {
+    guard_as(app, headers, peer, name, Guarded::Other).map(|_| ())
+}
+
+/// The guard, saying the key it charged, so a check that finds a name free
+/// can note it paid for the sign-up after it.
+fn guard_as(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str, what: Guarded) -> Result<String, Failure> {
     if !origin_ok(headers) {
         return Err(Failure(
             StatusCode::FORBIDDEN,
@@ -98,10 +115,15 @@ fn guard(app: &AppState, headers: &HeaderMap, peer: SocketAddr, name: &str) -> R
     };
     let now = now_ms();
     let mut limits = app.auth_limits.lock().expect("the limits lock isn't poisoned");
+    limits.checked.retain(|_, at| now.saturating_sub(*at) < CHECKED_FOR_MS);
+    if what == Guarded::SignUp && limits.checked.remove(&key).is_some() {
+        // Its check paid, a moment ago, from this address (slice 20's review, finding 4).
+        return Ok(key);
+    }
     let by_ip = limits.by_ip.take(&ip, now);
     let by_name = limits.by_name.take(&key, now);
     if by_ip && by_name {
-        Ok(())
+        Ok(key)
     } else {
         Err(Failure(
             StatusCode::TOO_MANY_REQUESTS,
@@ -174,17 +196,62 @@ pub async fn signup(
     logged("signup", signup_answer(app, peer, headers, req).await)
 }
 
-async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: SignUpRequest) -> Answer {
-    guard(&app, &headers, peer, &req.name)?;
-    if !auth::valid_username(&req.name) {
-        return Err(bad_input("A name is 3 to 20 letters, digits, _ or -."));
+/// A name sign-up would refuse before looking it up: badly formed, or one
+/// of the café's own.
+fn refused_name(name: &str) -> Option<Failure> {
+    if !auth::valid_username(name) {
+        return Some(bad_input("A name is 3 to 20 letters, digits, _ or -."));
     }
-    if auth::reserved_username(&req.name) {
-        return Err(Failure(
+    if auth::reserved_username(name) {
+        return Some(Failure(
             StatusCode::CONFLICT,
             ApiErrorCode::NameTaken,
             "That name is the café's own.",
         ));
+    }
+    None
+}
+
+fn name_taken() -> Failure {
+    Failure(StatusCode::CONFLICT, ApiErrorCode::NameTaken, "That name is taken.")
+}
+
+/// Whether sign-up would take this name (slice 20): guarded and limited as
+/// sign-up is, so it tells nobody more, or faster, than sign-up does. A free
+/// name logs nothing, since no account acted.
+pub async fn check_name(
+    State(app): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(req): Json<CheckNameRequest>,
+) -> Answer {
+    logged("check_name", check_name_answer(app, peer, headers, req).await)
+}
+
+async fn check_name_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: CheckNameRequest) -> Answer {
+    let key = guard_as(&app, &headers, peer, &req.name, Guarded::Other)?;
+    if let Some(refused) = refused_name(&req.name) {
+        return Err(refused);
+    }
+    let name = req.name;
+    let user = app.store.call(move |c| store::user_by_name(c, &name)).await.map_err(server)?;
+    match user {
+        Some(_) => Err(name_taken()),
+        None => {
+            // Free: the sign-up after it has paid (slice 20's review, finding 4).
+            let mut limits = app.auth_limits.lock().expect("the limits lock isn't poisoned");
+            if limits.checked.len() < 10_000 {
+                limits.checked.insert(key, now_ms());
+            }
+            Ok(StatusCode::NO_CONTENT.into_response())
+        }
+    }
+}
+
+async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: SignUpRequest) -> Answer {
+    guard_as(&app, &headers, peer, &req.name, Guarded::SignUp)?;
+    if let Some(refused) = refused_name(&req.name) {
+        return Err(refused);
     }
     if !auth::valid_password(&req.password) {
         return Err(bad_input("A password is 8 to 128 characters."));
@@ -201,7 +268,7 @@ async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req:
         .call(move |c| store::insert_user(c, &name, &password_hash, &recovery_hash, look.avatar, look.colour, now))
         .await
         .map_err(server)?
-        .ok_or(Failure(StatusCode::CONFLICT, ApiErrorCode::NameTaken, "That name is taken."))?;
+        .ok_or_else(name_taken)?;
     tracing::info!(target: "action", uid = id, who = %req.name, what = "signup");
     start_session(
         &app,
@@ -412,6 +479,188 @@ mod tests {
             "{refused:?}"
         );
         assert!(lines.iter().any(|v| v["what"] == "logout" && v["who"] == "sam"), "{lines:?}");
+    }
+
+    #[tokio::test]
+    async fn a_name_check_answers_what_sign_up_would_guarded_and_limited_as_it_is() {
+        // Slice 20: "I'm new" asks before it asks for a look.
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::http::tests::app(dir.path()).layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        let sink = crate::test_logs::LogSink::default();
+        let _logging = sink.capture();
+        let send = |path: &str, body: serde_json::Value, origin: Option<&str>| {
+            let mut req = Request::post(path)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::HOST, "cafe.test");
+            if let Some(origin) = origin {
+                req = req.header(header::ORIGIN, origin);
+            }
+            app.clone().oneshot(req.body(Body::from(body.to_string())).unwrap())
+        };
+        let check = |name: &str| send("/api/check-name", json!({ "name": name }), Some("https://cafe.test"));
+        let answer = |res: axum::response::Response| async move {
+            let status = res.status();
+            let body = axum::body::to_bytes(res.into_body(), 4096).await.unwrap();
+            let json: serde_json::Value = serde_json::from_slice(&body).unwrap_or(serde_json::Value::Null);
+            (
+                status,
+                json["error"].as_str().unwrap_or("").to_string(),
+                json["detail"].as_str().unwrap_or("").to_string(),
+            )
+        };
+        assert_eq!(check("pip").await.unwrap().status(), StatusCode::NO_CONTENT);
+        let look = json!({"avatar": 0, "colour": 0});
+        let res = send(
+            "/api/signup",
+            json!({"name": "Pip", "password": "correct horse", "look": look}),
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(res.status().is_success(), "{}", res.status());
+        assert_eq!(
+            answer(check("PIP").await.unwrap()).await,
+            (StatusCode::CONFLICT, "nameTaken".into(), "That name is taken.".into())
+        );
+        assert_eq!(
+            answer(check("demo9").await.unwrap()).await,
+            (StatusCode::CONFLICT, "nameTaken".into(), "That name is the café's own.".into())
+        );
+        assert_eq!(
+            answer(check("x").await.unwrap()).await,
+            (
+                StatusCode::BAD_REQUEST,
+                "badInput".into(),
+                "A name is 3 to 20 letters, digits, _ or -.".into()
+            )
+        );
+        let elsewhere = send("/api/check-name", json!({ "name": "wren" }), Some("https://elsewhere.test"))
+            .await
+            .unwrap();
+        assert_eq!(elsewhere.status(), StatusCode::FORBIDDEN);
+        // The sign-up's per-name limit: five tries a minute, then refused.
+        let statuses: Vec<StatusCode> = futures_util::future::join_all((0..6).map(|_| check("moss")))
+            .await
+            .into_iter()
+            .map(|r| r.unwrap().status())
+            .collect();
+        assert_eq!(statuses.iter().filter(|s| **s == StatusCode::NO_CONTENT).count(), 5, "{statuses:?}");
+        assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+        let lines = sink.lines();
+        let checks: Vec<&serde_json::Value> = lines.iter().filter(|v| v["what"] == "check_name").collect();
+        let codes: Vec<&str> = checks.iter().map(|v| v["code"].as_str().unwrap_or("?")).collect();
+        assert_eq!(
+            codes,
+            ["nameTaken", "nameTaken", "badInput", "forbidden", "rateLimited"],
+            "{lines:?}"
+        );
+        assert!(checks.iter().all(|v| v["outcome"] == "refused" && v["who"].is_null()), "{checks:?}");
+        // Only the sign-up names the account it made.
+        let others: Vec<&serde_json::Value> = lines.iter().filter(|v| v["what"] != "signup").collect();
+        let all = format!("{others:?}").to_lowercase();
+        for name in ["pip", "demo9", "wren", "moss"] {
+            assert!(!all.contains(name), "{name} in {all}");
+        }
+    }
+
+    /// A POST of JSON from 10.0.0.9 through `app`, its status.
+    async fn status_of(app: &axum::Router, path: &str, body: serde_json::Value) -> StatusCode {
+        let req = Request::post(path)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap();
+        app.clone().oneshot(req).await.unwrap().status()
+    }
+
+    #[tokio::test]
+    async fn a_name_check_spends_sign_ups_own_buckets_and_a_sign_up_after_it_spends_nothing_more() {
+        // Slice 20's review, findings 4, 7 and 14.
+        let look = json!({"avatar": 0, "colour": 0});
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::http::tests::app(dir.path()).layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        let sink = crate::test_logs::LogSink::default();
+        let _logging = sink.capture();
+        // One name's five tries, spent by log-ins: its check is refused at once.
+        for _ in 0..5 {
+            let s = status_of(&app, "/api/login", json!({"name": "fern", "password": "wrong horse"})).await;
+            assert_eq!(s, StatusCode::UNAUTHORIZED);
+        }
+        assert_eq!(
+            status_of(&app, "/api/check-name", json!({"name": "fern"})).await,
+            StatusCode::TOO_MANY_REQUESTS,
+            "the check spends the log-in's per-name bucket"
+        );
+        // And the reverse: five checks of a name leave its sign-up nothing.
+        for _ in 0..5 {
+            assert_eq!(
+                status_of(&app, "/api/check-name", json!({"name": "reed"})).await,
+                StatusCode::NO_CONTENT
+            );
+        }
+        let signup = json!({"name": "reed", "password": "correct horse", "look": look});
+        assert_eq!(
+            status_of(&app, "/api/signup", signup.clone()).await,
+            StatusCode::OK,
+            "a sign-up straight after a check that found its name free spends nothing more"
+        );
+        // A check, then its sign-up, costs one try of the address: ten
+        // newcomers on one network spend ten, not twenty. The checks first,
+        // which hash nothing, so the bucket has no time to refill before the
+        // eleventh; then the sign-ups, which their checks paid for.
+        let dir = tempfile::tempdir().unwrap();
+        let tight = crate::http::tests::app_with(dir.path(), |t| t.auth_per_ip_per_min = 10.0)
+            .layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        for i in 0..10 {
+            let name = format!("pal{i}");
+            assert_eq!(
+                status_of(&tight, "/api/check-name", json!({ "name": name })).await,
+                StatusCode::NO_CONTENT,
+                "{name}"
+            );
+        }
+        // The address's budget, shared across names: the eleventh name is refused.
+        assert_eq!(
+            status_of(&tight, "/api/check-name", json!({"name": "pal10"})).await,
+            StatusCode::TOO_MANY_REQUESTS,
+            "the check spends the per-address bucket"
+        );
+        for i in 0..10 {
+            let name = format!("pal{i}");
+            let res = status_of(
+                &tight,
+                "/api/signup",
+                json!({"name": name, "password": "correct horse", "look": look}),
+            )
+            .await;
+            assert_eq!(res, StatusCode::OK, "{name}: its check paid");
+        }
+        // A sign-up with no check before it still spends, and still decides.
+        let dir = tempfile::tempdir().unwrap();
+        let fresh = crate::http::tests::app_with(dir.path(), |t| t.auth_per_ip_per_min = 2.0)
+            .layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        assert_eq!(
+            status_of(&fresh, "/api/check-name", json!({"name": "moth"})).await,
+            StatusCode::NO_CONTENT
+        );
+        let other = json!({"name": "wasp", "password": "correct horse", "look": look});
+        assert_eq!(
+            status_of(&fresh, "/api/signup", other).await,
+            StatusCode::OK,
+            "unchecked, it spends the second"
+        );
+        let checked = json!({"name": "moth", "password": "correct horse", "look": look});
+        assert_eq!(
+            status_of(&fresh, "/api/signup", checked.clone()).await,
+            StatusCode::OK,
+            "checked, it spends nothing"
+        );
+        assert_eq!(
+            status_of(&fresh, "/api/signup", checked).await,
+            StatusCode::TOO_MANY_REQUESTS,
+            "only once"
+        );
+        // No address in any line.
+        assert!(!sink.text().contains("10.0.0.9"), "{}", sink.text());
     }
 
     #[test]
