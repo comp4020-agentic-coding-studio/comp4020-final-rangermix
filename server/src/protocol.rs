@@ -561,6 +561,13 @@ pub struct SignUpRequest {
     pub look: Look,
 }
 
+/// "I'm new" asks whether a name is free before it asks for a look (slice 20).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CheckNameRequest {
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct LogInRequest {

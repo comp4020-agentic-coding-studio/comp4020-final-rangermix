@@ -76,6 +76,7 @@ pub fn router(state: AppState) -> Router {
         .route("/readme/docs/{*path}", get(readme_asset))
         .route("/api/signup", post(crate::api::signup))
         .route("/api/login", post(crate::api::login))
+        .route("/api/check-name", post(crate::api::check_name))
         .route("/api/logout", post(crate::api::logout))
         .route("/api/me", get(crate::api::me))
         .route("/api/recover", post(crate::api::recover))

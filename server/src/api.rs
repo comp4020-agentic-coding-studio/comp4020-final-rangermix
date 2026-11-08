@@ -2,7 +2,9 @@
 //! Answers are JSON (`ApiMe` or `ApiError`); a session is an HttpOnly cookie.
 use crate::auth;
 use crate::http::{AppState, client_ip, origin_ok};
-use crate::protocol::{ApiError, ApiErrorCode, ApiMe, LogInRequest, Look, RecoverRequest, SignUpRequest};
+use crate::protocol::{
+    ApiError, ApiErrorCode, ApiMe, CheckNameRequest, LogInRequest, Look, RecoverRequest, SignUpRequest,
+};
 use crate::store::{self, UserRow};
 // Accounts keep Canberra's own clock, not the café's, which a demo account
 // moves on: a jump must spend nobody's session (slice 17's review, finding 4).
@@ -174,17 +176,55 @@ pub async fn signup(
     logged("signup", signup_answer(app, peer, headers, req).await)
 }
 
-async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: SignUpRequest) -> Answer {
-    guard(&app, &headers, peer, &req.name)?;
-    if !auth::valid_username(&req.name) {
-        return Err(bad_input("A name is 3 to 20 letters, digits, _ or -."));
+/// A name sign-up would refuse before looking it up: badly formed, or one
+/// of the café's own.
+fn refused_name(name: &str) -> Option<Failure> {
+    if !auth::valid_username(name) {
+        return Some(bad_input("A name is 3 to 20 letters, digits, _ or -."));
     }
-    if auth::reserved_username(&req.name) {
-        return Err(Failure(
+    if auth::reserved_username(name) {
+        return Some(Failure(
             StatusCode::CONFLICT,
             ApiErrorCode::NameTaken,
             "That name is the café's own.",
         ));
+    }
+    None
+}
+
+fn name_taken() -> Failure {
+    Failure(StatusCode::CONFLICT, ApiErrorCode::NameTaken, "That name is taken.")
+}
+
+/// Whether sign-up would take this name (slice 20): guarded and limited as
+/// sign-up is, so it tells nobody more, or faster, than sign-up does. A free
+/// name logs nothing, since no account acted.
+pub async fn check_name(
+    State(app): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(req): Json<CheckNameRequest>,
+) -> Answer {
+    logged("check_name", check_name_answer(app, peer, headers, req).await)
+}
+
+async fn check_name_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: CheckNameRequest) -> Answer {
+    guard(&app, &headers, peer, &req.name)?;
+    if let Some(refused) = refused_name(&req.name) {
+        return Err(refused);
+    }
+    let name = req.name;
+    let user = app.store.call(move |c| store::user_by_name(c, &name)).await.map_err(server)?;
+    match user {
+        Some(_) => Err(name_taken()),
+        None => Ok(StatusCode::NO_CONTENT.into_response()),
+    }
+}
+
+async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req: SignUpRequest) -> Answer {
+    guard(&app, &headers, peer, &req.name)?;
+    if let Some(refused) = refused_name(&req.name) {
+        return Err(refused);
     }
     if !auth::valid_password(&req.password) {
         return Err(bad_input("A password is 8 to 128 characters."));
@@ -201,7 +241,7 @@ async fn signup_answer(app: AppState, peer: SocketAddr, headers: HeaderMap, req:
         .call(move |c| store::insert_user(c, &name, &password_hash, &recovery_hash, look.avatar, look.colour, now))
         .await
         .map_err(server)?
-        .ok_or(Failure(StatusCode::CONFLICT, ApiErrorCode::NameTaken, "That name is taken."))?;
+        .ok_or_else(name_taken)?;
     tracing::info!(target: "action", uid = id, who = %req.name, what = "signup");
     start_session(
         &app,
@@ -412,6 +452,71 @@ mod tests {
             "{refused:?}"
         );
         assert!(lines.iter().any(|v| v["what"] == "logout" && v["who"] == "sam"), "{lines:?}");
+    }
+
+    #[tokio::test]
+    async fn a_name_check_answers_what_sign_up_would_guarded_and_limited_as_it_is() {
+        // Slice 20: "I'm new" asks before it asks for a look.
+        let dir = tempfile::tempdir().unwrap();
+        let app = crate::http::tests::app(dir.path()).layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
+        let sink = crate::test_logs::LogSink::default();
+        let _logging = sink.capture();
+        let send = |path: &str, body: serde_json::Value, origin: Option<&str>| {
+            let mut req = Request::post(path)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::HOST, "cafe.test");
+            if let Some(origin) = origin {
+                req = req.header(header::ORIGIN, origin);
+            }
+            app.clone().oneshot(req.body(Body::from(body.to_string())).unwrap())
+        };
+        let check = |name: &str| send("/api/check-name", json!({ "name": name }), Some("https://cafe.test"));
+        let answer = |res: axum::response::Response| async move {
+            let status = res.status();
+            let body = axum::body::to_bytes(res.into_body(), 4096).await.unwrap();
+            let json: serde_json::Value = serde_json::from_slice(&body).unwrap_or(serde_json::Value::Null);
+            (status, json["error"].as_str().unwrap_or("").to_string(), json["detail"].as_str().unwrap_or("").to_string())
+        };
+        assert_eq!(check("pip").await.unwrap().status(), StatusCode::NO_CONTENT);
+        let look = json!({"avatar": 0, "colour": 0});
+        let res = send("/api/signup", json!({"name": "Pip", "password": "correct horse", "look": look}), None).await.unwrap();
+        assert!(res.status().is_success(), "{}", res.status());
+        assert_eq!(
+            answer(check("PIP").await.unwrap()).await,
+            (StatusCode::CONFLICT, "nameTaken".into(), "That name is taken.".into())
+        );
+        assert_eq!(
+            answer(check("demo9").await.unwrap()).await,
+            (StatusCode::CONFLICT, "nameTaken".into(), "That name is the café's own.".into())
+        );
+        assert_eq!(
+            answer(check("x").await.unwrap()).await,
+            (StatusCode::BAD_REQUEST, "badInput".into(), "A name is 3 to 20 letters, digits, _ or -.".into())
+        );
+        let elsewhere = send("/api/check-name", json!({ "name": "wren" }), Some("https://elsewhere.test")).await.unwrap();
+        assert_eq!(elsewhere.status(), StatusCode::FORBIDDEN);
+        // The sign-up's per-name limit: five tries a minute, then refused.
+        let statuses: Vec<StatusCode> = futures_util::future::join_all((0..6).map(|_| check("moss")))
+            .await
+            .into_iter()
+            .map(|r| r.unwrap().status())
+            .collect();
+        assert_eq!(statuses.iter().filter(|s| **s == StatusCode::NO_CONTENT).count(), 5, "{statuses:?}");
+        assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+        let lines = sink.lines();
+        let checks: Vec<&serde_json::Value> = lines.iter().filter(|v| v["what"] == "check_name").collect();
+        let codes: Vec<&str> = checks.iter().map(|v| v["code"].as_str().unwrap_or("?")).collect();
+        assert_eq!(codes, ["nameTaken", "nameTaken", "badInput", "forbidden", "rateLimited"], "{lines:?}");
+        assert!(
+            checks.iter().all(|v| v["outcome"] == "refused" && v["who"].is_null()),
+            "{checks:?}"
+        );
+        // Only the sign-up names the account it made.
+        let others: Vec<&serde_json::Value> = lines.iter().filter(|v| v["what"] != "signup").collect();
+        let all = format!("{others:?}").to_lowercase();
+        for name in ["pip", "demo9", "wren", "moss"] {
+            assert!(!all.contains(name), "{name} in {all}");
+        }
     }
 
     #[test]

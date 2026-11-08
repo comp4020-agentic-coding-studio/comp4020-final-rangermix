@@ -62,6 +62,7 @@ const BANNED: Record<string, string> = {
 /** Each action as a verb, for "tried to ..." and "is walking over to ...". */
 const VERB: Record<string, string> = {
   call: "call a cat",
+  check_name: "choose a name",
   emote: "emote",
   give_treat: "give a treat to",
   login: "log in",
