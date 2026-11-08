@@ -1,5 +1,6 @@
 // The people's sprites (slice 11): someone 32 px tall, front and back,
-// standing and two steps of a walk, drawn from shapes as the study's
+// standing and two steps of a walk, and seated on a seat or cross-legged
+// on a cushion (the user, 2026-11-08), drawn from shapes as the study's
 // people were (docs/notes/screens/art-style/scripts/study.html, person),
 // in the avatar palette's seven slots, so each visitor's skin, hair and
 // shirt colour still swap. Written as content/sprites/png/person/<frame>.png
@@ -25,7 +26,9 @@ const rect = (u0, v0, u1, v1) => (u, v) => u >= u0 && u < u1 && v >= v0 && v < v
 
 /**
  * Someone `view` front or back, `frame` 0 standing or 1 and 2 the walk's
- * steps. Lit from the top left: the right side of the shirt and trousers
+ * steps, or seated (the user, 2026-11-08: "currently they look like
+ * standing on things"): "sit" on a seat, "sit_floor" cross-legged on a
+ * cushion. Lit from the top left: the right side of the shirt and trousers
  * a shade darker is done with the outline's selective rim below, since the
  * palette has one slot each.
  */
@@ -38,10 +41,28 @@ function person(view, frame) {
   const neck = rect(0.455, 0.27, 0.545, 0.31);
   const torso = (u, v) => rect(0.36, 0.3, 0.64, 0.6)(u, v) && !((u < 0.39 || u > 0.61) && v < 0.33);
   const swing = frame === 1 ? 0.03 : frame === 2 ? -0.03 : 0;
-  const arms = (u, v) => rect(0.29, 0.32 + swing, 0.36, 0.54 + swing)(u, v) || rect(0.64, 0.32 - swing, 0.71, 0.54 - swing)(u, v);
-  const hands = (u, v) => rect(0.29, 0.54 + swing, 0.36, 0.59 + swing)(u, v) || rect(0.64, 0.54 - swing, 0.71, 0.59 - swing)(u, v);
-  const legs = frame === 1 ? [rect(0.37, 0.6, 0.48, 0.91), rect(0.52, 0.6, 0.63, 0.88)] : frame === 2 ? [rect(0.37, 0.6, 0.48, 0.88), rect(0.52, 0.6, 0.63, 0.91)] : [rect(0.38, 0.6, 0.49, 0.91), rect(0.51, 0.6, 0.62, 0.91)];
-  const feet = frame === 1 ? [rect(0.36, 0.91, 0.49, 0.96), rect(0.51, 0.88, 0.64, 0.93)] : frame === 2 ? [rect(0.36, 0.88, 0.49, 0.93), rect(0.51, 0.91, 0.64, 0.96)] : [rect(0.37, 0.91, 0.5, 0.96), rect(0.5, 0.91, 0.63, 0.96)];
+  let arms = (u, v) => rect(0.29, 0.32 + swing, 0.36, 0.54 + swing)(u, v) || rect(0.64, 0.32 - swing, 0.71, 0.54 - swing)(u, v);
+  let hands = (u, v) => rect(0.29, 0.54 + swing, 0.36, 0.59 + swing)(u, v) || rect(0.64, 0.54 - swing, 0.71, 0.59 - swing)(u, v);
+  let legs = frame === 1 ? [rect(0.37, 0.6, 0.48, 0.91), rect(0.52, 0.6, 0.63, 0.88)] : frame === 2 ? [rect(0.37, 0.6, 0.48, 0.88), rect(0.52, 0.6, 0.63, 0.91)] : [rect(0.38, 0.6, 0.49, 0.91), rect(0.51, 0.6, 0.62, 0.91)];
+  let feet = frame === 1 ? [rect(0.36, 0.91, 0.49, 0.96), rect(0.51, 0.88, 0.64, 0.93)] : frame === 2 ? [rect(0.36, 0.88, 0.49, 0.93), rect(0.51, 0.91, 0.64, 0.96)] : [rect(0.37, 0.91, 0.5, 0.96), rect(0.5, 0.91, 0.63, 0.96)];
+  if (frame === "sit") {
+    // Head and shirt as standing. The arms down to hands resting on the
+    // knees; the lap, thighs toward the viewer foreshortened to a band
+    // below the shirt, knees apart; the shins hanging over the seat's
+    // front, a gap between them.
+    arms = (u, v) => rect(0.29, 0.32, 0.36, 0.56)(u, v) || rect(0.64, 0.32, 0.71, 0.56)(u, v);
+    hands = (u, v) => rect(0.31, 0.56, 0.38, 0.62)(u, v) || rect(0.62, 0.56, 0.69, 0.62)(u, v);
+    legs = [rect(0.34, 0.6, 0.66, 0.68), rect(0.34, 0.68, 0.45, 0.83), rect(0.55, 0.68, 0.66, 0.83)];
+    feet = [rect(0.32, 0.83, 0.46, 0.88), rect(0.54, 0.83, 0.68, 0.88)];
+  } else if (frame === "sit_floor") {
+    // Cross-legged on a cushion, too low to hang the legs from: hands on
+    // the knees, the lap as wide as the body, the knees out past it, the
+    // shoes crossed in front.
+    arms = (u, v) => rect(0.29, 0.32, 0.36, 0.56)(u, v) || rect(0.64, 0.32, 0.71, 0.56)(u, v);
+    hands = (u, v) => rect(0.26, 0.56, 0.34, 0.62)(u, v) || rect(0.66, 0.56, 0.74, 0.62)(u, v);
+    legs = [rect(0.27, 0.59, 0.73, 0.69), rect(0.21, 0.62, 0.79, 0.69)];
+    feet = [rect(0.36, 0.655, 0.64, 0.69)];
+  }
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
       const u = (x + 0.5) / N, v = (y + 0.5) / N;
@@ -81,6 +102,9 @@ const FRAMES = [
   ["back", person("back", 0)],
   ["back_walk_a", person("back", 1)],
   ["back_walk_b", person("back", 2)],
+  // Seated, always facing out of the seat (every seat's back is behind it).
+  ["sit", person("front", "sit")],
+  ["sit_floor", person("front", "sit_floor")],
 ];
 
 function png(w, h, rgba) {

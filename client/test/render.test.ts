@@ -3,6 +3,7 @@ import type { ServerMsg } from "../src/protocol/ServerMsg";
 import heights from "../../content/sprites/heights.json";
 import palettes from "../../content/sprites/palettes.json";
 import { FLOOR, ISO, toCanvas } from "../src/iso";
+import { topAt } from "../src/pieces";
 import { draw, drawOrder, hitAt, personLift } from "../src/render";
 import type { Light } from "../src/canberra";
 import { Sprites, frameGrid } from "../src/sprites";
@@ -93,9 +94,10 @@ describe("the room's draw order", () => {
   // Slice 09's review, findings 2, 3 and 7.
 
   it("draws a cat asleep on someone's lap over them, on the sofa and on a chair", () => {
-    for (const seat of [piece(3, "chair", 9, 4, 1, 1), null]) {
+    for (const seat of [{ ...piece(3, "chair", 9, 4, 1, 1), seats: true }, null]) {
       const w = welcome();
       const at = seat ? { x: seat.x, y: seat.y } : { x: 1, y: 5 };
+      w.snapshot.room.furniture[0] = { ...w.snapshot.room.furniture[0], seats: true };
       if (seat) w.snapshot.room.furniture.push(seat);
       w.snapshot.people[0] = { ...w.snapshot.people[0], at, sitting: true, bot: false };
       w.snapshot.cats[0] = { ...w.snapshot.cats[0], at, pose: "nap" };
@@ -169,12 +171,15 @@ describe("the room's draw order", () => {
     expect(hitAt(s, c.x, c.y, 10_000)).toBeNull();
   });
 
-  it("says how high someone is drawn, for their bubble: up on a seat, or on the floor", () => {
+  it("says how high someone is drawn, for their bubble: sat on a seat, or on the floor", () => {
     const w = welcome();
+    w.snapshot.room.furniture[0] = { ...w.snapshot.room.furniture[0], seats: true };
     w.snapshot.people[0] = { ...w.snapshot.people[0], at: { x: 1, y: 5 }, sitting: true, bot: false };
     const s = fromWelcome(w, 10_000);
-    // The sofa's seat is 9 px (slice 11's model; its back is 16); someone on it sinks 4 px in.
-    expect(personLift(s, s.people.get(1)!, 10_000)).toBe(5);
+    // The sofa's seat is 9 px (slice 11's model; its back is 16). Sat on
+    // it (the user, 2026-11-08), the seated frame's lap, row 19 of 32, is
+    // on its top: 9 - (30 - 19), 2 px lower than standing on the floor.
+    expect(personLift(s, s.people.get(1)!, 10_000)).toBe(-2);
     expect(personLift(s, s.people.get(2)!, 10_000)).toBe(0);
   });
 
@@ -1290,6 +1295,11 @@ describe("standing on the part under you (slice 11's review, finding 3)", () => 
     const lift = personLift(fromWelcome(w, 10_000), { walk: null, at: { x: 5, y: 5 } }, 10_000);
     // The seat is 9 px; sinking 4 into it.
     expect(lift).toBe(5);
+    // Sat on it (the user, 2026-11-08): the seated frame's lap on the seat's
+    // 9 px, not its back's 16; 9 - (30 - 19).
+    w.snapshot.room.furniture = [{ ...piece(1, "sofa", 4, 5, 3, 1), seats: true }];
+    const s = fromWelcome(w, 10_000);
+    expect(personLift(s, s.people.get(1)!, 10_000)).toBe(-2);
   });
 });
 
@@ -1491,5 +1501,201 @@ describe("every kind as its parts, standing and lying down (slice 11's review, f
     expect(reach(lying), "lying along the floor").toBeGreaterThan(reach(standing));
     // Still on its own tile.
     for (const p of lying) expect(p.y >= 5 - 1e-9 && p.y + p.h <= 6 + 1e-9 && p.x >= 4 - 1e-9 && p.x + p.w <= 5 + 1e-9, "inside its tile").toBe(true);
+  });
+});
+
+// The user, 2026-11-08: "add sitting look for users. currently they look
+// like standing on things." Someone seated is drawn sitting: their seat
+// frame, facing out of the seat, their lap on its top.
+describe("someone seated, drawn sitting (the user, 2026-11-08)", () => {
+  type Seat = { kind: string; at: { x: number; y: number }; w: number };
+  const SOFA: Seat = { kind: "sofa", at: { x: 4, y: 5 }, w: 3 };
+  const CHAIR: Seat = { kind: "chair", at: { x: 9, y: 4 }, w: 1 };
+  const WINDOW_SEAT: Seat = { kind: "window_seat", at: { x: 2, y: 1 }, w: 2 };
+  const CUSHION: Seat = { kind: "cushion", at: { x: 3, y: 8 }, w: 1 };
+  /** A seated frame's lap row: the first below the shirt's hem with trousers at the middle. */
+  const LAP = frameGrid("avatar", "sit")!.findIndex((row, y) => y > 16 && row[16] === 4);
+  type State = ReturnType<typeof fromWelcome>;
+
+  /** A café with `seat` and person 2 sat on its first tile (or standing in front of it), having come by `walk`; you are 99. */
+  function seated(seat: Seat, opts: { sitting?: boolean; walk?: { x: number; y: number }[] } = {}): State {
+    const w = welcome();
+    w.snapshot.room.furniture = [{ ...piece(1, seat.kind, seat.at.x, seat.at.y, seat.w, 1), seats: true }];
+    w.snapshot.cats = [];
+    const sitting = opts.sitting ?? true;
+    const at = sitting ? seat.at : { x: seat.at.x, y: seat.at.y + 1 };
+    w.snapshot.people = [{ ...w.snapshot.people[0], id: 2, at, walk: null, sitting }];
+    w.you = 99;
+    const s = fromWelcome(w, 10_000);
+    if (opts.walk) {
+      // They walked up to it, then the café sat them down: a walk's facing is kept.
+      apply(s, { type: "personMoved", id: 2, walk: { path: opts.walk, start: 10_000, speed: 4 } }, 10_000);
+      apply(s, { type: "personSat", id: 2, at }, 20_000);
+    }
+    return s;
+  }
+
+  /** Which frame person 2 is drawn with, where its image's top-left lands, and whether mirrored. */
+  function drawn(s: State, localNow = 20_000): { frame: string | undefined; at: { x: number; y: number; mirror: boolean } } {
+    const frames: string[] = [];
+    const imgs = new Set<unknown>();
+    const sprites = new Sprites();
+    sprites.avatar = (_look, frame) => {
+      frames.push(frame);
+      const img = Object.assign(document.createElement("canvas"), { width: 32, height: 32 });
+      imgs.add(img);
+      return img;
+    };
+    sprites.cat = () => null;
+    sprites.emote = () => null;
+    let m = [1, 0, 0, 1, 0, 0];
+    const stack: number[][] = [];
+    let at = { x: NaN, y: NaN, mirror: false };
+    const ctx = new Proxy({}, {
+      get: (_t, k) => {
+        if (k === "save") return () => stack.push([...m]);
+        if (k === "restore") return () => (m = stack.pop() ?? m);
+        if (k === "translate") return (x: number, y: number) => (m = [m[0], m[1], m[2], m[3], m[4] + m[0] * x, m[5] + m[3] * y]);
+        if (k === "scale") return (x: number, y: number) => (m = [m[0] * x, m[1], m[2], m[3] * y, m[4], m[5]]);
+        if (k === "getTransform") return () => ({ a: 1 });
+        if (k === "drawImage") {
+          return (i: unknown, x: number, y: number) => {
+            if (imgs.has(i)) at = { x: Math.min(m[0] * x + m[4], m[0] * (x + 32) + m[4]), y: m[3] * y + m[5], mirror: m[0] < 0 };
+          };
+        }
+        return () => {};
+      },
+      set: () => true,
+    }) as unknown as CanvasRenderingContext2D;
+    draw(ctx, s, sprites, localNow, { tile: null, visible: false, hover: null, ghost: null }, 0);
+    return { frame: frames.at(-1), at };
+  }
+
+  /** The seat's top over its first tile's centre, in room pixels, from its model. */
+  async function topOf(seat: Seat, s: State): Promise<number> {
+    const { topAt } = await import("../src/pieces");
+    return topAt(s.room.furniture[0], heights, seat.at.x, seat.at.y);
+  }
+
+  it("draws someone on the sofa, a chair or the window seat sitting, not standing", () => {
+    for (const seat of [SOFA, CHAIR, WINDOW_SEAT]) expect(drawn(seated(seat)).frame, seat.kind).toBe("sit");
+  });
+
+  it("draws someone on the floor cushion sitting cross-legged", () => {
+    expect(drawn(seated(CUSHION)).frame).toBe("sit_floor");
+  });
+
+  it("draws someone standing in front of a seat standing, as before", () => {
+    expect(drawn(seated(SOFA, { sitting: false })).frame).toBe("stand");
+  });
+
+  it("faces a sitter out of the seat, toward the viewer, whichever way they walked up to it", () => {
+    // Up the screen (+x, their back showing), and leftward (mirrored), then sat down.
+    const ways = [
+      [{ x: 2, y: 6 }, { x: 3, y: 6 }, { x: 4, y: 6 }],
+      [{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }],
+    ];
+    for (const walk of ways) {
+      const { frame, at } = drawn(seated(SOFA, { walk }));
+      expect(frame, `came by ${JSON.stringify(walk)}`).toBe("sit");
+      expect(at.mirror, `came by ${JSON.stringify(walk)}`).toBe(false);
+    }
+  });
+
+  it("stands a sitter up where they sit facing the way they sat, not the way they walked up (the sitting pose's review, finding 1)", () => {
+    // Taking a piece from the catalogue stands a sitter up with a walk of
+    // no steps (furniture.rs's `stand_up`), which says no way to face.
+    const ways = [
+      [{ x: 2, y: 6 }, { x: 3, y: 6 }, { x: 4, y: 6 }],
+      [{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }],
+    ];
+    for (const walk of ways) {
+      const s = seated(SOFA, { walk });
+      apply(s, { type: "personMoved", id: 2, walk: { path: [SOFA.at], start: 30_000, speed: 4 } }, 30_000);
+      const { frame, at } = drawn(s, 30_000);
+      expect(frame, `came by ${JSON.stringify(walk)}`).toBe("stand");
+      expect(at.mirror, `came by ${JSON.stringify(walk)}`).toBe(false);
+    }
+  });
+
+  it("rests a sitter's lap on the seat's top, their shoes below it", async () => {
+    for (const seat of [SOFA, CHAIR, WINDOW_SEAT, CUSHION]) {
+      const s = seated(seat);
+      const { frame, at } = drawn(s);
+      const grid = frameGrid("avatar", frame!)!;
+      // The lap's row: the first below the shirt's hem with trousers at the middle.
+      const lap = grid.findIndex((row, y) => y > 16 && row[16] === 4);
+      const centre = toCanvas(seat.at.x + 0.5, seat.at.y + 0.5);
+      const top = centre.y - (await topOf(seat, s));
+      expect(Math.abs(at.y + lap - top), `${seat.kind}: lap drawn at ${at.y + lap}, the seat's top at ${top}`).toBeLessThanOrEqual(2);
+      // Their legs hang (or fold) in front of the seat: the shoes lower than its top.
+      const lowest = grid.map((row) => row.some((v) => v >= 0)).lastIndexOf(true);
+      expect(at.y + lowest, `${seat.kind}: shoes below the seat's top`).toBeGreaterThan(top);
+    }
+  });
+
+  it("picks a sitter where they're drawn: their face, and their legs", () => {
+    for (const seat of [SOFA, CHAIR, CUSHION]) {
+      const s = seated(seat);
+      const { frame, at } = drawn(s);
+      const grid = frameGrid("avatar", frame!)!;
+      const eyes = grid.findIndex((row) => row[13] === 0 && row[14] === 1);
+      expect(hitAt(s, at.x + 16, at.y + eyes + 0.5, 20_000), `${seat.kind}: their face`).toEqual(seat.at);
+      const lowest = grid.map((row) => row.some((v) => v >= 0)).lastIndexOf(true);
+      const shin = grid[lowest - 2].findIndex((v) => v > 0);
+      expect(hitAt(s, at.x + shin + 0.5, at.y + lowest - 2 + 0.5, 20_000), `${seat.kind}: their legs`).toEqual(seat.at);
+    }
+  });
+
+  it("curls a lap cat on the sitter's lap, below their face, wherever they sit", () => {
+    for (const seat of [SOFA, CHAIR, WINDOW_SEAT, CUSHION]) {
+      const s = seated(seat);
+      s.cats.set("mochi", { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: seat.at, pose: "nap", walk: null, heldBy: null, reaction: null });
+      const { frame, at } = drawn(s);
+      const person = frameGrid("avatar", frame!)!;
+      const eyes = at.y + person.findIndex((row) => row[13] === 0 && row[14] === 1);
+      const lap = at.y + LAP;
+      const order = drawOrder(s, 20_000);
+      const cat = order.find((d) => d.label === "cat mochi")!;
+      // The lap frame's drawn rows, placed as the cat is: its feet on the tile, `lift` up.
+      const grid = frameGrid("cat", "round:lap")!;
+      const rows = grid.map((row) => row.some((v) => v >= 0));
+      const catTop = toCanvas(seat.at.x + 0.5, seat.at.y + 0.5).y - 24 + 2 - cat.lift;
+      const top = catTop + rows.indexOf(true);
+      const bottom = catTop + rows.lastIndexOf(true);
+      expect(top, `${seat.kind}: the cat's top (${top}) below the sitter's eyes (${eyes})`).toBeGreaterThan(eyes + 1);
+      expect(bottom, `${seat.kind}: the cat's bottom (${bottom}) on the lap (${lap}), not down by the feet`).toBeLessThanOrEqual(lap + 3);
+      expect(bottom, `${seat.kind}: the cat's bottom (${bottom}) on the lap (${lap}), not floating over it`).toBeGreaterThanOrEqual(lap - 1);
+    }
+  });
+
+  it("naps a lap cat on the seat's top when its sitter isn't drawn seated (the sitting pose's review, finding 2)", () => {
+    // The café says they sit, but the piece under them seats no one here
+    // (the client's furniture behind the server's): they're drawn standing
+    // on it, so the cat naps on its top, not over their chest.
+    // A sofa that seats no one, and one that seats but has toppled: each
+    // alone keeps the sitter standing (the fixes' review, finding 2).
+    for (const toppled of [false, true]) {
+      const s = seated(SOFA);
+      s.room.furniture[0] = { ...s.room.furniture[0], seats: toppled, toppled };
+      s.cats.set("mochi", { id: "mochi", name: "Mochi", coat: "white_grey", build: "round", at: SOFA.at, pose: "nap", walk: null, heldBy: null, reaction: null });
+      expect(drawn(s).frame).toBe("stand");
+      const cat = drawOrder(s, 20_000).find((d) => d.label === "cat mochi")!;
+      const on = toppled ? 0 : topAt(s.room.furniture[0], heights, SOFA.at.x, SOFA.at.y);
+      expect(cat.lift, toppled ? "the sofa toppled" : "the sofa seats no one").toBe(on);
+    }
+  });
+
+  it("anchors a seated speaker's bubble over their head as drawn", () => {
+    for (const seat of [SOFA, CHAIR, WINDOW_SEAT, CUSHION]) {
+      const s = seated(seat);
+      const { frame, at } = drawn(s);
+      const grid = frameGrid("avatar", frame!)!;
+      const head = at.y + grid.findIndex((row) => row.some((v) => v >= 0));
+      // The stage puts the head 30 px (FIGURE) over the feet, and the feet `personLift` over the tile's centre.
+      const centre = toCanvas(seat.at.x + 0.5, seat.at.y + 0.5);
+      const anchor = centre.y - personLift(s, s.people.get(2)!, 20_000) - 30;
+      expect(Math.abs(anchor - head), `${seat.kind}: the bubble's anchor ${anchor}, the head ${head}`).toBeLessThanOrEqual(2);
+    }
   });
 });

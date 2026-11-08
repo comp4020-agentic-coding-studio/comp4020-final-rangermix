@@ -2741,6 +2741,98 @@ the screens.
   "I'm not *name*" and `demo1`, with one `agent_` account, recorded in
   [slice-20-welcome.md](docs/notes/slice-20-welcome.md).
 
+### 21. Sitting, drawn sitting
+
+*Session `50a7b3e0`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-08 12:17:32 AEDT*
+
+> add sitting look for users. currently they look like standing on things.
+
+**Result.** People seated on a sofa, chair, window seat or cushion are
+drawn sitting ([notes/sitting-pose.md](notes/sitting-pose.md)).
+- **The cause:** the café already sent who was sitting, but the client
+  drew them with the standing frame, raised onto the seat. They stood
+  on it, with their back to the room if they'd walked up to it from
+  behind. On the low cushion they stood beside it.
+- **The look:** two new frames, drawn the way the others are, by
+  `scripts/people.mjs`. On a seat, the lap rests on its top, the knees
+  apart, the shins hanging over its front. On the cushion, too low for
+  that, cross-legged. A sitter always faces out of the seat, since
+  every seat's back is behind it. A cat napping on a lap curls on the
+  seated lap, below the face, where before it would have covered it.
+  Speech bubbles and clicks follow the seated sprite.
+- **Client only:** no protocol or server change. The server still
+  decides who sits where.
+- **Checked:** nine new client tests written first; six failed on the
+  bug (the standing frame, a back to the room, a lap 7 px off the seat,
+  a lap cat over the face). Two older tests passed for the wrong reason
+  (their sofa didn't seat anyone) and now seat someone properly. The
+  client's 394 tests, both typechecks, clippy and `cargo test` pass.
+  Before and after screens from two local cafés, at 1920×1080 and
+  390×844 ([screens/sitting-pose/](notes/screens/sitting-pose/)): all
+  four sitters stand before and sit after. A seated speaker's bubble
+  sat on their head, and a click or tap on their face opened their
+  menu.
+- **Not committed:** the user asked for the change as a patch,
+  `sitting-pose.patch`, applied to the main checkout without a commit,
+  for them to commit. Not live until it reaches `main`.
+
+### 22. Finishing the README's "What's good?"
+
+*Session `68c10454`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-08 22:56:31 AEDT*
+
+> check @README.md. I wrote "what's good" above "For markers". Help me remember other things I've done that defines good, and finish that part. write in a separate draft file, do not commit yet
+
+**Result.** A draft,
+[notes/readme-whats-good-draft.md](notes/readme-whats-good-draft.md),
+not committed, at the user's asking. `README.md` is unchanged.
+- **How:** a workflow of four readers, each over one part of the
+  record: the design and every ADR; every check in `spec/` and
+  `cargo test`; the whole prompt log, the reflections and
+  `PROCESS.md`; and the code, against each line of the section. Every
+  quote of the user's in the draft was matched word for word against
+  this log, and every test it names was found in the code.
+- **The draft:** the section finished, the user's lines kept word for
+  word with about thirty new ones in their voice: the cats by name,
+  trust that never fades, the quiet seat, the door, talk that's public
+  and fleeting, every screen. It adds five sources from
+  `readme-material.md` and a closing "How I know it's good": what the
+  tests hold, what the user judged by eye, and what is still unjudged
+  or unmeasured. A table gives each new line the user's call that made
+  it and what holds it.
+- **Found:** ten of the user's lines say more than the code backs, and
+  one typo ("no stuff" for "no staff") changes a line's meaning. The
+  palette is Catppuccin, not cappuccino. The café keeps Canberra's hour
+  whatever the device's clock says. A ban covers one action, and only
+  after a scratch. Trust comes from what you do with a cat, not from
+  time near it. The furniture has limits, and the board keeps a
+  rolling day. "Minimal resource usage" and "minimal memory usage" were
+  never measured: no check or note gives the server's memory, and
+  slice 04's load check is only proposed. Outside the section, the
+  Credits' "once slice 15 is built" is stale, and step 9 of For
+  markers reads as the clock going back.
+- **Left out on purpose:** mute, the slur blocklist and the admin ban.
+  The design describes them, but slice 03 never built them.
+- **The word limit:** the README is at 851 words against the brief's
+  400 to 600, and the finished section alone is about 1,330. The draft
+  suggests keeping "For markers" and cutting "What's good?" to a line
+  or two per heading, with the full lists linked. That's the user's
+  call.
+
+### 21. Sitting, drawn sitting (continued)
+
+*Session `50a7b3e0`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-08 23:36:45 AEDT*
+
+> put your changes in to a patch file, apply to local and do not commit
+
+**Result.** The change, as one patch, applied to the main checkout on
+`main`, staged and not committed.
+
 ### 23. The furniture sets
 
 *Session `cb735744`, Claude Code (Opus 5.5), run as a background job.*
@@ -2752,6 +2844,32 @@ the screens.
 **Result.** Not built: the furniture sets are slice 17's part 2, which
 waited for slice 16's floor and was never picked up after it. No
 `content/layouts/`, nothing in the server or the demo bar.
+
+### 24. Reviewing the sitting pose, and fixing what the review found
+
+*Session `c3f33cbb`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 02:55:13 AEDT*
+
+> review staged changes
+
+**Result.** `/code-review` on the staged sitting pose found seven
+findings, recorded in
+[reviews/sitting-pose-findings.md](notes/reviews/sitting-pose-findings.md):
+- **Two bugs, both small and visual.** A sitter stood up where they sat
+  (taking a piece from the catalogue) turned their back to the room. A lap
+  cat could float over a sitter who wasn't drawn seated.
+- **Four tidy-ups:**
+  - the seat was worked out three times a frame;
+  - the lap row was a hard-coded 19;
+  - a third copy of the figure's height;
+  - a return value nobody read.
+- **One breach of `CLAUDE.md`:** the screenshot script signed up non-`agent_`
+  accounts, with its password written in the file.
+
+### 23. The furniture sets (continued)
+
+*Session `cb735744`, Claude Code (Opus 5.5), run as a background job.*
 
 *Sent 2026-11-09 03:05:55 AEDT*
 
@@ -2793,3 +2911,45 @@ unstaged work, which was left alone.
   order, focus kept on a resize, menus closed when a set lands.
 - **README:** "For markers" gains Lap time and Play room in two steps, as
   the spec says part 2 adds; the user's to judge.
+
+### 24. Reviewing the sitting pose, and fixing what the review found (continued)
+
+*Session `c3f33cbb`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 04:09:46 AEDT*
+
+> fix 1, 2 and 7 and clean up code.
+
+**Result.** All seven fixed, each test first, the new tests each seen
+failing ([notes/sitting-pose.md](notes/sitting-pose.md), "Reviews").
+Not committed, since the sitting pose is still uncommitted for the user
+to commit. The fixes are unstaged, apart from the user's staged change.
+- **Facing:** the café's state keeps "front" as the side of anyone seated
+  on a seat, from the sit and from every welcome. Stood up in place, they
+  still face the room.
+- **Lap cat:** it takes the seat's top, or the piece's top when its
+  sitter isn't drawn seated.
+- **Tidy-ups:**
+  - each person's seat is worked out once a frame;
+  - the lap row is read from the art;
+  - one `FIGURE` constant, which `stage.ts` imports.
+
+  A cold reviewer drew 34 states side by side and found no pixel moved
+  except the lap-cat fix.
+- **The script:** `agent_` names and a password made per run.
+- **The second, cold review** found four more, all fixed
+  ([findings](notes/reviews/sitting-pose-fixes-findings.md)):
+  - a reconnect still showed the old bug, hence setting the side at the
+    sit and on each welcome, not only at the stand-up;
+  - a test named for toppled seats didn't test them;
+  - the script couldn't pass slice 20's door, and could leave sitters
+    behind on a failure;
+  - the first review's findings weren't in the repo.
+- **Checked:**
+  - the client's 437 tests and both typechecks;
+  - `cargo fmt`, `clippy` and `cargo test`;
+  - the whole `spec/` against this tree on a fresh local café.
+
+  The browser specs had timed out against a stale café left on port 8080,
+  built before slice 20. The after-shots were retaken on today's client
+  with the fixed script; the sitters sit as before.

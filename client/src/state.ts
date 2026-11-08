@@ -109,6 +109,18 @@ export function lapOf(state: CafeState, cat: CatView): number | null {
   return null;
 }
 
+/**
+ * The piece someone sits on, if the café says they're seated and a piece
+ * that seats people, standing, is under the tile they're still on; else
+ * null, and they're drawn standing. A cushion is too low to stand anyone up
+ * on, but someone sits on it all the same.
+ */
+export function seatUnder(state: CafeState, person: { sitting?: boolean }, spot: { x: number; y: number; moving: boolean }): FurnitureView | null {
+  if (!person.sitting || spot.moving) return null;
+  const [x, y] = [Math.round(spot.x), Math.round(spot.y)];
+  return state.room.furniture.find((f) => f.seats && !f.toppled && x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h) ?? null;
+}
+
 export function serverNow(state: CafeState, localNow = Date.now()): number {
   return localNow + state.offset;
 }
@@ -123,7 +135,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     for (const p of previous.people.values()) keepFacing(previous, `p${p.id}`, p.walk, p.at, localNow);
     for (const c of previous.cats.values()) keepFacing(previous, `c${c.id}`, c.walk, c.at, localNow);
   }
-  return {
+  const state: CafeState = {
     you: msg.you,
     build: msg.build,
     cap: msg.cap,
@@ -149,6 +161,20 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     chalkShown: msg.chalkShown,
     facing: previous?.facing ?? new Map(),
   };
+  for (const p of state.people.values()) faceOutIfSeated(state, p, msg.now);
+  return state;
+}
+
+/**
+ * Someone drawn sitting faces out of their seat, toward the viewer: every
+ * seat's back is behind it. Kept as their side, so that stood up where they
+ * sit (furniture.rs's `stand_up`, a walk of no steps), seen or missed while
+ * the connection was down, they still face that way, not the way they
+ * walked up to it (the sitting pose's review, finding 1; the fixes' review,
+ * finding 1). A walk of steps turns them as it goes.
+ */
+function faceOutIfSeated(state: CafeState, p: PersonView, now: number): void {
+  if (seatUnder(state, p, positionAt(p.walk, p.at, now))) state.facing.set(`p${p.id}`, { view: "front", mirror: false });
 }
 
 /**
@@ -271,8 +297,11 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
     }
     case "personSat": {
       const p = state.people.get(msg.id);
-      if (p) keepFacing(state, `p${msg.id}`, p.walk, p.at, localNow);
-      if (p) state.people.set(msg.id, { ...p, at: msg.at, walk: null, sitting: true });
+      if (!p) return [];
+      keepFacing(state, `p${msg.id}`, p.walk, p.at, localNow);
+      const sat = { ...p, at: msg.at, walk: null, sitting: true };
+      state.people.set(msg.id, sat);
+      faceOutIfSeated(state, sat, now);
       return [];
     }
     case "catMoved": {

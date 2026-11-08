@@ -311,6 +311,82 @@ describe("the side a walker shows, through a reconnect (slice 12's review, findi
   });
 });
 
+describe("a sitter stood up where they sit faces the way they sat (the sitting pose's review, finding 1)", () => {
+  // Up the screen, their back showing, to a chair that seats at (4,6).
+  const upTheScreen = { path: [{ x: 2, y: 6 }, { x: 3, y: 6 }, { x: 4, y: 6 }], start: 10_000, speed: 4 };
+  const chair = { id: 7, kind: "chair", x: 4, y: 6, w: 1, h: 1, movable: true, blocks: true, under: false, seats: true, perch: false, toppled: false };
+  /** Taking a piece from the catalogue stands a sitter up with a walk of no steps (furniture.rs's `stand_up`). */
+  const standUp = (at: number): ServerMsg => ({ type: "personMoved", id: 2, walk: { path: [{ x: 4, y: 6 }], start: at, speed: 4 } });
+
+  it("keeps the front, not the side they walked up with", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [chair];
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 2, y: 6 }, walk: null, sitting: false, bot: false });
+    const s = fromWelcome(w, 10_000);
+    apply(s, { type: "personMoved", id: 2, walk: upTheScreen }, 10_000);
+    apply(s, { type: "personSat", id: 2, at: { x: 4, y: 6 } }, 20_000);
+    apply(s, standUp(30_000), 30_000);
+    expect(s.facing.get("p2")).toEqual({ view: "front", mirror: false });
+  });
+
+  it("keeps the front through a reconnect that found them seated", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [chair];
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 2, y: 6 }, walk: upTheScreen, sitting: false, bot: false });
+    const s = fromWelcome(w, 10_000);
+    const again = welcome();
+    again.now = 20_000;
+    again.snapshot.room.furniture = [chair];
+    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 6 }, walk: null, sitting: true, bot: false });
+    const after = fromWelcome(again, 20_000, s);
+    apply(after, standUp(30_000), 30_000);
+    expect(after.facing.get("p2")).toEqual({ view: "front", mirror: false });
+  });
+
+  it("keeps the front for a viewer who missed the stand-up, reconnecting to find them stood on the seat (the fixes' review, finding 1)", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [chair];
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 2, y: 6 }, walk: null, sitting: false, bot: false });
+    const s = fromWelcome(w, 10_000);
+    apply(s, { type: "personMoved", id: 2, walk: upTheScreen }, 10_000);
+    apply(s, { type: "personSat", id: 2, at: { x: 4, y: 6 } }, 20_000);
+    // The connection drops; sam stands up where they sit, unseen; it comes back.
+    const again = welcome();
+    again.now = 40_000;
+    again.snapshot.room.furniture = [chair];
+    again.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 6 }, walk: null, sitting: false, bot: false });
+    expect(fromWelcome(again, 40_000, s).facing.get("p2")).toEqual({ view: "front", mirror: false });
+  });
+
+  it("keeps the front for a viewer who came back while they sat and then missed the stand-up", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [chair];
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 2, y: 6 }, walk: upTheScreen, sitting: false, bot: false });
+    const s = fromWelcome(w, 10_000);
+    const seated = welcome();
+    seated.now = 20_000;
+    seated.snapshot.room.furniture = [chair];
+    seated.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 6 }, walk: null, sitting: true, bot: false });
+    const during = fromWelcome(seated, 20_000, s);
+    const stood = welcome();
+    stood.now = 40_000;
+    stood.snapshot.room.furniture = [chair];
+    stood.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 4, y: 6 }, walk: null, sitting: false, bot: false });
+    expect(fromWelcome(stood, 40_000, during).facing.get("p2")).toEqual({ view: "front", mirror: false });
+  });
+
+  it("keeps the side they walked up with when nothing under them seats anyone, as they were drawn", () => {
+    const w = welcome();
+    w.snapshot.room.furniture = [{ ...chair, seats: false }];
+    w.snapshot.people.push({ id: 2, name: "sam", look: { avatar: 1, colour: 2 }, place: "inside", at: { x: 2, y: 6 }, walk: null, sitting: false, bot: false });
+    const s = fromWelcome(w, 10_000);
+    apply(s, { type: "personMoved", id: 2, walk: upTheScreen }, 10_000);
+    apply(s, { type: "personSat", id: 2, at: { x: 4, y: 6 } }, 20_000);
+    apply(s, standUp(30_000), 30_000);
+    expect(s.facing.get("p2")).toEqual({ view: "back", mirror: false });
+  });
+});
+
 describe("someone who's come in, through a reconnect (slice 12's review, finding 4)", () => {
   it("still faces into the room after a reconnect, whichever way the walk in turned", () => {
     const w = welcome();

@@ -14,7 +14,7 @@ import type { RoomView } from "./protocol/RoomView";
 import type { Walk } from "./protocol/Walk";
 import { TILE } from "./scale";
 import { type AvatarFrame, type CatFrame, type EmoteName, type Grid, type Sprites, avatarPalette, frameGrid, paletteAt } from "./sprites";
-import { type CafeState, type Cat, lapOf, serverNow } from "./state";
+import { type CafeState, type Cat, lapOf, seatUnder, serverNow } from "./state";
 
 // Draws the whole café at 1:1 into the canvas, in a 2:1 isometric camera
 // (slice 09, ADR 0017); CSS scales it by a whole number. Furniture is shaded
@@ -104,8 +104,11 @@ function blit(ctx: Ctx, img: CanvasImageSource | null, x: number, y: number): vo
 /** Where a sprite `size` wide stands with its feet on the tile at `spot`: its top-left. */
 function feetAt(spot: { x: number; y: number }, size = TILE): Pt {
   const c = toCanvas(spot.x + 0.5, spot.y + 0.5);
-  return { x: c.x - size / 2, y: c.y - size + 2 };
+  return { x: c.x - size / 2, y: c.y - size + FEET };
 }
+
+/** How far a sprite's image hangs below its tile's centre: its feet's shadow row. */
+const FEET = 2;
 
 /** One thing to draw, by its footprint on the floor, and how far up something it stands on lifts it. */
 export interface Drawn {
@@ -192,6 +195,8 @@ function onSprite(grid: Grid | null, spot: Spot, lift: number, px: number, py: n
 /** How big a cat and a person are drawn, in room pixels (slice 11). */
 export const CAT = 24;
 export const PERSON = 32;
+/** How far a person's image's top stands over their tile's centre (`feetAt`): their height, standing. */
+export const FIGURE = PERSON - FEET;
 
 /**
  * The tile of whatever is drawn at canvas point (px, py), the nearest the
@@ -301,11 +306,19 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
       continue;
     }
     const spot = facingOf(state, `c${cat.id}`, cat.walk, positionAt(cat.walk, cat.at, now));
-    // A cat asleep on someone's lap is drawn over them, as a held cat is.
-    const layer = lapOf(state, cat) !== null ? LAYER.lap : LAYER.cat;
+    // A cat asleep on someone's lap is drawn over them, as a held cat is,
+    // curled on their lap as they're drawn sitting (the user, 2026-11-08).
+    const sitter = lapOf(state, cat);
+    const layer = sitter !== null ? LAYER.lap : LAYER.cat;
     const on = standingOn(state, spot);
-    const lift = on ? topAt(on, HEIGHT, Math.round(spot.x), Math.round(spot.y)) : 0;
+    const lap = sitter !== null ? state.people.get(sitter) : undefined;
+    // A lap's sitter is still (`lapOf`), so they're where the cat is.
+    const seat = lap ? seatTop(state, lap, spot) : null;
     const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
+    // Their lap is on the seat's top, and the cat drapes a little over their
+    // knees, so its ears come to their chin, however high the seat. A sitter
+    // not drawn seated (no seat under them here) has the cat on the piece's top.
+    const lift = seat !== null ? seat - LAP_DRAPE : on ? topAt(on, HEIGHT, tile.x, tile.y) : 0;
     rest.push({
       label: `cat ${cat.id}`,
       ...footprint(spot, on),
@@ -317,22 +330,28 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
   }
   for (const person of state.people.values()) {
     if (person.place !== "inside") continue;
-    const spot = facingOf(state, `p${person.id}`, person.walk, positionAt(person.walk, person.at, now));
+    const walking = facingOf(state, `p${person.id}`, person.walk, positionAt(person.walk, person.at, now));
+    const seat = seatTop(state, person, walking);
+    // Seated, they face out of the seat, toward the viewer: every seat's
+    // back is behind it, whichever way they came up to it (and stood up
+    // there, they still do: `apply`'s personMoved).
+    const spot: Spot = seat !== null ? { ...walking, view: "front", mirror: false } : walking;
+    const frame = personFrame(spot, now, seat);
     const emote = state.emotes.get(person.id);
     const showing = emote && now - emote.at < EMOTE_MS ? emote.emote : null;
     const carried = state.held.get(person.id) ?? null;
     const held = inArms.get(person.id) ?? null;
     const on = spot.moving ? null : standingOn(state, spot);
-    const lift = personLift(state, person, localNow);
+    const lift = liftOn(spot, on, seat);
     const tile = { x: Math.round(spot.x), y: Math.round(spot.y) };
     rest.push({
       label: `person ${person.id}`,
       ...footprint(spot, on),
       layer: LAYER.person,
       lift,
-      hit: (px, py) => (onSprite(frameGrid("avatar", personFrame(spot, now)), spot, lift, px, py) ? tile : null),
+      hit: (px, py) => (onSprite(frameGrid("avatar", frame), spot, lift, px, py) ? tile : null),
       paint: (ctx, sprites) => {
-        drawPerson(ctx, sprites, person.look, spot, now, person.id === state.you, showing, lift);
+        drawPerson(ctx, sprites, person.look, spot, frame, person.id === state.you, showing, lift);
         if (carried) drawCarried(ctx, carried, spot, lift);
         // A held cat in a princess hug (the user, 2026-11-05): curled in
         // their arms at the chest, below their face, their forearms round it.
@@ -346,15 +365,33 @@ export function drawOrder(state: CafeState, localNow: number): Drawn[] {
   return [...inDrawOrder(under), ...inDrawOrder(rest)];
 }
 
+/** The top of the seat someone sits on at `spot` (`seatUnder`), in room pixels, or null if they're not drawn sitting. */
+function seatTop(state: CafeState, person: { sitting?: boolean }, spot: Spot): number | null {
+  const piece = seatUnder(state, person, spot);
+  return piece ? topAt(piece, HEIGHT, Math.round(spot.x), Math.round(spot.y)) : null;
+}
+
 /**
- * How far up someone inside is drawn, in canvas pixels: up on the seat
- * they're on, sinking a little into it; on the floor, or walking, nothing.
+ * How far up someone at `spot` is drawn, in canvas pixels. Seated (the user,
+ * 2026-11-08), their lap rests on the seat's top and their legs hang (or
+ * fold) in front of it, so a low seat draws them a little lower than
+ * standing; up on a piece `on` without sitting, its top, sinking a little
+ * into it; on the floor, or walking, nothing.
  */
-export function personLift(state: CafeState, person: { walk: Walk | null; at: { x: number; y: number } }, localNow: number): number {
-  const spot = positionAt(person.walk, person.at, serverNow(state, localNow));
-  const on = spot.moving ? null : standingOn(state, spot);
+function liftOn(spot: Spot, on: FurnitureView | null, seat: number | null): number {
+  // The frame's lap row lands FIGURE - lap over the tile's centre (`feetAt`), less the lift.
+  if (seat !== null) return seat - (FIGURE - LAP_ROW[seatedFrame(seat)]);
   return on ? Math.max(0, topAt(on, HEIGHT, Math.round(spot.x), Math.round(spot.y)) - 4) : 0;
 }
+
+/** How far up someone inside is drawn, in canvas pixels (`liftOn`): their speech bubble hangs from it. */
+export function personLift(state: CafeState, person: { walk: Walk | null; at: { x: number; y: number }; sitting?: boolean }, localNow: number): number {
+  const spot = positionAt(person.walk, person.at, serverNow(state, localNow));
+  return liftOn(spot, spot.moving ? null : standingOn(state, spot), seatTop(state, person, spot));
+}
+
+/** How many rows a lap cat hangs below the sitter's lap line, over their knees. */
+const LAP_DRAPE = 3;
 
 /** The footprint something at `spot` sorts by: its own tile, or the piece it's up on. */
 function footprint(spot: { x: number; y: number }, on: FurnitureView | null): { x: number; y: number; w: number; h: number } {
@@ -715,15 +752,46 @@ function drawHug(ctx: Ctx, look: Look, spot: Spot, lift: number): void {
   arm(7, 14, 12, 11);
 }
 
-/** The frame someone shows: walking (two steps), or standing; their back going away (slice 12). */
-function personFrame(spot: Spot, now: number): AvatarFrame {
+/**
+ * The frame someone shows: seated, sitting on the seat, or cross-legged on
+ * one too low to hang their legs from (the user, 2026-11-08); walking (two
+ * steps), or standing; their back going away (slice 12).
+ */
+function personFrame(spot: Spot, now: number, seat: number | null): AvatarFrame {
+  if (seat !== null) return seatedFrame(seat);
   const back = spot.view === "back";
   const step = Math.floor(now / 180) % 2 ? "walk_a" : "walk_b";
   return spot.moving ? (back ? `back_${step}` : step) : back ? "back" : "stand";
 }
 
-function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, now: number, isYou: boolean, emote: EmoteName | null, lift = 0): void {
-  const img = sprites.avatar(look, personFrame(spot, now));
+/** Sitting on a seat `seat` px high, or cross-legged on one too low to hang the legs from. */
+function seatedFrame(seat: number): "sit" | "sit_floor" {
+  return seat < LOW_SEAT ? "sit_floor" : "sit";
+}
+
+/** A seat lower than this, in room pixels (the cushion's 4), is sat on cross-legged: a sitter's shins are 9 px. */
+const LOW_SEAT = 6;
+
+/**
+ * Each seated frame's lap row, read from the art (scripts/people.mjs), so
+ * the frames can be redrawn without touching this: the first row below the
+ * shirt with trousers down its middle.
+ */
+const LAP_ROW = { sit: lapRow("sit"), sit_floor: lapRow("sit_floor") };
+
+function lapRow(frame: "sit" | "sit_floor"): number {
+  const grid = frameGrid("avatar", frame);
+  if (!grid) throw new Error(`avatar.txt has no ${frame}`);
+  // Palette slots (scripts/people.mjs): 3 the shirt, 4 the trousers.
+  const mid = grid[0].length >> 1;
+  const hem = grid.findLastIndex((row) => row[mid] === 3);
+  const lap = grid.findIndex((row, y) => y > hem && row[mid] === 4);
+  if (hem < 0 || lap < 0) throw new Error(`avatar.txt's ${frame} has no lap below its shirt`);
+  return lap;
+}
+
+function drawPerson(ctx: Ctx, sprites: Sprites, look: Look, spot: Spot, frame: AvatarFrame, isYou: boolean, emote: EmoteName | null, lift = 0): void {
+  const img = sprites.avatar(look, frame);
   // As big as its image (32 px since slice 11), its feet on the tile.
   const size = img ? img.width : PERSON;
   const feet = feetAt(spot, size);

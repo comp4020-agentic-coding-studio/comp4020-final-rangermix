@@ -91,9 +91,10 @@ describe("the café's colours in each light", () => {
     for (const f of ["sit", "walk_a", "walk_b", "back_sit", "back_walk_a", "back_walk_b", "nap"]) expect(sheet.has(`round:${f}`), f).toBe(true);
   });
 
-  it("draws every person frame at 32 pixels, with a back view for each (slices 11 and 12)", () => {
+  it("draws every person frame at 32 pixels, with a back view for each standing or walking one (slices 11 and 12)", () => {
     const sheet = parseSheet(avatarSheet);
-    expect([...sheet.keys()].sort()).toEqual(["back", "back_walk_a", "back_walk_b", "stand", "walk_a", "walk_b"]);
+    // Seated (the user, 2026-11-08), always from the front: a sitter faces out of the seat.
+    expect([...sheet.keys()].sort()).toEqual(["back", "back_walk_a", "back_walk_b", "sit", "sit_floor", "stand", "walk_a", "walk_b"]);
     for (const grid of sheet.values()) expect([grid[0].length, grid.length]).toEqual([32, 32]);
   });
 
