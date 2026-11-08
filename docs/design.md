@@ -68,10 +68,17 @@ under [Numbers to tune](#numbers-to-tune).
   code shown at sign-up. Details under [Accounts and safety](#accounts-and-safety).
   ([ADR 0007](adr/0007-use-password-accounts-with-a-recovery-code.md))
 - **Arriving:** your avatar walks in through the door if there's a seat, or
-  joins the line at the window.
+  joins the line at the window. Opening the café while signed in shows the
+  door first: your avatar, a greeting by name and by Canberra's hour, Walk
+  in, and "I'm not *name*", which signs you out and shows the way in.
+  Nothing joins the café until Walk in. *Why:* nobody arrives by accident,
+  an open tab takes no place in the line before its visitor wants one,
+  and the next person at a shared computer can be themselves.
+  ([ADR 0023](adr/0023-greet-a-returning-visitor-at-the-door.md); slice 20)
 - **Leaving:** a Leave button walks you out at once and frees your seat for the
   next in line; closing the tab or losing the connection keeps the seat for the
-  grace period.
+  grace period. The page after says "Hi, *name*." and that the cats will
+  remember you, with Come back in and "I'm not *name*".
 - **Talking is public and fleeting.** Everyone inside and at the window sees
   every bubble, and nothing said is stored or logged. Clicking someone's avatar
   addresses your words to them (their name shows on your bubble); Enter with
@@ -383,6 +390,11 @@ renamed.
 
 ([ADR 0007](adr/0007-use-password-accounts-with-a-recovery-code.md))
 
+- **One way in:** a name and a password, with Walk in to log in and "I'm
+  new" to sign up; "I'm new" checks the name is free
+  (`POST /api/check-name`, guarded and limited as sign-up is), then asks
+  for a look. Sign-up still refuses a taken name.
+  ([ADR 0023](adr/0023-greet-a-returning-visitor-at-the-door.md); slice 20)
 - **Sign-up:** a username (3 to 20 letters, digits, `_` or `-`; unique ignoring
   case; the form says it's shown to everyone), a password (8 to 128
   characters, no composition rules) and a look from preset avatars and
