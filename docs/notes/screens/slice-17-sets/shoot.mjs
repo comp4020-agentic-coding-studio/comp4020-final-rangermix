@@ -24,6 +24,8 @@ async function demo(name, viewport, touch = false) {
 
 const { context, page } = await demo("demo1", { width: 1920, height: 1080 });
 for (const [set, file] of [["Lap time", "lap-time"], ["Play room", "play-room"], ["Opening day", "opening-day"]]) {
+  // The café lays out a set at most every few seconds.
+  await page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
   await page.locator("#demo-furniture button", { hasText: set }).click();
   await page.locator(".toast", { hasText: `You laid out ${set}.` }).waitFor();
   await page.waitForTimeout(400);
@@ -35,12 +37,15 @@ const phone = await demo("demo2", { width: 390, height: 844 }, true);
 await phone.page.locator("#demo-bar .demo-toggle", { hasText: "Furniture" }).tap();
 await phone.page.waitForTimeout(300);
 await phone.page.screenshot({ path: join(out, "phone-b-furniture-open.png") });
+await phone.page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
 await phone.page.locator("#demo-furniture button", { hasText: "Lap time" }).tap();
 await phone.page.locator(".toast", { hasText: "You laid out Lap time." }).waitFor();
 await phone.page.waitForTimeout(300);
 await phone.page.screenshot({ path: join(out, "phone-b-lap-time.png") });
 await phone.page.locator("#demo-bar .demo-toggle", { hasText: "Furniture" }).tap();
+await phone.page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
 await phone.page.locator("#demo-furniture button", { hasText: "Opening day" }).tap();
+await phone.page.locator(".toast", { hasText: "You laid out Opening day." }).waitFor();
 await phone.page.waitForTimeout(300);
 await phone.context.close();
 await browser.close();

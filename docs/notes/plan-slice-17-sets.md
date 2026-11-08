@@ -178,4 +178,24 @@ Written 2026-11-09 from the code at `600e41a` (main), on the branch
 
 ## Execution log
 
-(Where the build departed from this plan.)
+Where the build departed from this plan.
+
+- **Task 1:** Lap time's cat bed moved from (1, 6) to (2, 5) on the first
+  run, so it stands beside the rug as `each_set_holds_what_it_says` wants.
+- **Task 3, after the screens:** the bar's third group wrapped it to three
+  rows on a desktop with a stray rule, and pushed Bots to a second line on
+  a phone. Fixed in `d5e74d8` with CSS `order` on a desktop, which the
+  review then found put Tab out of reading order (finding 7): the times
+  are now last in the page instead.
+- **Decision 6 held, decision 7 extended:** the review (finding 1) found
+  that ending walks and standing people up in the server alone left every
+  page showing them walking or seated. They're now each told by a walk of
+  no steps.
+- **A new number, `layout_every_secs = 10`** (finding 2): the decision
+  "without the rate limit" stays true of the furniture allowance, but the
+  café lays out at most one set every ten seconds, since the demo password
+  is public and a set stops everyone's walks.
+- **`Room::lay_out` instead of `restore`** (findings 3 and 4): unchanged
+  pieces keep their ids, and the set lands whole.
+- **Review:** 2 major, 5 minor, 3 nits, all fixed:
+  [findings](reviews/slice-17-sets-findings.md).

@@ -487,10 +487,15 @@ and Burakku at 25.
   room's whole furniture, so no page sees half a set; what anyone carries
   goes, every errand on the way is called off, everyone stands, anyone
   left where a blocking piece now stands steps off, a cat on a piece that
-  moves jumps off, and every piece is new for the cats to look at. It's
-  saved like any arrangement, spends nobody's furniture allowance, and
-  everyone is told who laid out which set. A demo account at the window
-  can only talk, as anyone there.
+  moves jumps off (a piece the set leaves where it is stays, with any cat
+  on it), and every piece is new for the cats to look at. Every page is
+  told who stood up or stopped. It's saved like any arrangement, spends
+  nobody's furniture allowance, and everyone is told who laid out which
+  set. The café lays out a set at most every ten seconds
+  (`layout_every_secs`), whoever asks, since the password is public and a
+  set stops everyone's walks; the bar says when the next can be (slice 17
+  part 2's review, finding 2). A demo account at the window can only
+  talk, as anyone there.
 - **A demo account adds and removes bots**: up to six (`bots_max`),
   `bot_1` to `bot_6`, visitors the server runs, which take seats and join
   the line, now and then walk to free floor or wave, and never talk, sit,
@@ -884,6 +889,7 @@ and Burakku at 25.
 | Avatar looks | 4 avatars in 6 colours |
 | A demo account's jump | at most 24 hours on, at most once a minute by the café's clock (slice 17) |
 | Bots | at most 6, each staying at most 15 minutes |
+| A demo account's furniture set | at most one every 10 seconds in the café, whoever lays it out (slice 17, part 2) |
 | Music | the night set from 17:00 to 6:00 Canberra time, the day set otherwise; 40% to start, in steps of 5; 128 kbps stereo MP3 aimed at −16 LUFS integrated, within 1 LU, true peak under −1.5 dBTP (slice 15) |
 
 ## Harness
