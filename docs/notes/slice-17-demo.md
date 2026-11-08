@@ -63,9 +63,39 @@ findings' Answers. The majors: every page was dropped 25 s after a jump
 newcomer straight back in; trust a cat gave during a jump's replay wasn't
 stored; and jumps spent everyone's session.
 
+## Checked on the live café (2026-11-08, session `f6949123`)
+
+The user merged the pull request on 2026-11-06 (`4740c3b`), and CI
+deployed it. The live machine (version 120) had no demo accounts: a
+log-in as `demo1` answered 401.
+
+- **The seed**, over `fly ssh console` with the command above: `demo1`
+  (uid 30) and `demo2` (uid 31) created, each with Burakku 25, Mochi 85
+  and Tora 55, one `operator` line per account and cat, none holding the
+  password. Then `fly machine restart`, which loaded it; `demo1` logs in.
+- **demo1 at 1920×1080**: its welcome says `demo: true`, the lead 0, and
+  its trust Burakku 25 (familiar), Mochi 85 (devoted), Tora 55 (friend);
+  your cats read "Burakku knows you. Mochi adores you. Tora is your
+  friend."; the bar shows.
+- **A newcomer at 390×844, by touch** (an `agent_s17…` account, its
+  password random and never written down): no bar; a stranger to all three
+  cats.
+- **Two bots**: added from demo1's bar ("2 bots"), the newcomer's page saw
+  `bot_1` and `bot_2` come in; both removed ("No bots").
+- **One jump, two minutes on** (to 12:24): the newcomer's page heard
+  `jumping` from demo1 and got a welcome at the new time; demo1's bar then
+  read 12:24, "2 min ahead", "Next move in 60 s", and the keyboard's focus
+  was on the bar's clock. The live café now runs two minutes ahead of
+  Canberra, which nobody will notice. Both visitors left.
+- Screens: [live-desktop-demo1.png](screens/slice-17/live-desktop-demo1.png),
+  [live-desktop-after-jump.png](screens/slice-17/live-desktop-after-jump.png),
+  [live-phone-newcomer.png](screens/slice-17/live-phone-newcomer.png).
+
+Not walked live: the longer jumps of the marker's path (Afternoon, Night,
+Morning), which would leave the live café a day or more ahead for every
+visitor; the same path is held on the local café by `spec/` and the
+binary tests on mocked time, and markers will walk it themselves.
+
 ## Still to do
 
-- The merge (the user's), the deploy, then the seed and a restart on Fly
-  (above), then the marker's path walked on the live café at both sizes,
-  recorded here.
-- Part 2, the furniture sets, after slice 16.
+- Part 2, the furniture sets, after slice 16 (now built).

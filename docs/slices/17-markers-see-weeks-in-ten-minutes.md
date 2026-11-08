@@ -1,8 +1,10 @@
 # 17. Markers see weeks of the café in ten minutes
 
-- **Status:** Part 1 built and reviewed 2026-11-06 (4 major and 9 minor
-  findings, each fixed or answered: [findings](../notes/reviews/slice-17-findings.md));
-  live once merged, deployed and seeded. Approved 2026-11-06 by the user's answers to its questions
+- **Status:** Part 1 live 2026-11-08: built and reviewed 2026-11-06 (4
+  major and 9 minor findings, each fixed or answered:
+  [findings](../notes/reviews/slice-17-findings.md)), merged and deployed,
+  the demo accounts seeded on Fly and checked live
+  ([notes](../notes/slice-17-demo.md)). Part 2 to come. Approved 2026-11-06 by the user's answers to its questions
   (below). Built in two parts: **part 1**, everything but the furniture
   sets, alongside slice 16; **part 2**, the three furniture sets, after
   slice 16, since it changes the floor they're laid out on. What's still
