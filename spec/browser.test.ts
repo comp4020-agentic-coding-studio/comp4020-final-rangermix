@@ -1897,11 +1897,18 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     expect(setsTop).toBeLessThan(timesTop);
     // A set, and the visitor's page sees it and is told who laid it out.
     await page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
+    // The visitor has the cat bed's menu open, a piece Lap time moves.
+    const bed = (visitor.frames.find((f) => f.type === "welcome")!.snapshot.room.furniture as Frame[]).find((f) => f.kind === "cat_bed")!;
+    const onBed = await tileAt(visitor.page, { x: bed.x, y: bed.y });
+    await visitor.page.mouse.click(onBed.x, onBed.y);
+    await expect.poll(() => visitor.page.locator(".menu").count()).toBe(1);
     try {
       await page.locator("#demo-furniture button", { hasText: "Lap time" }).focus();
       await page.keyboard.press("Enter");
       await expect.poll(() => visitor.frames.some((f) => f.type === "laidOut" && f.name === "Lap time")).toBe(true);
       await expect.poll(() => visitor.page.locator(".toast", { hasText: "demo1 laid out Lap time." }).count()).toBe(1);
+      // Its menu named a piece that's gone: closed (slice 17 part 2's review, finding 8).
+      await expect.poll(() => visitor.page.locator(".menu").count()).toBe(0);
       // The sets wait for the café, and say so (finding 2).
       expect(await page.locator("#demo-furniture button", { hasText: "Opening day" }).isDisabled()).toBe(true);
       expect(await page.locator("#demo-sets-wait").textContent()).toMatch(/^Next set in \d+ s$/);
