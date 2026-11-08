@@ -604,7 +604,9 @@ mod tests {
             "a sign-up straight after a check that found its name free spends nothing more"
         );
         // A check, then its sign-up, costs one try of the address: ten
-        // newcomers on one network spend ten, not twenty.
+        // newcomers on one network spend ten, not twenty. The checks first,
+        // which hash nothing, so the bucket has no time to refill before the
+        // eleventh; then the sign-ups, which their checks paid for.
         let dir = tempfile::tempdir().unwrap();
         let tight = crate::http::tests::app_with(dir.path(), |t| t.auth_per_ip_per_min = 10.0)
             .layer(MockConnectInfo(SocketAddr::from(([10, 0, 0, 9], 5000))));
@@ -615,13 +617,6 @@ mod tests {
                 StatusCode::NO_CONTENT,
                 "{name}"
             );
-            let res = status_of(
-                &tight,
-                "/api/signup",
-                json!({"name": name, "password": "correct horse", "look": look}),
-            )
-            .await;
-            assert_eq!(res, StatusCode::OK, "{name}");
         }
         // The address's budget, shared across names: the eleventh name is refused.
         assert_eq!(
@@ -629,6 +624,16 @@ mod tests {
             StatusCode::TOO_MANY_REQUESTS,
             "the check spends the per-address bucket"
         );
+        for i in 0..10 {
+            let name = format!("pal{i}");
+            let res = status_of(
+                &tight,
+                "/api/signup",
+                json!({"name": name, "password": "correct horse", "look": look}),
+            )
+            .await;
+            assert_eq!(res, StatusCode::OK, "{name}: its check paid");
+        }
         // A sign-up with no check before it still spends, and still decides.
         let dir = tempfile::tempdir().unwrap();
         let fresh = crate::http::tests::app_with(dir.path(), |t| t.auth_per_ip_per_min = 2.0)

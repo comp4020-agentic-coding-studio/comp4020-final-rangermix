@@ -10,6 +10,8 @@ I want to build a relaxing environment for people. I imagine it to be an idle ap
 
 ### Setting the tone
 
+The app need
+
 For this project I define "good" from the following aspects, with difficulty of measuring by the title:
 
 - Tech | easy
