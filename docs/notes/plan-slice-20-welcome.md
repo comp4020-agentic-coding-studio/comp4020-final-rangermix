@@ -169,3 +169,11 @@ Where the build departed from this plan, added as it happens.
   had filled with the run's first meetings and overflowed, and Chrome
   makes a scrolling box a Tab stop, so Leave was 9 back. Not the door's
   doing; the bound is now 16, and Leave is still reached by keyboard.
+- **Task 6, the review:** 16 findings, 4 major
+  ([findings](reviews/slice-20-findings.md)), all fixed. The one that
+  changed a decision was finding 4: the name check and its sign-up spent
+  two tries of the address each, so a check that finds a name free now
+  pays for the sign-up after it. The spec's Numbers, `design.md` and
+  ADR 0023's consequences say so. Finding 16's music check, first
+  written, passed against a mutant, and was made to count from the
+  reload's own load.

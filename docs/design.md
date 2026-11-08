@@ -393,7 +393,11 @@ renamed.
 - **One way in:** a name and a password, with Walk in to log in and "I'm
   new" to sign up; "I'm new" checks the name is free
   (`POST /api/check-name`, guarded and limited as sign-up is), then asks
-  for a look. Sign-up still refuses a taken name.
+  for a look. Sign-up still refuses a taken name. A check that finds a
+  name free pays for that name's sign-up from the same address within
+  ten minutes, once (noted in memory only, like the limits), so a page
+  sign-up spends one try, and a venue on one address keeps its 60 a
+  minute.
   ([ADR 0023](adr/0023-greet-a-returning-visitor-at-the-door.md); slice 20)
 - **Sign-up:** a username (3 to 20 letters, digits, `_` or `-`; unique ignoring
   case; the form says it's shown to everyone), a password (8 to 128

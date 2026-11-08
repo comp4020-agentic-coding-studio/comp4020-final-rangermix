@@ -1,6 +1,6 @@
 # 20. Welcomed back by name, or someone else
 
-- **Status:** Built 2026-11-08 ([notes](../notes/slice-20-welcome.md), [screens](../notes/screens/slice-20/)), waiting on its review; approved 2026-11-08, with the user's answers below;
+- **Status:** Reviewed 2026-11-08, 16 findings, all fixed ([findings](../notes/reviews/slice-20-findings.md)); built 2026-11-08 ([notes](../notes/slice-20-welcome.md), [screens](../notes/screens/slice-20/)); approved 2026-11-08, with the user's answers below;
   proposed 2026-11-08 from the user's ask of that day
 - **Plan:** [`docs/notes/plan-slice-20-welcome.md`](../notes/plan-slice-20-welcome.md)
 - **Design:** People ("Arriving", "Leaving"); Accounts and safety
@@ -150,7 +150,10 @@ shows.
 ## Numbers
 
 None new. The name check spends the sign-up's limits (5 tries a name and
-60 an address, a minute).
+60 an address, a minute). A check that finds a name free pays for the
+sign-up that follows from the same address within ten minutes, once, so a
+page sign-up spends one try, as before this slice (the review's finding
+4).
 
 ## Open questions
 

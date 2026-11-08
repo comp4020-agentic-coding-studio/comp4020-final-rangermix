@@ -5,9 +5,10 @@ Working state for [slice 20](../slices/20-welcomed-back-by-name-or-someone-else.
 
 ## Where it stands
 
-Built on the branch `slice-20-welcome`, tasks 1 to 5 done. Waiting on the
-fresh review, then merged to `main` (which deploys) and checked live. The
-judged line is the user's, from [the screens](screens/slice-20/).
+Built on the branch `slice-20-welcome` and reviewed: 16 findings
+([findings](reviews/slice-20-findings.md)), every one fixed, most test
+first. Next: merged to `main` (which deploys) and checked live. The judged
+line is the user's, from [the screens](screens/slice-20/).
 
 ## Checked
 
@@ -33,9 +34,18 @@ judged line is the user's, from [the screens](screens/slice-20/).
   `client/test/contrast.test.ts` holds at 4.5:1 in both themes (ink,
   muted, accent and error on the card; ink on the page for I'm new).
 
+## After the review
+
+- **`cargo test`:** 378 passed, 0 failed, three runs in a row (one
+  earlier run caught the new limit test racing the bucket's refill;
+  reordered in `6957eec`).
+- **`pnpm -C client test`:** 421 passed.
+- **`spec/`**, twice in a row, each from a freshly seeded database:
+  123 passed, 1 skipped, no 429. Each run's café log passed
+  `scripts/check-logs.ts --wall` with CI's words (590 and 586 lines).
+
 ## Not checked yet
 
-- The fresh review.
 - Live: the door, I'm not *name*, and the one way in on the deployed
   café, with an `agent_` account and `demo1`; and that a deploy no
   longer puts visitors inside out at the door (the café's own reload).

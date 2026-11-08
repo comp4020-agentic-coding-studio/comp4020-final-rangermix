@@ -69,6 +69,10 @@ sign-up is and tells nobody more than sign-up does.
   than sign-up could, and it logs refusals by code only. Sign-up still
   decides: a name taken between the check and the look step is refused
   there, and the form goes back to say so.
+- The review found the check and its sign-up spent two tries each,
+  halving what a venue on one address could sign up and pushing the
+  spec suite past the limit. A check that finds a name free now pays
+  for the sign-up after it, once (slice 20's review, finding 4).
 - Every check and screens script that signed up through the old tabs
   is turned to the new form; the old slices' scripts stay as their
   record.

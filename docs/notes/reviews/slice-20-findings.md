@@ -542,3 +542,95 @@ reloads the café, and nothing plays or is fetched before the first press.
 None. Every finding raised survived both skeptics. Where two lenses raised
 the same thing, it was merged: the recovery code (door and form), the
 lost focus (door and form), and the keyboard check (form and checks).
+
+## Answers
+
+By the builder, 2026-11-08. Every finding is fixed. Each was test first
+and seen failing before its code, except where a line says otherwise.
+Server fixes in [`b901cf1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b901cf1), with the test made safe from
+the bucket's refill in [`6957eec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6957eec). Page and check fixes
+in [`8616e75`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8616e75).
+
+1. **Fixed.** The recovery code goes once the visitor is in, along with
+   the Copy button's word and both forms. The way in, shown again,
+   holds no code. Held by three tests in `client/test/auth.test.ts`
+   and by `spec/welcome.test.ts`'s "the next person sees none of the
+   last one's words, draft, or code". `#code-text` is checked empty
+   after "I'm not *name*".
+2. **Fixed.** `Bubbles.dispose()` removes what it showed and
+   `Talk.dispose()` clears the draft. `stop()` calls both and
+   empties the said list, who's here and your cats. Held by two new
+   checks in `spec/welcome.test.ts`, which failed first on the draft
+   (the next visitor's box held it, and so did Come back in's), and by
+   `talk.test.ts`. The talk unit test went in with its fix; the
+   browser check had already failed.
+3. **Fixed.** `check_name` is in `scripts/check-logs.ts`'s
+   `ACCOUNT`. A `check_name` refusal joined
+   `spec/check-logs.test.ts`'s good lines and failed there first. The
+   café's log, after each of two whole `spec/` runs, passed through
+   `check-logs.ts --wall` with CI's own words: 590 and 586 lines.
+4. **Fixed, and a decision.** A check that finds a name free notes the
+   name and address in memory (`AuthLimits.checked`) for ten minutes.
+   The sign-up that follows spends nothing more, once. A page sign-up
+   costs one try of the address and the name again, as before the
+   slice. A refused check, a repeated check, and a sign-up with no
+   check all still spend. The note is like the buckets: memory only,
+   never logged, at most 10,000. Held by
+   `a_name_check_spends_sign_ups_own_buckets_and_a_sign_up_after_it_spends_nothing_more`,
+   which failed first (429 for the paid sign-up). The whole `spec/`
+   ran twice in a row from fresh data, 123 passed and 1 skipped each
+   time, with no 429. Recorded in the spec's Numbers and in
+   `docs/design.md`.
+5. **Fixed** with 1: the way in and the recovery form are reset in
+   `finish()`, before entering.
+6. **Fixed.** `start()` takes the note before it branches, so a
+   signed-out answer can't leave it. Held by `spec/welcome.test.ts`'s
+   "a build reload that finds the visitor signed out leaves no note",
+   which failed first (`'1'` left in session storage).
+7. **Fixed.** The new test spends one name's tries by log-ins, and its
+   check is refused. It spends a name's tries by checks, and the paid
+   sign-up still goes through. It spends the address's budget across
+   ten names, and the eleventh is refused. It shows an unchecked
+   sign-up still spends. The per-IP mutation (the check skipping the
+   address's bucket) fails it.
+8. **Fixed.** I'm new doesn't ask again about a name it found free in
+   this showing. Held by `auth.test.ts`, which failed first: four
+   Backs, one check.
+9. **Fixed.** After a refused log-in, focus goes to the password; after
+   another log-in refusal, to Walk in. After a look-step refusal, it
+   goes to the field to correct, or else back to Walk in. After a
+   refused recovery, it goes to the code. After a failed sign-out, it
+   goes to "I'm not *name*". Held by `auth.test.ts` and
+   `door.test.ts`, which failed first. The rate-limited look-step case
+   passed in jsdom before the fix, since jsdom doesn't blur a disabled
+   button as Chromium does. It's held there all the same.
+10. **Fixed.** I'm new counts characters, `[...password].length`, as
+    the server does. A look-step `badInput` about the password returns
+    to the password field. Held by `auth.test.ts`, which failed first.
+    `maxlength` still counts UTF-16 units; a password of more than 64
+    emoji is left as it was before the slice.
+11. **Fixed.** The password field becomes `new-password` when I'm new
+    opens the look step, and `current-password` again on Back, on a
+    refusal that returns, and once in. Held by `auth.test.ts`, which
+    failed first. Not tried with a real password manager.
+12. **Fixed.** The welcome check opens at 19:30 Canberra time on the
+    page's clock and expects the literal "Good evening, *name*." The
+    copied if-chain is gone.
+13. **Fixed.** The keyboard sign-up presses ArrowRight in the avatars,
+    Tab, ArrowRight in the colours, Tab, and checks Walk in has focus
+    before Enter. It throws otherwise.
+14. **Fixed.** The new test checks that `10.0.0.9` is in no log line.
+15. **Fixed.** The open-tab check checks the door shows and no
+    WebSocket opened, then checks the watcher's snapshot.
+16. **Fixed.** `walkInUnpressed`'s comment now says Chromium counts a
+    script's click as a press, so it stands for an entry without one
+    only under `autoplayRule`. A new music check covers the café's own
+    reload for a new build: music remembered on, the faked build reloads
+    the tab, and until a real key nothing plays, no source is held, and
+    nothing is fetched. Then the key starts it. The first version passed
+    against a mutant without the refusal's unload, because it counted
+    fetches from too late. It now counts from the reload's own load, and
+    the mutant fails it. In Playwright's Chromium,
+    `navigator.userActivation.hasBeenActive` is true even on a fresh
+    page, so the musicPanel guard still has no browser check of its own.
+    What holds the behaviour is the browser's autoplay rule, simulated.
