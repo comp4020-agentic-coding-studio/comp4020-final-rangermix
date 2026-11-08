@@ -3198,3 +3198,32 @@ from `content/`, so a new cat leaves it true.
 - **Left for the user:** whether the words are right and short enough,
   and whether the shrink reads as going into the button; and whether the
   README's "For markers" should mention the ⓘ.
+
+### 29. The README's "What's good?" under 700 words
+
+*Session `a45e77fa`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 10:54:49 AEDT*
+
+> in the readme line 72 and above is the what's good section. check the current word count of that part
+
+**Result.** The section, from its heading to the line before "For
+markers", was 874 words as it reads on the page (Markdown marks and
+link URLs left out), and 912 raw. With the title and welcome above it,
+909 and 949.
+
+*Sent 2026-11-09 10:56:00 AEDT*
+
+> shorten it to under 700 words
+
+**Result.** Cut to 658 as it reads on the page, 692 raw
+([`ff19538`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ff19538)).
+Written in the user's own voice, with long clauses shortened, repeats
+taken out (the bowls and "never saved" each said twice), and short lines
+merged (the visuals, the music). Every heading stays. Dropped: what
+comes back after a restart, the board saying a cat met you, bubbles
+staying up longer when longer, and nothing downloading until the music
+plays. "The cafe is in Canberra, same time as you" became "the cafe
+keeps Canberra time", which the earlier claim check had flagged. The
+lines that check said overclaim (the unmeasured "minimal resource
+usage" among them) were left as the user wrote them.
