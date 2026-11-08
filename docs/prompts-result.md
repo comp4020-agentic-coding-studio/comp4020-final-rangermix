@@ -2703,3 +2703,41 @@ approval, with three questions open; nothing built yet.
 - **Questions:** where "I'm not *name*" leads (lean: the log-in form),
   the welcome's words (lean: "Welcome back, *name*. The cats are in.
   Come and sit with them."), and whether the avatar shows (lean: yes).
+
+### 21. Sitting, drawn sitting
+
+*Session `50a7b3e0`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-08 12:17:32 AEDT*
+
+> add sitting look for users. currently they look like standing on things.
+
+**Result.** People seated on a sofa, chair, window seat or cushion are
+drawn sitting
+([`463a4ce`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/463a4ce);
+[notes/sitting-pose.md](notes/sitting-pose.md)).
+- **The cause:** the café already sent who was sitting, but the client
+  drew them with the standing frame, raised onto the seat. They stood
+  on it, with their back to the room if they'd walked up to it from
+  behind. On the low cushion they stood beside it.
+- **The look:** two new frames, drawn the way the others are, by
+  `scripts/people.mjs`. On a seat, the lap rests on its top, the knees
+  apart, the shins hanging over its front. On the cushion, too low for
+  that, cross-legged. A sitter always faces out of the seat, since
+  every seat's back is behind it. A cat napping on a lap curls on the
+  seated lap, below the face, where before it would have covered it.
+  Speech bubbles and clicks follow the seated sprite.
+- **Client only:** no protocol or server change. The server still
+  decides who sits where.
+- **Checked:** nine new client tests written first; six failed on the
+  bug (the standing frame, a back to the room, a lap 7 px off the seat,
+  a lap cat over the face). Two older tests passed for the wrong reason
+  (their sofa didn't seat anyone) and now seat someone properly. The
+  client's 394 tests, both typechecks, clippy and `cargo test` pass.
+  Before and after screens from two local cafés, at 1920×1080 and
+  390×844 ([screens/sitting-pose/](notes/screens/sitting-pose/)): all
+  four sitters stand before and sit after. A seated speaker's bubble
+  sat on their head, and a click or tap on their face opened their
+  menu.
+- **Not yet live:** on branch `worktree-sitting-pose`, for the user to
+  merge; CI deploys `main`.
