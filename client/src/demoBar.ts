@@ -1,5 +1,6 @@
 // The demo bar (slice 17, ADR 0022): what a demo account moves the café's
-// clock on with, and adds or removes bots with. Only a demo account sees it;
+// clock on with, lays out a furniture set with (part 2), and adds or
+// removes bots with. Only a demo account sees it;
 // the server checks every ask, and everyone sees what it did.
 import { announce } from "./announce";
 import type { ClientMsg } from "./protocol/ClientMsg";
@@ -84,6 +85,8 @@ export interface DemoBarEls {
   at: HTMLInputElement;
   go: HTMLButtonElement;
   canberra: HTMLButtonElement;
+  /** The furniture sets' buttons go in here, one per set (slice 17, part 2). */
+  sets: HTMLElement;
   botCount: HTMLElement;
   addBot: HTMLButtonElement;
   removeBot: HTMLButtonElement;
@@ -99,6 +102,9 @@ export class DemoBar {
   /** The wait last said, so it's announced once (slice 17's review, finding 7). */
   private told: number | null = null;
   private readonly presets: HTMLButtonElement[];
+  /** One button per furniture set, by the sets' ids in order, rebuilt only when they change. */
+  private setButtons: HTMLButtonElement[] = [];
+  private setsKey = "";
 
   constructor(
     private readonly els: DemoBarEls,
@@ -178,6 +184,7 @@ export class DemoBar {
     const now = serverNow(state, localNow);
     this.els.time.textContent = clockText(now);
     this.els.ahead.textContent = aheadText(state.ahead);
+    this.showSets(state.layouts);
     const bots = [...state.people.values()].filter((p) => p.bot).length;
     this.els.botCount.textContent = botsText(bots);
     const wait = waitText(state.nextJump, now);
@@ -186,6 +193,28 @@ export class DemoBar {
       announce(movesAgainAt(state.nextJump));
     }
     this.disable(this.waking, wait, bots === 0);
+  }
+
+  /**
+   * A button per furniture set, in the welcome's order. Built again only
+   * when the sets change, so a button under the keyboard's focus stays.
+   */
+  private showSets(sets: { id: string; name: string }[]): void {
+    const key = sets.map((s) => `${s.id}=${s.name}`).join(";");
+    if (key === this.setsKey) return;
+    this.setsKey = key;
+    this.setButtons = sets.map((set) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "demo-set";
+      button.textContent = set.name;
+      button.onclick = () => {
+        this.send({ type: "layOut", set: set.id });
+        this.close();
+      };
+      return button;
+    });
+    this.els.sets.replaceChildren(...this.setButtons);
   }
 
   /**
@@ -199,11 +228,13 @@ export class DemoBar {
     const off = new Set<HTMLElement>();
     for (const b of timeControls) if (waking || wait !== null) off.add(b);
     if (waking) off.add(this.els.at).add(this.els.addBot);
+    if (waking) for (const b of this.setButtons) off.add(b);
     if (waking || noBots) off.add(this.els.removeBot);
     if (off.has(document.activeElement as HTMLElement)) this.els.time.focus();
     for (const b of timeControls) b.disabled = off.has(b);
     this.els.at.disabled = off.has(this.els.at);
     this.els.addBot.disabled = off.has(this.els.addBot);
+    for (const b of this.setButtons) b.disabled = off.has(b);
     this.els.removeBot.disabled = off.has(this.els.removeBot);
     this.els.wait.textContent = wait ?? "";
     this.els.wait.hidden = wait === null;

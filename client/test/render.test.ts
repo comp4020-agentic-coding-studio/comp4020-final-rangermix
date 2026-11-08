@@ -26,6 +26,7 @@ function welcome(): Welcome {
     demo: false,
     ahead: 0,
     nextJump: 0,
+    layouts: [],
     snapshot: {
       // The café's own floor, room.toml's, 13 by 13 since slice 16, so the
       // room drawn here is the one the client draws (slice 16's review, finding 9).

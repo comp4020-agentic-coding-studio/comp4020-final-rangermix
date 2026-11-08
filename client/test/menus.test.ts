@@ -15,6 +15,7 @@ function state() {
       demo: false,
       ahead: 0,
       nextJump: 0,
+      layouts: [],
       snapshot: {
         room: {
           width: 12,

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PRESETS, aheadText, botsText, clockText, hourOn, minuteOf, movesAgainAt, waitText } from "../src/demoBar";
+import { DemoBar, PRESETS, aheadText, botsText, clockText, hourOn, minuteOf, movesAgainAt, waitText, type DemoBarEls } from "../src/demoBar";
+import type { ClientMsg } from "../src/protocol/ClientMsg";
+import type { CafeState } from "../src/state";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -68,5 +70,75 @@ describe("the demo bar", () => {
     expect(botsText(0)).toBe("No bots");
     expect(botsText(1)).toBe("1 bot");
     expect(botsText(4)).toBe("4 bots");
+  });
+
+  describe("its furniture sets (slice 17, part 2)", () => {
+    /** The bar's elements as index.html has them, and what it sends. */
+    function build(): { els: DemoBarEls; sent: ClientMsg[]; bar: DemoBar } {
+      document.body.innerHTML = `
+        <section id="demo-bar" hidden>
+          <strong id="demo-time" tabindex="-1"></strong><span id="demo-ahead"></span>
+          <button class="demo-toggle" aria-expanded="false" aria-controls="demo-times">Time</button>
+          <button class="demo-toggle" aria-expanded="false" aria-controls="demo-furniture">Furniture</button>
+          <div id="demo-times"><button id="demo-hour-on"></button><input id="demo-at" /><button id="demo-go"></button><button id="demo-canberra"></button><span id="demo-wait"></span></div>
+          <div id="demo-furniture"></div>
+          <div id="demo-bots"><button id="demo-remove-bot"></button><span id="demo-bot-count"></span><button id="demo-add-bot"></button></div>
+        </section>`;
+      const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+      const els: DemoBarEls = {
+        bar: $("demo-bar"),
+        time: $("demo-time"),
+        ahead: $("demo-ahead"),
+        wait: $("demo-wait"),
+        toggles: [...document.querySelectorAll<HTMLButtonElement>(".demo-toggle")],
+        hourOn: $("demo-hour-on"),
+        at: $("demo-at"),
+        go: $("demo-go"),
+        canberra: $("demo-canberra"),
+        sets: $("demo-furniture"),
+        botCount: $("demo-bot-count"),
+        addBot: $("demo-add-bot"),
+        removeBot: $("demo-remove-bot"),
+      };
+      const sent: ClientMsg[] = [];
+      return { els, sent, bar: new DemoBar(els, (m) => sent.push(m)) };
+    }
+
+    const state = (layouts: { id: string; name: string }[]) =>
+      ({ demo: true, ahead: 0, nextJump: 0, offset: 0, people: new Map(), layouts }) as unknown as CafeState;
+
+    it("offers one button per set, in the welcome's order, each laying it out", () => {
+      const { els, sent, bar } = build();
+      const sets = [
+        { id: "opening_day", name: "Opening day" },
+        { id: "lap_time", name: "Lap time" },
+        { id: "play_room", name: "Play room" },
+      ];
+      bar.update(state(sets), false);
+      const buttons = [...els.sets.querySelectorAll("button")];
+      expect(buttons.map((b) => b.textContent)).toEqual(["Opening day", "Lap time", "Play room"]);
+      expect(buttons.every((b) => b.type === "button")).toBe(true);
+      buttons[1].click();
+      expect(sent).toEqual([{ type: "layOut", set: "lap_time" }]);
+      // The same sets again: the same buttons, so the keyboard's focus stays put.
+      buttons[2].focus();
+      bar.update(state(sets), false);
+      expect([...els.sets.querySelectorAll("button")]).toEqual(buttons);
+      expect(document.activeElement).toBe(buttons[2]);
+    });
+
+    it("closes its group once a set is chosen, and offers none while the café wakes", () => {
+      const { els, bar } = build();
+      bar.update(state([{ id: "lap_time", name: "Lap time" }]), false);
+      const toggle = els.toggles[1];
+      toggle.click();
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      els.sets.querySelector("button")!.click();
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      bar.update(state([{ id: "lap_time", name: "Lap time" }]), true);
+      expect(els.sets.querySelector("button")!.disabled).toBe(true);
+      bar.update(state([{ id: "lap_time", name: "Lap time" }]), false);
+      expect(els.sets.querySelector("button")!.disabled).toBe(false);
+    });
   });
 });

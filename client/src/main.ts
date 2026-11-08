@@ -68,6 +68,7 @@ function enter(me: ApiMe): void {
       showAuth(enter);
     },
     onError: (e) => toast(overlay, e.detail),
+    onNotice: (text) => toast(overlay, text),
     onOutdated: () => {
       $("outdated").hidden = false;
       $("refresh").onclick = () => location.reload();
@@ -450,6 +451,7 @@ function enter(me: ApiMe): void {
       at: $<HTMLInputElement>("demo-at"),
       go: $<HTMLButtonElement>("demo-go"),
       canberra: $<HTMLButtonElement>("demo-canberra"),
+      sets: $("demo-furniture"),
       botCount: $("demo-bot-count"),
       addBot: $<HTMLButtonElement>("demo-add-bot"),
       removeBot: $<HTMLButtonElement>("demo-remove-bot"),

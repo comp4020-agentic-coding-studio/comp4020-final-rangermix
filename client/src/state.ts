@@ -4,6 +4,7 @@ import type { ChalkLine } from "./protocol/ChalkLine";
 import type { Emote } from "./protocol/Emote";
 import type { FurnitureView } from "./protocol/FurnitureView";
 import type { ErrorCode } from "./protocol/ErrorCode";
+import type { LayoutName } from "./protocol/LayoutName";
 import type { PersonView } from "./protocol/PersonView";
 import type { Reaction } from "./protocol/Reaction";
 import type { RoomView } from "./protocol/RoomView";
@@ -46,6 +47,8 @@ export interface CafeState {
   ahead: number;
   /** When, by the café's clock, it can move on again. */
   nextJump: number;
+  /** The furniture sets a demo account can lay out, in the bar's order (slice 17, part 2). */
+  layouts: LayoutName[];
   room: RoomView;
   people: Map<number, PersonView>;
   cats: Map<string, Cat>;
@@ -81,7 +84,9 @@ export type Effect =
   | { kind: "nudgeOver" }
   | { kind: "youLeft" }
   | { kind: "error"; code: ErrorCode; detail: string }
-  | { kind: "announce"; text: string };
+  | { kind: "announce"; text: string }
+  /** Said to a screen reader and shown over the room: a demo account's furniture set (slice 17, part 2). */
+  | { kind: "notice"; text: string };
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 
@@ -122,6 +127,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     demo: msg.demo,
     ahead: msg.ahead,
     nextJump: msg.nextJump,
+    layouts: msg.layouts,
     room: s.room,
     people: new Map(s.people.map((p) => [p.id, p])),
     cats: new Map(s.cats.map((c) => [c.id, { ...c, reaction: null }])),
@@ -315,6 +321,13 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       state.room.furniture = state.room.furniture.filter((f) => f.id !== msg.id);
       if (msg.by === state.you || !kind) return [];
       return [{ kind: "announce", text: `${name(msg.by)} put the ${pieceName(kind)} away.` }];
+    }
+    case "laidOut": {
+      // The whole room at once, and nothing carried: what was is gone.
+      state.room.furniture = msg.furniture;
+      state.held.clear();
+      const who = msg.by === state.you ? "You" : name(msg.by);
+      return [{ kind: "notice", text: `${who} laid out ${msg.name}.` }];
     }
     case "emoted":
       state.emotes.set(msg.from, { emote: msg.emote, at: now });

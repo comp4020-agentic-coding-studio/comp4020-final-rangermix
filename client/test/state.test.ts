@@ -17,6 +17,7 @@ function welcome(): Welcome {
     demo: false,
     ahead: 0,
     nextJump: 0,
+    layouts: [],
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [{ id: 1, name: "me", look: { avatar: 0, colour: 0 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false, bot: false }],
@@ -46,6 +47,27 @@ describe("the client's copy of the café", () => {
     expect([visitor.demo, visitor.ahead, visitor.nextJump]).toEqual([false, 0, 0]);
     const demo = fromWelcome({ ...welcome(), demo: true, ahead: 3_600_000, nextJump: 70_000 }, 4_000);
     expect([demo.demo, demo.ahead, demo.nextJump]).toEqual([true, 3_600_000, 70_000]);
+  });
+
+  it("keeps the furniture sets the bar offers (slice 17, part 2)", () => {
+    const sets = [{ id: "opening_day", name: "Opening day" }, { id: "lap_time", name: "Lap time" }];
+    expect(fromWelcome({ ...welcome(), layouts: sets }, 4_000).layouts).toEqual(sets);
+  });
+
+  it("lays out a whole set at once: the room's furniture replaced, nothing carried, and a notice (slice 17, part 2)", () => {
+    const s = fromWelcome(welcome(), 10_000);
+    const piece = (id: number, kind: string, x: number, y: number) => ({ id, kind, x, y, w: 1, h: 1, movable: true, blocks: true, under: false, seats: false, perch: false, toppled: false });
+    s.room.furniture = [piece(1, "chair", 2, 2), piece(2, "box", 3, 3)];
+    s.people.set(2, { id: 2, name: "demo1", look: { avatar: 1, colour: 1 }, place: "inside", at: { x: 7, y: 1 }, walk: null, sitting: false, bot: false });
+    s.held.set(1, piece(1, "chair", 2, 2));
+    const set = [piece(20, "sofa", 4, 4), piece(21, "plant", 5, 5)];
+    expect(apply(s, { type: "laidOut", by: 2, name: "Lap time", furniture: set })).toEqual([{ kind: "notice", text: "demo1 laid out Lap time." }]);
+    expect(s.room.furniture).toEqual(set);
+    expect(s.held.size).toBe(0);
+    // To the demo account that laid it out, in its own words.
+    s.you = 2;
+    expect(apply(s, { type: "laidOut", by: 2, name: "Opening day", furniture: [] })).toEqual([{ kind: "notice", text: "You laid out Opening day." }]);
+    expect(s.room.furniture).toEqual([]);
   });
 
   it("adds, places, moves and removes people", () => {
