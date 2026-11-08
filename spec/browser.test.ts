@@ -283,9 +283,11 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await page.locator("#talk-input").focus();
     for (let i = 0; i < 8 && (await focused(page)) !== "put-treat"; i++) await page.keyboard.press("Tab");
     expect(await focused(page)).toBe("put-treat");
-    // Back to the room, then past the panels' own buttons to Leave.
+    // Back to the room, then past the panels' own buttons to Leave. A panel
+    // whose lines overflow is a stop of its own, so the keyboard can scroll
+    // it: the chalkboard does once a long run's visitors have met the cats.
     await page.locator("#room").focus();
-    for (let i = 0; i < 8 && (await focused(page)) !== "leave"; i++) await page.keyboard.press("Shift+Tab");
+    for (let i = 0; i < 16 && (await focused(page)) !== "leave"; i++) await page.keyboard.press("Shift+Tab");
     expect(await focused(page)).toBe("leave");
     await page.keyboard.press("Enter");
     // The door, saying hi (slice 20), and back in by keyboard.

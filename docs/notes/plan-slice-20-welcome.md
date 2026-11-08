@@ -163,3 +163,9 @@ Where the build departed from this plan, added as it happens.
   failed, and "an open tab takes no place" was turned to fail there
   for its own reason (the tab took a seat), not for waiting on a door
   `main` doesn't have.
+- **Task 4, the keyboard check's reach to Leave:** on a second whole run
+  `spec/browser.test.ts`'s keyboard check failed every time at "back
+  past the panels to Leave", which allowed 8 Shift+Tabs. The chalkboard
+  had filled with the run's first meetings and overflowed, and Chrome
+  makes a scrolling box a Tab stop, so Leave was 9 back. Not the door's
+  doing; the bound is now 16, and Leave is still reached by keyboard.
