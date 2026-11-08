@@ -2,68 +2,126 @@ import * as api from "./api";
 import type { ApiMe } from "./protocol/ApiMe";
 import { AVATARS, COLOURS, Sprites, shirtColour } from "./sprites";
 
-// The way in (ADR 0007): sign up with a name, a password and a look, log in,
-// or recover with the code shown once at sign-up.
+// The way in (ADR 0007), one form for everyone since slice 20 (ADR 0023): a
+// name and a password, Walk in to log in, I'm new to sign up, which asks
+// whether the name is free and then for a look. Recovery with the code shown
+// once at sign-up, as before.
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 const COLOUR_NAMES = ["Red", "Orange", "Green", "Sky blue", "Purple", "Pink"];
-let wired = false;
-let enterCafe: (me: ApiMe) => void = () => {};
+const STEPS = ["way-in", "look-step", "recover", "code"] as const;
+type Step = (typeof STEPS)[number];
 
+/**
+ * Shows the way in, at its first step, empty: for a first visit, a session
+ * the server ended, or someone who said they're not the last person. Wired
+ * afresh each time by assignment, so each press is answered once, by this
+ * showing's `enter`.
+ */
 export function showAuth(enter: (me: ApiMe) => void): void {
-  enterCafe = enter;
-  $("auth").hidden = false;
-  if (wired) return;
-  wired = true;
   const error = $("auth-error");
-  const forms = { signup: $<HTMLFormElement>("signup"), login: $<HTMLFormElement>("login"), recover: $<HTMLFormElement>("recover") };
-  const show = (which: keyof typeof forms) => {
-    for (const [name, form] of Object.entries(forms)) form.hidden = name !== which;
-    $("code").hidden = true;
-    $("tab-signup").setAttribute("aria-selected", String(which === "signup"));
-    $("tab-login").setAttribute("aria-selected", String(which !== "signup"));
+  const wayIn = $<HTMLFormElement>("way-in");
+  const look = $<HTMLFormElement>("look-step");
+  const recover = $<HTMLFormElement>("recover");
+  const name = $<HTMLInputElement>("way-in-name");
+  const password = $<HTMLInputElement>("way-in-password");
+  const show = (step: Step, focus?: HTMLElement | null) => {
+    for (const id of STEPS) $(id).hidden = id !== step;
     error.textContent = "";
-    forms[which].querySelector("input")?.focus();
+    focus?.focus();
   };
-  $("tab-signup").onclick = () => show("signup");
-  $("tab-login").onclick = () => show("login");
-  $("show-recover").onclick = () => show("recover");
-  $("hide-recover").onclick = () => show("login");
-  buildLookPicker();
+  const busy = (form: HTMLElement, on: boolean) => form.querySelectorAll("button").forEach((b) => (b.disabled = on));
+  const done = (me: ApiMe) => {
+    if (me.recoveryCode) showCode(me.recoveryCode, () => finish(me));
+    else finish(me);
+  };
+  const finish = (me: ApiMe) => {
+    $("auth").hidden = true;
+    enter(me);
+  };
 
-  const fields = (form: HTMLFormElement) => Object.fromEntries(new FormData(form)) as Record<string, string>;
-  const submit = (form: HTMLFormElement, send: (f: Record<string, string>) => Promise<api.Answer<ApiMe>>) => {
-    form.onsubmit = async (event) => {
-      event.preventDefault();
-      const buttons = form.querySelectorAll("button");
-      buttons.forEach((b) => (b.disabled = true));
-      error.textContent = "";
-      const answer = await send(fields(form));
-      buttons.forEach((b) => (b.disabled = false));
+  wayIn.reset();
+  recover.reset();
+  buildLookPicker();
+  $("door").hidden = true;
+  $("auth").hidden = false;
+  show("way-in", name);
+
+  wayIn.onsubmit = async (event) => {
+    event.preventDefault();
+    const submitter = (event as SubmitEvent).submitter ?? document.activeElement;
+    const isNew = submitter === $("im-new");
+    if (isNew && (password.value.length < 8 || password.value.length > 128)) {
+      error.textContent = "A password is 8 to 128 characters.";
+      password.focus();
+      return;
+    }
+    busy(wayIn, true);
+    error.textContent = "";
+    if (isNew) {
+      const answer = await api.checkName({ name: name.value });
+      busy(wayIn, false);
       if (!answer.ok) {
         error.textContent = answer.error.detail;
+        name.focus();
         return;
       }
-      const me = answer.value;
-      if (me.recoveryCode) showCode(me.recoveryCode, () => done(me));
-      else done(me);
-    };
+      $("look-heading").textContent = `Choose your look, ${name.value}`;
+      show("look-step", look.querySelector<HTMLInputElement>("input[name=avatar]:checked"));
+      return;
+    }
+    const answer = await api.logIn({ name: name.value, password: password.value });
+    busy(wayIn, false);
+    if (!answer.ok) {
+      error.textContent = answer.error.error === "badLogin" ? `${answer.error.detail} New here? Press I'm new.` : answer.error.detail;
+      return;
+    }
+    done(answer.value);
   };
-  submit(forms.signup, (f) =>
-    api.signUp({ name: f.name, password: f.password, look: { avatar: Number(f.avatar ?? 0), colour: Number(f.colour ?? 0) } }),
-  );
-  submit(forms.login, (f) => api.logIn({ name: f.name, password: f.password }));
-  submit(forms.recover, (f) => api.recover({ name: f.name, code: f.code, password: f.password }));
-}
 
-function done(me: ApiMe): void {
-  $("auth").hidden = true;
-  enterCafe(me);
+  look.onsubmit = async (event) => {
+    event.preventDefault();
+    const chosen = (field: string) => Number(look.querySelector<HTMLInputElement>(`input[name=${field}]:checked`)?.value ?? 0);
+    busy(look, true);
+    error.textContent = "";
+    const answer = await api.signUp({ name: name.value, password: password.value, look: { avatar: chosen("avatar"), colour: chosen("colour") } });
+    busy(look, false);
+    if (!answer.ok) {
+      // A name taken while they chose a look, or one refused after all:
+      // back to the name, to say why. Anything else is said here.
+      if (answer.error.error === "nameTaken" || answer.error.error === "badInput") {
+        show("way-in", name);
+      }
+      error.textContent = answer.error.detail;
+      return;
+    }
+    done(answer.value);
+  };
+  $("look-back").onclick = () => show("way-in", $("im-new"));
+
+  $("show-recover").onclick = () => {
+    recover.querySelector<HTMLInputElement>("input[name=name]")!.value = name.value;
+    show("recover", recover.querySelector<HTMLInputElement>(name.value ? "input[name=code]" : "input[name=name]"));
+  };
+  $("hide-recover").onclick = () => show("way-in", $("show-recover"));
+  recover.onsubmit = async (event) => {
+    event.preventDefault();
+    const f = Object.fromEntries(new FormData(recover)) as Record<string, string>;
+    busy(recover, true);
+    error.textContent = "";
+    const answer = await api.recover({ name: f.name, code: f.code, password: f.password });
+    busy(recover, false);
+    if (!answer.ok) {
+      error.textContent = answer.error.detail;
+      return;
+    }
+    done(answer.value);
+  };
 }
 
 function showCode(code: string, then: () => void): void {
-  for (const id of ["signup", "login", "recover"]) $(id).hidden = true;
-  $("code").hidden = false;
+  for (const id of STEPS) $(id).hidden = id !== "code";
+  $("auth-error").textContent = "";
   $("code-text").textContent = code;
   const copy = $<HTMLButtonElement>("copy-code");
   copy.textContent = "Copy";
@@ -79,10 +137,12 @@ function showCode(code: string, then: () => void): void {
   doneButton.focus();
 }
 
+let sprites: Sprites | null = null;
+
 /** Four avatars, previewed in the chosen colour, and six colours: native radio groups, so arrow keys work. */
 function buildLookPicker(): void {
   const picker = $("look-picker");
-  const sprites = new Sprites();
+  sprites ??= new Sprites();
   const avatarRow = document.createElement("div");
   const colourRow = document.createElement("div");
   avatarRow.className = colourRow.className = "look-row";
@@ -117,7 +177,7 @@ function buildLookPicker(): void {
     const colour = Number(chosen?.value ?? 0);
     previews.forEach((canvas, avatar) => {
       const ctx = canvas.getContext("2d");
-      const img = sprites.avatar({ avatar, colour }, "stand");
+      const img = sprites?.avatar({ avatar, colour }, "stand");
       if (ctx && img) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);

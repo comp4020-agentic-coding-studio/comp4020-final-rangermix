@@ -146,12 +146,10 @@ describe("the café's colours in each light", () => {
 
   it("previews each look at the sprite's own size on the sign-up page (slice 11's review, finding 5)", async () => {
     const { showAuth } = await import("../src/auth");
-    document.body.innerHTML = `<main id="auth"><form id="signup"><div id="look-picker"></div></form><form id="login"></form><form id="recover"></form><section id="code"></section><p id="auth-error"></p><button id="tab-signup"></button><button id="tab-login"></button><button id="show-recover"></button><button id="hide-recover"></button><button id="copy-code"></button><button id="code-done"></button><code id="code-text"></code></main>`;
-    try {
-      showAuth(() => {});
-    } catch {
-      // The rest of the page isn't here; the picker is built first.
-    }
+    // The page itself (slice 20), so the picker is built where it lives.
+    const page = (await import("../index.html?raw")).default;
+    document.body.innerHTML = page.match(/<body>([\s\S]*)<\/body>/)![1];
+    showAuth(() => {});
     const canvases = [...document.querySelectorAll<HTMLCanvasElement>("#look-picker canvas")];
     expect(canvases.length).toBeGreaterThan(0);
     const sheet = parseSheet(avatarSheet);
