@@ -176,6 +176,14 @@ pub struct TrustView {
     pub level: TrustLevel,
 }
 
+/// A furniture set, as the demo bar offers it (slice 17, part 2).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct LayoutName {
+    pub id: String,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct FurnitureView {
@@ -411,6 +419,11 @@ pub enum ClientMsg {
     /// A demo account adds a bot to the café, or removes the newest.
     AddBot {},
     RemoveBot {},
+    /// A demo account lays out one of the furniture sets, by its id
+    /// (slice 17, part 2).
+    LayOut {
+        set: String,
+    },
 }
 
 /// What the server tells clients: a snapshot on joining, then events in order.
@@ -432,6 +445,9 @@ pub enum ServerMsg {
         ahead: u64,
         /// When, by the café's clock, its clock can move on again.
         next_jump: u64,
+        /// The furniture sets a demo account can lay out, in the bar's order
+        /// (slice 17, part 2).
+        layouts: Vec<LayoutName>,
         // Boxed: by far the largest message, and sent once per connection.
         snapshot: Box<Snapshot>,
     },
@@ -542,6 +558,15 @@ pub enum ServerMsg {
         id: u32,
         toppled: bool,
         by: Option<u32>,
+    },
+    /// A demo account laid out a furniture set: every piece in the room
+    /// now, in place of all that was there, and nothing carried any more
+    /// (slice 17, part 2).
+    LaidOut {
+        by: u32,
+        /// The set's name, as the bar shows it.
+        name: String,
+        furniture: Vec<FurnitureView>,
     },
     /// A new line on the chalkboard.
     Chalked {

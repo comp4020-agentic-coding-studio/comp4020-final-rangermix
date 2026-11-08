@@ -108,6 +108,7 @@ impl World {
             demo: self.person(id).is_some_and(|p| p.demo),
             ahead: self.ahead,
             next_jump: self.next_jump_at(),
+            layouts: self.layout_names(),
             snapshot: Box::new(self.snapshot_for(id, now)),
         }
     }

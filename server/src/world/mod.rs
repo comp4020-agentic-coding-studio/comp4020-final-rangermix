@@ -20,6 +20,9 @@ mod handling;
 pub mod jump;
 #[cfg(test)]
 mod jump_tests;
+mod layout;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod log_tests;
 mod people;
@@ -304,6 +307,7 @@ impl World {
                     ClientMsg::SetClock { minute } => self.ask_jump(now, id, minute, &mut out),
                     ClientMsg::AddBot {} => self.add_bot(now, id, &mut out),
                     ClientMsg::RemoveBot {} => self.remove_bot(now, id, &mut out),
+                    ClientMsg::LayOut { set } => self.lay_out(now, id, &set, &mut out),
                 }
                 if let Some(what) = what {
                     self.log_request(id, what, &about, &out[before..], pending_before);
@@ -574,6 +578,7 @@ pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {
         ClientMsg::SetClock { .. } => "set_clock",
         ClientMsg::AddBot {} => "add_bot",
         ClientMsg::RemoveBot {} => "remove_bot",
+        ClientMsg::LayOut { .. } => "lay_out",
         ClientMsg::Presence { .. } | ClientMsg::Here {} => return None,
     })
 }
