@@ -145,3 +145,25 @@ describe("the door", () => {
     expect($("door-error").textContent).toBe("");
   });
 });
+
+describe("a reload the café makes for a new build (slice 20)", () => {
+  afterEach(() => sessionStorage.clear());
+
+  it("goes past the door once, since the visitor was inside and didn't open the café", async () => {
+    const { noteBackInside, backInside } = await import("../src/door");
+    expect(backInside(), "an ordinary opening meets the door").toBe(false);
+    noteBackInside();
+    expect(backInside(), "the café's own reload goes straight in").toBe(true);
+    expect(backInside(), "only once: the next opening meets the door").toBe(false);
+  });
+
+  it("meets the door when the tab can't keep a note", async () => {
+    const { noteBackInside, backInside } = await import("../src/door");
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("no room", "QuotaExceededError");
+    });
+    noteBackInside();
+    setItem.mockRestore();
+    expect(backInside()).toBe(false);
+  });
+});

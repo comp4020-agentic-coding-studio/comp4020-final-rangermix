@@ -141,3 +141,25 @@ whole of its suite, then a commit and push.
 ## Execution log
 
 Where the build departed from this plan, added as it happens.
+
+- **Task 1:** the clock tests in `server/tests/clock.rs` failed at first,
+  on `main` too: their binary had been built from a worktree since
+  removed, so it looked for `content/` there. A rebuild fixed it; nothing
+  in the code.
+- **Task 4, the café's own reload for a new build:** the whole `spec/`
+  turned up one failure, `spec/fill.test.ts`'s status line check, which
+  fakes a newer build. The café reloads a tab itself when the server
+  runs a build it doesn't, and with the door that reload put everyone
+  inside out at the door after every deploy. It isn't the visitor
+  opening the café, so the café now notes it in session storage just
+  before reloading (`noteBackInside()`), and `start()` takes the note
+  once (`backInside()`) and goes straight in. Held by
+  `client/test/door.test.ts` (once only, and no note where storage
+  refuses) and `spec/welcome.test.ts` (a faked build: two loads, back
+  inside, and the next reload meets the door), seen failing first.
+- **Task 4, red first:** `spec/welcome.test.ts` was written after the
+  door's code, so it was run against a café built from `main` at
+  `9650c20` (its own client build and server, on a spare port): all 8
+  failed, and "an open tab takes no place" was turned to fail there
+  for its own reason (the tab took a seat), not for waiting on a door
+  `main` doesn't have.

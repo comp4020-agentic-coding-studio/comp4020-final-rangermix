@@ -85,3 +85,27 @@ function drawAvatar(canvas: HTMLCanvasElement, me: ApiMe): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (img) ctx.drawImage(img, 0, 0);
 }
+
+// A reload the café makes itself, for a new build (slice 07's update), comes
+// from a visitor already inside: it goes straight back in, past the door.
+const BACK_INSIDE = "cafe.backInside";
+
+/** Notes, just before the café reloads the tab for a new build, that it was inside. */
+export function noteBackInside(): void {
+  try {
+    sessionStorage.setItem(BACK_INSIDE, "1");
+  } catch {
+    // Nowhere to note it: the reload meets the door, which is safe.
+  }
+}
+
+/** Whether this opening is the café's own reload; taking the note, so only once. */
+export function backInside(): boolean {
+  try {
+    const was = sessionStorage.getItem(BACK_INSIDE) === "1";
+    sessionStorage.removeItem(BACK_INSIDE);
+    return was;
+  } catch {
+    return false;
+  }
+}

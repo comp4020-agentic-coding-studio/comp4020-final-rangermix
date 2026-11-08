@@ -3,7 +3,7 @@ import { announce } from "./announce";
 import * as api from "./api";
 import { type ArmsBar, showArms } from "./arms";
 import { showAuth } from "./auth";
-import { showDoor } from "./door";
+import { backInside, showDoor } from "./door";
 import { Bubbles } from "./bubbles";
 import { Cafe } from "./cafe";
 import { DemoBar } from "./demoBar";
@@ -30,7 +30,9 @@ async function start(): Promise<void> {
   const me = await api.me();
   // Signed in, the door greets you, and nothing joins the café until Walk
   // in (slice 20).
-  if (me.ok) showDoor(me.value, { kind: "arrive" }, doorWays(me.value));
+  // The café's own reload for a new build goes straight back in.
+  if (me.ok && backInside()) enter(me.value);
+  else if (me.ok) showDoor(me.value, { kind: "arrive" }, doorWays(me.value));
   else showAuth(enter);
 }
 

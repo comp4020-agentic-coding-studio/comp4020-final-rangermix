@@ -1,7 +1,7 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import palettes from "../content/sprites/palettes.json";
-import { baseUrl, uniqueName } from "./helpers";
+import { baseUrl, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 16's browser checks: at the 1920×1080 viewport the course marks at,
 // the café fills the window. The 13 by 12 floor at 4×, the status and talk
@@ -61,13 +61,7 @@ async function visit(viewport: { width: number; height: number }, touch = false,
   const sent: Frame[] = [];
   page.on("websocket", (ws) => ws.on("framesent", (f) => sent.push(JSON.parse(String(f.payload)))));
   await page.goto(baseUrl);
-  await page.locator("#signup input[name=name]").focus();
-  await page.keyboard.type(uniqueName("f"));
-  await page.keyboard.press("Tab");
-  await page.keyboard.type("correct horse");
-  await page.keyboard.press("Enter");
-  await page.locator("#code-done:focus").waitFor();
-  await page.keyboard.press("Enter");
+  await signUpThroughPage(page, uniqueName("f"), { keyboard: true });
   await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
   return { page, sent };
 }
@@ -439,10 +433,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
         });
       });
       await page.goto(baseUrl);
-      await page.locator("#signup input[name=name]").fill(uniqueName("f"));
-      await page.locator("#signup input[name=password]").fill("correct horse");
-      await page.locator("#signup button[type=submit]").click();
-      await page.locator("#code-done").click();
+      await signUpThroughPage(page, uniqueName("f"));
       const toast = page.locator(".toast", { hasText: "stays clear" });
       await toast.waitFor();
       const t = (await toast.boundingBox())!;
@@ -481,10 +472,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       ws.onMessage((m) => server.send(m));
     });
     await page.goto(baseUrl);
-    await page.locator("#signup input[name=name]").fill(uniqueName("f"));
-    await page.locator("#signup input[name=password]").fill("correct horse");
-    await page.locator("#signup button[type=submit]").click();
-    await page.locator("#code-done").click();
+    await signUpThroughPage(page, uniqueName("f"));
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     await page.locator("#outdated").waitFor();
     // Something carried: a piece from the catalogue.
@@ -531,10 +519,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
       ws.onMessage((m) => server.send(m));
     });
     await page.goto(baseUrl);
-    await page.locator("#signup input[name=name]").fill(uniqueName("f"));
-    await page.locator("#signup input[name=password]").fill("correct horse");
-    await page.locator("#signup button[type=submit]").click();
-    await page.locator("#code-done").click();
+    await signUpThroughPage(page, uniqueName("f"));
     await page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     await expect.poll(() => page.locator("#your-cats .cat-row").count()).toBe(4);
     // A long chat: fourteen lines said this visit, paced to the café's
