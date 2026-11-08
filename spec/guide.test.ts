@@ -285,7 +285,13 @@ describe("the guide (slice 21)", () => {
     await besideAddFurniture(page);
     // The ⓘ takes its room from the buttons' rows, not from the status
     // line, which stays on one line ("2/6 inside").
-    expect(await page.locator("#status-text").evaluate((el) => el.getClientRects().length)).toBe(1);
+    // Its text's own line boxes: the line itself is a flex item, a block.
+    const statusLines = await page.locator("#status-text").evaluate((el) => {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      return new Set([...r.getClientRects()].map((b) => Math.round(b.top))).size;
+    });
+    expect(statusLines).toBe(1);
     await page.waitForTimeout(500);
     await page.screenshot({ path: "docs/notes/screens/slice-21/phone-a-closed.png" }).catch(() => {});
     await page.locator("#guide-open").tap();

@@ -617,6 +617,9 @@ describe("the café's music", { timeout: 60_000 }, () => {
     await page.locator("#leave").click();
     await page.locator("#door-in").click();
     await inside(page);
+    // Nothing kept the tick either, so the guide is back at this entry (slice 21).
+    await page.locator("#guide-close").click();
+    await page.locator("#guide").waitFor({ state: "hidden" });
     await playing(page, "bubbles");
     expect((await audio(page)).volume).toBeCloseTo(0.35, 2);
     expect(Number(await page.locator("#music-volume").inputValue())).toBe(35);
