@@ -107,6 +107,7 @@ export class Guide {
       el.style.pointerEvents = "";
     }
     els.words.scrollTop = 0;
+    els.words.classList.remove("tabbed");
     this.from = from;
     els.words.focus();
     if (!this.canAnimate()) return;
@@ -175,6 +176,10 @@ export class Guide {
     const stops = [this.els.words, this.els.off, this.els.close];
     const at = stops.indexOf(document.activeElement as HTMLElement);
     const next = at < 0 ? (e.shiftKey ? stops.length - 1 : 0) : (at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length;
+    // The words take a ring only when Tab brings the focus to them: the
+    // browser counts the focus they take as the guide opens as a
+    // keyboard's, and would ring them for a mouse too.
+    this.els.words.classList.toggle("tabbed", stops[next] === this.els.words);
     stops[next].focus();
   };
 

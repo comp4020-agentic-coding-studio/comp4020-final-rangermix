@@ -282,9 +282,10 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
 .guide { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; pointer-events: none; }
 .guide-card { pointer-events: auto; width: min(34rem, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); overflow: hidden; }
 .guide-words { min-height: 0; overflow: auto; padding: 1.25rem 1.5rem 0.75rem; }
-.guide-words:focus { outline: none; }
-/* Inside the card's edge, which would cut a ring drawn outside it. */
-.guide-words:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; box-shadow: none; }
+/* Ringed only when Tab brought the focus here (guide.ts), not as it opens;
+   inside the card's edge, which would cut a ring drawn outside it. */
+.guide-words:focus, .guide-words:focus-visible { outline: none; box-shadow: none; }
+.guide-words.tabbed:focus { outline: 3px solid var(--focus); outline-offset: -3px; }
 .guide-words h2 { margin: 0 0 0.3rem; font-family: Georgia, "Iowan Old Style", serif; font-size: 1.4rem; }
 .guide-words .lede { margin: 0; }
 .guide-words h3 { margin: 0.85rem 0 0.2rem; font-size: 0.95rem; }

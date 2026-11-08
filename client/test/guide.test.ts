@@ -146,6 +146,18 @@ describe("the guide (slice 21)", () => {
     expect(els.card.contains(document.activeElement)).toBe(true);
   });
 
+  it("rings its words only when Tab brings the focus there, not as it opens", () => {
+    guide.open("entry");
+    expect(els.words.classList.contains("tabbed")).toBe(false);
+    key("Tab");
+    key("Tab");
+    key("Tab");
+    expect(document.activeElement).toBe(els.words);
+    expect(els.words.classList.contains("tabbed")).toBe(true);
+    key("Tab");
+    expect(els.words.classList.contains("tabbed")).toBe(false);
+  });
+
   it("closes by Escape, and the focus goes back to the room when it opened on the way in", () => {
     guide.open("entry");
     key("Escape");
