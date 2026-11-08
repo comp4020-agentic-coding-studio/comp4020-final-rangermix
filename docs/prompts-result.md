@@ -2953,3 +2953,26 @@ to commit. The fixes are unstaged, apart from the user's staged change.
   The browser specs had timed out against a stale café left on port 8080,
   built before slice 20. The after-shots were retaken on today's client
   with the fixed script; the sitters sit as before.
+
+### 25. The sitting pose, rebased onto the furniture sets
+
+*Session `23e5afe4`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 06:14:24 AEDT*
+
+> resolve merge conflict
+
+**Result.** The user's commit of the sitting pose, rebased onto slice 17
+part 2's merge, is [`16bdb1e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/16bdb1e).
+- **The conflict:** only this log, where both sides had added a session
+  numbered 23. The furniture sets keep 23 and the sitting pose's review
+  becomes 24. The two sessions' prompts alternate in time, so each is
+  split into two parts, with "(continued)" headings, in the order they
+  were sent.
+- **Merged by git, then checked:** six other files changed on both sides.
+  The README keeps the user's "What's good?" and the furniture sets'
+  steps in "For markers". `state.ts` has the furniture sets' `laidOut`
+  case and the sitting pose's facing changes, in separate parts of the
+  file.
+- **Checked on the merged tree:** both typechecks, the client's 443
+  tests, `cargo fmt`, `clippy` and `cargo test`.
