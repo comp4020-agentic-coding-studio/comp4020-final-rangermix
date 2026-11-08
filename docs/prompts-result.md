@@ -2677,3 +2677,29 @@ but `main` are gone, and the main checkout is on `main`.
   session still running there, its pull request merged on 6 November.
   Stopping that session was refused by the permission check, so it
   waits on the user. The branches on GitHub are untouched.
+
+### 20. Welcomed back by name, or someone else
+
+*Session `ee4559c1`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-08 13:08:23 AEDT*
+
+> [Image #8] after log out, show "hi <name>" above current text, give option to log in as another person "I'm not <name>", and do not log in directly when opening the cafe - it should show a similar come back or someone else page, with different text in welcoming way.
+
+The image was a screenshot of the page after Leave: "You've left the
+café. The cats will remember you." and Come back in.
+
+**Result.** Proposed as slice 20, a spec waiting for the user's
+approval, with three questions open; nothing built yet.
+- **What it does:** "Hi, *name*." above the page after Leave (and after
+  being walked out), with "I'm not *name*" under Come back in; opening
+  the café signed in shows a welcome by name with Walk in, and joins
+  nothing until it's pressed; "I'm not *name*" signs out through the
+  existing `/api/logout` and shows the way in.
+- **Page only:** the server already names who's signed in and ends a
+  session, so neither it nor the protocol changes.
+- **Left out:** how many are inside on the welcome, since it would need a
+  new endpoint or a connection that takes no seat.
+- **Questions:** where "I'm not *name*" leads (lean: the log-in form),
+  the welcome's words (lean: "Welcome back, *name*. The cats are in.
+  Come and sit with them."), and whether the avatar shows (lean: yes).
