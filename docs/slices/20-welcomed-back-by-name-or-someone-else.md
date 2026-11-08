@@ -1,6 +1,6 @@
 # 20. Welcomed back by name, or someone else
 
-- **Status:** Approved 2026-11-08, with the user's answers below;
+- **Status:** Built 2026-11-08 ([notes](../notes/slice-20-welcome.md), [screens](../notes/screens/slice-20/)), waiting on its review; approved 2026-11-08, with the user's answers below;
   proposed 2026-11-08 from the user's ask of that day
 - **Plan:** [`docs/notes/plan-slice-20-welcome.md`](../notes/plan-slice-20-welcome.md)
 - **Design:** People ("Arriving", "Leaving"); Accounts and safety
