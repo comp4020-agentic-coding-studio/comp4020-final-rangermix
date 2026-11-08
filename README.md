@@ -1,14 +1,23 @@
 # Catppuccino
 
-Welcome to the online cat cafe **Catppuccino**! I mainly got inspiration from two game: Neko Atsume and Bongo Cat. One is for the cat cafe theme and one for the people connection part. Also the name is from the colour theme [Catppuccin](https://catppuccin.com/).
+Welcome to the online cat cafe **Catppuccino**! It's a place for you and/or friends to chill and enjoy fluffy companions. Come inside, relax, enjoy the chill vibe, and become good friends of the cats.
 
-Let's define good from two side:
+## What's good?
 
-- Tech (what can be measured)
-  - minimal resource usage so it can just stay there
+### Defining the app first
+
+I want to build a relaxing environment for people. I imagine it to be an idle app people would open whenever they're by their computer. It's like the background music in a cafe, or the always-on TV at grandma's living room. However IMO in those two senarios it's not the music or TV themself give you the comfort feeling, it's the companion in there - friends, staff, and grandma, or maybe grandpa's dog. To add the companion part, I choose to environment to be a cat cafe - you can enjoy it with friends, or by yourself with the cats.
+
+### Setting the tone
+
+For this project I define "good" from the following aspects, with difficulty of measuring by the title:
+
+- Tech | easy
+  - minimal resource usage so it user can just left it open and enjoy companion
   - minimal latency of interaction - websocket's full duplex connection fits perfectly
   - multi-user consistency - assured by server centralised communication / compute
   - fast simulation while keep minimal memory usage - rust backend
+-
 - Design (hard to measure)
   - Visual
     - The current simple 2D
@@ -38,6 +47,10 @@ The cats get to know you over days, and the café keeps Canberra time, so ten mi
 7. Bar: add **bots** until six are inside, then one more, who waits at the window. Leave and come back: the bot has taken your seat, so you wait at the window and can only talk. Remove a bot, and you walk in.
 8. Both grab the same chair: the first grab wins. Resize mid-use, switch the phone's layout, try the keyboard alone.
 9. Bar: **Canberra time** puts the hour back. Come back tomorrow: the cats still know you.
+
+## Inspiration
+
+I mainly got inspiration from two game: Neko Atsume and Bongo Cat. One is for the cat cafe theme and one for the people connection part. Also the name and colour palate is from the colour theme [Catppuccin](https://catppuccin.com/).
 
 ## Credits
 

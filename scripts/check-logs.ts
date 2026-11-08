@@ -17,7 +17,7 @@ import { createInterface } from "node:readline";
 // is (slice 08's review, finding 10). The other arguments are what was said.
 const wall = process.argv.includes("--wall");
 const said = process.argv.slice(2).filter((a) => a !== "--wall");
-const ACCOUNT = new Set(["signup", "login", "logout", "recover"]);
+const ACCOUNT = new Set(["signup", "login", "logout", "recover", "check_name"]);
 const problems: string[] = [];
 let count = 0;
 /** A start whose wake-up hasn't been logged yet, by its line number (slices 01 and 07). */

@@ -20,6 +20,8 @@ const good = [
   { timestamp: at, level: "INFO", target: "action", uid: 3, who: "sam", what: "say", outcome: "ok", len: 11, to: "jo" },
   { timestamp: at, level: "INFO", target: "action", uid: 3, who: "sam", what: "pet", cat: "Mochi", outcome: "welcome" },
   { timestamp: at, level: "INFO", target: "action", what: "login", outcome: "refused", code: "badLogin" },
+  // Slice 20's review, finding 3: "I'm new" asking whether a name is free.
+  { timestamp: at, level: "INFO", target: "action", what: "check_name", outcome: "refused", code: "nameTaken" },
   { timestamp: at, level: "INFO", target: "cat", cat: "Mochi", what: "nap", on: "sofa" },
 ];
 
