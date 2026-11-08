@@ -431,7 +431,8 @@ Decided 2026-11-06 by the user
 built as [slice 17](slices/17-markers-see-weeks-in-ten-minutes.md), approved
 the same day. Part 1, everything but the furniture sets, is built (2026-11-06,
 [plan](notes/plan-slice-17-demo.md), [notes](notes/slice-17-demo.md)); part 2,
-the sets, comes after slice 16. The demo accounts are `demo1` and `demo2`,
+the sets, after slice 16 (2026-11-09,
+[plan](notes/plan-slice-17-sets.md)). The demo accounts are `demo1` and `demo2`,
 with the password `catppuccino`, each seeded with Mochi at 85, Tora at 55
 and Burakku at 25.
 
@@ -475,7 +476,21 @@ and Burakku at 25.
   never goes back, across restarts too.
 - **A demo account lays out one of three furniture sets** from
   `content/layouts/` at once, without the rate limit, by the usual
-  placement rules.
+  placement rules: Opening day (the room as `room.toml` lays it out,
+  which puts the café back), Lap time (the seats round the rug by the
+  cat bed) and Play room (the cat tower, the scratching post, the box and
+  the toys out in the open, the lamp and plants where a cat can knock
+  them over). Each set is data: a name, its place on the bar, and its
+  pieces, checked as a whole against every placement rule when the café
+  starts, so a set that breaks one stops the café, naming its file. Its
+  pieces replace every movable piece in one message to everyone, with the
+  room's whole furniture, so no page sees half a set; what anyone carries
+  goes, every errand on the way is called off, everyone stands, anyone
+  left where a blocking piece now stands steps off, a cat on a piece that
+  moves jumps off, and every piece is new for the cats to look at. It's
+  saved like any arrangement, spends nobody's furniture allowance, and
+  everyone is told who laid out which set. A demo account at the window
+  can only talk, as anyone there.
 - **A demo account adds and removes bots**: up to six (`bots_max`),
   `bot_1` to `bot_6`, visitors the server runs, which take seats and join
   the line, now and then walk to free floor or wave, and never talk, sit,
