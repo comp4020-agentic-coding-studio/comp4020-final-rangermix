@@ -15,6 +15,7 @@ import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
 import { Floating } from "./floating";
+import { Guide, guideWanted } from "./guide";
 import { Music } from "./musicPanel";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
@@ -34,7 +35,7 @@ async function start(): Promise<void> {
   // is taken whatever /api/me said, so it can't outlive this opening
   // (slice 20's review, finding 6).
   const back = backInside();
-  if (me.ok && back) enter(me.value);
+  if (me.ok && back) enter(me.value, { reload: true });
   else if (me.ok) showDoor(me.value, { kind: "arrive" }, doorWays(me.value));
   else showAuth(enter);
 }
@@ -56,11 +57,25 @@ function toast(overlay: HTMLElement, text: string): void {
   window.setTimeout(() => note.remove(), 2500);
 }
 
-function enter(me: ApiMe): void {
+/** Into the café; `reload`, the café's own reload for a new build, which brings no guide (slice 21). */
+function enter(me: ApiMe, opts: { reload?: boolean } = {}): void {
   $("door").hidden = true;
   $("cafe").hidden = false;
   const canvas = $<HTMLCanvasElement>("room");
   const overlay = $("overlay");
+  // The guide (slice 21): over the café as it's entered, until ticked off
+  // in this browser, and from its ⓘ whenever it's pressed.
+  const guide = new Guide({
+    backdrop: $("guide-backdrop"),
+    root: $("guide"),
+    card: $("guide-card"),
+    words: $("guide-words"),
+    off: $<HTMLInputElement>("guide-off"),
+    close: $<HTMLButtonElement>("guide-close"),
+    button: $<HTMLButtonElement>("guide-open"),
+    cafe: $("cafe"),
+    room: canvas,
+  });
   const cafe = new Cafe(me, {
     onSignedOut: () => {
       stop();
@@ -78,8 +93,10 @@ function enter(me: ApiMe): void {
       announce("The café was updated. Refresh to get the new version.");
     },
     onStillThere: () => {
-      // Out of the way of the nudge, which must be seen (slice 02's review, finding 2).
+      // Out of the way of the nudge, which must be seen (slice 02's review,
+      // finding 2), the guide too (slice 21).
       hideBoard();
+      guide.close({ now: true });
       $("still-there").hidden = false;
       $("im-here").focus();
       announce("Still there? Someone's waiting for a seat.");
@@ -525,6 +542,8 @@ function enter(me: ApiMe): void {
   function stop(): void {
     // Leaving, being signed out or walked out: the music stops (slice 15).
     music.dispose();
+    // Shut at once, the café no longer inert (slice 21).
+    guide.dispose();
     drawerWatch.disconnect();
     window.removeEventListener("resize", fitDrawer);
     window.removeEventListener("resize", placeDemoBar);
@@ -565,6 +584,8 @@ function enter(me: ApiMe): void {
   // Remembered on, it plays as the café opens, or at the first press if
   // the browser won't let it yet (slice 15).
   music.enter();
+  // Every way in but the café's own reload, until it's ticked off (slice 21).
+  if (!opts.reload && guideWanted()) guide.open("entry");
 }
 
 void start();
