@@ -114,7 +114,7 @@ describe.skipIf(!password)("demo accounts", () => {
     await watcher.leave();
   });
 
-  it("lays out a furniture set at once for everyone, and only for a demo account (slice 17, part 2)", async () => {
+  it("lays out a furniture set at once for everyone, one every few seconds, and only for a demo account (slice 17, part 2)", async () => {
     const visitor = await Visitor.connect((await signUp()).cookie);
     expect((visitor.welcome.layouts as Msg[]).map((l) => l.name)).toEqual(["Opening day", "Lap time", "Play room"]);
     let from = visitor.messages.length;
@@ -122,29 +122,64 @@ describe.skipIf(!password)("demo accounts", () => {
     expect((await visitor.next((m) => m.type === "error", 3000, from)).code).toBe("notDemo");
 
     const demo = await Visitor.connect(await logIn("demo1", password!));
-    from = visitor.messages.length;
-    const sentAt = Date.now();
-    demo.send({ type: "layOut", set: "lap_time" });
-    const [laid, at] = await arrival(visitor, (m) => m.type === "laidOut", from);
-    expect(at - sentAt).toBeLessThan(1000);
-    expect(laid.by).toBe(demo.welcome.you);
-    expect(laid.name).toBe("Lap time");
-    const kinds = (laid.furniture as Msg[]).map((f) => f.kind).sort();
-    expect(kinds).toContain("bowls");
-    expect(kinds.filter((k) => k === "sofa")).toHaveLength(2);
-    // Again at once, and again: no rate limit on sets.
-    for (const set of ["play_room", "opening_day"]) {
-      const before = visitor.messages.length;
-      demo.send({ type: "layOut", set });
-      await visitor.next((m) => m.type === "laidOut", 3000, before);
+    /** Waits until the café can lay out a set again, by its own word. */
+    const waitForSets = async (next: number, now: number) => {
+      if (next > now) await new Promise((r) => setTimeout(r, next - now + 300));
+    };
+    try {
+      await waitForSets(demo.welcome.nextLayout, demo.welcome.now);
+      // The visitor sets off across the room; Lap time lands under them.
+      const me = visitor.welcome.you;
+      from = visitor.messages.length;
+      visitor.send({ type: "walkTo", tile: { x: 4, y: 8 } });
+      await visitor.next((m) => m.type === "personMoved" && m.id === me, 3000, from);
+      await new Promise((r) => setTimeout(r, 300));
+      from = visitor.messages.length;
+      const sentAt = Date.now();
+      demo.send({ type: "layOut", set: "lap_time" });
+      const [laid, at] = await arrival(visitor, (m) => m.type === "laidOut", from);
+      expect(at - sentAt).toBeLessThan(1000);
+      expect(laid.by).toBe(demo.welcome.you);
+      expect(laid.name).toBe("Lap time");
+      const kinds = (laid.furniture as Msg[]).map((f) => f.kind).sort();
+      expect(kinds).toContain("bowls");
+      expect(kinds.filter((k) => k === "sofa")).toHaveLength(2);
+      // The visitor's own page is told their walk ended, after the room,
+      // and not inside a new sofa (slice 17 part 2's review, finding 1).
+      const stopped = await visitor.next((m) => m.type === "personMoved" && m.id === me, 3000, visitor.messages.indexOf(laid));
+      const end = stopped.walk.path.at(-1);
+      const blocking = (laid.furniture as Msg[]).filter((f) => f.blocks);
+      const under = blocking.some((f) => end.x >= f.x && end.x < f.x + f.w && end.y >= f.y && end.y < f.y + f.h);
+      expect(under, `ends at ${end.x},${end.y}`).toBe(false);
+      // At once again: refused, until the café's wait is over (finding 2).
+      const again = demo.messages.length;
+      demo.send({ type: "layOut", set: "play_room" });
+      expect((await demo.next((m) => m.type === "error", 3000, again)).code).toBe("tooSoon");
+    } finally {
+      // Whatever happened, the room is put back for the files after this one
+      // (slice 17 part 2's review, finding 9).
+      await putBack(demo);
     }
     // A page that opens now sees the starting room.
     const late = await Visitor.connect((await signUp()).cookie);
     const opening = (late.welcome.snapshot.room.furniture as Msg[]).map((f) => `${f.kind}@${f.x},${f.y}`).sort();
-    const told = (visitor.messages.filter((m) => m.type === "laidOut").at(-1)!.furniture as Msg[]).map((f) => `${f.kind}@${f.x},${f.y}`).sort();
+    const told = (demo.messages.filter((m) => m.type === "laidOut").at(-1)!.furniture as Msg[]).map((f) => `${f.kind}@${f.x},${f.y}`).sort();
     expect(opening).toEqual(told);
     await late.leave();
     await visitor.leave();
     await demo.leave();
-  });
+  }, 60_000);
 });
+
+/** Lays out Opening day as `demo`, waiting out the café's last set first. */
+export async function putBack(demo: Visitor): Promise<void> {
+  for (let tries = 0; tries < 3; tries++) {
+    const from = demo.messages.length;
+    demo.send({ type: "layOut", set: "opening_day" });
+    const answer = await demo.next((m) => (m.type === "laidOut" && m.name === "Opening day") || m.type === "error", 15_000, from);
+    if (answer.type === "laidOut") return;
+    if (answer.code !== "tooSoon") throw new Error(`putting the room back: ${answer.code}`);
+    const secs = Number(/(\d+) s/.exec(answer.detail)?.[1] ?? 10);
+    await new Promise((r) => setTimeout(r, secs * 1000 + 300));
+  }
+}

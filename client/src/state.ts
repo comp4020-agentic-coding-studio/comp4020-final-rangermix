@@ -49,6 +49,8 @@ export interface CafeState {
   nextJump: number;
   /** The furniture sets a demo account can lay out, in the bar's order (slice 17, part 2). */
   layouts: LayoutName[];
+  /** When, by the café's clock, a set can be laid out again (slice 17 part 2's review, finding 2). */
+  nextLayout: number;
   room: RoomView;
   people: Map<number, PersonView>;
   cats: Map<string, Cat>;
@@ -86,7 +88,9 @@ export type Effect =
   | { kind: "error"; code: ErrorCode; detail: string }
   | { kind: "announce"; text: string }
   /** Said to a screen reader and shown over the room: a demo account's furniture set (slice 17, part 2). */
-  | { kind: "notice"; text: string };
+  | { kind: "notice"; text: string }
+  /** The room was laid out anew: a menu on a piece may name one that's gone. */
+  | { kind: "laidOut" };
 
 type Welcome = Extract<ServerMsg, { type: "welcome" }>;
 
@@ -128,6 +132,7 @@ export function fromWelcome(msg: Welcome, localNow = Date.now(), previous: CafeS
     ahead: msg.ahead,
     nextJump: msg.nextJump,
     layouts: msg.layouts,
+    nextLayout: msg.nextLayout,
     room: s.room,
     people: new Map(s.people.map((p) => [p.id, p])),
     cats: new Map(s.cats.map((c) => [c.id, { ...c, reaction: null }])),
@@ -326,8 +331,9 @@ export function apply(state: CafeState, msg: ServerMsg, localNow = Date.now()): 
       // The whole room at once, and nothing carried: what was is gone.
       state.room.furniture = msg.furniture;
       state.held.clear();
+      state.nextLayout = msg.next;
       const who = msg.by === state.you ? "You" : name(msg.by);
-      return [{ kind: "notice", text: `${who} laid out ${msg.name}.` }];
+      return [{ kind: "notice", text: `${who} laid out ${msg.name}.` }, { kind: "laidOut" }];
     }
     case "emoted":
       state.emotes.set(msg.from, { emote: msg.emote, at: now });

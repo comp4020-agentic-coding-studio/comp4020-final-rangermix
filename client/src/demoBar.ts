@@ -46,6 +46,19 @@ export function aheadText(ms: number): string {
   return `${whole}${hours > 0 ? ` and ${hours} h` : ""} ahead`;
 }
 
+/**
+ * How far ahead, in a few characters, for a phone's one slim row: "+6m",
+ * "+9h", "+2d 23h", or nothing on Canberra time (slice 17 part 2's review,
+ * finding 5).
+ */
+export function aheadShort(ms: number): string {
+  if (ms <= 0) return "";
+  if (ms < HOUR) return `+${Math.max(1, Math.round(ms / 60_000))}m`;
+  if (ms < DAY) return `+${Math.floor(ms / HOUR)}h`;
+  const hours = Math.floor((ms % DAY) / HOUR);
+  return `+${Math.floor(ms / DAY)}d${hours > 0 ? ` ${hours}h` : ""}`;
+}
+
 /** A typed "HH:MM" as minutes past midnight, or null. */
 export function minuteOf(text: string): number | null {
   const m = /^(\d{2}):(\d{2})$/.exec(text);
@@ -87,6 +100,8 @@ export interface DemoBarEls {
   canberra: HTMLButtonElement;
   /** The furniture sets' buttons go in here, one per set (slice 17, part 2). */
   sets: HTMLElement;
+  /** How long until a set can be laid out again; after the set buttons. */
+  setsWait: HTMLElement;
   botCount: HTMLElement;
   addBot: HTMLButtonElement;
   removeBot: HTMLButtonElement;
@@ -179,11 +194,13 @@ export class DemoBar {
     document.body.classList.toggle("demo", show);
     if (!state) {
       this.disable(true, null);
+      for (const b of this.setButtons) b.disabled = true;
       return;
     }
     const now = serverNow(state, localNow);
     this.els.time.textContent = clockText(now);
     this.els.ahead.textContent = aheadText(state.ahead);
+    this.els.ahead.dataset.short = aheadShort(state.ahead);
     this.showSets(state.layouts);
     const bots = [...state.people.values()].filter((p) => p.bot).length;
     this.els.botCount.textContent = botsText(bots);
@@ -193,6 +210,12 @@ export class DemoBar {
       announce(movesAgainAt(state.nextJump));
     }
     this.disable(this.waking, wait, bots === 0);
+    // The furniture waits for the café's last set, whoever laid it out.
+    const setsWait = state.nextLayout > now ? `Next set in ${Math.ceil((state.nextLayout - now) / 1000)} s` : null;
+    if (setsWait !== null && this.setButtons.includes(document.activeElement as HTMLButtonElement)) this.els.time.focus();
+    for (const b of this.setButtons) b.disabled = this.waking || setsWait !== null;
+    this.els.setsWait.textContent = setsWait ?? "";
+    this.els.setsWait.hidden = setsWait === null;
   }
 
   /**
@@ -214,7 +237,7 @@ export class DemoBar {
       };
       return button;
     });
-    this.els.sets.replaceChildren(...this.setButtons);
+    this.els.sets.replaceChildren(...this.setButtons, this.els.setsWait);
   }
 
   /**
@@ -228,13 +251,11 @@ export class DemoBar {
     const off = new Set<HTMLElement>();
     for (const b of timeControls) if (waking || wait !== null) off.add(b);
     if (waking) off.add(this.els.at).add(this.els.addBot);
-    if (waking) for (const b of this.setButtons) off.add(b);
     if (waking || noBots) off.add(this.els.removeBot);
     if (off.has(document.activeElement as HTMLElement)) this.els.time.focus();
     for (const b of timeControls) b.disabled = off.has(b);
     this.els.at.disabled = off.has(this.els.at);
     this.els.addBot.disabled = off.has(this.els.addBot);
-    for (const b of this.setButtons) b.disabled = off.has(b);
     this.els.removeBot.disabled = off.has(this.els.removeBot);
     this.els.wait.textContent = wait ?? "";
     this.els.wait.hidden = wait === null;

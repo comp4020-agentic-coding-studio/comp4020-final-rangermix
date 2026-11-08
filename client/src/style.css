@@ -304,11 +304,10 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
   .demo-bar { position: fixed; z-index: 3; top: var(--demo-top, 64px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 2 * (18rem + 40px)); justify-content: center; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
   .demo-group + .demo-group { border-left: 1px solid var(--line); padding-left: 0.6rem; }
   /* Two rows (slice 17, part 2): the clock, the furniture sets and the bots
-     on the first, the times on a row of their own, with no rule before them. */
-  .demo-clock { order: 0; }
-  #demo-furniture { order: 1; border-left: none; padding-left: 0; }
-  #demo-bots { order: 2; }
-  #demo-times { order: 3; flex-basis: 100%; justify-content: center; border-left: none; padding-left: 0; }
+     on the first, the times on a row of their own, with no rule before them,
+     in the page's own order so Tab reads as the eye does. */
+  #demo-furniture { border-left: none; padding-left: 0; }
+  #demo-times { flex-basis: 100%; justify-content: center; border-left: none; padding-left: 0; }
 }
 
 /* The café on a phone, layout A: the whole room on top, full width, the rest below */
@@ -362,7 +361,11 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
      for 390 px; the label stays for a screen reader. */
   .demo-label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .demo-toggle { display: inline-block; padding: 0.3rem 0.6rem; }
-  #demo-ahead { font-size: 0.85rem; }
+  /* How far ahead in a few characters ("+2d 23h"), so the slim row fits
+     390 px whatever it says; the words stay for a screen reader (slice 17
+     part 2's review, finding 5). */
+  #demo-ahead { font-size: 0; }
+  #demo-ahead::after { content: attr(data-short); font-size: 0.85rem; }
   .demo-group { display: none; width: 100%; }
   .demo-group.open { display: flex; }
 }

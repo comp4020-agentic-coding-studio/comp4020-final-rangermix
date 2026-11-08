@@ -49,6 +49,7 @@ function welcomeAt(now: number, chalkboard: ChalkLine[], numbers: { chalkHours?:
     ahead: 0,
     nextJump: 0,
     layouts: [],
+    nextLayout: 0,
     snapshot: {
       room: { width: 12, height: 10, tiles: ["WWGGGGWDCWWW", ...Array<string>(9).fill("............")], door: { x: 7, y: 0 }, walkway: [], furniture: [], catalogue: [] },
       people: [],

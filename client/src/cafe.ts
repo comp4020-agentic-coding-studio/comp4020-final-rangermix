@@ -48,6 +48,8 @@ export interface CafeHooks {
   onError?(effect: Extract<Effect, { kind: "error" }>): void;
   /** A notice over the room for everyone: a demo account laid out a set (slice 17, part 2). */
   onNotice?(text: string): void;
+  /** The room was laid out anew (slice 17, part 2). */
+  onLaidOut?(): void;
   /** The server runs a different build from this tab, and a reload didn't fix it. */
   onOutdated?(): void;
   /** "Still there?": someone waits for a seat and you've gone quiet (ADR 0009). */
@@ -190,6 +192,9 @@ export class Cafe {
       case "notice":
         announce(effect.text);
         this.hooks.onNotice?.(effect.text);
+        break;
+      case "laidOut":
+        this.hooks.onLaidOut?.();
         break;
       case "replaced":
         this.replaced = true;
