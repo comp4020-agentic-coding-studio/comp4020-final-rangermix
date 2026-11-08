@@ -14,7 +14,17 @@ Against a café built from the branch on port 8091 with a fresh
   failing (seven timed out waiting for a guide; the eighth, that the
   café's own reload brings none, passed with no guide to bring).
 - `pnpm check`, the whole suite, with every other browser starting with
-  the guide off.
+  the guide off. First run (at `d580206`'s page): 462 client tests
+  passed, and 130 of 133 spec checks, the two blocked-storage checks
+  failing in their clean-up, behind a guide that rightly came back on
+  Come back in (fixed by closing it; the review's finding 1). After the
+  review's fixes (`b9fb6d0`): 472 client tests in 32 files, and 135 spec
+  checks passed with 1 skipped (`spec/restart.test.ts`, which needs
+  Docker's stop and start; CI runs it).
+- `docs/notes/screens/slice-21/live.mjs`, the live check below, run
+  first against the local café: in, the guide up over an inert café,
+  closed into the ⓘ, opened from it, ticked on the phone, and Come back
+  in brought it on the desktop (not ticked there) and not on the phone.
 
 ## Screens
 
