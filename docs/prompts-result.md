@@ -2661,3 +2661,19 @@ live.
     answered versions.
 - **Left in place:** the study worktrees and branches, for the user to
   remove if they wish.
+
+*Sent 2026-11-08 12:10:16 AEDT*
+
+> yes, remove them all, then checkout main
+
+**Result.** Twelve of the thirteen extra worktrees and every local branch
+but `main` are gone, and the main checkout is on `main`.
+- **Removed:** the worktrees in `/tmp` and in `.claude/worktrees/`, the
+  two studies' uncommitted copies with them, and 29 local branches. All
+  but `spike-16-fill` were in `main` already, and its two commits are
+  the study `main` keeps as a patch and screens. Slices 12 to 14's
+  untracked findings drafts were moved aside; `main` has them answered.
+- **Left:** `.claude/worktrees/slice-17-demo`, locked by an earlier
+  session still running there, its pull request merged on 6 November.
+  Stopping that session was refused by the permission check, so it
+  waits on the user. The branches on GitHub are untouched.
