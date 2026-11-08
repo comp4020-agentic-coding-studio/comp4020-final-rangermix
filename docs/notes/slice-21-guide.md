@@ -14,7 +14,7 @@ Against a café built from the branch on port 8091 with a fresh
   failing (seven timed out waiting for a guide; the eighth, that the
   café's own reload brings none, passed with no guide to bring).
 - `pnpm check`, the whole suite, with every other browser starting with
-  the guide off. First run (at `d580206`'s page): 462 client tests
+  the guide off. First run (at `d2d40f2`'s page): 462 client tests
   passed, and 130 of 133 spec checks, the two blocked-storage checks
   failing in their clean-up, behind a guide that rightly came back on
   Come back in (fixed by closing it; the review's finding 1). After the
