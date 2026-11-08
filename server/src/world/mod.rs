@@ -191,6 +191,8 @@ pub struct World {
     unsaved_trust: Vec<(String, u32)>,
     /// The furniture sets a demo account lays out (slice 17, part 2).
     layouts: Vec<crate::room::Layout>,
+    /// When, by the café's clock, the last set was laid out.
+    last_layout: Option<u64>,
 }
 
 impl World {
@@ -244,6 +246,7 @@ impl World {
             last_jump: None,
             unsaved_trust: Vec::new(),
             layouts,
+            last_layout: None,
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {

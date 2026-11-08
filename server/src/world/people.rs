@@ -109,6 +109,7 @@ impl World {
             ahead: self.ahead,
             next_jump: self.next_jump_at(),
             layouts: self.layout_names(),
+            next_layout: self.next_layout_at(),
             snapshot: Box::new(self.snapshot_for(id, now)),
         }
     }

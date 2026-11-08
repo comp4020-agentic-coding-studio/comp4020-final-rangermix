@@ -513,6 +513,37 @@ impl Room {
         }
     }
 
+    /// Lays out a set in place of every movable piece (slice 17, part 2),
+    /// whole: `check_layout` checked the set as a whole against the pieces
+    /// that never move when the café started, so it stands as it is,
+    /// whatever was here before and in whatever order its file lists it
+    /// (slice 17 part 2's review, finding 4). A piece of the same kind
+    /// already standing where the set puts one stays, with its id, stood
+    /// up. Returns the tiles of the pieces that went, for the cats on them.
+    pub fn lay_out(&mut self, set: &[Saved]) -> Vec<Tile> {
+        let mut wanted: Vec<&Saved> = set.iter().collect();
+        let mut kept = Vec::new();
+        let mut gone = Vec::new();
+        for p in std::mem::take(&mut self.pieces) {
+            let same = wanted.iter().position(|s| s.kind == p.kind && s.x == p.x && s.y == p.y);
+            match same {
+                Some(i) if p.spec.movable => {
+                    wanted.remove(i);
+                    kept.push(Piece { toppled: false, ..p });
+                }
+                _ if p.spec.movable => gone.extend(p.tiles()),
+                _ => kept.push(p),
+            }
+        }
+        self.pieces = kept;
+        for s in wanted {
+            if let Some(piece) = self.new_piece(&s.kind, Tile { x: s.x, y: s.y }) {
+                self.pieces.push(piece);
+            }
+        }
+        gone
+    }
+
     /// Phase 1's cushion-only save: moves pieces by their place in the list,
     /// skipping any that no longer match.
     pub fn restore_legacy(&mut self, saved: &[Placed]) {

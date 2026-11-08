@@ -448,6 +448,8 @@ pub enum ServerMsg {
         /// The furniture sets a demo account can lay out, in the bar's order
         /// (slice 17, part 2).
         layouts: Vec<LayoutName>,
+        /// When, by the café's clock, a set can be laid out again.
+        next_layout: u64,
         // Boxed: by far the largest message, and sent once per connection.
         snapshot: Box<Snapshot>,
     },
@@ -567,6 +569,8 @@ pub enum ServerMsg {
         /// The set's name, as the bar shows it.
         name: String,
         furniture: Vec<FurnitureView>,
+        /// When, by the café's clock, the next set can be laid out.
+        next: u64,
     },
     /// A new line on the chalkboard.
     Chalked {

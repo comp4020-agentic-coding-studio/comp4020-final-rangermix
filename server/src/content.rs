@@ -669,6 +669,34 @@ mod tests {
         }
     }
 
+    /// A set fine as a whole lays out whole, whatever order its file lists
+    /// its pieces in and whatever room it lands on: here two chairs box the
+    /// corner in before the plant that fills it, which placed one at a
+    /// time would lose a piece (slice 17 part 2's review, finding 4).
+    #[test]
+    fn a_set_lays_out_whole_whatever_its_order_or_the_room_before() {
+        let piece = |kind: &str, x: u8, y: u8| format!("[[furniture]]\nkind = \"{kind}\"\nx = {x}\ny = {y}\n\n");
+        let dir = content_copy();
+        let body = piece("chair", 1, 12) + &piece("chair", 0, 11) + &piece("plant", 0, 12) + &piece("rug", 3, 3) + &piece("box", 4, 4);
+        write_set(dir.path(), "corner.toml", &format!("name = \"Corner\"\norder = 1\n\n{body}"));
+        let c = load(dir.path()).expect("a set fine as a whole loads");
+        let set = &c.layouts[0].pieces;
+        let mut want = set.clone();
+        want.sort();
+        // On the room as it opens, and on a room already holding part of it.
+        let mut room = c.room.clone();
+        room.lay_out(set);
+        let mut got = room.arrangement();
+        got.sort();
+        assert_eq!(got, want);
+        let mut part = c.room.clone();
+        part.restore(&set[1..2]);
+        part.lay_out(set);
+        let mut got = part.arrangement();
+        got.sort();
+        assert_eq!(got, want);
+    }
+
     /// Two sets may not share an order or a name, and a café needs no sets
     /// to run: a content folder without layouts/ has none.
     #[test]
