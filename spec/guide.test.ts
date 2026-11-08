@@ -36,6 +36,10 @@ interface Opts {
   demo?: boolean;
   /** Before the page loads, as the café's own reload for a new build notes it (slice 20). */
   backInside?: boolean;
+  /** The phone's layout this browser chose before (slice 09). */
+  layout?: "a" | "b";
+  /** Every welcome names a newer build than the page's, as after a deploy (slice 21's review, finding 3). */
+  newerBuild?: boolean;
 }
 
 /** A newcomer's browser, signed in, at the door. */
@@ -48,12 +52,13 @@ async function atDoor(viewport: { width: number; height: number }, opts: Opts = 
   await context.addCookies([{ name, value, url: baseUrl }]);
   const page = await context.newPage();
   if (opts.backInside) await page.addInitScript(() => sessionStorage.setItem("cafe.backInside", "1"));
-  if (opts.demo) {
+  if (opts.layout) await page.addInitScript((layout) => localStorage.setItem("cafe.layout", layout), opts.layout);
+  if (opts.demo || opts.newerBuild) {
     await page.routeWebSocket(/\/ws$/, (ws) => {
       const server = ws.connectToServer();
       server.onMessage((m) => {
         const f = JSON.parse(String(m));
-        if (f.type === "welcome") ws.send(JSON.stringify({ ...f, demo: true }));
+        if (f.type === "welcome") ws.send(JSON.stringify({ ...f, ...(opts.demo ? { demo: true } : {}), ...(opts.newerBuild ? { build: "zz-newer" } : {}) }));
         else ws.send(m);
       });
       ws.onMessage((m) => server.send(m));
@@ -67,6 +72,8 @@ const inside = (page: Page) => page.waitForFunction(() => /inside|window/.test(d
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.id ?? "");
 const inert = (page: Page) => page.evaluate(() => document.getElementById("cafe")!.inert);
 const shown = (page: Page) => page.locator("#guide").isVisible();
+/** The outline the guide's words draw, where they have the focus. */
+const ring = (page: Page) => page.evaluate(() => getComputedStyle(document.getElementById("guide-words")!).outlineStyle);
 
 /** Whether a box sits wholly inside the window. */
 async function onScreen(page: Page, selector: string): Promise<boolean> {
@@ -98,11 +105,18 @@ async function closeMeasured(page: Page, how: "close" | "escape" = "close") {
     const frames = (shrink.effect as KeyframeEffect).getKeyframes();
     const ms = Number(shrink.effect!.getTiming().duration);
     shrink.pause();
+    // As it starts, a press where the box was reaches whatever's under it,
+    // not the guide (slice 21's review, finding 5).
+    shrink.currentTime = 0;
+    const box = document.getElementById("guide-off")!.getBoundingClientRect();
+    const under = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    const takesPresses = !!under && !!under.closest("#guide, #guide-backdrop");
     shrink.currentTime = ms;
     const c = card.getBoundingClientRect();
     const b = document.getElementById("guide-open")!.getBoundingClientRect();
     const out = {
       ms,
+      takesPresses,
       transforms: frames.map((f) => (f.transform as string | undefined) ?? null),
       card: { x: c.left + c.width / 2, y: c.top + c.height / 2, w: c.width, h: c.height },
       button: { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width, h: b.height },
@@ -148,6 +162,7 @@ describe("the guide (slice 21)", () => {
     const m = (await closeMeasured(page))!;
     expect(m).not.toBeNull();
     expect(m.ms).toBeGreaterThanOrEqual(300);
+    expect(m.takesPresses).toBe(false);
     expect(Math.abs(m.card.x - m.button.x)).toBeLessThan(1.5);
     expect(Math.abs(m.card.y - m.button.y)).toBeLessThan(1.5);
     expect(m.card.w).toBeLessThanOrEqual(m.button.w + 0.5);
@@ -174,6 +189,8 @@ describe("the guide (slice 21)", () => {
     });
     expect(grow).toMatch(/^translate\(.+\) scale\(.+\)$/);
     expect(await inert(page)).toBe(true);
+    // Opened by a mouse, its words aren't ringed (slice 21's review, finding 7).
+    expect(await ring(page)).toBe("none");
     // Tab and Shift+Tab go round it, never out to the café.
     for (let i = 0; i < 5; i++) {
       await page.keyboard.press("Tab");
@@ -191,6 +208,8 @@ describe("the guide (slice 21)", () => {
     await page.keyboard.press("Enter");
     await page.locator("#guide").waitFor();
     expect(await focused(page)).toBe("guide-words");
+    // Opened by a key, they are, so the focus can be seen (finding 7).
+    expect(await ring(page)).not.toBe("none");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     expect(await focused(page)).toBe("guide-close");
@@ -263,6 +282,9 @@ describe("the guide (slice 21)", () => {
     await page.locator("#door-in").tap();
     await inside(page);
     await page.locator("#guide").waitFor();
+    // Over an inert café, the focus in it (slice 21's review, finding 8).
+    expect(await inert(page)).toBe(true);
+    expect(await focused(page)).toBe("guide-words");
     const l = await lines(page);
     expect(l.narrow.every(Boolean)).toBe(true);
     expect(l.wide.some(Boolean)).toBe(false);
@@ -300,6 +322,14 @@ describe("the guide (slice 21)", () => {
     await page.locator("#guide-close").tap();
     await page.locator("#guide").waitFor({ state: "hidden" });
     expect(await focused(page)).toBe("guide-open");
+    // A narrower phone, where the bar wraps: the ⓘ keeps to Add furniture,
+    // in both layouts (slice 21's review, finding 14).
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.waitForTimeout(200);
+    await besideAddFurniture(page);
+    await page.locator("#layout-switch").tap();
+    await page.waitForTimeout(200);
+    await besideAddFurniture(page);
   });
 
   it("survives a resize mid-use: its lines swap, it stays in the window, and it shrinks to where the ⓘ is now", { timeout: 60_000 }, async () => {
@@ -327,6 +357,62 @@ describe("the guide (slice 21)", () => {
     expect(back.narrow.some(Boolean)).toBe(false);
     expect(await onScreen(page, "#guide-card")).toBe(true);
     await page.keyboard.press("Escape");
+    await page.locator("#guide").waitFor({ state: "hidden" });
+  });
+
+  it("comes back after the café's own reload when it was open then, as on a newcomer's first entry after a deploy (slice 21's review, finding 3)", { timeout: 60_000 }, async () => {
+    const page = await atDoor({ width: 1920, height: 1080 }, { newerBuild: true });
+    await walkIn(page);
+    // The first welcome names a newer build: the page reloads itself once,
+    // straight back in, then says the café was updated.
+    await page.locator("#outdated").waitFor();
+    expect(await page.evaluate(() => (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming).type)).toBe("reload");
+    await page.locator("#guide").waitFor();
+    expect(await inert(page)).toBe(true);
+    await page.keyboard.press("Escape");
+    await page.locator("#guide").waitFor({ state: "hidden" });
+  });
+
+  it("holds the page still in layout A while it's open, so it lands on the ⓘ on screen (slice 21's review, finding 4)", { timeout: 60_000 }, async () => {
+    const page = await atDoor({ width: 390, height: 844 }, { layout: "a" });
+    await walkIn(page);
+    await inside(page);
+    await page.locator("#guide").waitFor();
+    expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(false);
+    // Read to the end and past it, then a wheel beside the card.
+    const words = (await page.locator("#guide-words").boundingBox())!;
+    await page.mouse.move(words.x + words.width / 2, words.y + words.height / 2);
+    await page.mouse.wheel(0, 3000);
+    await page.waitForTimeout(300);
+    await page.mouse.wheel(0, 3000);
+    await page.mouse.move(195, 838);
+    await page.mouse.wheel(0, 3000);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const m = (await closeMeasured(page))!;
+    expect(Math.abs(m.card.x - m.button.x)).toBeLessThan(1.5);
+    expect(Math.abs(m.card.y - m.button.y)).toBeLessThan(1.5);
+    expect(m.button.y).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  it("closed mid-grow, shrinks from where the grow had got to (slice 21's review, finding 13)", { timeout: 60_000 }, async () => {
+    const page = await atDoor({ width: 1920, height: 1080 });
+    await walkIn(page);
+    await inside(page);
+    await page.locator("#guide").waitFor();
+    await page.keyboard.press("Escape");
+    await page.locator("#guide").waitFor({ state: "hidden" });
+    const first = await page.evaluate(() => {
+      document.getElementById("guide-open")!.click();
+      const grow = document.getElementById("guide-card")!.getAnimations().at(-1)!;
+      grow.pause();
+      grow.currentTime = 100;
+      document.getElementById("guide-close")!.click();
+      const shrink = document.getElementById("guide-card")!.getAnimations().at(-1)!;
+      return (shrink.effect as KeyframeEffect).getKeyframes()[0].transform as string;
+    });
+    expect(first).toMatch(/^matrix\(/);
     await page.locator("#guide").waitFor({ state: "hidden" });
   });
 

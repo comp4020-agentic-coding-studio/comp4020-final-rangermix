@@ -15,7 +15,7 @@ import { catInArms, menuFor } from "./menus";
 import { renderChalkboard, renderHere, renderSaid, renderYourCats, showTreatButton } from "./panels";
 import { PHONE, chooseLayout, saveLayout, savedLayout } from "./layout";
 import { Floating } from "./floating";
-import { Guide, guideWanted } from "./guide";
+import { Guide, guideWanted, takeGuideOpen } from "./guide";
 import { Music } from "./musicPanel";
 import { guessPlace } from "./placing";
 import type { ApiMe } from "./protocol/ApiMe";
@@ -65,17 +65,22 @@ function enter(me: ApiMe, opts: { reload?: boolean } = {}): void {
   const overlay = $("overlay");
   // The guide (slice 21): over the café as it's entered, until ticked off
   // in this browser, and from its ⓘ whenever it's pressed.
-  const guide = new Guide({
-    backdrop: $("guide-backdrop"),
-    root: $("guide"),
-    card: $("guide-card"),
-    words: $("guide-words"),
-    off: $<HTMLInputElement>("guide-off"),
-    close: $<HTMLButtonElement>("guide-close"),
-    button: $<HTMLButtonElement>("guide-open"),
-    cafe: $("cafe"),
-    room: canvas,
-  });
+  const guide = new Guide(
+    {
+      backdrop: $("guide-backdrop"),
+      root: $("guide"),
+      card: $("guide-card"),
+      words: $("guide-words"),
+      off: $<HTMLInputElement>("guide-off"),
+      close: $<HTMLButtonElement>("guide-close"),
+      button: $<HTMLButtonElement>("guide-open"),
+      cafe: $("cafe"),
+      room: canvas,
+    },
+    // A menu left open (Add furniture's, a ring) closes as it opens, as it
+    // does for the board (slice 21's review, finding 11).
+    { opening: () => closeMenu() },
+  );
   const cafe = new Cafe(me, {
     onSignedOut: () => {
       stop();
@@ -584,8 +589,12 @@ function enter(me: ApiMe, opts: { reload?: boolean } = {}): void {
   // Remembered on, it plays as the café opens, or at the first press if
   // the browser won't let it yet (slice 15).
   music.enter();
-  // Every way in but the café's own reload, until it's ticked off (slice 21).
-  if (!opts.reload && guideWanted()) guide.open("entry");
+  // Every way in until it's ticked off; on the café's own reload, only if it
+  // was open as the page reloaded, as on a newcomer's first welcome after a
+  // deploy (slice 21's review, finding 3). The note is taken either way, so
+  // it can't outlive this opening.
+  const wasOpen = takeGuideOpen();
+  if (opts.reload ? wasOpen : guideWanted()) guide.open("entry");
 }
 
 void start();

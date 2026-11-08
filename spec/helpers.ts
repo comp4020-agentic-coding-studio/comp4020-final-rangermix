@@ -22,6 +22,15 @@ export async function guideOff(context: BrowserContext): Promise<void> {
   });
 }
 
+/**
+ * Closes the guide (slice 21) where a check meets it: a browser that
+ * stores nothing has it at every entry.
+ */
+export async function closeGuide(page: Page): Promise<void> {
+  await page.locator("#guide-close").click();
+  await page.locator("#guide").waitFor({ state: "hidden" });
+}
+
 /** A fresh name for each call, within the 20-character limit. */
 export function uniqueName(prefix = "t"): string {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.slice(0, 20);

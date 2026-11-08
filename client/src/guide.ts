@@ -5,13 +5,21 @@
 // it. It's modal, as the chalkboard's dialog is: the café behind is inert.
 
 const KEY = "cafe.guide";
+/** Noted for this tab while it's open, so the café's own reload brings it back (slice 21's review, finding 3). */
+const OPEN_KEY = "cafe.guideOpen";
 
-/** Whether the guide pops up on the way in: yes, unless ticked off in this browser, and yes where nothing can be stored. */
+/**
+ * The box, for this page's life, where the browser won't store it, as the
+ * layout's `thisVisit` is (slice 21's review, finding 6).
+ */
+let thisVisit: boolean | null = null;
+
+/** Whether the guide pops up on the way in: yes, unless ticked off in this browser; where nothing can be stored, yes unless ticked this visit. */
 export function guideWanted(): boolean {
   try {
     return localStorage.getItem(KEY) !== "off";
   } catch {
-    return true;
+    return thisVisit ?? true;
   }
 }
 
@@ -21,8 +29,41 @@ export function saveGuideWanted(on: boolean): void {
     if (on) localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, "off");
   } catch {
-    // Nowhere to keep it: the box holds for this visit.
+    // Nowhere to keep it: the box holds until the page is reloaded.
+    thisVisit = on;
   }
+}
+
+/** Whether the guide was open as the café reloaded itself; read once (slice 21's review, finding 3). */
+export function takeGuideOpen(): boolean {
+  try {
+    const was = sessionStorage.getItem(OPEN_KEY) === "1";
+    sessionStorage.removeItem(OPEN_KEY);
+    return was;
+  } catch {
+    return false;
+  }
+}
+
+function noteOpen(open: boolean): void {
+  try {
+    if (open) sessionStorage.setItem(OPEN_KEY, "1");
+    else sessionStorage.removeItem(OPEN_KEY);
+  } catch {
+    // Nowhere to note it: the reload brings no guide, which is safe.
+  }
+}
+
+/**
+ * Whether the last press was a key's, not a pointer's: the guide opened by
+ * a key rings its words, so the focus can be seen; opened by a mouse or a
+ * finger, it doesn't (slice 21's review, finding 7). Watched from the
+ * start, so the press on Walk in counts.
+ */
+let byKey = false;
+if (typeof document !== "undefined") {
+  document.addEventListener("keydown", () => (byKey = true), true);
+  document.addEventListener("pointerdown", () => (byKey = false), true);
 }
 
 export interface Box {
@@ -60,6 +101,11 @@ export interface GuideEls {
   room: HTMLElement;
 }
 
+export interface GuideHooks {
+  /** As it opens, before it takes the focus: a menu left open closes (slice 21's review, finding 11). */
+  opening?(): void;
+}
+
 /** How long the shrink and the grow take, in ms; a fade alone is quicker. */
 const SHRINK_MS = 350;
 const FADE_MS = 200;
@@ -70,13 +116,18 @@ export class Guide {
   /** How it was opened, while it's open: the focus goes back to where it came from. */
   private from: "entry" | "button" | null = null;
   private pressedBeside = false;
+  /** Where the page was scrolled as it opened, held while it's open. */
+  private heldY = 0;
   private running: Animation[] = [];
   private readonly undo: (() => void)[] = [];
 
-  constructor(private readonly els: GuideEls) {
-    const on = (target: EventTarget, type: string, fn: EventListener) => {
-      target.addEventListener(type, fn);
-      this.undo.push(() => target.removeEventListener(type, fn));
+  constructor(
+    private readonly els: GuideEls,
+    private readonly hooks: GuideHooks = {},
+  ) {
+    const on = (target: EventTarget, type: string, fn: EventListener, opts?: AddEventListenerOptions) => {
+      target.addEventListener(type, fn, opts);
+      this.undo.push(() => target.removeEventListener(type, fn, opts));
     };
     on(els.button, "click", () => this.open("button"));
     on(els.close, "click", () => this.close());
@@ -89,6 +140,27 @@ export class Guide {
       this.pressedBeside = false;
     });
     on(document, "keydown", this.onKey as EventListener);
+    // A resize mid-shrink would leave it flying to where the ⓘ was: it
+    // lands at once (slice 21's review, finding 12).
+    on(window, "resize", () => {
+      if (!this.isOpen && !els.root.hidden) this.hide();
+    });
+    // The page holds still under it, so the ⓘ is where it was when it
+    // closes: a swipe or a wheel that scrolls it anyway is put back (slice
+    // 21's review, finding 4). Not by hiding the page's overflow, which
+    // lays layout A out afresh in a phone's browser.
+    on(window, "scroll", () => {
+      if (this.isOpen && window.scrollY !== this.heldY) window.scrollTo(window.scrollX, this.heldY);
+    });
+    // And a wheel or a swipe anywhere in it but its words, which scroll
+    // themselves and pass nothing on (`overscroll-behavior`), scrolls nothing.
+    const still = (e: Event) => {
+      if (this.isOpen && !els.words.contains(e.target as Node)) e.preventDefault();
+    };
+    for (const layer of [els.backdrop, els.root]) {
+      on(layer, "wheel", still, { passive: false });
+      on(layer, "touchmove", still, { passive: false });
+    }
   }
 
   get isOpen(): boolean {
@@ -97,18 +169,21 @@ export class Guide {
 
   open(from: "entry" | "button"): void {
     if (this.isOpen) return;
+    this.hooks.opening?.();
     // Opened again while it shrinks: it stops and stands open.
     this.stop();
     const { els } = this;
     els.off.checked = !guideWanted();
     els.cafe.inert = true;
+    this.heldY = window.scrollY;
     for (const el of [els.backdrop, els.root]) {
       el.hidden = false;
-      el.style.pointerEvents = "";
+      el.classList.remove("closing");
     }
     els.words.scrollTop = 0;
-    els.words.classList.remove("tabbed");
+    els.words.classList.toggle("tabbed", byKey);
     this.from = from;
+    noteOpen(true);
     els.words.focus();
     if (!this.canAnimate()) return;
     const into = from === "button" && !reducedMotion() ? this.intoButton() : null;
@@ -130,19 +205,25 @@ export class Guide {
     }
     const from = this.from;
     this.from = null;
+    noteOpen(false);
+    // Closed mid-grow, it shrinks from where the grow had got to (slice
+    // 21's review, finding 13): read before the grow is stopped.
+    const seen = typeof getComputedStyle === "function" ? getComputedStyle(els.card) : null;
+    const start = { transform: seen?.transform && seen.transform !== "" ? seen.transform : "none", opacity: seen?.opacity ? Number(seen.opacity) : 1 };
     this.stop();
     els.cafe.inert = false;
-    (from === "button" ? els.button : els.room).focus();
+    // Where the ⓘ is, measured before the focus moves, and the focus moved
+    // without scrolling the page (slice 21's review, finding 4).
+    const into = opts.now || !this.canAnimate() || reducedMotion() ? null : this.intoButton();
+    (from === "button" ? els.button : els.room).focus({ preventScroll: true });
     if (opts.now || !this.canAnimate()) {
       this.hide();
       return;
     }
-    // Shut to the café at once; shown, taking no clicks, until it lands.
-    for (const el of [els.backdrop, els.root]) el.style.pointerEvents = "none";
-    const into = reducedMotion() ? null : this.intoButton();
-    const card = into
-      ? [{ transform: "none", opacity: 1 }, { transform: transformFor(into), opacity: 0 }]
-      : [{ opacity: 1 }, { opacity: 0 }];
+    // Shut to the café at once; shown, taking no presses, until it lands
+    // (slice 21's review, finding 5).
+    for (const el of [els.backdrop, els.root]) el.classList.add("closing");
+    const card = into ? [start, { transform: transformFor(into), opacity: 0 }] : [{ opacity: start.opacity }, { opacity: 0 }];
     const ms = into ? SHRINK_MS : FADE_MS;
     const shrink = els.card.animate(card, { duration: ms, easing: "ease-in", fill: "forwards" });
     this.running = [shrink, els.backdrop.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, fill: "forwards" })];
@@ -176,7 +257,7 @@ export class Guide {
     const stops = [this.els.words, this.els.off, this.els.close];
     const at = stops.indexOf(document.activeElement as HTMLElement);
     const next = at < 0 ? (e.shiftKey ? stops.length - 1 : 0) : (at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length;
-    // The words take a ring only when Tab brings the focus to them: the
+    // The words take a ring when a key brings the focus to them: the
     // browser counts the focus they take as the guide opens as a
     // keyboard's, and would ring them for a mouse too.
     this.els.words.classList.toggle("tabbed", stops[next] === this.els.words);
@@ -203,7 +284,7 @@ export class Guide {
     const { els } = this;
     els.root.hidden = true;
     els.backdrop.hidden = true;
-    for (const el of [els.backdrop, els.root]) el.style.pointerEvents = "";
+    for (const el of [els.backdrop, els.root]) el.classList.remove("closing");
     this.stop();
   }
 }

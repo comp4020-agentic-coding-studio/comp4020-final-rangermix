@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { baseUrl, guideOff, logInThroughPage, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { baseUrl, closeGuide, guideOff, logInThroughPage, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 15's browser checks: the café's music, each visitor's own. What a
 // check reads is the page's one <audio> element (`paused`, `currentSrc`,
@@ -606,8 +606,7 @@ describe("the café's music", { timeout: 60_000 }, () => {
     });
     const page = v.page;
     // Nowhere to note "no pop-up next time", so the guide pops up (slice 21): closed first.
-    await page.locator("#guide-close").click();
-    await page.locator("#guide").waitFor({ state: "hidden" });
+    await closeGuide(page);
     await page.getByRole("button", { name: "Play", exact: true }).click();
     await playing(page, "bubbles");
     await page.locator("#music-volume").focus();
@@ -618,8 +617,7 @@ describe("the café's music", { timeout: 60_000 }, () => {
     await page.locator("#door-in").click();
     await inside(page);
     // Nothing kept the tick either, so the guide is back at this entry (slice 21).
-    await page.locator("#guide-close").click();
-    await page.locator("#guide").waitFor({ state: "hidden" });
+    await closeGuide(page);
     await playing(page, "bubbles");
     expect((await audio(page)).volume).toBeCloseTo(0.35, 2);
     expect(Number(await page.locator("#music-volume").inputValue())).toBe(35);

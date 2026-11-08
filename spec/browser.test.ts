@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, type WebSocketRoute, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { Visitor, baseUrl, guideOff, logInThroughPage, meetACat, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { Visitor, baseUrl, closeGuide, guideOff, logInThroughPage, meetACat, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 import heights from "../content/sprites/heights.json" with { type: "json" };
 import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
@@ -440,8 +440,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
       },
     });
     // Nowhere to note "no pop-up next time", so the guide pops up (slice 21): closed first.
-    await v.page.locator("#guide-close").click();
-    await v.page.locator("#guide").waitFor({ state: "hidden" });
+    await closeGuide(v.page);
     const box = async () => (await v.page.locator("#here-panel").boundingBox())!;
     const start = await box();
     await v.page.locator("#here-panel .grip").focus();
@@ -461,8 +460,7 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await walkIn(v.page);
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
     // Nothing kept the tick either, so the guide is back at this entry (slice 21).
-    await v.page.locator("#guide-close").click();
-    await v.page.locator("#guide").waitFor({ state: "hidden" });
+    await closeGuide(v.page);
     await expect.poll(async () => Math.round(start.x - (await box()).x)).toBe(256);
     expect(await v.page.getByRole("button", { name: "Unpin who's here", exact: true }).count()).toBe(1);
   });

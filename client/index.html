@@ -66,10 +66,13 @@
           <button type="button" id="put-away">Put it away</button>
           <button type="button" id="put-cat-down" hidden>Put it down</button>
         </span>
-        <!-- The guide's ⓘ (slice 21), just left of Add furniture: the guide
-             shrinks into it as it closes. -->
-        <button type="button" id="guide-open" class="guide-open" aria-label="How the café works" title="How the café works" aria-haspopup="dialog"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.4" r="1.7"/><path d="M5.6 6.3h3.7v6h1.3v1.7H5.4v-1.7h1.4V8H5.6z"/></svg></button>
-        <button type="button" id="add-furniture">Add furniture</button>
+        <!-- The guide's ⓘ (slice 21), just left of Add furniture, the two
+             kept together where the bar wraps: the guide shrinks into it as
+             it closes. -->
+        <span class="status-pair">
+          <button type="button" id="guide-open" class="guide-open" aria-label="How the café works" title="How the café works" aria-haspopup="dialog"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.4" r="1.7"/><path d="M5.6 6.3h3.7v6h1.3v1.7H5.4v-1.7h1.4V8H5.6z"/></svg></button>
+          <button type="button" id="add-furniture">Add furniture</button>
+        </span>
         <button type="button" id="drawer-toggle" class="b-only" aria-expanded="false">Who's here</button>
         <button type="button" id="layout-switch" class="phone-only" aria-pressed="false">Bigger room</button>
         <button type="button" id="leave">Leave</button>
@@ -210,19 +213,19 @@
           <h3>Getting around</h3>
           <ul>
             <li class="for-wide">Click the floor to walk. Click a cat, a person or a piece of furniture to see what you can do.</li>
-            <li class="for-wide">By keyboard, from the room: the arrows move a pointer, Tab steps through what's there, Enter acts, and Escape puts the pointer away.</li>
+            <li class="for-wide">By keyboard, from the room: an arrow brings up a pointer and moves it, then Tab steps through what's there, Enter acts, and Escape puts the pointer away.</li>
             <li class="for-narrow">Tap the floor to walk. Tap a cat, a person or a piece of furniture to see what you can do.</li>
             <li class="for-narrow">Bigger room follows you about; Whole room shows all of it.</li>
           </ul>
           <h3>Talking</h3>
           <ul>
-            <li>Type in the box at the bottom and press Say. Your bubble shows over your head for everyone here, then goes: nothing anyone says is kept.</li>
+            <li>Type in the talk box and press Say. Your bubble shows over your head for everyone here, then goes: nothing anyone says is kept.</li>
             <li>To talk to one person, choose them in the room, then Talk to.</li>
           </ul>
           <h3>The cats</h3>
           <ul>
             <li>Each has a character of its own, and remembers you. Trust grows only from what you do with it: petting, playing, a treat. Push too far, and it scratches.</li>
-            <li>They carry on while you're away, and the chalkboard says what they got up to.</li>
+            <li>They carry on while you're away, and the chalkboard on the wall says what they got up to.</li>
           </ul>
           <h3>Time</h3>
           <ul>
@@ -231,7 +234,7 @@
           </ul>
           <h3>The panels</h3>
           <ul>
-            <li class="for-wide">Your cats, who's here, the chalkboard and the music float over the room. Drag one by its title, pin it to let clicks through to the room, and it fades when left alone.</li>
+            <li class="for-wide">Your cats, who's here, the chalkboard and the music float over the room. Drag one by its title, or pin it to let clicks through to the room. Unpinned, it fades when left alone.</li>
             <li class="for-narrow">Your cats, who's here and the music are under the room, or behind Who's here in the bigger room.</li>
           </ul>
           <h3>Furniture</h3>

@@ -278,10 +278,16 @@ label { display: grid; gap: 0.25rem; font-weight: 600; }
    its own middle. */
 .guide-open { display: inline-grid; place-items: center; flex: none; width: calc(1.5em + 0.9rem + 2px); height: calc(1.5em + 0.9rem + 2px); padding: 0; border-radius: 50%; }
 .guide-open svg { width: 1.05rem; height: 1.05rem; fill: currentColor; }
-.guide-backdrop { position: fixed; inset: 0; z-index: 5; background: rgb(0 0 0 / 0.3); }
+/* The ⓘ keeps to Add furniture where the bar wraps (slice 21's review, finding 14). */
+.status-pair { flex: none; display: flex; align-items: center; gap: 0.75rem; }
+/* Nothing scrolls the page under the guide, so the ⓘ is where it was as
+   it closes (slice 21's review, finding 4; guide.ts puts back what does). */
+.guide-backdrop { position: fixed; inset: 0; z-index: 5; background: rgb(0 0 0 / 0.3); overscroll-behavior: contain; touch-action: none; }
+/* Shrinking, it takes no presses: they reach the café (finding 5). */
+.guide-backdrop.closing, .guide.closing, .guide.closing .guide-card { pointer-events: none; }
 .guide { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; pointer-events: none; }
 .guide-card { pointer-events: auto; width: min(34rem, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); overflow: hidden; }
-.guide-words { min-height: 0; overflow: auto; padding: 1.25rem 1.5rem 0.75rem; }
+.guide-words { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 1.25rem 1.5rem 0.75rem; }
 /* Ringed only when Tab brought the focus here (guide.ts), not as it opens;
    inside the card's edge, which would cut a ring drawn outside it. */
 .guide-words:focus, .guide-words:focus-visible { outline: none; box-shadow: none; }

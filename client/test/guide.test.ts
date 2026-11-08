@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Guide, guideWanted, saveGuideWanted, shrinkInto } from "../src/guide";
+import { Guide, guideWanted, saveGuideWanted, shrinkInto, takeGuideOpen } from "../src/guide";
 
 // Slice 21: the guide over the café, whether it pops up on the way in, and
 // the shrink into its ⓘ.
@@ -37,6 +37,18 @@ describe("whether the guide pops up (slice 21)", () => {
     try {
       expect(guideWanted()).toBe(true);
       expect(() => saveGuideWanted(false)).not.toThrow();
+    } finally {
+      restore();
+    }
+  });
+
+  it("holds a tick for the visit where the browser won't store it (slice 21's review, finding 6)", () => {
+    const restore = blockStorage();
+    try {
+      saveGuideWanted(false);
+      expect(guideWanted()).toBe(false);
+      saveGuideWanted(true);
+      expect(guideWanted()).toBe(true);
     } finally {
       restore();
     }
@@ -101,6 +113,9 @@ describe("the guide (slice 21)", () => {
   let guide: Guide;
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+    // The last press was a pointer's, not a key's.
+    document.dispatchEvent(new Event("pointerdown"));
     els = page();
     guide = new Guide(els);
   });
@@ -156,6 +171,73 @@ describe("the guide (slice 21)", () => {
     expect(els.words.classList.contains("tabbed")).toBe(true);
     key("Tab");
     expect(els.words.classList.contains("tabbed")).toBe(false);
+  });
+
+  it("rings its words as it opens after a key, not after a pointer (slice 21's review, finding 7)", () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    guide.open("button");
+    expect(els.words.classList.contains("tabbed")).toBe(true);
+    key("Escape");
+    document.dispatchEvent(new Event("pointerdown"));
+    guide.open("button");
+    expect(els.words.classList.contains("tabbed")).toBe(false);
+  });
+
+  it("holds the page where it was while it's open, and the room takes the focus back without scrolling it (slice 21's review, finding 4)", () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    const at = Object.getOwnPropertyDescriptor(window, "scrollY");
+    try {
+      guide.open("entry");
+      // A swipe or a wheel scrolls the page under it: it goes back.
+      Object.defineProperty(window, "scrollY", { configurable: true, value: 213 });
+      window.dispatchEvent(new Event("scroll"));
+      expect(scrollTo).toHaveBeenLastCalledWith(window.scrollX, 0);
+      Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+      const focus = vi.spyOn(els.room, "focus");
+      key("Escape");
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+      // Closed, the page scrolls as it likes.
+      scrollTo.mockClear();
+      Object.defineProperty(window, "scrollY", { configurable: true, value: 300 });
+      window.dispatchEvent(new Event("scroll"));
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      if (at) Object.defineProperty(window, "scrollY", at);
+      else delete (window as { scrollY?: number }).scrollY;
+    }
+  });
+
+  it("stops a wheel or a swipe beside its words from scrolling the page, and lets its words scroll (slice 21's review, finding 4)", () => {
+    guide.open("entry");
+    const roll = (el: Element, type: string) => el.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
+    expect(roll(els.backdrop, "wheel")).toBe(false);
+    expect(roll(els.close, "wheel")).toBe(false);
+    expect(roll(els.backdrop, "touchmove")).toBe(false);
+    expect(roll(els.words, "wheel")).toBe(true);
+    expect(roll(els.words, "touchmove")).toBe(true);
+    key("Escape");
+    expect(roll(els.backdrop, "wheel")).toBe(true);
+  });
+
+  it("notes it's open, for the café's own reload, and forgets it once closed (slice 21's review, finding 3)", () => {
+    guide.open("entry");
+    expect(sessionStorage.getItem("cafe.guideOpen")).toBe("1");
+    key("Escape");
+    expect(sessionStorage.getItem("cafe.guideOpen")).toBeNull();
+    expect(takeGuideOpen()).toBe(false);
+    guide.open("button");
+    // Read once: a later opening isn't the reload's.
+    expect(takeGuideOpen()).toBe(true);
+    expect(takeGuideOpen()).toBe(false);
+  });
+
+  it("calls its opening hook as it opens, so a menu closes (slice 21's review, finding 11)", () => {
+    const opening = vi.fn();
+    guide.dispose();
+    guide = new Guide(els, { opening });
+    els.button.click();
+    expect(opening).toHaveBeenCalledOnce();
   });
 
   it("closes by Escape, and the focus goes back to the room when it opened on the way in", () => {
@@ -260,6 +342,43 @@ describe("the guide (slice 21)", () => {
       const grow = calls.findLast((c) => c.el === els.card)!;
       expect(grow.frames[0].transform).toMatch(/^translate\(.*\) scale\(/);
       expect(grow.frames.at(-1)!.transform).toBe("none");
+    });
+
+    it("takes no clicks as it shrinks, and takes them again once opened (slice 21's review, finding 5)", () => {
+      stubAnimate();
+      guide.open("entry");
+      sized(els.card, 688, 240, 544, 600);
+      sized(els.button, 1700, 8, 40, 40);
+      guide.close();
+      expect(els.root.classList.contains("closing")).toBe(true);
+      expect(els.backdrop.classList.contains("closing")).toBe(true);
+      guide.open("button");
+      expect(els.root.classList.contains("closing")).toBe(false);
+      expect(els.backdrop.classList.contains("closing")).toBe(false);
+    });
+
+    it("lands at once on a resize mid-shrink (slice 21's review, finding 12)", () => {
+      stubAnimate();
+      guide.open("entry");
+      sized(els.card, 688, 240, 544, 600);
+      sized(els.button, 1700, 8, 40, 40);
+      guide.close();
+      expect(els.root.hidden).toBe(false);
+      window.dispatchEvent(new Event("resize"));
+      expect(els.root.hidden).toBe(true);
+      expect(els.backdrop.hidden).toBe(true);
+    });
+
+    it("shrinks from where a grow had got to (slice 21's review, finding 13)", () => {
+      const calls = stubAnimate();
+      sized(els.card, 688, 240, 544, 600);
+      sized(els.button, 1700, 8, 40, 40);
+      guide.open("button");
+      const real = window.getComputedStyle.bind(window);
+      vi.stubGlobal("getComputedStyle", (el: Element) => (el === els.card ? ({ transform: "matrix(0.5, 0, 0, 0.5, 10, 10)", opacity: "0.6" } as CSSStyleDeclaration) : real(el)));
+      guide.close();
+      const shrink = calls.findLast((c) => c.el === els.card)!;
+      expect(shrink.frames[0]).toMatchObject({ transform: "matrix(0.5, 0, 0, 0.5, 10, 10)", opacity: 0.6 });
     });
 
     it("hides at once when closed now, as on Leave", () => {
