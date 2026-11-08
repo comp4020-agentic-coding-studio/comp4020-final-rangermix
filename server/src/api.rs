@@ -2,9 +2,7 @@
 //! Answers are JSON (`ApiMe` or `ApiError`); a session is an HttpOnly cookie.
 use crate::auth;
 use crate::http::{AppState, client_ip, origin_ok};
-use crate::protocol::{
-    ApiError, ApiErrorCode, ApiMe, CheckNameRequest, LogInRequest, Look, RecoverRequest, SignUpRequest,
-};
+use crate::protocol::{ApiError, ApiErrorCode, ApiMe, CheckNameRequest, LogInRequest, Look, RecoverRequest, SignUpRequest};
 use crate::store::{self, UserRow};
 // Accounts keep Canberra's own clock, not the café's, which a demo account
 // moves on: a jump must spend nobody's session (slice 17's review, finding 4).
@@ -475,11 +473,21 @@ mod tests {
             let status = res.status();
             let body = axum::body::to_bytes(res.into_body(), 4096).await.unwrap();
             let json: serde_json::Value = serde_json::from_slice(&body).unwrap_or(serde_json::Value::Null);
-            (status, json["error"].as_str().unwrap_or("").to_string(), json["detail"].as_str().unwrap_or("").to_string())
+            (
+                status,
+                json["error"].as_str().unwrap_or("").to_string(),
+                json["detail"].as_str().unwrap_or("").to_string(),
+            )
         };
         assert_eq!(check("pip").await.unwrap().status(), StatusCode::NO_CONTENT);
         let look = json!({"avatar": 0, "colour": 0});
-        let res = send("/api/signup", json!({"name": "Pip", "password": "correct horse", "look": look}), None).await.unwrap();
+        let res = send(
+            "/api/signup",
+            json!({"name": "Pip", "password": "correct horse", "look": look}),
+            None,
+        )
+        .await
+        .unwrap();
         assert!(res.status().is_success(), "{}", res.status());
         assert_eq!(
             answer(check("PIP").await.unwrap()).await,
@@ -491,9 +499,15 @@ mod tests {
         );
         assert_eq!(
             answer(check("x").await.unwrap()).await,
-            (StatusCode::BAD_REQUEST, "badInput".into(), "A name is 3 to 20 letters, digits, _ or -.".into())
+            (
+                StatusCode::BAD_REQUEST,
+                "badInput".into(),
+                "A name is 3 to 20 letters, digits, _ or -.".into()
+            )
         );
-        let elsewhere = send("/api/check-name", json!({ "name": "wren" }), Some("https://elsewhere.test")).await.unwrap();
+        let elsewhere = send("/api/check-name", json!({ "name": "wren" }), Some("https://elsewhere.test"))
+            .await
+            .unwrap();
         assert_eq!(elsewhere.status(), StatusCode::FORBIDDEN);
         // The sign-up's per-name limit: five tries a minute, then refused.
         let statuses: Vec<StatusCode> = futures_util::future::join_all((0..6).map(|_| check("moss")))
@@ -506,11 +520,12 @@ mod tests {
         let lines = sink.lines();
         let checks: Vec<&serde_json::Value> = lines.iter().filter(|v| v["what"] == "check_name").collect();
         let codes: Vec<&str> = checks.iter().map(|v| v["code"].as_str().unwrap_or("?")).collect();
-        assert_eq!(codes, ["nameTaken", "nameTaken", "badInput", "forbidden", "rateLimited"], "{lines:?}");
-        assert!(
-            checks.iter().all(|v| v["outcome"] == "refused" && v["who"].is_null()),
-            "{checks:?}"
+        assert_eq!(
+            codes,
+            ["nameTaken", "nameTaken", "badInput", "forbidden", "rateLimited"],
+            "{lines:?}"
         );
+        assert!(checks.iter().all(|v| v["outcome"] == "refused" && v["who"].is_null()), "{checks:?}");
         // Only the sign-up names the account it made.
         let others: Vec<&serde_json::Value> = lines.iter().filter(|v| v["what"] != "signup").collect();
         let all = format!("{others:?}").to_lowercase();
