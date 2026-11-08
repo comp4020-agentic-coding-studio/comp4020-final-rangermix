@@ -2986,3 +2986,35 @@ part 2's merge, is [`16bdb1e`](https://github.com/comp4020-agentic-coding-studio
   file.
 - **Checked on the merged tree:** both typechecks, the client's 443
   tests, `cargo fmt`, `clippy` and `cargo test`.
+
+### 26. The final `PROCESS.md`
+
+*Session `76539ce3`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 06:39:09 AEDT*
+
+> rewrite the final  @PROCESS.md  . show me the moment options
+
+**Result.** The options set out for the user to choose from, in
+[notes/process-final-options.md](notes/process-final-options.md);
+`PROCESS.md` is unchanged until they choose.
+- **How:** a workflow of five readers, from a brief file
+  ([briefs/process-final-moments.md](notes/briefs/process-final-moments.md)),
+  each over one part of the record: the prompt log since crit 10 in two
+  halves, the reviews since crit 10, git with CI and the live notes, and
+  the project as a whole. Four readers' candidates were checked by a
+  verifier each: every SHA, every quote word for word, every number. The
+  fifth's verifier and the synthesizer were cut off by a usage limit, so
+  the main session checked that reader's 30 SHAs and recounted CI with
+  `gh run list`, and merged the candidates itself.
+- **The options:** 21 moments since crit 10, each with what it would say,
+  what it cites and its cost in words; the crit 10 sections that could
+  stay, condensed, and two new ones; three skeletons, led by the workflow
+  correcting itself, by the user's calls, or by the stack paying off; and
+  four stale lines in the current `PROCESS.md`.
+- **Found on the way:** `main` is red at its head (a notes-only push
+  failed slice 16's phone-pan check, so the live café serves `0085c3c`'s
+  build, the same code); slice 17 part 1's live record (`5bc1c3b`) is only
+  on an unmerged branch; three worktrees remain.
+
+The check on the workflow's progress (06:55) is filed here.
