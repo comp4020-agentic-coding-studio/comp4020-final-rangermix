@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, type WebSocketRoute, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { baseUrl, logInThroughPage, meetACat, signUp, signUpThroughPage, uniqueName, Visitor, walkIn } from "./helpers";
+import { Visitor, baseUrl, guideOff, logInThroughPage, meetACat, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 import heights from "../content/sprites/heights.json" with { type: "json" };
 import palettes from "../content/sprites/palettes.json" with { type: "json" };
 
@@ -61,6 +61,7 @@ interface VisitOptions {
 async function visit(viewport: { width: number; height: number }, touch = false, opts: VisitOptions = {}): Promise<Visit> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, reducedMotion: opts.reducedMotion, colorScheme: opts.colorScheme });
   contexts.push(context);
+  await guideOff(context);
   const page = await context.newPage();
   if (opts.prepare) await opts.prepare(page);
   const frames: Frame[] = [];
@@ -438,6 +439,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
         });
       },
     });
+    // Nowhere to note "no pop-up next time", so the guide pops up (slice 21): closed first.
+    await v.page.locator("#guide-close").click();
+    await v.page.locator("#guide").waitFor({ state: "hidden" });
     const box = async () => (await v.page.locator("#here-panel").boundingBox())!;
     const start = await box();
     await v.page.locator("#here-panel .grip").focus();
@@ -1788,6 +1792,7 @@ const demoPassword = process.env.APP_DEMO_PASSWORD;
 async function visitAs(name: string, viewport: { width: number; height: number }, touch = false, init?: string): Promise<Visit> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
+  await guideOff(context);
   if (init) await context.addInitScript(init);
   const page = await context.newPage();
   await hearAnnouncer(page);

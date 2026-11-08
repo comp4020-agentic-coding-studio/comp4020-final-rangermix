@@ -1,7 +1,7 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import palettes from "../content/sprites/palettes.json";
-import { baseUrl, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { baseUrl, guideOff, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 18's browser checks: the terrace stands on a balcony, a deck of
 // stone round the room's two front edges with a glass rail at its edge and
@@ -39,6 +39,7 @@ type Frame = { type: string; [key: string]: unknown };
 async function visit(viewport: { width: number; height: number }, at = "10:00", touch = false): Promise<{ page: Page; sent: Frame[] }> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
+  await guideOff(context);
   const page = await context.newPage();
   const start = new Date(`2026-11-06T${at}:00+11:00`);
   await page.clock.install({ time: start });

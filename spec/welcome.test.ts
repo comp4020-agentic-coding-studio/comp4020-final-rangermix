@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { Visitor, baseUrl, logInThroughPage, post, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { Visitor, baseUrl, guideOff, logInThroughPage, post, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 20 (ADR 0023): the door a returning visitor meets, the page after
 // Leave as the same door, "I'm not <name>", and one way in for everyone.
@@ -39,6 +39,7 @@ interface Opened {
 async function open(viewport: { width: number; height: number }, touch = false, cookie?: string, at?: string): Promise<Opened> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
+  await guideOff(context);
   if (cookie) {
     const [name, value] = cookie.split("=");
     await context.addCookies([{ name, value, url: baseUrl }]);
@@ -220,6 +221,7 @@ describe("what one visitor leaves for the next (slice 20's review)", () => {
     const account = await signUp(uniqueName("w"));
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
     contexts.push(context);
+    await guideOff(context);
     const [cookieName, value] = account.cookie.split("=");
     await context.addCookies([{ name: cookieName, value, url: baseUrl }]);
     const page = await context.newPage();
@@ -253,6 +255,7 @@ describe("a reload the café makes for a new build (slice 20)", () => {
     const account = await signUp(uniqueName("w"));
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
     contexts.push(context);
+    await guideOff(context);
     const [name, value] = account.cookie.split("=");
     await context.addCookies([{ name, value, url: baseUrl }]);
     const page = await context.newPage();

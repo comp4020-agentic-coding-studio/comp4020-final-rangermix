@@ -1,6 +1,6 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { baseUrl, logInThroughPage, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { baseUrl, guideOff, logInThroughPage, signUp, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 15's browser checks: the café's music, each visitor's own. What a
 // check reads is the page's one <audio> element (`paused`, `currentSrc`,
@@ -60,6 +60,7 @@ interface VisitOptions {
 async function visit(viewport: { width: number; height: number }, touch = false, opts: VisitOptions = {}): Promise<Visit> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
+  await guideOff(context);
   const page = await context.newPage();
   const at = new Date(`2026-11-05T${opts.at ?? "10:00"}:00+11:00`);
   await page.clock.install({ time: at });
@@ -604,6 +605,9 @@ describe("the café's music", { timeout: 60_000 }, () => {
       },
     });
     const page = v.page;
+    // Nowhere to note "no pop-up next time", so the guide pops up (slice 21): closed first.
+    await page.locator("#guide-close").click();
+    await page.locator("#guide").waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "Play", exact: true }).click();
     await playing(page, "bubbles");
     await page.locator("#music-volume").focus();
@@ -625,6 +629,7 @@ describe("the café's music", { timeout: 60_000 }, () => {
     const account = await signUp(uniqueName("m"));
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
     contexts.push(context);
+    await guideOff(context);
     const [cookieName, value] = account.cookie.split("=");
     await context.addCookies([{ name: cookieName, value, url: baseUrl }]);
     // Remembered on, at the default volume.

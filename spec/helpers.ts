@@ -1,10 +1,26 @@
-import type { Page } from "playwright";
+import type { BrowserContext, Page } from "playwright";
 import { inject } from "vitest";
 import WebSocket from "ws";
 
 // Helpers for checks that run against the running app (spec/global-setup.ts
 // finds it). Every account they make has a fresh name.
 export const baseUrl = inject("baseUrl");
+
+/**
+ * Starts a browser with the guide ticked off (slice 21), as a visitor who
+ * has said "Got it, no pop-up next time": a check that isn't the guide's
+ * own walks into the café as it did before the guide. Set before every
+ * load, so it holds across reloads.
+ */
+export async function guideOff(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem("cafe.guide", "off");
+    } catch {
+      // A check that blocks storage closes the guide itself.
+    }
+  });
+}
 
 /** A fresh name for each call, within the 20-character limit. */
 export function uniqueName(prefix = "t"): string {

@@ -1,7 +1,7 @@
 import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import palettes from "../content/sprites/palettes.json";
-import { baseUrl, signUpThroughPage, uniqueName, walkIn } from "./helpers";
+import { baseUrl, guideOff, signUpThroughPage, uniqueName, walkIn } from "./helpers";
 
 // Slice 16's browser checks: at the 1920×1080 viewport the course marks at,
 // the café fills the window. The 13 by 12 floor at 4×, the status and talk
@@ -42,6 +42,7 @@ interface Visit {
 async function visit(viewport: { width: number; height: number }, touch = false, at = "10:00"): Promise<Visit> {
   const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
   contexts.push(context);
+  await guideOff(context);
   const page = await context.newPage();
   const start = new Date(`2026-11-06T${at}:00+11:00`);
   await page.clock.install({ time: start });
@@ -465,6 +466,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
     ] as const) {
       const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
       contexts.push(context);
+      await guideOff(context);
       const page = await context.newPage();
       // The café's own frames through, and one refusal after the welcome, as the café sends it.
       await page.routeWebSocket(/\/ws$/, (ws) => {
@@ -504,6 +506,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
   it("moves the panels clear of a status line that wraps to two rows", { timeout: 60_000 }, async () => {
     const context = await browser.newContext({ viewport: { width: 960, height: 800 } });
     contexts.push(context);
+    await guideOff(context);
     const page = await context.newPage();
     // The café's own frames, the welcome's build id changed, so the page says the café was updated.
     await page.routeWebSocket(/\/ws$/, (ws) => {
@@ -548,6 +551,7 @@ describe("the café fills the window (slice 16)", { timeout: 30_000 }, () => {
   it("keeps the floor's corner tiles clear of the panels as their content grows: a fourth cat, a long chat", { timeout: 90_000 }, async () => {
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
     contexts.push(context);
+    await guideOff(context);
     const page = await context.newPage();
     // A fourth cat in the welcome, as one more file in content/cats/ would give.
     await page.routeWebSocket(/\/ws$/, (ws) => {
