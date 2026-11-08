@@ -2353,6 +2353,15 @@ CI passing; not yet merged, deployed or live.
   deploy, `cafe demo seed` and a restart on Fly
   ([notes](notes/slice-17-demo.md)), and the marker's path walked live;
   then part 2 after slice 16.
+- **Live, 2026-11-08**, the same session resumed after the user's merge
+  ([`5bc1c3b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/5bc1c3b)):
+  the live café had no demo accounts (a log-in answered 401), so the agent
+  ran `cafe demo seed` over `fly ssh console` and restarted the machine.
+  demo1's welcome then marked it a demo account with its seeded trust; a
+  newcomer at 390×844 had no bar and was a stranger to the cats; two bots
+  came and went; and one jump of two minutes reached both pages. The
+  longer jumps of the marker's path weren't made live, since each would
+  leave the café a day or more ahead for every visitor.
 
 *Sent 2026-11-06 23:04:40 AEDT*
 
