@@ -199,3 +199,11 @@ Where the build departed from this plan.
   pieces keep their ids, and the set lands whole.
 - **Review:** 2 major, 5 minor, 3 nits, all fixed:
   [findings](reviews/slice-17-sets-findings.md).
+- **Task 6, the deploy:** the merge's CI run (`2714714`) failed twice on
+  older checks, slice 16's phone-pan edges and then slice 14's panels
+  after a reload, so it was the next run on `main` (`0085c3c`) that
+  deployed. The live check then went as planned
+  ([notes](slice-17-demo.md)). The live record's push failed the edge check
+  again: Burakku's coat at the phone screen's edge, which a colour
+  list took for the dark page. Fixed in the check (`dd76464`,
+  [edge-check-flake.md](edge-check-flake.md)), not in the café.
