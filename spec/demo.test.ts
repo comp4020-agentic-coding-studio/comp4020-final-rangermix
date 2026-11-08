@@ -113,4 +113,38 @@ describe.skipIf(!password)("demo accounts", () => {
     expect(left).toBe(1 + already + adding - 1);
     await watcher.leave();
   });
+
+  it("lays out a furniture set at once for everyone, and only for a demo account (slice 17, part 2)", async () => {
+    const visitor = await Visitor.connect((await signUp()).cookie);
+    expect((visitor.welcome.layouts as Msg[]).map((l) => l.name)).toEqual(["Opening day", "Lap time", "Play room"]);
+    let from = visitor.messages.length;
+    visitor.send({ type: "layOut", set: "lap_time" });
+    expect((await visitor.next((m) => m.type === "error", 3000, from)).code).toBe("notDemo");
+
+    const demo = await Visitor.connect(await logIn("demo1", password!));
+    from = visitor.messages.length;
+    const sentAt = Date.now();
+    demo.send({ type: "layOut", set: "lap_time" });
+    const [laid, at] = await arrival(visitor, (m) => m.type === "laidOut", from);
+    expect(at - sentAt).toBeLessThan(1000);
+    expect(laid.by).toBe(demo.welcome.you);
+    expect(laid.name).toBe("Lap time");
+    const kinds = (laid.furniture as Msg[]).map((f) => f.kind).sort();
+    expect(kinds).toContain("bowls");
+    expect(kinds.filter((k) => k === "sofa")).toHaveLength(2);
+    // Again at once, and again: no rate limit on sets.
+    for (const set of ["play_room", "opening_day"]) {
+      const before = visitor.messages.length;
+      demo.send({ type: "layOut", set });
+      await visitor.next((m) => m.type === "laidOut", 3000, before);
+    }
+    // A page that opens now sees the starting room.
+    const late = await Visitor.connect((await signUp()).cookie);
+    const opening = (late.welcome.snapshot.room.furniture as Msg[]).map((f) => `${f.kind}@${f.x},${f.y}`).sort();
+    const told = (visitor.messages.filter((m) => m.type === "laidOut").at(-1)!.furniture as Msg[]).map((f) => `${f.kind}@${f.x},${f.y}`).sort();
+    expect(opening).toEqual(told);
+    await late.leave();
+    await visitor.leave();
+    await demo.leave();
+  });
 });

@@ -88,6 +88,9 @@ describe("narrating the logs", () => {
     { target: "action", uid: 1, who: "demo1", what: "set_clock", outcome: "refused", code: "tooSoon" },
     { target: "action", uid: 1, who: "demo1", what: "add_bot", outcome: "ok", bot: "bot_1" },
     { target: "action", uid: 1, who: "demo1", what: "remove_bot", outcome: "ok", bot: "bot_1" },
+    { target: "action", uid: 1, who: "demo1", what: "lay_out", outcome: "ok", set: "Lap time" },
+    { target: "action", uid: 1, who: "demo1", what: "lay_out", outcome: "refused", code: "notFromWindow" },
+    { target: "action", uid: 3, who: "sam", what: "put_back", outcome: "gone", piece: "chair", why: "laid_out" },
     { target: "action", uid: 3, who: "sam", what: "walk", outcome: "refused", code: "movedOn" },
     { target: "cafe", what: "jumped", uid: 1, who: "demo1", gap_secs: 34_200, steps: 34_200, took_ms: 1_290, refills: 1, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' },
     { target: "cafe", what: "woke", first: false, gap_secs: 28_920, steps: 28_920, capped: false, took_ms: 412, refills: 1, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' },
@@ -176,6 +179,14 @@ describe("narrating the logs", () => {
     );
     expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "add_bot", outcome: "ok", bot: "bot_2" }))).toBe("19:42:07  demo1 added a bot, bot_2");
     expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "remove_bot", outcome: "ok", bot: "bot_2" }))).toBe("19:42:07  demo1 removed a bot, bot_2");
+    // Part 2: a furniture set laid out, and what it took from someone's arms.
+    expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "lay_out", outcome: "ok", set: "Lap time" }))).toBe("19:42:07  demo1 laid out Lap time");
+    expect(narrate(line({ target: "action", uid: 1, who: "demo1", what: "lay_out", outcome: "refused", code: "notDemo" }))).toBe(
+      "19:42:07  demo1 tried to lay out a furniture set, refused: notDemo",
+    );
+    expect(narrate(line({ target: "action", uid: 3, who: "sam", what: "put_back", outcome: "gone", piece: "chair", why: "laid_out" }))).toBe(
+      "19:42:07  the chair sam carried went back to the catalogue, as a furniture set was laid out",
+    );
     expect(
       narrate(
         line({ target: "cafe", what: "jumped", uid: 1, who: "demo1", gap_secs: 34_200, steps: 34_200, took_ms: 1_290, refills: 2, walks: '[["Burakku",40],["Mochi",3],["Tora",12]]' }),

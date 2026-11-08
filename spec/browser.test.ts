@@ -1869,6 +1869,15 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("1 bot");
     await page.locator("#demo-remove-bot").click();
     await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("No bots");
+    // By keyboard (part 2): a furniture set, and the visitor's page sees it
+    // and is told who laid it out.
+    await page.locator("#demo-furniture button", { hasText: "Lap time" }).focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(() => visitor.frames.some((f) => f.type === "laidOut" && f.name === "Lap time")).toBe(true);
+    await expect.poll(() => visitor.page.locator(".toast", { hasText: "demo1 laid out Lap time." }).count()).toBe(1);
+    await page.locator("#demo-furniture button", { hasText: "Opening day" }).focus();
+    await page.keyboard.press("Space");
+    await expect.poll(() => visitor.frames.some((f) => f.type === "laidOut" && f.name === "Opening day")).toBe(true);
     // The visitor's page went with it.
     await visitor.page.waitForFunction(() => document.getElementById("waking")!.hidden);
     expect(visitor.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
@@ -1892,6 +1901,18 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     expect(await toggle.getAttribute("aria-expanded")).toBe("false");
     await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("Bots");
     expect(await page.locator("#demo-bots").isHidden()).toBe(true);
+    // Furniture (part 2), by touch: a set laid out, heard, and the group closed.
+    const furniture = page.locator("#demo-bar .demo-toggle", { hasText: "Furniture" });
+    await furniture.tap();
+    expect(await furniture.getAttribute("aria-expanded")).toBe("true");
+    expect(await page.locator("#demo-furniture button").allTextContents()).toEqual(["Opening day", "Lap time", "Play room"]);
+    await page.locator("#demo-furniture button", { hasText: "Play room" }).tap();
+    await expect.poll(() => demo.frames.some((f) => f.type === "laidOut" && f.name === "Play room")).toBe(true);
+    await expect.poll(() => furniture.getAttribute("aria-expanded")).toBe("false");
+    await expect.poll(() => page.locator(".toast", { hasText: "You laid out Play room." }).count()).toBe(1);
+    await page.locator("#demo-bar .demo-toggle", { hasText: "Furniture" }).tap();
+    await page.locator("#demo-furniture button", { hasText: "Opening day" }).tap();
+    await expect.poll(() => demo.frames.some((f) => f.type === "laidOut" && f.name === "Opening day")).toBe(true);
     // Layout A: the bar stands in the page between the status bar and the room.
     await page.locator("#layout-switch").tap();
     await page.waitForFunction(() => !document.body.classList.contains("layout-b"));
