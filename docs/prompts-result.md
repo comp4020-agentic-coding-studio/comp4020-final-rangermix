@@ -2911,6 +2911,16 @@ unstaged work, which was left alone.
   order, focus kept on a resize, menus closed when a set lands.
 - **README:** "For markers" gains Lap time and Play room in two steps, as
   the spec says part 2 adds; the user's to judge.
+- **Merged and live** ([`2714714`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2714714)): the merge's CI run failed
+  twice on older timing checks (slice 16's phone pan, then slice 14's
+  panels after a reload), both passing every time locally, while every
+  check this slice added passed. The next run on `main`, with the sitting
+  pose on top ([`0085c3c`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/0085c3c)), passed and deployed. On the live
+  café, with `demo1` and `demo2` only: each set reached the other page in
+  about 50 ms, the next was refused for 10 s, the phone's bar was one
+  row, Tora slept on through a set that left her seat, and Opening day
+  put the room back
+  ([notes](docs/notes/slice-17-demo.md)).
 
 ### 24. Reviewing the sitting pose, and fixing what the review found (continued)
 

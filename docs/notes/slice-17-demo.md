@@ -113,6 +113,28 @@ Built on `slice-17-sets` from `600e41a`, test first per task
 See [reviews/slice-17-sets-findings.md](reviews/slice-17-sets-findings.md)
 ([brief](reviews/slice-17-sets-brief.md)).
 
-### Live
+### Live (2026-11-09, 06:49 AEDT)
 
-Recorded below once deployed.
+Merged in `2714714`. Its CI run failed twice on older timing checks:
+slice 16's street-at-the-edges pan on a phone, then slice 14's panels
+after a reload, which each passed every time locally (on its own five
+times, in CI's file order, and with the café's clock at 05:59). Every
+check this slice added passed on both runs. The next run on `main`,
+`0085c3c` (the sitting pose on top of this), passed every job and
+deployed. If either check fails again, its timing gets fixed, test first.
+
+On the live café, with the two demo accounts and nobody else's account,
+by `screens/slice-17-sets/live.mjs`: `demo1` at 1920×1080 by mouse,
+`demo2` at 390×844 by touch in layout B.
+
+- The welcome offered Opening day, Lap time and Play room.
+- The phone's bar was one row ("13:59 +7h").
+- Lap time and Play room, each laid out by `demo1`, reached `demo2`'s
+  page 40 to 50 ms after the click, with its notice ("demo1 laid out Lap
+  time.").
+- At once after each, the set buttons were off and the bar said "Next set
+  in 10 s".
+- Tora slept on through Lap time on the window seat, which the set
+  leaves where it is ([screen](screens/slice-17-sets/live-desktop-lap-time.png)).
+- `demo2` laid out Opening day by touch, and `demo1`'s page said so; the
+  room was left as it opens. Both accounts left.
