@@ -460,6 +460,9 @@ describe("in a browser", { timeout: 30_000 }, () => {
     await v.page.locator("#leave").click();
     await walkIn(v.page);
     await v.page.waitForFunction(() => /inside/.test(document.getElementById("status-text")?.textContent ?? ""));
+    // Nothing kept the tick either, so the guide is back at this entry (slice 21).
+    await v.page.locator("#guide-close").click();
+    await v.page.locator("#guide").waitFor({ state: "hidden" });
     await expect.poll(async () => Math.round(start.x - (await box()).x)).toBe(256);
     expect(await v.page.getByRole("button", { name: "Unpin who's here", exact: true }).count()).toBe(1);
   });

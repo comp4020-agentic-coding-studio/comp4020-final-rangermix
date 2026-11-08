@@ -94,3 +94,19 @@ on branch `worktree-slice-21-guide`. The client only: no Rust, no protocol.
 ## Execution log
 
 Where the build departed from this plan, as it happened.
+
+- **Every guide check timed out on its first run against the page** (task
+  4). The server reads the client's build id once, as it starts, and the
+  client had been rebuilt after it: each page saw a new build, reloaded
+  itself, and that reload rightly brings no guide. Restarting the server
+  after each client build fixed the run, not the code. The review's
+  brief says so.
+- **The words took a focus ring for a mouse** (seen in the first
+  screens). Chrome counts the focus they take as the guide opens as a
+  keyboard's. They're now ringed only when Tab brings the focus there (a
+  `tabbed` class), test first in `client/test/guide.test.ts`
+  ([`ba3cc86`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/ba3cc86)).
+- **The ⓘ squeezed the status line at 390 px in layout A**, "2/6" over
+  "inside", since the line shrinks to its longest word before a button
+  wraps. On a phone it now keeps 6rem, so a button goes to the next row;
+  held by a line in the phone check (the status on one line).

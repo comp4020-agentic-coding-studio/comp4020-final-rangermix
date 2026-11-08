@@ -283,6 +283,10 @@ describe("the guide (slice 21)", () => {
     await page.locator("#layout-switch").tap();
     expect(await page.evaluate(() => document.body.classList.contains("layout-b"))).toBe(false);
     await besideAddFurniture(page);
+    // The ⓘ takes its room from the buttons' rows, not from the status
+    // line, which stays on one line ("2/6 inside").
+    expect(await page.locator("#status-text").evaluate((el) => el.getClientRects().length)).toBe(1);
+    await page.waitForTimeout(500);
     await page.screenshot({ path: "docs/notes/screens/slice-21/phone-a-closed.png" }).catch(() => {});
     await page.locator("#guide-open").tap();
     await page.locator("#guide").waitFor();
