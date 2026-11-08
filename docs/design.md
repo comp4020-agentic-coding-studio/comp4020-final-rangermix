@@ -599,7 +599,9 @@ and Burakku at 25.
     by their direction on screen, not on the grid: up the screen shows
     their back, down it their face, and going left mirrors the sprite.
     Standing, they keep the side they last walked with; someone who's just
-    walked in from the door faces into the room. The client remembers the
+    walked in from the door faces into the room; someone seated faces out
+    of the seat, toward the viewer, since every seat's back is behind it
+    ([notes/sitting-pose.md](notes/sitting-pose.md)). The client remembers the
     side, since the server's messages don't carry it, and keeps it through
     a reconnect. They move by screen pixels: the
     canvas holds the room at its scale, the room is drawn into it in room
@@ -683,7 +685,12 @@ and Burakku at 25.
   a build is a folder of frames, one for each thing a cat does (sitting,
   walking and walking away, asleep, on a lap, eating, playing, held,
   perched, scratching, knocking something over, greeting), every frame
-  facing right and mirrored to face left. Recoloured images are cached.
+  facing right and mirrored to face left. People have standing and
+  walking frames, front and back, and two seated ones from the front: on a
+  seat, the lap on its top and the shins hanging over its front; on a seat
+  too low for that (the cushion), cross-legged. A cat on a lap curls on
+  the seated lap, below the face (the user's ask, 2026-11-08;
+  [notes/sitting-pose.md](notes/sitting-pose.md)). Recoloured images are cached.
   Any sprite can be redrawn later, by hand or from a pack, as PNGs.
 - **HTML over the canvas** for bubbles (any language renders crisply, which a
   pixel font can't), menus (real buttons the keyboard can focus) and a

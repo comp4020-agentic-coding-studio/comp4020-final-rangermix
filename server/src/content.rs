@@ -171,8 +171,18 @@ mod tests {
             }
         }
         let avatar = sprite_sizes("avatar.txt");
-        // People at 32 px (slice 11), with back views (slice 12).
-        for frame in ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"] {
+        // People at 32 px (slice 11), with back views (slice 12), and seated
+        // on a seat or a cushion (the user, 2026-11-08).
+        for frame in [
+            "stand",
+            "walk_a",
+            "walk_b",
+            "back",
+            "back_walk_a",
+            "back_walk_b",
+            "sit",
+            "sit_floor",
+        ] {
             assert_eq!(avatar.get(frame), Some(&(32, 32)), "{frame}");
         }
         let emotes = sprite_sizes("emotes.txt");

@@ -146,7 +146,7 @@ export function catSheet(pngs: Record<string, Record<string, Buffer>> = readPngs
 }
 
 /** The people's frames, in the sheet's order. */
-export const PERSON_FRAMES = ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b"] as const;
+export const PERSON_FRAMES = ["stand", "walk_a", "walk_b", "back", "back_walk_a", "back_walk_b", "sit", "sit_floor"] as const;
 
 /**
  * The people's sheet, as content/sprites/avatar.txt holds it: each frame

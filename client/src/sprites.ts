@@ -20,8 +20,12 @@ export type TileName = "floor" | "wall" | "window" | "door" | "board";
  */
 export type CatPose = "sit" | "walk_a" | "walk_b" | "back_sit" | "back_walk_a" | "back_walk_b" | "nap" | "eat" | "play_a" | "play_b" | "perch" | "held" | "lap" | "scratch" | "knock" | "greet";
 export type CatFrame = `${string}:${CatPose}`;
-/** A person's frames; the back ones show them walking or standing away from the viewer (slice 12). */
-export type AvatarFrame = "stand" | "walk_a" | "walk_b" | "back" | "back_walk_a" | "back_walk_b";
+/**
+ * A person's frames; the back ones show them walking or standing away from
+ * the viewer (slice 12); seated on a seat, or cross-legged on a cushion
+ * (the user, 2026-11-08).
+ */
+export type AvatarFrame = "stand" | "walk_a" | "walk_b" | "back" | "back_walk_a" | "back_walk_b" | "sit" | "sit_floor";
 export type EmoteName = "heart" | "question" | "dots" | "zzz" | "sniff" | "wave" | "laugh" | "yawn" | "scratch" | "treat" | "food";
 
 const SLOTS = "0123456789abcdef";
