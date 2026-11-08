@@ -3,6 +3,7 @@ import type { ChalkLine } from "./ChalkLine";
 import type { Emote } from "./Emote";
 import type { ErrorCode } from "./ErrorCode";
 import type { FurnitureView } from "./FurnitureView";
+import type { LayoutName } from "./LayoutName";
 import type { PersonView } from "./PersonView";
 import type { Place } from "./Place";
 import type { Pose } from "./Pose";
@@ -32,4 +33,21 @@ ahead: number,
 /**
  * When, by the café's clock, its clock can move on again.
  */
-nextJump: number, snapshot: Snapshot, } | { "type": "replaced", } | { "type": "waking", } | { "type": "jumping", by: string, to: number, } | { "type": "personJoined", person: PersonView, } | { "type": "personLeft", id: number, } | { "type": "personPlaced", id: number, place: Place, at: Tile, walk: Walk | null, } | { "type": "personMoved", id: number, walk: Walk, } | { "type": "catMoved", cat: string, walk: Walk, } | { "type": "catPosed", cat: string, pose: Pose, at: Tile, } | { "type": "catReacted", cat: string, reaction: Reaction, } | { "type": "said", from: number, text: string, to: number | null, ttlMs: number, } | { "type": "yourTrust", trust: TrustView, } | { "type": "emoted", from: number, emote: Emote, } | { "type": "stillThere", secs: number, } | { "type": "nudgeOver", } | { "type": "furnitureHeld", piece: FurnitureView, by: number, } | { "type": "furniturePlaced", piece: FurnitureView, by: number, } | { "type": "furnitureRemoved", id: number, by: number, } | { "type": "personSat", id: number, at: Tile, } | { "type": "treatPlaced", treat: TreatView, by: number, } | { "type": "treatEaten", id: number, cat: string, } | { "type": "yourTreats", left: number, } | { "type": "treatGiven", from: number, to: number, } | { "type": "bowls", portions: number, } | { "type": "catHeld", cat: string, by: number | null, } | { "type": "furnitureToppled", id: number, toppled: boolean, by: number | null, } | { "type": "chalked", line: ChalkLine, } | { "type": "error", code: ErrorCode, detail: string, };
+nextJump: number, 
+/**
+ * The furniture sets a demo account can lay out, in the bar's order
+ * (slice 17, part 2).
+ */
+layouts: Array<LayoutName>, 
+/**
+ * When, by the café's clock, a set can be laid out again.
+ */
+nextLayout: number, snapshot: Snapshot, } | { "type": "replaced", } | { "type": "waking", } | { "type": "jumping", by: string, to: number, } | { "type": "personJoined", person: PersonView, } | { "type": "personLeft", id: number, } | { "type": "personPlaced", id: number, place: Place, at: Tile, walk: Walk | null, } | { "type": "personMoved", id: number, walk: Walk, } | { "type": "catMoved", cat: string, walk: Walk, } | { "type": "catPosed", cat: string, pose: Pose, at: Tile, } | { "type": "catReacted", cat: string, reaction: Reaction, } | { "type": "said", from: number, text: string, to: number | null, ttlMs: number, } | { "type": "yourTrust", trust: TrustView, } | { "type": "emoted", from: number, emote: Emote, } | { "type": "stillThere", secs: number, } | { "type": "nudgeOver", } | { "type": "furnitureHeld", piece: FurnitureView, by: number, } | { "type": "furniturePlaced", piece: FurnitureView, by: number, } | { "type": "furnitureRemoved", id: number, by: number, } | { "type": "personSat", id: number, at: Tile, } | { "type": "treatPlaced", treat: TreatView, by: number, } | { "type": "treatEaten", id: number, cat: string, } | { "type": "yourTreats", left: number, } | { "type": "treatGiven", from: number, to: number, } | { "type": "bowls", portions: number, } | { "type": "catHeld", cat: string, by: number | null, } | { "type": "furnitureToppled", id: number, toppled: boolean, by: number | null, } | { "type": "laidOut", by: number, 
+/**
+ * The set's name, as the bar shows it.
+ */
+name: string, furniture: Array<FurnitureView>, 
+/**
+ * When, by the café's clock, the next set can be laid out.
+ */
+next: number, } | { "type": "chalked", line: ChalkLine, } | { "type": "error", code: ErrorCode, detail: string, };

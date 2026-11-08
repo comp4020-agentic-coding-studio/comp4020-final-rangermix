@@ -68,6 +68,10 @@ function enter(me: ApiMe): void {
       showAuth(enter);
     },
     onError: (e) => toast(overlay, e.detail),
+    onNotice: (text) => toast(overlay, text),
+    // Every piece may be new: a menu on one names a piece that's gone
+    // (slice 17 part 2's review, finding 8).
+    onLaidOut: () => closeMenu(),
     onOutdated: () => {
       $("outdated").hidden = false;
       $("refresh").onclick = () => location.reload();
@@ -450,12 +454,31 @@ function enter(me: ApiMe): void {
       at: $<HTMLInputElement>("demo-at"),
       go: $<HTMLButtonElement>("demo-go"),
       canberra: $<HTMLButtonElement>("demo-canberra"),
+      sets: $("demo-furniture"),
+      setsWait: $("demo-sets-wait"),
       botCount: $("demo-bot-count"),
       addBot: $<HTMLButtonElement>("demo-add-bot"),
       removeBot: $<HTMLButtonElement>("demo-remove-bot"),
     },
     (msg) => cafe.send(msg),
   );
+  // Narrowed across 960 px, a group hides behind its button: the keyboard's
+  // focus goes to that button rather than to nowhere (slice 17 part 2's
+  // review, finding 6). The browser drops the focus as the group hides, so
+  // the bar remembers where it was.
+  let demoFocus: HTMLElement | null = null;
+  $("demo-bar").addEventListener("focusin", (e) => (demoFocus = e.target as HTMLElement));
+  $("demo-bar").addEventListener("focusout", (e) => {
+    if (e.relatedTarget) demoFocus = null;
+  });
+  const keepDemoFocus = () => {
+    const was = demoFocus;
+    if (!was || (document.activeElement !== document.body && document.activeElement !== was)) return;
+    const group = was.closest<HTMLElement>("#demo-bar .demo-group");
+    if (!group || group.checkVisibility()) return;
+    document.querySelector<HTMLButtonElement>(`#demo-bar .demo-toggle[aria-controls="${group.id}"]`)?.focus();
+  };
+  window.addEventListener("resize", keepDemoFocus);
   const placeDemoBar = () => {
     const below = document.querySelector(".status")!.getBoundingClientRect().bottom;
     document.documentElement.style.setProperty("--demo-top", `${Math.round(below + 8)}px`);
@@ -505,6 +528,7 @@ function enter(me: ApiMe): void {
     drawerWatch.disconnect();
     window.removeEventListener("resize", fitDrawer);
     window.removeEventListener("resize", placeDemoBar);
+    window.removeEventListener("resize", keepDemoFocus);
     window.clearInterval(demoTick);
     demoBar.update(null, false);
     floating.dispose();

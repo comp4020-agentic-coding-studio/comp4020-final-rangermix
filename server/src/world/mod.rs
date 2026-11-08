@@ -20,6 +20,9 @@ mod handling;
 pub mod jump;
 #[cfg(test)]
 mod jump_tests;
+mod layout;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod log_tests;
 mod people;
@@ -186,6 +189,10 @@ pub struct World {
     /// Trust a cat changed while a replay held the store back: written with
     /// the replay's end save (slice 17's review, finding 3).
     unsaved_trust: Vec<(String, u32)>,
+    /// The furniture sets a demo account lays out (slice 17, part 2).
+    layouts: Vec<crate::room::Layout>,
+    /// When, by the café's clock, the last set was laid out.
+    last_layout: Option<u64>,
 }
 
 impl World {
@@ -200,7 +207,13 @@ impl World {
         build: String,
         now: u64,
     ) -> World {
-        let Content { tuning, room, cats } = content;
+        let Content {
+            tuning,
+            room,
+            cats,
+            layouts,
+            ..
+        } = content;
         let mut world = World {
             room,
             tuning,
@@ -232,6 +245,8 @@ impl World {
             jump: None,
             last_jump: None,
             unsaved_trust: Vec::new(),
+            layouts,
+            last_layout: None,
         };
         // The furniture first, so each cat is checked against the room it wakes in.
         match arrangement {
@@ -295,6 +310,7 @@ impl World {
                     ClientMsg::SetClock { minute } => self.ask_jump(now, id, minute, &mut out),
                     ClientMsg::AddBot {} => self.add_bot(now, id, &mut out),
                     ClientMsg::RemoveBot {} => self.remove_bot(now, id, &mut out),
+                    ClientMsg::LayOut { set } => self.lay_out(now, id, &set, &mut out),
                 }
                 if let Some(what) = what {
                     self.log_request(id, what, &about, &out[before..], pending_before);
@@ -565,6 +581,7 @@ pub fn action_name(msg: &ClientMsg) -> Option<&'static str> {
         ClientMsg::SetClock { .. } => "set_clock",
         ClientMsg::AddBot {} => "add_bot",
         ClientMsg::RemoveBot {} => "remove_bot",
+        ClientMsg::LayOut { .. } => "lay_out",
         ClientMsg::Presence { .. } | ClientMsg::Here {} => return None,
     })
 }

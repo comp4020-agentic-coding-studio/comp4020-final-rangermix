@@ -1,5 +1,6 @@
 // The demo bar (slice 17, ADR 0022): what a demo account moves the café's
-// clock on with, and adds or removes bots with. Only a demo account sees it;
+// clock on with, lays out a furniture set with (part 2), and adds or
+// removes bots with. Only a demo account sees it;
 // the server checks every ask, and everyone sees what it did.
 import { announce } from "./announce";
 import type { ClientMsg } from "./protocol/ClientMsg";
@@ -45,6 +46,19 @@ export function aheadText(ms: number): string {
   return `${whole}${hours > 0 ? ` and ${hours} h` : ""} ahead`;
 }
 
+/**
+ * How far ahead, in a few characters, for a phone's one slim row: "+6m",
+ * "+9h", "+2d 23h", or nothing on Canberra time (slice 17 part 2's review,
+ * finding 5).
+ */
+export function aheadShort(ms: number): string {
+  if (ms <= 0) return "";
+  if (ms < HOUR) return `+${Math.max(1, Math.round(ms / 60_000))}m`;
+  if (ms < DAY) return `+${Math.floor(ms / HOUR)}h`;
+  const hours = Math.floor((ms % DAY) / HOUR);
+  return `+${Math.floor(ms / DAY)}d${hours > 0 ? ` ${hours}h` : ""}`;
+}
+
 /** A typed "HH:MM" as minutes past midnight, or null. */
 export function minuteOf(text: string): number | null {
   const m = /^(\d{2}):(\d{2})$/.exec(text);
@@ -84,6 +98,10 @@ export interface DemoBarEls {
   at: HTMLInputElement;
   go: HTMLButtonElement;
   canberra: HTMLButtonElement;
+  /** The furniture sets' buttons go in here, one per set (slice 17, part 2). */
+  sets: HTMLElement;
+  /** How long until a set can be laid out again; after the set buttons. */
+  setsWait: HTMLElement;
   botCount: HTMLElement;
   addBot: HTMLButtonElement;
   removeBot: HTMLButtonElement;
@@ -99,6 +117,9 @@ export class DemoBar {
   /** The wait last said, so it's announced once (slice 17's review, finding 7). */
   private told: number | null = null;
   private readonly presets: HTMLButtonElement[];
+  /** One button per furniture set, by the sets' ids in order, rebuilt only when they change. */
+  private setButtons: HTMLButtonElement[] = [];
+  private setsKey = "";
 
   constructor(
     private readonly els: DemoBarEls,
@@ -173,11 +194,14 @@ export class DemoBar {
     document.body.classList.toggle("demo", show);
     if (!state) {
       this.disable(true, null);
+      for (const b of this.setButtons) b.disabled = true;
       return;
     }
     const now = serverNow(state, localNow);
     this.els.time.textContent = clockText(now);
     this.els.ahead.textContent = aheadText(state.ahead);
+    this.els.ahead.dataset.short = aheadShort(state.ahead);
+    this.showSets(state.layouts);
     const bots = [...state.people.values()].filter((p) => p.bot).length;
     this.els.botCount.textContent = botsText(bots);
     const wait = waitText(state.nextJump, now);
@@ -186,6 +210,34 @@ export class DemoBar {
       announce(movesAgainAt(state.nextJump));
     }
     this.disable(this.waking, wait, bots === 0);
+    // The furniture waits for the café's last set, whoever laid it out.
+    const setsWait = state.nextLayout > now ? `Next set in ${Math.ceil((state.nextLayout - now) / 1000)} s` : null;
+    if (setsWait !== null && this.setButtons.includes(document.activeElement as HTMLButtonElement)) this.els.time.focus();
+    for (const b of this.setButtons) b.disabled = this.waking || setsWait !== null;
+    this.els.setsWait.textContent = setsWait ?? "";
+    this.els.setsWait.hidden = setsWait === null;
+  }
+
+  /**
+   * A button per furniture set, in the welcome's order. Built again only
+   * when the sets change, so a button under the keyboard's focus stays.
+   */
+  private showSets(sets: { id: string; name: string }[]): void {
+    const key = sets.map((s) => `${s.id}=${s.name}`).join(";");
+    if (key === this.setsKey) return;
+    this.setsKey = key;
+    this.setButtons = sets.map((set) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "demo-set";
+      button.textContent = set.name;
+      button.onclick = () => {
+        this.send({ type: "layOut", set: set.id });
+        this.close();
+      };
+      return button;
+    });
+    this.els.sets.replaceChildren(...this.setButtons, this.els.setsWait);
   }
 
   /**

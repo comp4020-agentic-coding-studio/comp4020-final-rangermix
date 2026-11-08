@@ -3,8 +3,9 @@
 Working notes for [slice 17](../slices/17-markers-see-weeks-in-ten-minutes.md)
 ([plan](plan-slice-17-demo.md),
 [ADR 0022](../adr/0022-let-markers-drive-the-cafe-through-public-demo-accounts.md)).
-Part 1 is built on the branch `worktree-slice-17-demo`; part 2, the
-furniture sets, waits for slice 16.
+Part 1 was built on the branch `worktree-slice-17-demo` and is live;
+part 2, the furniture sets, was built on `slice-17-sets` on 2026-11-09
+([plan](plan-slice-17-sets.md)); see "Part 2" below.
 
 ## Checked on the branch (2026-11-06, session `f6949123`)
 
@@ -68,4 +69,50 @@ stored; and jumps spent everyone's session.
 - The merge (the user's), the deploy, then the seed and a restart on Fly
   (above), then the marker's path walked on the live café at both sizes,
   recorded here.
-- Part 2, the furniture sets, after slice 16.
+- ~~Part 2, the furniture sets, after slice 16.~~ Built 2026-11-09: below.
+
+## Part 2: the furniture sets (2026-11-09, session `cb735744`)
+
+Built on `slice-17-sets` from `600e41a`, test first per task
+([plan](plan-slice-17-sets.md)).
+
+### Checked on the branch
+
+- **`cargo test -p cafe`**: 378 unit tests and the binary tests, with
+  the new set tests in `content.rs` (each set passes every rule; a set
+  breaking each rule in turn stops the café naming its file; Opening day
+  equals `room.toml`) and `world::layout_tests` (9 tests: who may, at
+  once for everyone, no allowance spent, errands called off, nobody left
+  on a blocking piece, cats jump off, a fresh room, saved, the welcome
+  names the sets). Each was seen failing first. Clippy and `cargo fmt`
+  clean; the protocol regenerated (`LayoutName.ts` new).
+- **`pnpm -C client check`**: 425 tests, with `laidOut` and the bar's set
+  buttons, each seen failing first.
+- **`spec/` against a local café** on port 8181, seeded with `cafe demo
+  seed`: the whole suite, 124 passed, `restart.test.ts` skipped (it needs
+  CI's `APP_RESTART`). The new checks: a visitor's `layOut` refused, a
+  second page sees `laidOut` within a second, sets back to back with no
+  rate limit, a late page wakes in the last set; the bar by touch on a
+  phone (Play room, the toast heard, the group closed) and by keyboard on
+  a desktop (Lap time, seen and told on the visitor's page).
+  `narrate.test.ts`'s new lines were seen failing with `narrate.ts` put
+  back.
+- **The log check** over that café's 704 lines, with `catppuccino` among
+  the words never to appear: passed. 16 `lay_out` lines, each with `who`,
+  `uid` and the set's name or the refusal's code.
+- **Looked at in a browser**, the screens in
+  [screens/slice-17-sets/](screens/slice-17-sets/): each set at
+  1920×1080, and the Furniture group on a phone in layout B. The first
+  look found the bar wrapping to three rows on a desktop with a stray rule
+  before the third, and the phone's slim row wrapping Bots to a second
+  line; both fixed (`d5e74d8`): two rows on a desktop, the times on their
+  own, and snugger toggles on a phone.
+
+### Review
+
+See [reviews/slice-17-sets-findings.md](reviews/slice-17-sets-findings.md)
+([brief](reviews/slice-17-sets-brief.md)).
+
+### Live
+
+Recorded below once deployed.

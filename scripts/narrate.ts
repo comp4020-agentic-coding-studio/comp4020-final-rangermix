@@ -77,6 +77,7 @@ const VERB: Record<string, string> = {
   remove_bot: "remove a bot",
   add_bot: "add a bot",
   set_clock: "move the café's clock on",
+  lay_out: "lay out a furniture set",
   say: "say something",
   sit: "sit on",
   signup: "sign up",
@@ -168,7 +169,8 @@ function action(l: Line): string | null {
       if (l.outcome === "called_off") return `${who} stopped going for ${piece}`;
       const gone = l.outcome === "gone";
       if (!l.why) return `${who} put ${piece} back${gone ? " in the catalogue" : ""}`;
-      const as = `as they ${WENT[String(l.why)] ?? words(l.why)}`;
+      // A jump or a furniture set isn't the carrier's doing (slice 17).
+      const as = l.why === "laid_out" ? "as a furniture set was laid out" : `as they ${WENT[String(l.why)] ?? words(l.why)}`;
       return `${piece} ${who} carried went back${gone ? " to the catalogue" : ""}, ${as}`;
     }
     case "put_away":
@@ -186,6 +188,8 @@ function action(l: Line): string | null {
       return `${who} added a bot, ${String(l.bot)}`;
     case "remove_bot":
       return `${who} removed a bot, ${String(l.bot)}`;
+    case "lay_out":
+      return `${who} laid out ${String(l.set)}`;
     default:
       return null;
   }

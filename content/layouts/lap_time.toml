@@ -1,0 +1,81 @@
+# Lap time (slice 17, part 2): the seats gathered round the rug by the cat
+# bed, for sitting together and for laps. A sofa above the rug and one below
+# it, a chair at each side, the cushion on the rug, the window seat under
+# the window, and the cat bed beside it all.
+name = "Lap time"
+order = 2
+
+[[furniture]]
+kind = "cat_tower"
+x = 0
+y = 1
+
+[[furniture]]
+kind = "window_seat"
+x = 2
+y = 1
+
+[[furniture]]
+kind = "plant"
+x = 11
+y = 1
+
+[[furniture]]
+kind = "rug"
+x = 3
+y = 5
+
+[[furniture]]
+kind = "sofa"
+x = 3
+y = 4
+
+[[furniture]]
+kind = "sofa"
+x = 3
+y = 8
+
+[[furniture]]
+kind = "chair"
+x = 2
+y = 6
+
+[[furniture]]
+kind = "chair"
+x = 7
+y = 6
+
+[[furniture]]
+kind = "cushion"
+x = 5
+y = 6
+
+[[furniture]]
+kind = "cat_bed"
+x = 2
+y = 5
+
+[[furniture]]
+kind = "table"
+x = 10
+y = 4
+
+[[furniture]]
+kind = "lamp"
+x = 0
+y = 4
+
+[[furniture]]
+kind = "toys"
+x = 10
+y = 11
+
+[[furniture]]
+kind = "box"
+x = 0
+y = 11
+
+[[furniture]]
+kind = "plant"
+x = 12
+y = 12

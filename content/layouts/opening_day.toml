@@ -1,0 +1,85 @@
+# Opening day (slice 17, part 2): the room as content/room.toml lays it out,
+# so laying it out puts the café back as it opened. cargo test holds the two
+# the same (content.rs, opening_day_is_room_toml_as_it_lays_out).
+name = "Opening day"
+order = 1
+
+[[furniture]]
+kind = "cat_tower"
+x = 0
+y = 1
+
+[[furniture]]
+kind = "window_seat"
+x = 2
+y = 1
+
+[[furniture]]
+kind = "plant"
+x = 11
+y = 1
+
+[[furniture]]
+kind = "table"
+x = 9
+y = 3
+
+[[furniture]]
+kind = "chair"
+x = 9
+y = 4
+
+[[furniture]]
+kind = "chair"
+x = 10
+y = 4
+
+[[furniture]]
+kind = "rug"
+x = 4
+y = 4
+
+[[furniture]]
+kind = "sofa"
+x = 0
+y = 5
+
+[[furniture]]
+kind = "cat_bed"
+x = 0
+y = 7
+
+[[furniture]]
+kind = "toys"
+x = 7
+y = 8
+
+[[furniture]]
+kind = "box"
+x = 1
+y = 9
+
+[[furniture]]
+kind = "plant"
+x = 6
+y = 9
+
+[[furniture]]
+kind = "cushion"
+x = 9
+y = 7
+
+[[furniture]]
+kind = "sofa"
+x = 4
+y = 11
+
+[[furniture]]
+kind = "lamp"
+x = 12
+y = 6
+
+[[furniture]]
+kind = "plant"
+x = 12
+y = 12

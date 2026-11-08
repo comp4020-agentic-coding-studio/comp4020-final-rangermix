@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PRESETS, aheadText, botsText, clockText, hourOn, minuteOf, movesAgainAt, waitText } from "../src/demoBar";
+import { DemoBar, PRESETS, aheadShort, aheadText, botsText, clockText, hourOn, minuteOf, movesAgainAt, waitText, type DemoBarEls } from "../src/demoBar";
+import type { ClientMsg } from "../src/protocol/ClientMsg";
+import type { CafeState } from "../src/state";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -64,9 +66,104 @@ describe("the demo bar", () => {
     expect(css).not.toMatch(/\.demo-bar[^{]*\{[^}]*backdrop-filter/);
   });
 
+  it("says how far ahead in a few characters on a phone, so the bar keeps to one row (slice 17 part 2's review, finding 5)", () => {
+    expect(aheadShort(0)).toBe("");
+    expect(aheadShort(6 * 60_000)).toBe("+6m");
+    expect(aheadShort(9.5 * HOUR)).toBe("+9h");
+    expect(aheadShort(DAY)).toBe("+1d");
+    expect(aheadShort(2 * DAY + 23.9 * HOUR)).toBe("+2d 23h");
+    // Never longer than that, however far ahead.
+    for (const ms of [59_000, 23.99 * HOUR, 9 * DAY + 23 * HOUR]) expect(aheadShort(ms).length).toBeLessThanOrEqual(8);
+  });
+
   it("counts the bots", () => {
     expect(botsText(0)).toBe("No bots");
     expect(botsText(1)).toBe("1 bot");
     expect(botsText(4)).toBe("4 bots");
+  });
+
+  describe("its furniture sets (slice 17, part 2)", () => {
+    /** The bar's elements as index.html has them, and what it sends. */
+    function build(): { els: DemoBarEls; sent: ClientMsg[]; bar: DemoBar } {
+      document.body.innerHTML = `
+        <section id="demo-bar" hidden>
+          <strong id="demo-time" tabindex="-1"></strong><span id="demo-ahead"></span>
+          <button class="demo-toggle" aria-expanded="false" aria-controls="demo-times">Time</button>
+          <button class="demo-toggle" aria-expanded="false" aria-controls="demo-furniture">Furniture</button>
+          <div id="demo-times"><button id="demo-hour-on"></button><input id="demo-at" /><button id="demo-go"></button><button id="demo-canberra"></button><span id="demo-wait"></span></div>
+          <div id="demo-furniture"><span id="demo-sets-wait" hidden></span></div>
+          <div id="demo-bots"><button id="demo-remove-bot"></button><span id="demo-bot-count"></span><button id="demo-add-bot"></button></div>
+        </section>`;
+      const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+      const els: DemoBarEls = {
+        bar: $("demo-bar"),
+        time: $("demo-time"),
+        ahead: $("demo-ahead"),
+        wait: $("demo-wait"),
+        toggles: [...document.querySelectorAll<HTMLButtonElement>(".demo-toggle")],
+        hourOn: $("demo-hour-on"),
+        at: $("demo-at"),
+        go: $("demo-go"),
+        canberra: $("demo-canberra"),
+        sets: $("demo-furniture"),
+        setsWait: $("demo-sets-wait"),
+        botCount: $("demo-bot-count"),
+        addBot: $("demo-add-bot"),
+        removeBot: $("demo-remove-bot"),
+      };
+      const sent: ClientMsg[] = [];
+      return { els, sent, bar: new DemoBar(els, (m) => sent.push(m)) };
+    }
+
+    const state = (layouts: { id: string; name: string }[], nextLayout = 0) =>
+      ({ demo: true, ahead: 0, nextJump: 0, nextLayout, offset: 0, people: new Map(), layouts }) as unknown as CafeState;
+
+    it("offers no set until the café can lay one out again, and says when (slice 17 part 2's review, finding 2)", () => {
+      const { els, bar } = build();
+      const sets = [{ id: "lap_time", name: "Lap time" }];
+      bar.update(state(sets, 10_000), false, 4_000);
+      expect(els.sets.querySelector("button")!.disabled).toBe(true);
+      expect(els.setsWait.hidden).toBe(false);
+      expect(els.setsWait.textContent).toBe("Next set in 6 s");
+      bar.update(state(sets, 10_000), false, 10_000);
+      expect(els.sets.querySelector("button")!.disabled).toBe(false);
+      expect(els.setsWait.hidden).toBe(true);
+    });
+
+    it("offers one button per set, in the welcome's order, each laying it out", () => {
+      const { els, sent, bar } = build();
+      const sets = [
+        { id: "opening_day", name: "Opening day" },
+        { id: "lap_time", name: "Lap time" },
+        { id: "play_room", name: "Play room" },
+      ];
+      bar.update(state(sets), false);
+      const buttons = [...els.sets.querySelectorAll("button")];
+      // The wait stays after the buttons.
+      expect(els.sets.lastElementChild).toBe(els.setsWait);
+      expect(buttons.map((b) => b.textContent)).toEqual(["Opening day", "Lap time", "Play room"]);
+      expect(buttons.every((b) => b.type === "button")).toBe(true);
+      buttons[1].click();
+      expect(sent).toEqual([{ type: "layOut", set: "lap_time" }]);
+      // The same sets again: the same buttons, so the keyboard's focus stays put.
+      buttons[2].focus();
+      bar.update(state(sets), false);
+      expect([...els.sets.querySelectorAll("button")]).toEqual(buttons);
+      expect(document.activeElement).toBe(buttons[2]);
+    });
+
+    it("closes its group once a set is chosen, and offers none while the café wakes", () => {
+      const { els, bar } = build();
+      bar.update(state([{ id: "lap_time", name: "Lap time" }]), false);
+      const toggle = els.toggles[1];
+      toggle.click();
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      els.sets.querySelector("button")!.click();
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      bar.update(state([{ id: "lap_time", name: "Lap time" }]), true);
+      expect(els.sets.querySelector("button")!.disabled).toBe(true);
+      bar.update(state([{ id: "lap_time", name: "Lap time" }]), false);
+      expect(els.sets.querySelector("button")!.disabled).toBe(false);
+    });
   });
 });

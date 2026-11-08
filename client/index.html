@@ -78,18 +78,24 @@
       <section id="demo-bar" class="demo-bar" aria-label="Demo controls" hidden>
         <p class="demo-clock"><span class="demo-label">Café time</span> <strong id="demo-time" tabindex="-1">--:--</strong> <span id="demo-ahead"></span></p>
         <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-times">Time</button>
+        <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-furniture">Furniture</button>
         <button type="button" class="demo-toggle" aria-expanded="false" aria-controls="demo-bots">Bots</button>
+        <!-- The furniture sets (slice 17, part 2): a button per set, from the welcome. -->
+        <div id="demo-furniture" class="demo-group" role="group" aria-label="Lay out the furniture"><span id="demo-sets-wait" class="demo-wait" hidden></span></div>
+        <div id="demo-bots" class="demo-group" role="group" aria-label="Bots">
+          <button type="button" id="demo-remove-bot" aria-label="Remove a bot">−</button>
+          <span id="demo-bot-count">No bots</span>
+          <button type="button" id="demo-add-bot" aria-label="Add a bot">+</button>
+        </div>
+        <!-- The times come last in the page, as they're drawn on a desktop: a
+             row of their own under the clock, the sets and the bots, so Tab
+             follows the reading order (slice 17 part 2's review, finding 7). -->
         <div id="demo-times" class="demo-group" role="group" aria-label="Move the café's clock on">
           <button type="button" id="demo-hour-on">An hour on</button>
           <label class="demo-at">At <input type="time" id="demo-at" step="60" /></label>
           <button type="button" id="demo-go">Go</button>
           <button type="button" id="demo-canberra">Canberra time</button>
           <span id="demo-wait" class="demo-wait" hidden></span>
-        </div>
-        <div id="demo-bots" class="demo-group" role="group" aria-label="Bots">
-          <button type="button" id="demo-remove-bot" aria-label="Remove a bot">−</button>
-          <span id="demo-bot-count">No bots</span>
-          <button type="button" id="demo-add-bot" aria-label="Add a bot">+</button>
         </div>
       </section>
       <!-- The panels (slice 14): on a desktop they float over the room, each

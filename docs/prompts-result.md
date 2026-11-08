@@ -2740,3 +2740,56 @@ the screens.
 - **Live** ([`b7f2586`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b7f2586), CI green): the way in, the door, Leave,
   "I'm not *name*" and `demo1`, with one `agent_` account, recorded in
   [slice-20-welcome.md](docs/notes/slice-20-welcome.md).
+
+### 23. The furniture sets
+
+*Session `cb735744`, Claude Code (Opus 5.5), run as a background job.*
+
+*Sent 2026-11-08 23:38:00 AEDT*
+
+> I don't see cafe arrangement preset using demo account. is that implemented or not?
+
+**Result.** Not built: the furniture sets are slice 17's part 2, which
+waited for slice 16's floor and was never picked up after it. No
+`content/layouts/`, nothing in the server or the demo bar.
+
+*Sent 2026-11-09 03:05:55 AEDT*
+
+> check is there any other slices that's not built yet
+
+**Result.** Besides 17's part 2, three slices are unbuilt, each still a
+`Proposed` spec: 03 (mute, the blocklist, the admin ban), 04 (the load
+check and the window's count) and 06 (the accessibility pass). 05 was
+replaced by 09 to 11; the rest are built and deployed, several waiting
+only on the user's judgement.
+
+*Sent 2026-11-09 03:07:04 AEDT*
+
+> build slice 17 part 2
+
+**Result.** Built test first on `slice-17-sets`, reviewed, and merged.
+Built in a worktree, since the main checkout held the user's staged and
+unstaged work, which was left alone.
+- **The sets** ([`8557330`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8557330)): Opening day (the starting room, held equal
+  to `room.toml`), Lap time (two sofas facing over the rug, a chair each
+  side, the cushion on it, the cat bed beside) and Play room (the tower,
+  post, box and toys out in the open), each a data file checked against
+  every placement rule when the café starts.
+- **Laying one out** ([`74bb65b`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/74bb65b), [`99be54a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/99be54a)): one `laidOut` to
+  everyone with the whole room; carried pieces go, errands are called
+  off, anyone under a new blocking piece steps off; a Furniture group on
+  the demo bar, and a notice to everyone ("demo1 laid out Lap time.").
+- **Seen in a browser:** the third group wrapped the bar to three rows on
+  a desktop and past one row on a phone; fixed ([`d5e74d8`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d5e74d8)).
+- **Review:** a fresh agent found 2 major, 5 minor and 3 nits, all fixed
+  test first ([`50dc122`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/50dc122), [`58b8c9a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/58b8c9a), [`1fcd021`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1fcd021), [`015ef2f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/015ef2f)). The
+  majors: pages weren't told when a set stood people up or ended their
+  walks, so they were drawn walking into the new sofa; and with the
+  public password a script could lay out sets ten times a second,
+  stopping everyone. That changed a decision: the café now lays out a set
+  at most every ten seconds (`layout_every_secs`), and the bar says when.
+  Also: a cat on a piece that doesn't move stays put, a set lands whole
+  whatever its file's order, one slim row on a phone, Tab in reading
+  order, focus kept on a resize, menus closed when a set lands.
+- **README:** "For markers" gains Lap time and Play room in two steps, as
+  the spec says part 2 adds; the user's to judge.

@@ -1814,6 +1814,17 @@ function lightOf(ms: number): string {
   return String(hour >= 21 || hour < 6 ? 1 : hour >= 17 ? 0.5 : 0);
 }
 
+/** Lays out Opening day from the bar, waiting out the café's last set (slice 17 part 2's review, finding 9). */
+async function putBackThroughPage(page: Page): Promise<void> {
+  const toggle = page.locator("#demo-bar .demo-toggle", { hasText: "Furniture" });
+  if (await toggle.isVisible()) {
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  }
+  await page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
+  await page.locator("#demo-furniture button", { hasText: "Opening day" }).click();
+  await page.locator(".toast", { hasText: "laid out Opening day." }).first().waitFor({ timeout: 5_000 });
+}
+
 describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
   it("is a demo account's alone; by keyboard it moves the café on, and the page keeps the café's clock", async () => {
     const visitor = await visit({ width: 1920, height: 1080 });
@@ -1869,6 +1880,46 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("1 bot");
     await page.locator("#demo-remove-bot").click();
     await expect.poll(() => page.locator("#demo-bot-count").textContent()).toBe("No bots");
+    // By keyboard (part 2): Tab reads the bar as it's drawn, the clock,
+    // the sets and the bots on the first row, then the times (slice 17 part
+    // 2's review, finding 7).
+    // (Disabled controls are skipped by Tab, so the order is read from the
+    // page: the bar's controls in the order Tab visits them when enabled.)
+    const order = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("#demo-bar button, #demo-bar input")]
+        .filter((e) => e.checkVisibility())
+        .map((e) => e.getAttribute("aria-label") ?? (e.textContent!.trim() || e.id)),
+    );
+    expect(order.slice(0, 7)).toEqual(["Opening day", "Lap time", "Play room", "Remove a bot", "Add a bot", "Morning 07:00", "Afternoon 13:30"]);
+    // And drawn so: the sets' row above the times'.
+    const setsTop = (await page.locator("#demo-furniture").boundingBox())!.y;
+    const timesTop = (await page.locator("#demo-times").boundingBox())!.y;
+    expect(setsTop).toBeLessThan(timesTop);
+    // A set, and the visitor's page sees it and is told who laid it out.
+    await page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
+    // The visitor has the cat bed's menu open, a piece Lap time moves.
+    const bed = (visitor.frames.find((f) => f.type === "welcome")!.snapshot.room.furniture as Frame[]).find((f) => f.kind === "cat_bed")!;
+    const onBed = await tileAt(visitor.page, { x: bed.x, y: bed.y });
+    await visitor.page.mouse.click(onBed.x, onBed.y);
+    await expect.poll(() => visitor.page.locator(".menu").count()).toBe(1);
+    try {
+      await page.locator("#demo-furniture button", { hasText: "Lap time" }).focus();
+      await page.keyboard.press("Enter");
+      await expect.poll(() => visitor.frames.some((f) => f.type === "laidOut" && f.name === "Lap time")).toBe(true);
+      await expect.poll(() => visitor.page.locator(".toast", { hasText: "demo1 laid out Lap time." }).count()).toBe(1);
+      // Its menu named a piece that's gone: closed (slice 17 part 2's review, finding 8).
+      await expect.poll(() => visitor.page.locator(".menu").count()).toBe(0);
+      // The sets wait for the café, and say so (finding 2).
+      expect(await page.locator("#demo-furniture button", { hasText: "Opening day" }).isDisabled()).toBe(true);
+      expect(await page.locator("#demo-sets-wait").textContent()).toMatch(/^Next set in \d+ s$/);
+      await page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
+      await page.locator("#demo-furniture button", { hasText: "Opening day" }).focus();
+      await page.keyboard.press("Space");
+      await expect.poll(() => visitor.frames.some((f) => f.type === "laidOut" && f.name === "Opening day")).toBe(true);
+    } finally {
+      // The room put back for what follows, whatever happened (finding 9).
+      if (!demo.frames.some((f) => f.type === "laidOut" && f.name === "Opening day")) await putBackThroughPage(page);
+    }
     // The visitor's page went with it.
     await visitor.page.waitForFunction(() => document.getElementById("waking")!.hidden);
     expect(visitor.frames.some((f) => f.type === "jumping" && f.by === "demo1")).toBe(true);
@@ -1892,6 +1943,26 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     expect(await toggle.getAttribute("aria-expanded")).toBe("false");
     await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("Bots");
     expect(await page.locator("#demo-bots").isHidden()).toBe(true);
+    // One slim row on a phone, whatever the clock says: the three buttons
+    // share a line (slice 17 part 2's review, finding 5).
+    const sameRow = () =>
+      page.evaluate(() => new Set([...document.querySelectorAll("#demo-bar .demo-toggle")].map((t) => Math.round(t.getBoundingClientRect().top))).size);
+    expect(await sameRow()).toBe(1);
+    expect(await page.locator("#demo-ahead").evaluate((e) => getComputedStyle(e, "::after").content)).not.toBe("none");
+    // Furniture (part 2), by touch: a set laid out, heard, and the group closed.
+    const furniture = page.locator("#demo-bar .demo-toggle", { hasText: "Furniture" });
+    await furniture.tap();
+    expect(await furniture.getAttribute("aria-expanded")).toBe("true");
+    expect(await page.locator("#demo-furniture button").allTextContents()).toEqual(["Opening day", "Lap time", "Play room"]);
+    await page.locator("#demo-sets-wait").waitFor({ state: "hidden", timeout: 15_000 });
+    try {
+      await page.locator("#demo-furniture button", { hasText: "Play room" }).tap();
+      await expect.poll(() => demo.frames.some((f) => f.type === "laidOut" && f.name === "Play room")).toBe(true);
+      await expect.poll(() => furniture.getAttribute("aria-expanded")).toBe("false");
+      await expect.poll(() => page.locator(".toast", { hasText: "You laid out Play room." }).count()).toBe(1);
+    } finally {
+      await putBackThroughPage(page);
+    }
     // Layout A: the bar stands in the page between the status bar and the room.
     await page.locator("#layout-switch").tap();
     await page.waitForFunction(() => !document.body.classList.contains("layout-b"));
@@ -1908,5 +1979,12 @@ describe.skipIf(!demoPassword)("the demo bar (slice 17)", () => {
     const right = (await page.locator("#here-panel").boundingBox())!;
     expect(bar.x).toBeGreaterThanOrEqual(left.x + left.width);
     expect(bar.x + bar.width).toBeLessThanOrEqual(right.x);
-  }, 60_000);
+    // Narrowed across 960 px from a set button, the keyboard's focus goes to
+    // the group's button, not to nowhere (slice 17 part 2's review, finding 6).
+    await page.locator("#demo-furniture button", { hasText: "Lap time" }).focus();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe("Furniture");
+    // Back in layout B with the room's hours as they are, still one row.
+    expect(await sameRow()).toBe(1);
+  }, 90_000);
 });

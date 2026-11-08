@@ -104,6 +104,26 @@ pub fn read_arrangement(json: &str) -> Option<StoredArrangement> {
     serde_json::from_str::<Vec<Saved>>(json).ok().map(|pieces| (None, pieces))
 }
 
+/// A furniture set a demo account lays out (slice 17, part 2): a file in
+/// `content/layouts/`, its id the file's stem.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Layout {
+    pub id: String,
+    pub name: String,
+    /// Where it stands on the demo bar.
+    pub order: u32,
+    pub pieces: Vec<Saved>,
+}
+
+/// A set's file, as written.
+#[derive(Debug, Deserialize)]
+pub struct LayoutFile {
+    pub name: String,
+    pub order: u32,
+    #[serde(default)]
+    pub furniture: Vec<PieceFile>,
+}
+
 /// The cushion-only arrangement phase 1 saved, keyed by list position.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Placed {
@@ -309,6 +329,56 @@ impl Room {
         Ok(())
     }
 
+    /// Why a whole set of movable pieces can't stand in this room in place
+    /// of the movable pieces here now, or Ok (slice 17, part 2). The same
+    /// rules as `check_place`, for the set as a whole, so the order of its
+    /// pieces never matters: every kind known and movable, no more than
+    /// `cap`, each on the floor and off the door's walkway, none over
+    /// another but on a rug, then no floor cut off from the door and every
+    /// cat's nap and hide spot somewhere to stand beside.
+    pub fn check_layout(&self, pieces: &[Saved], cap: usize) -> Result<(), String> {
+        if pieces.len() > cap {
+            return Err(format!("it holds {} pieces; the café takes at most {cap}", pieces.len()));
+        }
+        let mut after = self.clone();
+        after.pieces.retain(|p| !p.spec.movable);
+        for s in pieces {
+            let spec = self
+                .kinds
+                .get(&s.kind)
+                .ok_or_else(|| format!("unknown furniture kind {:?}", s.kind))?;
+            if !spec.movable {
+                return Err(format!("the {} doesn't move, so no set lays one out", s.kind));
+            }
+            let piece = after.new_piece(&s.kind, Tile { x: s.x, y: s.y }).expect("checked above");
+            let at = format!("the {} at ({}, {})", s.kind, s.x, s.y);
+            if s.x as u16 + spec.w as u16 > self.width as u16
+                || s.y as u16 + spec.h as u16 > self.height as u16
+                || piece.tiles().iter().any(|&t| self.ground(t) != Ground::Floor)
+            {
+                return Err(format!("{at} isn't on the floor"));
+            }
+            if piece.tiles().iter().any(|t| self.walkway.contains(t)) {
+                return Err(format!("{at} stands on the door's walkway"));
+            }
+            if piece
+                .tiles()
+                .iter()
+                .any(|&t| after.pieces.iter().any(|p| p.covers(t) && p.spec.under == spec.under))
+            {
+                return Err(format!("{at} is where something's already standing"));
+            }
+            after.pieces.push(piece);
+        }
+        if !after.all_reachable() {
+            return Err("it would cut part of the café off from the door".into());
+        }
+        if !after.cat_spots_reachable() {
+            return Err("a cat on one of its pieces couldn't be reached".into());
+        }
+        Ok(())
+    }
+
     /// Whether every floor tile someone can stand on is reachable from the door.
     fn all_reachable(&self) -> bool {
         let floor = self.floor(Walker::Person);
@@ -441,6 +511,37 @@ impl Room {
                 self.pieces.push(piece);
             }
         }
+    }
+
+    /// Lays out a set in place of every movable piece (slice 17, part 2),
+    /// whole: `check_layout` checked the set as a whole against the pieces
+    /// that never move when the café started, so it stands as it is,
+    /// whatever was here before and in whatever order its file lists it
+    /// (slice 17 part 2's review, finding 4). A piece of the same kind
+    /// already standing where the set puts one stays, with its id, stood
+    /// up. Returns the tiles of the pieces that went, for the cats on them.
+    pub fn lay_out(&mut self, set: &[Saved]) -> Vec<Tile> {
+        let mut wanted: Vec<&Saved> = set.iter().collect();
+        let mut kept = Vec::new();
+        let mut gone = Vec::new();
+        for p in std::mem::take(&mut self.pieces) {
+            let same = wanted.iter().position(|s| s.kind == p.kind && s.x == p.x && s.y == p.y);
+            match same {
+                Some(i) if p.spec.movable => {
+                    wanted.remove(i);
+                    kept.push(Piece { toppled: false, ..p });
+                }
+                _ if p.spec.movable => gone.extend(p.tiles()),
+                _ => kept.push(p),
+            }
+        }
+        self.pieces = kept;
+        for s in wanted {
+            if let Some(piece) = self.new_piece(&s.kind, Tile { x: s.x, y: s.y }) {
+                self.pieces.push(piece);
+            }
+        }
+        gone
     }
 
     /// Phase 1's cushion-only save: moves pieces by their place in the list,
