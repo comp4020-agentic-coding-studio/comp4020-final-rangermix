@@ -1,6 +1,6 @@
 # 20. Welcomed back by name, or someone else
 
-- **Status:** Reviewed 2026-11-08, 16 findings, all fixed ([findings](../notes/reviews/slice-20-findings.md)); built 2026-11-08 ([notes](../notes/slice-20-welcome.md), [screens](../notes/screens/slice-20/)); approved 2026-11-08, with the user's answers below;
+- **Status:** Deployed and checked live 2026-11-08 ([notes](../notes/slice-20-welcome.md)); live once the user has judged its screens; reviewed 2026-11-08, 16 findings, all fixed ([findings](../notes/reviews/slice-20-findings.md)); built 2026-11-08 ([notes](../notes/slice-20-welcome.md), [screens](../notes/screens/slice-20/)); approved 2026-11-08, with the user's answers below;
   proposed 2026-11-08 from the user's ask of that day
 - **Plan:** [`docs/notes/plan-slice-20-welcome.md`](../notes/plan-slice-20-welcome.md)
 - **Design:** People ("Arriving", "Leaving"); Accounts and safety

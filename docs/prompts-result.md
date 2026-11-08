@@ -2689,17 +2689,54 @@ but `main` are gone, and the main checkout is on `main`.
 The image was a screenshot of the page after Leave: "You've left the
 café. The cats will remember you." and Come back in.
 
-**Result.** Proposed as slice 20, a spec waiting for the user's
-approval, with three questions open; nothing built yet.
-- **What it does:** "Hi, *name*." above the page after Leave (and after
-  being walked out), with "I'm not *name*" under Come back in; opening
-  the café signed in shows a welcome by name with Walk in, and joins
-  nothing until it's pressed; "I'm not *name*" signs out through the
-  existing `/api/logout` and shows the way in.
-- **Page only:** the server already names who's signed in and ends a
-  session, so neither it nor the protocol changes.
-- **Left out:** how many are inside on the welcome, since it would need a
-  new endpoint or a connection that takes no seat.
-- **Questions:** where "I'm not *name*" leads (lean: the log-in form),
-  the welcome's words (lean: "Welcome back, *name*. The cats are in.
-  Come and sit with them."), and whether the avatar shows (lean: yes).
+**Result.** Proposed as slice 20 ([`9650c20`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9650c20)), with three questions,
+asked as below.
+
+*Asked 2026-11-08, answered 14:03:28 AEDT:*
+
+> Where should "I'm not <name>" lead after it signs the session out? (Log-in form / New here form)
+
+> unify log in and sign up, show unified name / password form with separate buttons
+
+The welcome's words: "Time of day". The avatar: "Yes, show it". The
+spec: "Approve and build".
+
+*Asked, since one form changes how a newcomer picks a look, answered
+14:05:06 AEDT:* the look as a "Step after Sign up", and the greeting's
+hours "5/12/18/22".
+
+**Result.** Slice 20 built, reviewed, merged and live. The user judges
+the screens.
+- **The decision:** [ADR 0023](docs/adr/0023-greet-a-returning-visitor-at-the-door.md),
+  with the spec and plan ([`e7495e0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e7495e0)).
+- **The door:** opening the café signed in shows the avatar, "Good
+  morning / afternoon / evening, *name*." or "Still up, *name*?" after
+  22:00, Walk in, and "I'm not *name*". Nothing joins the café until
+  Walk in. After Leave, the same door says "Hi, *name*." above the old
+  words ([`e8326c7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/e8326c7)).
+- **One way in:** a name and a password, with Walk in to log in and
+  I'm new to sign up. I'm new asks a new endpoint,
+  `POST /api/check-name`, whether the name is free, then asks for a
+  look ([`aefcc38`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/aefcc38), [`9557883`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/9557883)).
+- **Found while building:** the café reloads a tab itself for a new
+  build, and with the door that would have put everyone inside out at
+  the door after every deploy. That reload now goes straight back in
+  ([`2386d9e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/2386d9e)). A keyboard check's 8 Shift+Tabs to Leave ran short
+  once the chalkboard scrolled ([`d31b1fa`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/d31b1fa)).
+- **Review:** a workflow of four reviewers, one per lens, with two
+  skeptics per finding. 16 findings: 4 major, 9 minor, 3 nits, all
+  fixed ([`b901cf1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b901cf1), [`8616e75`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/8616e75), [`6957eec`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/6957eec), [`1a7900a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/1a7900a)).
+  The serious ones:
+  - the last visitor's recovery code was left in the page, enough to
+    take the account;
+  - their bubble and unsent draft were left for the next person;
+  - CI's log check would have failed on the name check and blocked the
+    deploy;
+  - the check and its sign-up each spent a try, halving a venue's
+    sign-ups and pushing the spec suite past the limit.
+
+  The last changed a decision. A check that finds a name free now pays
+  for the sign-up after it.
+- **Live** ([`b7f2586`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b7f2586), CI green): the way in, the door, Leave,
+  "I'm not *name*" and `demo1`, with one `agent_` account, recorded in
+  [slice-20-welcome.md](docs/notes/slice-20-welcome.md).

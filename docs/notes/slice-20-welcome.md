@@ -7,8 +7,10 @@ Working state for [slice 20](../slices/20-welcomed-back-by-name-or-someone-else.
 
 Built on the branch `slice-20-welcome` and reviewed: 16 findings
 ([findings](reviews/slice-20-findings.md)), every one fixed, most test
-first. Next: merged to `main` (which deploys) and checked live. The judged
-line is the user's, from [the screens](screens/slice-20/).
+first. Merged to `main` ([`b7f2586`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/b7f2586)),
+deployed by CI (run 42449178470: check, rust and deploy all green), and
+checked live. The judged line is the user's, from
+[the screens](screens/slice-20/).
 
 ## Checked
 
@@ -44,11 +46,40 @@ line is the user's, from [the screens](screens/slice-20/).
   123 passed, 1 skipped, no 429. Each run's café log passed
   `scripts/check-logs.ts --wall` with CI's words (590 and 586 lines).
 
+## Checked live, 2026-11-08 16:12 AEDT
+
+One `agent_` account, `agent_d6d1f`, its password made for the visit and
+never written down, and `demo1`. A Playwright script, kept out of the
+repo since it made the password. The visit lasted about two seconds
+inside.
+
+- **The way in**, at 390×844 by touch: no tabs. I'm new with `demo1`
+  says "That name is the café's own." A fresh name reaches "Choose your
+  look, agent_d6d1f", the password marked `new-password`. Walk in, the
+  recovery code, and in: "1/6 inside", the password field and the code
+  then empty.
+- **The door:** a reload shows "Good afternoon, agent_d6d1f." and "The
+  cats are about. Come in when you're ready.", and no WebSocket opens
+  in 1.5 s. Walk in: inside.
+  ([live-door-390x844.png](screens/slice-20/live-door-390x844.png))
+- **Leave:** "Hi, agent_d6d1f.", "You've left the café. The cats will
+  remember you.", Come back in, "I'm not agent_d6d1f".
+  ([live-left-390x844.png](screens/slice-20/live-left-390x844.png))
+- **I'm not *name*:** the way in, the name field empty, and `/api/me`
+  401.
+- **`demo1`** at 1920×1080, logging in by Enter from the password:
+  inside, the demo bar showing. A reload shows "Good afternoon, demo1."
+  ([live-door-demo1-1920x1080.png](screens/slice-20/live-door-demo1-1920x1080.png))
+- **The logs:** the `check_name` refusal says `nameTaken` and nothing
+  else (no name, no address); then the account's `signup`, `arrive`,
+  `leave` and `logout`, one line each. The machine runs `main`'s
+  build (version 123), started.
+
 ## Not checked yet
 
-- Live: the door, I'm not *name*, and the one way in on the deployed
-  café, with an `agent_` account and `demo1`; and that a deploy no
-  longer puts visitors inside out at the door (the café's own reload).
+- That a deploy no longer puts visitors inside out at the door (the
+  café's own reload): held by `spec/welcome.test.ts` with a faked
+  build, not seen live, since nobody was inside during this deploy.
 - A real phone's keyboard on the one form (Enter on the password field
   logs in on a desktop and in Playwright's phone).
 
