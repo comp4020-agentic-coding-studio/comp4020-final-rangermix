@@ -3227,3 +3227,14 @@ plays. "The cafe is in Canberra, same time as you" became "the cafe
 keeps Canberra time", which the earlier claim check had flagged. The
 lines that check said overclaim (the unmeasured "minimal resource
 usage" among them) were left as the user wrote them.
+
+*Sent 2026-11-09 11:01:06 AEDT*
+
+> add one simple line on word counts of readme, process and research note.
+
+**Result.** The README's last line now reads "Word counts: README 1,104,
+PROCESS.md 1,069, research note 807 (not counting its references)."
+([`3dd6646`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/3dd6646)).
+Counted as the page reads: link URLs and Markdown marks left out, and
+only words with a letter or digit, which put "What's good?" at 654. The
+README's count includes the line itself.
