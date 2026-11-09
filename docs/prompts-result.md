@@ -3238,3 +3238,41 @@ PROCESS.md 1,069, research note 807 (not counting its references)."
 Counted as the page reads: link URLs and Markdown marks left out, and
 only words with a letter or digit, which put "What's good?" at 654. The
 README's count includes the line itself.
+
+### 30. `pnpm check` and CI made one script
+
+*Session `c200f6ac`, Claude Code (Opus 5.5).*
+
+*Sent 2026-11-09 10:53:21 AEDT*
+
+> align the pnpm check with CI,m and make sure both local check and CI pass
+
+**Result.** The session's preflight (10:04, from a bare `/comp4020:preflight`)
+had run `APP_URL=https://comp4020-final-rangermix.fly.dev pnpm check`, as
+the course skill says to. 25 of 136 checks failed against the live café,
+none for a reason in the code: the spec is written for the fresh, seeded,
+restartable copy of the app CI starts, and the same commit was green in CI.
+The run also signed up test accounts on the live café named `t…`/`r…`
+with the repo's `correct horse` password, which breaks CLAUDE.md's live
+testing rules, and accounts can't be deleted. It was recorded in the
+[notes](notes/check-alignment.md).
+- **One script**
+  ([`7dbbf87`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-rangermix/commit/7dbbf87)): `scripts/check.sh` is `pnpm check`, and CI's two
+  jobs run its halves, `pnpm check web` and `scripts/check.sh rust`, so only
+  the secret scans and the deploy stay CI's own. `scripts/check-app.sh` runs
+  the spec's copy of the app under Docker where a daemon answers, as CI
+  does. On a machine without Docker, like this one, it uses the release
+  binary with a throwaway data directory. It listens on 8081, refuses a port
+  something already answers on, and ignores `APP_URL`, which `pnpm test`
+  still takes. `spec/check-alignment.test.ts` failed before the script
+  existed and holds the two together. `docs/design.md` and `spec/README.md`
+  now say so.
+- **A slip of its own:** the first local run stopped at the app's start,
+  because an apostrophe inside a `${VAR:?message}` in double quotes opened a
+  quote in bash.
+- **Checked:** locally, `pnpm check` passed in full: 472 client tests, then
+  139 spec checks with none skipped. The restart and demo checks used to be
+  skipped without Docker and now run. It also checked 689 log lines and the
+  evidence. CI on `7dbbf87` was green: the same
+  checks under Docker with the same counts, then the deploy
+  ([notes](notes/check-alignment.md)).
