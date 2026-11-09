@@ -2,6 +2,20 @@
 
 Welcome to the online cat cafe **Catppuccino**! It's a place for you and/or friends to chill and enjoy fluffy companions. Come inside, relax, enjoy the chill vibe, and become good friends of the cats.
 
+## For markers
+
+The cats get to know you over days, and the café keeps Canberra time, so ten minutes as a newcomer shows little of either. A demo account lets you see weeks in those ten minutes. Log in as `demo1` (or `demo2`, if the first is open elsewhere), password `catppuccino`. The cats already know this regular: Mochi naps on their lap, Tora greets them at the door, Burakku comes when called. A bar at the top of the room moves the café's clock forward (the café lives through the hours between, for everyone inside), lays out a furniture set, and adds or removes bots.
+
+1. Window 1 at 1920×1080: sign up as yourself. Window 2 at 390×844: the demo account.
+2. Both say "Mochi": she comes to the regular, and only looks up at you. Have the regular pass her to you: she won't go to a stranger.
+3. Bar: **Afternoon**, then Furniture: **Lap time**. Sit the regular on a sofa, and Mochi takes the lap.
+4. Bar: **Night**. Burakku is up and the others asleep; the board shows the hours you skipped. Talk a lot, and she hides.
+5. Bar: **Morning**. The regular walks out and back in, and Tora greets them at the door.
+6. As yourself, keep picking Tora up: she refuses, then scratches, then bans you for a while.
+7. Bar: add **bots** until six are inside, then one more, who waits at the window. Leave and come back: the bot has taken your seat, so you wait at the window and can only talk. Remove a bot, and you walk in.
+8. Both grab the same chair: the first grab wins. Bar: Furniture, **Play room**, and the cats go to look at the new pieces. Resize mid-use, switch the phone's layout, try the keyboard alone.
+9. Bar: **Canberra time** puts the hour back. Come back tomorrow: the cats still know you.
+
 ## What's good?
 
 ### Defining the app first
@@ -64,22 +78,6 @@ Judged mostly by my own eyes and ears: I discussed each part with AI, looked at 
 - talk is public and fleeting: bubbles float over your head for everyone inside and at the window, then they're gone
 - click someone to talk to them, and their name shows on your bubble
 - wave, laugh, send a heart or yawn, share the sofa, hand someone a treat
-
----
-
-## For markers
-
-The cats get to know you over days, and the café keeps Canberra time, so ten minutes as a newcomer shows little of either. A demo account lets you see weeks in those ten minutes. Log in as `demo1` (or `demo2`, if the first is open elsewhere), password `catppuccino`. The cats already know this regular: Mochi naps on their lap, Tora greets them at the door, Burakku comes when called. A bar at the top of the room moves the café's clock forward (the café lives through the hours between, for everyone inside), lays out a furniture set, and adds or removes bots.
-
-1. Window 1 at 1920×1080: sign up as yourself. Window 2 at 390×844: the demo account.
-2. Both say "Mochi": she comes to the regular, and only looks up at you. Have the regular pass her to you: she won't go to a stranger.
-3. Bar: **Afternoon**, then Furniture: **Lap time**. Sit the regular on a sofa, and Mochi takes the lap.
-4. Bar: **Night**. Burakku is up and the others asleep; the board shows the hours you skipped. Talk a lot, and she hides.
-5. Bar: **Morning**. The regular walks out and back in, and Tora greets them at the door.
-6. As yourself, keep picking Tora up: she refuses, then scratches, then bans you for a while.
-7. Bar: add **bots** until six are inside, then one more, who waits at the window. Leave and come back: the bot has taken your seat, so you wait at the window and can only talk. Remove a bot, and you walk in.
-8. Both grab the same chair: the first grab wins. Bar: Furniture, **Play room**, and the cats go to look at the new pieces. Resize mid-use, switch the phone's layout, try the keyboard alone.
-9. Bar: **Canberra time** puts the hour back. Come back tomorrow: the cats still know you.
 
 ## Credits
 
